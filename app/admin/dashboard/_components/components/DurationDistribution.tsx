@@ -1,0 +1,149 @@
+"use client";
+
+import { useMemo } from "react";
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  Tooltip, ResponsiveContainer, Cell,
+} from "recharts";
+import { Timer, Zap, AlertTriangle } from "lucide-react";
+
+interface DurationDistributionProps {
+  durasiArray?: number[];
+  loading?: boolean;
+}
+
+const BUCKETS = [
+  { min: 0, max: 300, label: "0-5 min", color: "#10b981" },
+  { min: 300, max: 900, label: "5-15 min", color: "#22c55e" },
+  { min: 900, max: 1800, label: "15-30 min", color: "#eab308" },
+  { min: 1800, max: 3600, label: "30-60 min", color: "#f97316" },
+  { min: 3600, max: 7200, label: "1-2 jam", color: "#ef4444" },
+  { min: 7200, max: Infinity, label: "> 2 jam", color: "#dc2626" },
+];
+
+export default function DurationDistribution({
+  durasiArray = [],
+  loading = false,
+}: DurationDistributionProps) {
+  const histogramData = useMemo(() => {
+    if (!Array.isArray(durasiArray) || durasiArray.length === 0) return [];
+    return BUCKETS.map((b) => {
+      const count = durasiArray.filter((d) => d >= b.min && d < b.max).length;
+      const pct = durasiArray.length > 0 ? ((count / durasiArray.length) * 100).toFixed(1) : "0";
+      return { label: b.label, count, percentage: parseFloat(pct), color: b.color };
+    }).filter((i) => i.count > 0);
+  }, [durasiArray]);
+
+  const stats = useMemo(() => {
+    if (!Array.isArray(durasiArray) || durasiArray.length === 0)
+      return { avg: 0, median: 0, max: 0, min: 0 };
+    const sorted = [...durasiArray].sort((a, b) => a - b);
+    const avg = durasiArray.reduce((s, d) => s + d, 0) / durasiArray.length;
+    return {
+      avg: Math.round(avg / 60),
+      median: Math.round(sorted[Math.floor(sorted.length / 2)] / 60),
+      max: Math.round(sorted[sorted.length - 1] / 60),
+      min: Math.round(sorted[0] / 60),
+    };
+  }, [durasiArray]);
+
+  const severity = useMemo(() => ({
+    quick: durasiArray.filter((d) => d <= 300).length,
+    medium: durasiArray.filter((d) => d > 300 && d <= 1800).length,
+    critical: durasiArray.filter((d) => d > 1800).length,
+  }), [durasiArray]);
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+        <div className="h-96 flex items-center justify-center">
+          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+      <div className="px-5 pt-5 pb-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg">
+              <Timer className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <h3 className="text-[#1B2631] text-lg font-bold">Duration Distribution</h3>
+              <p className="text-[#5D6D7E] text-xs mt-1">Distribusi lama gangguan</p>
+            </div>
+          </div>
+          {histogramData.length > 0 && (
+            <div className="text-right">
+              <p className="text-2xl font-bold text-blue-600">{stats.avg}m</p>
+              <p className="text-[#5D6D7E] text-xs">Rata-rata</p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="px-5 pb-5">
+        {histogramData.length === 0 ? (
+          <div className="h-80 flex items-center justify-center">
+            <p className="text-[#94A3B8]">Tidak ada data durasi</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={histogramData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+                <XAxis dataKey="label" stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
+                <YAxis stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
+                <Tooltip
+                  contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }}
+                  labelStyle={{ color: "white", fontWeight: 600 }}
+                  itemStyle={{ color: "#6ee7b7" }}
+                />
+                <Bar dataKey="count" name="Jumlah" radius={[8, 8, 0, 0]}>
+                  {histogramData.map((e, i) => <Cell key={i} fill={e.color} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: "Min", value: `${stats.min}m`, color: "text-green-600" },
+                { label: "Median", value: `${stats.median}m`, color: "text-[#1B2631]" },
+                { label: "Avg", value: `${stats.avg}m`, color: "text-blue-600" },
+                { label: "Max", value: `${stats.max}m`, color: "text-red-600" },
+              ].map(({ label, value, color }) => (
+                <div key={label} className="bg-[#F4F6F8] rounded-lg p-3 border border-[#E2E8F0]">
+                  <p className="text-[#5D6D7E] text-xs mb-1">{label}</p>
+                  <p className={`${color} font-bold text-xl`}>{value}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: "Quick Recovery", sublabel: "≤ 5 menit", count: severity.quick, bg: "bg-green-50", border: "border-green-200", text: "text-green-600", barBg: "bg-green-200", barFill: "bg-green-500", icon: <Zap className="w-4 h-4 text-green-600" /> },
+                { label: "Medium", sublabel: "5-30 menit", count: severity.medium, bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-700", barBg: "bg-yellow-200", barFill: "bg-yellow-500", icon: <Timer className="w-4 h-4 text-yellow-600" /> },
+                { label: "Critical", sublabel: "> 30 menit", count: severity.critical, bg: "bg-red-50", border: "border-red-200", text: "text-red-600", barBg: "bg-red-200", barFill: "bg-red-500", icon: <AlertTriangle className="w-4 h-4 text-red-600" /> },
+              ].map(({ label, sublabel, count, bg, border, text, barBg, barFill, icon }) => (
+                <div key={label} className={`${bg} border ${border} rounded-lg p-3`}>
+                  <div className="flex items-center gap-2 mb-2">{icon}<span className={`${text} text-xs font-medium`}>{label}</span></div>
+                  <p className="text-[#1B2631] font-bold text-2xl">{count}</p>
+                  <p className="text-[#5D6D7E] text-xs mt-1">{sublabel}</p>
+                  <div className={`mt-2 ${barBg} rounded-full h-2`}>
+                    <div
+                      className={`${barFill} h-full rounded-full transition-all`}
+                      style={{ width: `${durasiArray.length > 0 ? (count / durasiArray.length) * 100 : 0}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

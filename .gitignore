@@ -36,6 +36,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# claude code (memory & session files, bukan untuk di-commit)
+.claude/
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
