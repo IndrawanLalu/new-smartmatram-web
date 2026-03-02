@@ -10,6 +10,7 @@ import {
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { fetchSheetData } from "@/lib/sheets";
 import { TrendingUp, Calendar, BarChart3, RefreshCw } from "lucide-react";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ChartDataLabels);
 
@@ -23,7 +24,8 @@ type Row = Record<string, string>;
 export default function DiagramGangguanPenyulang() {
   const currentYear = useMemo(() => new Date().getFullYear(), []);
   const previousYear = useMemo(() => currentYear - 1, [currentYear]);
-  const userUnit: string | null = null;
+  const user = useCurrentUser();
+  const userUnit = user.unit;
 
   const [tahunIni, setTahunIni] = useState<number[]>(Array(12).fill(0));
   const [tahunLalu, setTahunLalu] = useState<number[]>(Array(12).fill(0));
@@ -134,11 +136,11 @@ export default function DiagramGangguanPenyulang() {
     maintainAspectRatio: false,
     layout: { padding: { top: 20, bottom: 10, left: 10, right: 10 } },
     scales: {
-      x: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: "500" as const } } },
-      y: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: "500" as const }, stepSize: 1 }, beginAtZero: true },
+      x: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: 500 } } },
+      y: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: 500 }, stepSize: 1 }, beginAtZero: true },
     },
     plugins: {
-      legend: { position: "top" as const, labels: { color: "rgba(0,0,0,0.8)", font: { size: 13, weight: "600" as const }, usePointStyle: true, pointStyle: "circle", padding: 20 } },
+      legend: { position: "top" as const, labels: { color: "rgba(0,0,0,0.8)", font: { size: 13, weight: 600 }, usePointStyle: true, pointStyle: "circle", padding: 20 } },
       tooltip: {
         backgroundColor: "rgba(0,0,0,0.8)",
         titleColor: "rgba(255,255,255,1)",
@@ -225,7 +227,7 @@ export default function DiagramGangguanPenyulang() {
               </div>
             </div>
           ) : (
-            <Line data={chartData} options={chartOptions} />
+            <Line data={chartData} options={chartOptions as any} />
           )}
         </div>
 

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { fetchSheetData } from "@/lib/sheets";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import {
   Calendar, Download, RefreshCw, Activity, TrendingUp, TrendingDown,
   Clock, Zap, Target, AlertCircle, Filter, Search, ChevronDown,
@@ -29,7 +30,8 @@ const MONTH_OPTIONS = [
 
 export default function DashboardGangguanPenyulang() {
   const currentYear = new Date().getFullYear();
-  const userUnit: string | null = null;
+  const user = useCurrentUser();
+  const userUnit = user.unit;
 
   const [startDate, setStartDate] = useState(() => new Date(currentYear, 0, 1, 12, 0, 0));
   const [endDate, setEndDate] = useState(() => new Date(currentYear, 11, 31, 12, 0, 0));

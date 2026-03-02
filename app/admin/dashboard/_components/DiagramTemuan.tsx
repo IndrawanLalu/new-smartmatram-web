@@ -106,8 +106,8 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
         padding: 12,
         callbacks: {
           title: (ctx: { dataIndex: number }[]) => temuanTerbanyak[ctx[0].dataIndex]?.[0] ?? "",
-          label: (ctx: { parsed: { x: number } }) => {
-            const count = ctx.parsed.x;
+          label: (ctx: { parsed: { x: number | null } }) => {
+            const count = ctx.parsed.x ?? 0;
             const pct = analytics.total > 0 ? ((count / analytics.total) * 100).toFixed(1) : 0;
             return [`Jumlah: ${count} temuan`, `Persentase: ${pct}%`];
           },

@@ -35,7 +35,7 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: "500" as const }, padding: 15, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
       tooltip: { backgroundColor: "rgba(0,0,0,0.8)", callbacks: { label: (ctx: { label: string; parsed: number; dataset: { data: number[] } }) => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0); const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0; return `${ctx.label}: ${ctx.parsed} (${pct}%)`; } } },
       datalabels: {
         display: (ctx: { parsed: number }) => ctx.parsed > 0,
@@ -77,7 +77,7 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
         {!hasData ? (
           <div className="h-64 flex items-center justify-center"><p className="text-[#94A3B8]">Tidak ada data fasilitas</p></div>
         ) : (
-          <div className="h-64"><Doughnut data={chartData} options={options} /></div>
+          <div className="h-64"><Doughnut data={chartData} options={options as any} /></div>
         )}
       </div>
     </div>
@@ -115,7 +115,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
   const pieOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 10, weight: "500" as const }, padding: 10, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 10, weight: 500 }, padding: 10, usePointStyle: true } },
       datalabels: { display: (ctx: { parsed: number }) => ctx.parsed > 0, formatter: (v: number) => v > 0 ? v : "", color: "rgba(255,255,255,0.95)", font: { size: 10, weight: "bold" as const } },
     },
   };
@@ -125,7 +125,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
     plugins: {
       legend: { display: false },
       datalabels: {
-        display: (ctx: { parsed: { y: number } }) => ctx.parsed?.y > 0,
+        display: (ctx: { parsed: { y: number | null } }) => (ctx.parsed?.y ?? 0) > 0,
         formatter: (v: number) => v > 0 ? v : "",
         anchor: "end" as const, align: "top" as const,
         color: "rgba(0,0,0,0.7)", font: { size: 9, weight: "bold" as const },
@@ -167,7 +167,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
           {!hasIndikator ? (
             <div className="h-56 flex items-center justify-center"><p className="text-[#94A3B8]">Tidak ada data indikator</p></div>
           ) : (
-            <div className="h-56"><Doughnut data={indikatorData} options={pieOptions} /></div>
+            <div className="h-56"><Doughnut data={indikatorData} options={pieOptions as any} /></div>
           )}
         </div>
       </div>
@@ -183,7 +183,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
           {!hasKode ? (
             <div className="h-56 flex items-center justify-center"><p className="text-[#94A3B8]">Tidak ada data kode</p></div>
           ) : (
-            <div className="h-56"><Bar data={kodeData} options={barOptions} /></div>
+            <div className="h-56"><Bar data={kodeData} options={barOptions as any} /></div>
           )}
         </div>
       </div>
@@ -220,7 +220,7 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
     plugins: {
       legend: { display: false },
       datalabels: {
-        display: (ctx: { parsed: { x: number } }) => ctx.parsed?.x > 0,
+        display: (ctx: { parsed: { x: number | null } }) => (ctx.parsed?.x ?? 0) > 0,
         formatter: (v: number) => v > 0 ? v : "",
         anchor: "end" as const, align: "right" as const,
         color: "rgba(0,0,0,0.7)", font: { size: 10, weight: "bold" as const },
@@ -264,7 +264,7 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
         {!hasData ? (
           <div className="h-80 flex items-center justify-center"><p className="text-[#94A3B8]">Tidak ada data ULP</p></div>
         ) : (
-          <div className="h-80"><Bar data={chartData} options={options} /></div>
+          <div className="h-80"><Bar data={chartData} options={options as any} /></div>
         )}
       </div>
     </div>

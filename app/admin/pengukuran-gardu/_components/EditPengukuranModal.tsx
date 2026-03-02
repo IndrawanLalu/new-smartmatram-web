@@ -110,6 +110,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
   }
 
   async function handleSave() {
+    if (!row) return;
     setSaving(true);
     setError(null);
     try {

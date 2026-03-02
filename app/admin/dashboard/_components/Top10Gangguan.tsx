@@ -93,11 +93,11 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
         cornerRadius: 8,
         callbacks: {
           title: (ctx: { label: string }[]) => ctx[0].label,
-          label: (ctx: { parsed: { x: number } }) => `${ctx.parsed.x} kali gangguan`,
+          label: (ctx: { parsed: { x: number | null } }) => `${ctx.parsed.x ?? 0} kali gangguan`,
         },
       },
       datalabels: {
-        display: (ctx: { parsed: { x: number } }) => ctx.parsed?.x > 0,
+        display: (ctx: { parsed: { x: number | null } }) => (ctx.parsed?.x ?? 0) > 0,
         anchor: "end" as const, align: "right" as const, offset: 4,
         formatter: (v: number) => v > 0 ? `${v}x` : "",
         color: "rgba(255,255,255,0.95)",
@@ -195,7 +195,7 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
               </div>
             </div>
           ) : (
-            <Bar data={chartData} options={chartOptions} />
+            <Bar data={chartData} options={chartOptions as any} />
           )}
         </div>
 

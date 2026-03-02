@@ -152,8 +152,8 @@ export default function TabelSegment() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (!sortConfig.key) return 0;
-    const av = (a as Record<string, unknown>)[sortConfig.key] as number | string;
-    const bv = (b as Record<string, unknown>)[sortConfig.key] as number | string;
+    const av = (a as unknown as Record<string, unknown>)[sortConfig.key] as number | string;
+    const bv = (b as unknown as Record<string, unknown>)[sortConfig.key] as number | string;
     if (av < bv) return sortConfig.direction === "asc" ? -1 : 1;
     if (av > bv) return sortConfig.direction === "asc" ? 1 : -1;
     return 0;

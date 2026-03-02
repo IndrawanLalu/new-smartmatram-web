@@ -9,6 +9,7 @@ import {
 } from "chart.js";
 import ChartDataLabels from "chartjs-plugin-datalabels";
 import { fetchSheetData } from "@/lib/sheets";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import {
   Power, Clock, Shield, AlertCircle, RefreshCw,
   TrendingDown, TrendingUp, Target, Timer, Zap, Activity,
@@ -74,7 +75,8 @@ function parseDate(s: string | undefined): Date | null {
 }
 
 export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSumberGangguanProps) {
-  const userUnit: string | null = null;
+  const user = useCurrentUser();
+  const userUnit = user.unit;
 
   const [facilityData, setFacilityData] = useState([0, 0]);
   const [durationData, setDurationData] = useState([0, 0]);
@@ -186,7 +188,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: "500" as const }, padding: 15, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
       tooltip: {
         backgroundColor: "rgba(0,0,0,0.8)",
         titleColor: "rgba(255,255,255,1)",
@@ -295,7 +297,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
                     <div className="w-8 h-8 border-4 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <Doughnut data={facilityChartData} options={chartOptions} />
+                  <Doughnut data={facilityChartData} options={chartOptions as any} />
                 )}
               </div>
             </div>
@@ -309,7 +311,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
                     <div className="w-8 h-8 border-4 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <Doughnut data={durationChartData} options={chartOptions} />
+                  <Doughnut data={durationChartData} options={chartOptions as any} />
                 )}
               </div>
             </div>
