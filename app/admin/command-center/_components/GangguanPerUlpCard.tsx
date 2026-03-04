@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { BarChart3, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { BarChart3 } from "lucide-react";
 import type { GangguanItem } from "../_hooks/useCommandCenter";
 
 interface Props {
@@ -9,20 +9,6 @@ interface Props {
 }
 
 const ULP_LIST = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
-
-const ULP_SHORT: Record<string, string> = {
-  AMPENAN: "AMP",
-  CAKRANEGARA: "CKR",
-  GERUNG: "GRG",
-  TANJUNG: "TNJ",
-};
-
-const ULP_COLOR: Record<string, string> = {
-  AMPENAN: "#00897B",
-  CAKRANEGARA: "#0097A7",
-  GERUNG: "#0288D1",
-  TANJUNG: "#7B1FA2",
-};
 
 export default function GangguanPerUlpCard({ items }: Props) {
   const now = new Date();
@@ -42,7 +28,8 @@ export default function GangguanPerUlpCard({ items }: Props) {
       const prevYear = items.filter(
         (g) => g.ulp?.trim().toUpperCase() === ulp && g.parsedDate?.getFullYear() === lastYear
       ).length;
-      return { ulp, thisYear, prevYear, delta: thisYear - prevYear };
+      const delta = thisYear - prevYear;
+      return { ulp, thisYear, prevYear, delta };
     });
   }, [items, currentYear, lastYear]);
 
@@ -51,75 +38,52 @@ export default function GangguanPerUlpCard({ items }: Props) {
 
   return (
     <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-3 flex items-center justify-between">
+      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <BarChart3 size={14} className="text-white/80" />
-          <span className="text-white font-semibold text-sm">Gangguan Per ULP</span>
-          <span className="text-teal-200 text-xs">· {currentYear} vs {lastYear}</span>
+          <BarChart3 size={13} className="text-white/70" />
+          <span className="text-white font-semibold text-xs">Gangguan Per ULP · {currentYear} vs {lastYear}</span>
         </div>
-        <span className="font-mono font-bold text-lg text-white">{totalThisYear}</span>
+        <span className="font-mono font-bold text-sm text-white">{totalThisYear}</span>
       </div>
 
-      <div className="p-4 space-y-4">
+      <div className="px-4 py-3 space-y-3">
         {stats.map(({ ulp, thisYear, prevYear, delta }) => (
           <div key={ulp}>
-            <div className="flex items-center justify-between mb-1.5">
-              <div className="flex items-center gap-2">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[11px] font-medium text-[#1B2631]">{ulp}</span>
+              <div className="flex items-center gap-2 text-[11px]">
+                <span className="font-mono font-semibold text-[#1B2631]">{thisYear}</span>
                 <span
-                  className="w-7 h-5 rounded text-white text-[10px] font-bold flex items-center justify-center shrink-0"
-                  style={{ backgroundColor: ULP_COLOR[ulp] ?? "#00897B" }}
+                  className={`font-medium ${
+                    delta > 0 ? "text-red-500" : delta < 0 ? "text-emerald-600" : "text-[#9CA3AF]"
+                  }`}
                 >
-                  {ULP_SHORT[ulp] ?? ulp.slice(0, 3)}
+                  {delta > 0 ? `↑ +${delta}` : delta < 0 ? `↓ ${delta}` : "—"}
                 </span>
-                <span className="text-xs font-medium text-[#1B2631]">{ulp}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-mono font-bold text-sm text-[#1B2631]">{thisYear}</span>
-                {delta > 0 ? (
-                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-red-600 bg-red-50 px-1.5 py-0.5 rounded-full">
-                    <TrendingUp size={9} />+{delta}
-                  </span>
-                ) : delta < 0 ? (
-                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">
-                    <TrendingDown size={9} />{delta}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-0.5 text-[10px] font-semibold text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-full">
-                    <Minus size={9} />sama
-                  </span>
-                )}
               </div>
             </div>
-
-            {/* Dual bar: tahun ini (solid) + tahun lalu (faded) */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#5D6D7E] w-8 text-right shrink-0">{currentYear}</span>
-                <div className="flex-1 h-2 bg-[#F4F6F8] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-500"
-                    style={{ width: `${(thisYear / maxCount) * 100}%`, backgroundColor: ULP_COLOR[ulp] ?? "#00897B" }}
-                  />
-                </div>
-                <span className="text-[10px] font-mono text-[#5D6D7E] w-6">{thisYear}</span>
+            <div className="space-y-0.5">
+              <div className="h-1.5 bg-[#F4F6F8] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#00897B] transition-all duration-500"
+                  style={{ width: `${(thisYear / maxCount) * 100}%` }}
+                />
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-[#9CA3AF] w-8 text-right shrink-0">{lastYear}</span>
-                <div className="flex-1 h-2 bg-[#F4F6F8] rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full opacity-35 transition-all duration-500"
-                    style={{ width: `${(prevYear / maxCount) * 100}%`, backgroundColor: ULP_COLOR[ulp] ?? "#00897B" }}
-                  />
-                </div>
-                <span className="text-[10px] font-mono text-[#9CA3AF] w-6">{prevYear}</span>
+              <div className="h-1 bg-[#F4F6F8] rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-[#00897B]/30 transition-all duration-500"
+                  style={{ width: `${(prevYear / maxCount) * 100}%` }}
+                />
               </div>
             </div>
           </div>
         ))}
-
         {stats.length === 0 && (
-          <p className="text-center text-sm text-[#9CA3AF] py-6">Tidak ada data</p>
+          <p className="text-center text-xs text-[#9CA3AF] py-3">Tidak ada data</p>
         )}
+        <p className="text-[10px] text-[#9CA3AF] text-right">
+          bar tebal = {currentYear} · tipis = {lastYear}
+        </p>
       </div>
     </div>
   );

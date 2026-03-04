@@ -176,15 +176,11 @@ export default function CommandCenterPage() {
           items={gangguanTahunIni}
           title="Top 10 Penyulang"
           subtitle={`Tahun ${currentYear}`}
-          headerFrom="#004D40"
-          headerTo="#00897B"
         />
         <Top10PenyulangCard
           items={gangguanBulanIni}
           title="Top 10 Penyulang"
-          subtitle={`Bulan Ini`}
-          headerFrom="#7B1FA2"
-          headerTo="#9C27B0"
+          subtitle="Bulan Ini"
         />
       </div>
 
