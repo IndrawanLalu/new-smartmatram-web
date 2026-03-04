@@ -126,7 +126,7 @@ export default function CommandCenterPage() {
           {/* Kolom Kiri */}
           <div className="flex flex-col gap-3 min-h-0">
             <div className="flex-1 min-h-0">
-              <GangguanFeed items={gangguanFeed} loading={loading} />
+              <GangguanFeed items={gangguanBulanIni} loading={loading} />
             </div>
             <InspeksiPanel items={inspeksiFeed} loading={loading} />
           </div>

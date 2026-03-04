@@ -34,7 +34,7 @@ export default function GangguanFeed({ items, loading }: Props) {
       <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-3 py-2.5 shrink-0">
         <div className="flex items-center gap-2">
           <Zap size={13} className="text-amber-300" />
-          <span className="text-white text-xs font-bold tracking-wider uppercase">Gangguan Penyulang</span>
+          <span className="text-white text-xs font-bold tracking-wider uppercase">Gangguan Penyulang · Bulan Ini</span>
           <span className="ml-auto bg-white/20 text-white text-xs font-mono px-1.5 py-0.5 rounded-md">
             {items.length}
           </span>
