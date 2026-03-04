@@ -62,17 +62,17 @@ export default function DashboardPage() {
         {/* 3-column chart grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Trend Gangguan per Tahun */}
-          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0]">
+          <div className="bg-[#162334] rounded-xl shadow-sm border border-[#1e3552]">
             <DiagramGangguanPenyulang />
           </div>
 
           {/* Top 10 Penyulang */}
-          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0]">
+          <div className="bg-[#162334] rounded-xl shadow-sm border border-[#1e3552]">
             <Top10Gangguan startDate={startDate} endDate={endDate} />
           </div>
 
           {/* Sumber Gangguan */}
-          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0]">
+          <div className="bg-[#162334] rounded-xl shadow-sm border border-[#1e3552]">
             <DiagramSumberGangguan startDate={startDate} endDate={endDate} />
           </div>
         </div>

@@ -247,11 +247,11 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
   return (
     <div className="space-y-4">
       {/* Main Card */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-[#E0F2F1]">
+              <div className="p-3 rounded-full bg-[#0a2a26]">
                 <Activity className="w-6 h-6 text-[#00897B]" />
               </div>
               <div>
@@ -333,7 +333,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
 
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow p-5">
+        <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
           <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
             {getRelIcon(analytics.reliabilityScore)} Performa Sistem
           </div>
@@ -351,7 +351,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow p-5">
+        <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
           <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
             <Timer className="w-4 h-4" /> Analisis Durasi
           </div>
@@ -369,7 +369,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
           </div>
         </div>
 
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow p-5">
+        <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
           <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
             <Zap className="w-4 h-4" /> Dampak Gangguan
           </div>

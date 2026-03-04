@@ -13,7 +13,7 @@ function val(v: number | null | undefined) {
 function ArusHighlight({ v, threshold = HIGH_CURRENT_A }: { v: number; threshold?: number }) {
   const high = v > threshold;
   return (
-    <span className={`font-mono font-semibold ${high ? "text-red-600" : "text-[#1B2631]"}`}>
+    <span className={`font-mono font-semibold ${high ? "text-red-600" : "text-[#e2e8f0]"}`}>
       {Math.round(v)}
       {high && <AlertTriangle size={10} className="inline ml-0.5 text-red-500" />}
     </span>
@@ -22,10 +22,10 @@ function ArusHighlight({ v, threshold = HIGH_CURRENT_A }: { v: number; threshold
 
 function StatBox({ label, value, unit = "" }: { label: string; value: React.ReactNode; unit?: string }) {
   return (
-    <div className="bg-[#F4F6F8] rounded-lg px-3 py-2.5 text-center">
-      <p className="text-xs text-[#5D6D7E] mb-0.5">{label}</p>
-      <p className="text-base font-bold text-[#1B2631]">
-        {value}<span className="text-xs font-normal text-[#5D6D7E] ml-0.5">{unit}</span>
+    <div className="bg-[#0d1b2a] rounded-lg px-3 py-2.5 text-center">
+      <p className="text-xs text-[#94a3b8] mb-0.5">{label}</p>
+      <p className="text-base font-bold text-[#e2e8f0]">
+        {value}<span className="text-xs font-normal text-[#94a3b8] ml-0.5">{unit}</span>
       </p>
     </div>
   );
@@ -79,7 +79,7 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
       />
 
       {/* Panel slide-over kanan */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-5xl bg-white z-50 shadow-2xl flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-full max-w-5xl bg-[#162334] z-50 shadow-2xl flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-5 py-4 flex items-center justify-between shrink-0">
@@ -122,36 +122,36 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
 
           {/* Info Dasar */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-2">Informasi Gardu</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">Informasi Gardu</h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p className="text-xs text-[#5D6D7E]">Alamat</p>
-                <p className="font-medium text-[#1B2631]">{row.alamat ?? "—"}</p>
+                <p className="text-xs text-[#94a3b8]">Alamat</p>
+                <p className="font-medium text-[#e2e8f0]">{row.alamat ?? "—"}</p>
               </div>
               <div>
-                <p className="text-xs text-[#5D6D7E]">Kapasitas Trafo</p>
-                <p className="font-medium text-[#1B2631]">{row.kva_trafo} KVA</p>
+                <p className="text-xs text-[#94a3b8]">Kapasitas Trafo</p>
+                <p className="font-medium text-[#e2e8f0]">{row.kva_trafo} KVA</p>
               </div>
               <div>
-                <p className="text-xs text-[#5D6D7E]">Tanggal Pengukuran</p>
-                <p className="font-medium text-[#1B2631]">{row.tanggal_pengukuran}</p>
+                <p className="text-xs text-[#94a3b8]">Tanggal Pengukuran</p>
+                <p className="font-medium text-[#e2e8f0]">{row.tanggal_pengukuran}</p>
               </div>
               <div>
-                <p className="text-xs text-[#5D6D7E]">Petugas</p>
-                <p className="font-medium text-[#1B2631]">{row.petugas_nama ?? "—"}</p>
+                <p className="text-xs text-[#94a3b8]">Petugas</p>
+                <p className="font-medium text-[#e2e8f0]">{row.petugas_nama ?? "—"}</p>
               </div>
             </div>
           </section>
 
           {/* Beban Trafo */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-2">Beban Trafo</h3>
-            <div className="bg-white border border-[#E2E8F0] rounded-xl p-4 space-y-3">
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">Beban Trafo</h3>
+            <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#5D6D7E]">
+                <span className="text-sm text-[#94a3b8]">
                   {Math.round(row.beban_kva)} KVA / {row.kva_trafo} KVA
                 </span>
-                <span className={`text-sm font-bold ${isOverload ? "text-red-600" : "text-[#1B2631]"}`}>
+                <span className={`text-sm font-bold ${isOverload ? "text-red-600" : "text-[#e2e8f0]"}`}>
                   {isOverload ? "⚠ OVERLOAD" : "Normal"}
                 </span>
               </div>
@@ -161,10 +161,10 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
 
           {/* Pengukuran Total */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-2">Pengukuran Total</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">Pengukuran Total</h3>
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-[#5D6D7E] mb-1.5 flex items-center gap-1">
+                <p className="text-xs text-[#94a3b8] mb-1.5 flex items-center gap-1">
                   <Zap size={11} /> Arus (Ampere)
                 </p>
                 <div className="grid grid-cols-4 gap-2">
@@ -175,22 +175,22 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                 </div>
               </div>
               <div>
-                <p className="text-xs text-[#5D6D7E] mb-1.5">Tegangan Fase-Netral (Volt)</p>
+                <p className="text-xs text-[#94a3b8] mb-1.5">Tegangan Fase-Netral (Volt)</p>
                 <div className="grid grid-cols-3 gap-2">
                   <StatBox label="V R-N" value={val(row.total_teg_rn)} unit="V" />
                   <StatBox label="V S-N" value={val(row.total_teg_sn)} unit="V" />
                   <StatBox label="V T-N" value={val(row.total_teg_tn)} unit="V" />
                 </div>
               </div>
-              <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${isHighTemp ? "bg-amber-50 border-amber-200" : "bg-[#F4F6F8] border-[#E2E8F0]"}`}>
+              <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${isHighTemp ? "bg-amber-50 border-amber-200" : "bg-[#0d1b2a] border-[#1e3552]"}`}>
                 <div className="flex items-center gap-2">
-                  <Thermometer size={16} className={isHighTemp ? "text-amber-600" : "text-[#5D6D7E]"} />
-                  <span className={`text-sm font-medium ${isHighTemp ? "text-amber-700" : "text-[#5D6D7E]"}`}>
+                  <Thermometer size={16} className={isHighTemp ? "text-amber-600" : "text-[#94a3b8]"} />
+                  <span className={`text-sm font-medium ${isHighTemp ? "text-amber-700" : "text-[#94a3b8]"}`}>
                     Suhu Trafo
                   </span>
                   {isHighTemp && <span className="text-xs bg-amber-500 text-white px-1.5 py-0.5 rounded-full font-semibold">TINGGI</span>}
                 </div>
-                <span className={`text-xl font-bold ${isHighTemp ? "text-amber-600" : "text-[#1B2631]"}`}>
+                <span className={`text-xl font-bold ${isHighTemp ? "text-amber-600" : "text-[#e2e8f0]"}`}>
                   {row.suhu_trafo}°C
                 </span>
               </div>
@@ -199,24 +199,24 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
 
           {/* Per Jurusan */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">
               Pengukuran Per Jurusan
             </h3>
             {jurusanKeys.length === 0 ? (
-              <p className="text-sm text-[#5D6D7E] text-center py-4 bg-[#F4F6F8] rounded-xl">
+              <p className="text-sm text-[#94a3b8] text-center py-4 bg-[#0d1b2a] rounded-xl">
                 Tidak ada data perjurusan
               </p>
             ) : (
-              <div className="border border-[#E2E8F0] rounded-xl overflow-hidden">
+              <div className="border border-[#1e3552] rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-[#E0F2F1]">
-                      <th className="text-left px-4 py-2.5 text-xs text-[#00695C] font-semibold">Jurusan</th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#00695C] font-semibold">Arus R (A)</th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#00695C] font-semibold">Arus S (A)</th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#00695C] font-semibold">Arus T (A)</th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#00695C] font-semibold">Arus N (A)</th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#00695C] font-semibold">Status</th>
+                    <tr className="bg-[#0a2a26]">
+                      <th className="text-left px-4 py-2.5 text-xs text-[#5eead4] font-semibold">Jurusan</th>
+                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">Arus R (A)</th>
+                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">Arus S (A)</th>
+                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">Arus T (A)</th>
+                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">Arus N (A)</th>
+                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">Status</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -231,25 +231,25 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                       return (
                         <tr
                           key={key}
-                          className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"} ${anyHigh ? "border-l-2 border-l-red-400" : ""}`}
+                          className={`${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"} ${anyHigh ? "border-l-2 border-l-red-400" : ""}`}
                         >
-                          <td className="px-4 py-3 font-bold text-[#1B2631]">{key}</td>
+                          <td className="px-4 py-3 font-bold text-[#e2e8f0]">{key}</td>
                           <td className={`px-3 py-3 text-center ${highR ? "bg-red-50" : ""}`}>
-                            <span className={`font-mono text-sm font-semibold ${highR ? "text-red-600" : "text-[#1B2631]"}`}>
+                            <span className={`font-mono text-sm font-semibold ${highR ? "text-red-600" : "text-[#e2e8f0]"}`}>
                               {Math.round(arus.R)}{highR && <AlertTriangle size={10} className="inline ml-0.5" />}
                             </span>
                           </td>
                           <td className={`px-3 py-3 text-center ${highS ? "bg-red-50" : ""}`}>
-                            <span className={`font-mono text-sm font-semibold ${highS ? "text-red-600" : "text-[#1B2631]"}`}>
+                            <span className={`font-mono text-sm font-semibold ${highS ? "text-red-600" : "text-[#e2e8f0]"}`}>
                               {Math.round(arus.S)}{highS && <AlertTriangle size={10} className="inline ml-0.5" />}
                             </span>
                           </td>
                           <td className={`px-3 py-3 text-center ${highT ? "bg-red-50" : ""}`}>
-                            <span className={`font-mono text-sm font-semibold ${highT ? "text-red-600" : "text-[#1B2631]"}`}>
+                            <span className={`font-mono text-sm font-semibold ${highT ? "text-red-600" : "text-[#e2e8f0]"}`}>
                               {Math.round(arus.T)}{highT && <AlertTriangle size={10} className="inline ml-0.5" />}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-center font-mono text-sm text-[#5D6D7E]">
+                          <td className="px-3 py-3 text-center font-mono text-sm text-[#94a3b8]">
                             {Math.round(arus.N ?? 0)}
                           </td>
                           <td className="px-3 py-3 text-center">
@@ -260,7 +260,7 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                             ) : maxArus > 0 ? (
                               <span className="text-xs text-green-600 font-semibold">✓ Normal</span>
                             ) : (
-                              <span className="text-xs text-[#5D6D7E]">—</span>
+                              <span className="text-xs text-[#94a3b8]">—</span>
                             )}
                           </td>
                         </tr>
@@ -270,16 +270,16 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                 </table>
 
                 {jurusanKeys.some((k) => perjurusan[k]?.tegangan) && (
-                  <div className="border-t border-[#E2E8F0] bg-[#F4F6F8] px-4 py-3">
-                    <p className="text-xs font-semibold text-[#5D6D7E] mb-2">Tegangan Ujung per Jurusan (V)</p>
+                  <div className="border-t border-[#1e3552] bg-[#0d1b2a] px-4 py-3">
+                    <p className="text-xs font-semibold text-[#94a3b8] mb-2">Tegangan Ujung per Jurusan (V)</p>
                     <div className="grid grid-cols-5 gap-2">
                       {jurusanKeys.map((key) => {
                         const teg = perjurusan[key]?.tegangan;
                         if (!teg) return null;
                         return (
-                          <div key={key} className="bg-white rounded-lg p-2 text-center border border-[#E2E8F0]">
-                            <p className="text-xs font-bold text-[#00695C]">{key}</p>
-                            <p className="text-xs text-[#5D6D7E] mt-0.5">
+                          <div key={key} className="bg-[#162334] rounded-lg p-2 text-center border border-[#1e3552]">
+                            <p className="text-xs font-bold text-[#5eead4]">{key}</p>
+                            <p className="text-xs text-[#94a3b8] mt-0.5">
                               <span title="R">{Math.round(teg.R ?? 0)}</span>
                               <span className="text-gray-300"> / </span>
                               <span title="S">{Math.round(teg.S ?? 0)}</span>
@@ -302,12 +302,12 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
             <section>
               <button
                 onClick={() => setHistoryOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-[#F4F6F8] rounded-xl hover:bg-[#E0F2F1] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-[#0d1b2a] rounded-xl hover:bg-[#0a2a26] transition-colors"
               >
-                <span className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
                   <History size={12} /> Riwayat Pengukuran ({history.length})
                 </span>
-                {historyOpen ? <ChevronUp size={14} className="text-[#5D6D7E]" /> : <ChevronDown size={14} className="text-[#5D6D7E]" />}
+                {historyOpen ? <ChevronUp size={14} className="text-[#94a3b8]" /> : <ChevronDown size={14} className="text-[#94a3b8]" />}
               </button>
 
               {historyOpen && (
@@ -326,12 +326,12 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                     return (
                       <div
                         key={h.id}
-                        className={`border rounded-xl overflow-hidden ${isLatest ? "border-[#00897B]" : "border-[#E2E8F0]"}`}
+                        className={`border rounded-xl overflow-hidden ${isLatest ? "border-[#00897B]" : "border-[#1e3552]"}`}
                       >
                         {/* Entry header */}
-                        <div className={`px-4 py-2.5 flex items-center justify-between ${isLatest ? "bg-teal-50" : "bg-[#F4F6F8]"}`}>
+                        <div className={`px-4 py-2.5 flex items-center justify-between ${isLatest ? "bg-teal-50" : "bg-[#0d1b2a]"}`}>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-[#1B2631]">{h.tanggal_pengukuran}</span>
+                            <span className="text-sm font-semibold text-[#e2e8f0]">{h.tanggal_pengukuran}</span>
                             {isLatest && (
                               <span className="text-[10px] bg-[#00897B] text-white px-1.5 py-0.5 rounded-full font-semibold">
                                 terbaru
@@ -348,10 +348,10 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                               <span className={`font-bold font-mono ${hOverload ? "text-red-600" : "text-[#00897B]"}`}>
                                 {Math.round(h.persen_beban)}% · {Math.round(h.beban_kva)} KVA
                               </span>
-                              <span className={`font-mono ${hHighTemp ? "text-amber-600 font-semibold" : "text-[#5D6D7E]"}`}>
+                              <span className={`font-mono ${hHighTemp ? "text-amber-600 font-semibold" : "text-[#94a3b8]"}`}>
                                 {h.suhu_trafo}°C
                               </span>
-                              <span className="text-[#5D6D7E]">{h.petugas_nama ?? "—"}</span>
+                              <span className="text-[#94a3b8]">{h.petugas_nama ?? "—"}</span>
                             </div>
                             <button
                               onClick={() => onEdit(h)}
@@ -363,15 +363,15 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                         </div>
 
                         {/* Pengukuran total grid */}
-                        <div className="px-4 py-2.5 grid grid-cols-4 gap-x-6 gap-y-1 text-xs border-b border-[#E2E8F0] bg-white">
-                          <div><span className="text-[#5D6D7E]">Arus R: </span><span className={`font-mono font-semibold ${hHighR ? "text-red-600" : "text-[#1B2631]"}`}>{Math.round(h.total_arus_r)} A{hHighR && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
-                          <div><span className="text-[#5D6D7E]">Arus S: </span><span className={`font-mono font-semibold ${hHighS ? "text-red-600" : "text-[#1B2631]"}`}>{Math.round(h.total_arus_s)} A{hHighS && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
-                          <div><span className="text-[#5D6D7E]">Arus T: </span><span className={`font-mono font-semibold ${hHighT ? "text-red-600" : "text-[#1B2631]"}`}>{Math.round(h.total_arus_t)} A{hHighT && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
-                          <div><span className="text-[#5D6D7E]">Arus N: </span><span className="font-mono text-[#1B2631]">{Math.round(h.total_arus_n)} A</span></div>
-                          <div><span className="text-[#5D6D7E]">Teg R-N: </span><span className="font-mono text-[#1B2631]">{Math.round(h.total_teg_rn)} V</span></div>
-                          <div><span className="text-[#5D6D7E]">Teg S-N: </span><span className="font-mono text-[#1B2631]">{Math.round(h.total_teg_sn)} V</span></div>
-                          <div><span className="text-[#5D6D7E]">Teg T-N: </span><span className="font-mono text-[#1B2631]">{Math.round(h.total_teg_tn)} V</span></div>
-                          <div><span className="text-[#5D6D7E]">Suhu: </span><span className={`font-mono font-semibold ${hHighTemp ? "text-amber-600" : "text-[#1B2631]"}`}>{h.suhu_trafo} °C</span></div>
+                        <div className="px-4 py-2.5 grid grid-cols-4 gap-x-6 gap-y-1 text-xs border-b border-[#1e3552] bg-[#162334]">
+                          <div><span className="text-[#94a3b8]">Arus R: </span><span className={`font-mono font-semibold ${hHighR ? "text-red-600" : "text-[#e2e8f0]"}`}>{Math.round(h.total_arus_r)} A{hHighR && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
+                          <div><span className="text-[#94a3b8]">Arus S: </span><span className={`font-mono font-semibold ${hHighS ? "text-red-600" : "text-[#e2e8f0]"}`}>{Math.round(h.total_arus_s)} A{hHighS && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
+                          <div><span className="text-[#94a3b8]">Arus T: </span><span className={`font-mono font-semibold ${hHighT ? "text-red-600" : "text-[#e2e8f0]"}`}>{Math.round(h.total_arus_t)} A{hHighT && <AlertTriangle size={9} className="inline ml-0.5" />}</span></div>
+                          <div><span className="text-[#94a3b8]">Arus N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_arus_n)} A</span></div>
+                          <div><span className="text-[#94a3b8]">Teg R-N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_rn)} V</span></div>
+                          <div><span className="text-[#94a3b8]">Teg S-N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_sn)} V</span></div>
+                          <div><span className="text-[#94a3b8]">Teg T-N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_tn)} V</span></div>
+                          <div><span className="text-[#94a3b8]">Suhu: </span><span className={`font-mono font-semibold ${hHighTemp ? "text-amber-600" : "text-[#e2e8f0]"}`}>{h.suhu_trafo} °C</span></div>
                         </div>
 
                         {/* Per jurusan */}
@@ -379,17 +379,17 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                           <div className="overflow-x-auto">
                             <table className="w-full text-xs whitespace-nowrap">
                               <thead>
-                                <tr className="bg-gray-50 border-b border-[#E2E8F0]">
-                                  <th className="text-left px-3 py-1.5 text-[#5D6D7E] font-semibold">Jurusan</th>
-                                  <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Arus R (A)</th>
-                                  <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Arus S (A)</th>
-                                  <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Arus T (A)</th>
-                                  <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Arus N (A)</th>
+                                <tr className="bg-gray-50 border-b border-[#1e3552]">
+                                  <th className="text-left px-3 py-1.5 text-[#94a3b8] font-semibold">Jurusan</th>
+                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Arus R (A)</th>
+                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Arus S (A)</th>
+                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Arus T (A)</th>
+                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Arus N (A)</th>
                                   {hasTeg && (
                                     <>
-                                      <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Teg Ujung R (V)</th>
-                                      <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Teg Ujung S (V)</th>
-                                      <th className="text-center px-2 py-1.5 text-[#5D6D7E] font-semibold">Teg Ujung T (V)</th>
+                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Teg Ujung R (V)</th>
+                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Teg Ujung S (V)</th>
+                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">Teg Ujung T (V)</th>
                                     </>
                                   )}
                                 </tr>
@@ -403,23 +403,23 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                                   const jHS = a.S > HIGH_CURRENT_A;
                                   const jHT = a.T > HIGH_CURRENT_A;
                                   return (
-                                    <tr key={k} className={ki % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
-                                      <td className="px-3 py-1.5 font-bold text-[#1B2631]">{k}</td>
-                                      <td className={`px-2 py-1.5 text-center font-mono ${jHR ? "text-red-600 font-semibold" : "text-[#5D6D7E]"}`}>
+                                    <tr key={k} className={ki % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}>
+                                      <td className="px-3 py-1.5 font-bold text-[#e2e8f0]">{k}</td>
+                                      <td className={`px-2 py-1.5 text-center font-mono ${jHR ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}>
                                         {Math.round(a.R)}{jHR && <AlertTriangle size={8} className="inline ml-0.5" />}
                                       </td>
-                                      <td className={`px-2 py-1.5 text-center font-mono ${jHS ? "text-red-600 font-semibold" : "text-[#5D6D7E]"}`}>
+                                      <td className={`px-2 py-1.5 text-center font-mono ${jHS ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}>
                                         {Math.round(a.S)}{jHS && <AlertTriangle size={8} className="inline ml-0.5" />}
                                       </td>
-                                      <td className={`px-2 py-1.5 text-center font-mono ${jHT ? "text-red-600 font-semibold" : "text-[#5D6D7E]"}`}>
+                                      <td className={`px-2 py-1.5 text-center font-mono ${jHT ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}>
                                         {Math.round(a.T)}{jHT && <AlertTriangle size={8} className="inline ml-0.5" />}
                                       </td>
-                                      <td className="px-2 py-1.5 text-center font-mono text-[#5D6D7E]">{Math.round(a.N ?? 0)}</td>
+                                      <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">{Math.round(a.N ?? 0)}</td>
                                       {hasTeg && (
                                         <>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#5D6D7E]">{Math.round(teg?.R ?? 0)}</td>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#5D6D7E]">{Math.round(teg?.S ?? 0)}</td>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#5D6D7E]">{Math.round(teg?.T ?? 0)}</td>
+                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">{Math.round(teg?.R ?? 0)}</td>
+                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">{Math.round(teg?.S ?? 0)}</td>
+                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">{Math.round(teg?.T ?? 0)}</td>
                                         </>
                                       )}
                                     </tr>

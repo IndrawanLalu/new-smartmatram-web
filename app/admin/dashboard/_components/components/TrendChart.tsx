@@ -66,25 +66,25 @@ export default function TrendChart({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-80 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#E0F2F1] rounded-lg">
+            <div className="p-2 bg-[#0a2a26] rounded-lg">
               <TrendingUp className="w-5 h-5 text-[#00897B]" />
             </div>
             <div>
-              <h3 className="text-[#1B2631] font-bold text-lg">Trend Gangguan</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">
+              <h3 className="text-[#e2e8f0] font-bold text-lg">Trend Gangguan</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">
                 {viewMode === "daily" ? "Harian" : "Bulanan"} distribution
               </p>
             </div>
@@ -97,7 +97,7 @@ export default function TrendChart({
                 className={`px-3 py-1 text-xs rounded-lg transition-all ${
                   viewMode === mode
                     ? "bg-[#00897B] text-white"
-                    : "bg-[#F4F6F8] text-[#5D6D7E] hover:bg-[#E0F2F1]"
+                    : "bg-[#0d1b2a] text-[#94a3b8] hover:bg-[#0a2a26]"
                 }`}
               >
                 {mode === "daily" ? "Harian" : "Bulanan"}
@@ -108,8 +108,8 @@ export default function TrendChart({
 
         {hasData && chartData.length >= 2 && (
           <div className="mt-3 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-[#5D6D7E]" />
-            <span className="text-[#5D6D7E] text-xs">Trend: </span>
+            <Calendar className="w-4 h-4 text-[#94a3b8]" />
+            <span className="text-[#94a3b8] text-xs">Trend: </span>
             <span className={`text-sm font-bold ${parseFloat(String(trendPercentage)) > 0 ? "text-red-600" : "text-green-600"}`}>
               {parseFloat(String(trendPercentage)) > 0 ? "+" : ""}{trendPercentage}%
             </span>

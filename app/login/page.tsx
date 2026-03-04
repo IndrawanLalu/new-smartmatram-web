@@ -82,11 +82,11 @@ export default function LoginPage() {
       </div>
 
       {/* ── Panel Kanan — Form ────────────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#F4F6F8]">
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#0d1b2a]">
         <div className="w-full max-w-sm">
           {/* Mobile logo */}
           <div className="lg:hidden flex flex-col items-center mb-8">
-            <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-4 mb-4">
+            <div className="bg-[#162334] rounded-2xl shadow-sm border border-[#1e3552] p-4 mb-4">
               <Image
                 src="/logsmart.png"
                 alt="SMART Mataram Logo"
@@ -96,17 +96,17 @@ export default function LoginPage() {
                 priority
               />
             </div>
-            <h1 className="text-xl font-bold text-[#1B2631]">SMART Mataram</h1>
-            <p className="text-sm text-[#5D6D7E]">PLN ULP Ampenan · Mataram</p>
+            <h1 className="text-xl font-bold text-[#e2e8f0]">SMART Mataram</h1>
+            <p className="text-sm text-[#94a3b8]">PLN ULP Ampenan · Mataram</p>
           </div>
 
           {/* Card */}
-          <div className="bg-white rounded-2xl shadow-sm border border-[#E2E8F0] p-8">
+          <div className="bg-[#162334] rounded-2xl shadow-sm border border-[#1e3552] p-8">
             <div className="mb-7">
-              <h2 className="text-xl font-bold text-[#1B2631]">
+              <h2 className="text-xl font-bold text-[#e2e8f0]">
                 Selamat Datang
               </h2>
-              <p className="text-sm text-[#5D6D7E] mt-1">
+              <p className="text-sm text-[#94a3b8] mt-1">
                 Masuk ke akun Anda untuk melanjutkan
               </p>
             </div>
@@ -114,40 +114,40 @@ export default function LoginPage() {
             <form action={handleSubmit} className="space-y-4">
               {/* Email */}
               <div>
-                <label className="block text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-1.5">
                   Email
                 </label>
                 <div className="relative">
                   <Mail
                     size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5D6D7E]"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
                   />
                   <input
                     name="email"
                     type="email"
                     required
                     placeholder="admin@pln.co.id"
-                    className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-4 py-3 text-sm text-[#1B2631] bg-white placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
+                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
                   />
                 </div>
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-1.5">
+                <label className="block text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-1.5">
                   Password
                 </label>
                 <div className="relative">
                   <Lock
                     size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5D6D7E]"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
                   />
                   <input
                     name="password"
                     type="password"
                     required
                     placeholder="••••••••"
-                    className="w-full border border-[#E2E8F0] rounded-xl pl-9 pr-4 py-3 text-sm text-[#1B2631] bg-white placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
+                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
                   />
                 </div>
               </div>

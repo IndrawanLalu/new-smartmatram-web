@@ -35,12 +35,12 @@ function CustomTooltip({ active, payload, label }: any) {
   if (!active || !payload?.length) return null;
   const d = payload[0].payload as ChartItem;
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-lg p-3 text-xs">
-      <p className="font-semibold text-[#1B2631] mb-1">{label}</p>
-      <p className="text-[#5D6D7E]">
-        Beban: <span className="font-semibold text-[#1B2631]">{d.persen}%</span>
+    <div className="bg-[#162334] border border-[#1e3552] rounded-lg shadow-lg p-3 text-xs">
+      <p className="font-semibold text-[#e2e8f0] mb-1">{label}</p>
+      <p className="text-[#94a3b8]">
+        Beban: <span className="font-semibold text-[#e2e8f0]">{d.persen}%</span>
       </p>
-      <p className="text-[#5D6D7E]">
+      <p className="text-[#94a3b8]">
         {d.kva} KVA / {d.kapasitas} KVA
       </p>
     </div>
@@ -50,7 +50,7 @@ function CustomTooltip({ active, payload, label }: any) {
 export default function BebanBarChart({ data }: Props) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64 text-[#5D6D7E] text-sm">
+      <div className="flex items-center justify-center h-64 text-[#94a3b8] text-sm">
         Tidak ada data untuk ditampilkan
       </div>
     );

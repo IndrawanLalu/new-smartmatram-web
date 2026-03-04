@@ -25,7 +25,7 @@ const RISIKO_OPTIONS = ["Rendah", "Sedang", "Tinggi", "Sangat Tinggi"];
 const URGENCY_OPTIONS = ["SANGAT URGENT", "URGENT", "PERLU TINDAKAN", "AMAN"];
 
 const INPUT_CLASS =
-  "border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white";
+  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
 function exportCsv(data: ReturnType<typeof useInspeksiPohon>["allData"]) {
   const headers = [
@@ -128,12 +128,12 @@ export default function InspeksiPohonTab({ user }: Props) {
       )}
 
       {/* Filter bar */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-48">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5D6D7E]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
             />
             <input
               type="text"
@@ -254,14 +254,14 @@ export default function InspeksiPohonTab({ user }: Props) {
 
           <button
             onClick={refresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-sm text-[#5D6D7E] hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:bg-gray-50 transition-colors"
           >
             <RefreshCw size={14} />
             Refresh
           </button>
           <button
             onClick={() => exportCsv(allData)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#E0F2F1] text-[#00695C] text-sm font-medium hover:bg-[#b2dfdb] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a2a26] text-[#5eead4] text-sm font-medium hover:bg-[#b2dfdb] transition-colors"
           >
             <Download size={14} />
             Export CSV
@@ -270,9 +270,9 @@ export default function InspeksiPohonTab({ user }: Props) {
       </div>
 
       {/* Table */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#E2E8F0]">
-          <p className="text-sm text-[#5D6D7E]">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+        <div className="px-5 py-3 border-b border-[#1e3552]">
+          <p className="text-sm text-[#94a3b8]">
             {loading ? "Memuat..." : `${totalFiltered} data ditemukan`}
           </p>
         </div>
@@ -280,37 +280,37 @@ export default function InspeksiPohonTab({ user }: Props) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#E0F2F1]">
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold whitespace-nowrap">
+              <tr className="bg-[#0a2a26]">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">
                   Tgl Inspeksi
                 </th>
                 {showUlpFilter && (
-                  <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                     ULP
                   </th>
                 )}
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Penyulang
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Jenis Pohon
                 </th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Alamat
                 </th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Inspektor
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Risiko
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Urgensi
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Status
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Team
                 </th>
               </tr>
@@ -320,7 +320,7 @@ export default function InspeksiPohonTab({ user }: Props) {
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr
                     key={i}
-                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
+                    className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}
                   >
                     {Array.from({ length: 9 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
@@ -333,7 +333,7 @@ export default function InspeksiPohonTab({ user }: Props) {
                 <tr>
                   <td
                     colSpan={showUlpFilter ? 10 : 9}
-                    className="text-center py-12 text-[#5D6D7E] text-sm"
+                    className="text-center py-12 text-[#94a3b8] text-sm"
                   >
                     Tidak ada data yang sesuai filter
                   </td>
@@ -342,31 +342,31 @@ export default function InspeksiPohonTab({ user }: Props) {
                 data.map((row, i) => (
                   <tr
                     key={row.id}
-                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50/30"}
+                    className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"}
                   >
-                    <td className="px-4 py-3 text-[#5D6D7E] whitespace-nowrap">
+                    <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">
                       {row.tgl_inspeksi ?? "—"}
                     </td>
                     {showUlpFilter && (
-                      <td className="px-4 py-3 text-[#5D6D7E]">
+                      <td className="px-4 py-3 text-[#94a3b8]">
                         {row.ulp ?? "—"}
                       </td>
                     )}
-                    <td className="px-4 py-3 font-medium text-[#1B2631]">
+                    <td className="px-4 py-3 font-medium text-[#e2e8f0]">
                       {row.penyulang ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-[#1B2631]">
+                    <td className="px-4 py-3 text-[#e2e8f0]">
                       <p>{row.jenis_pohon ?? "—"}</p>
                       {row.deskripsi && (
-                        <p className="text-xs text-[#5D6D7E] truncate max-w-40">
+                        <p className="text-xs text-[#94a3b8] truncate max-w-40">
                           {row.deskripsi}
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center text-[#5D6D7E]">
+                    <td className="px-4 py-3 text-center text-[#94a3b8]">
                       {row.lokasi != null ? `${row.lokasi} ` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-center text-[#5D6D7E]">
+                    <td className="px-4 py-3 text-center text-[#94a3b8]">
                       {row.inspektor != null ? `${row.inspektor} ` : "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -408,22 +408,22 @@ export default function InspeksiPohonTab({ user }: Props) {
         </div>
 
         {totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-[#E2E8F0] flex items-center justify-between">
-            <p className="text-xs text-[#5D6D7E]">
+          <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
+            <p className="text-xs text-[#94a3b8]">
               Halaman {page} dari {totalPages}
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#5D6D7E] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#5D6D7E] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
               >
                 <ChevronRight size={14} />
               </button>

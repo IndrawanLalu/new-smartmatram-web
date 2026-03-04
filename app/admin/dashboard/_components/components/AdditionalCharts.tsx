@@ -52,9 +52,9 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-72 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -63,13 +63,13 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
   const hasData = chartData.datasets[0].data.some((v) => v > 0);
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-50 rounded-lg"><Power className="w-5 h-5 text-green-600" /></div>
           <div>
-            <h3 className="text-[#1B2631] text-lg font-bold">Fasilitas Padam</h3>
-            <p className="text-[#5D6D7E] text-xs mt-1">Breakdown by facility type</p>
+            <h3 className="text-[#e2e8f0] text-lg font-bold">Fasilitas Padam</h3>
+            <p className="text-[#94a3b8] text-xs mt-1">Breakdown by facility type</p>
           </div>
         </div>
       </div>
@@ -141,9 +141,9 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {[1, 2].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+          <div key={i} className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
             <div className="h-64 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
             </div>
           </div>
         ))}
@@ -156,11 +156,11 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-red-50 rounded-lg"><Zap className="w-5 h-5 text-red-600" /></div>
-            <div><h3 className="text-[#1B2631] text-sm font-bold">Fault Indicator</h3><p className="text-[#5D6D7E] text-xs mt-1">EF vs OC</p></div>
+            <div><h3 className="text-[#e2e8f0] text-sm font-bold">Fault Indicator</h3><p className="text-[#94a3b8] text-xs mt-1">EF vs OC</p></div>
           </div>
         </div>
         <div className="px-5 pb-5">
@@ -172,11 +172,11 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-blue-50 rounded-lg"><Activity className="w-5 h-5 text-blue-600" /></div>
-            <div><h3 className="text-[#1B2631] text-sm font-bold">Fault Code</h3><p className="text-[#5D6D7E] text-xs mt-1">Top 5 codes</p></div>
+            <div><h3 className="text-[#e2e8f0] text-sm font-bold">Fault Code</h3><p className="text-[#94a3b8] text-xs mt-1">Top 5 codes</p></div>
           </div>
         </div>
         <div className="px-5 pb-5">
@@ -234,9 +234,9 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-96 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
@@ -245,14 +245,14 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
   const hasData = chartData.datasets[0].data.length > 0;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#E0F2F1] rounded-lg"><MapPin className="w-5 h-5 text-[#00897B]" /></div>
+            <div className="p-2 bg-[#0a2a26] rounded-lg"><MapPin className="w-5 h-5 text-[#00897B]" /></div>
             <div>
-              <h3 className="text-[#1B2631] text-lg font-bold">Geographic Distribution</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">Gangguan by ULP</p>
+              <h3 className="text-[#e2e8f0] text-lg font-bold">Geographic Distribution</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">Gangguan by ULP</p>
             </div>
           </div>
           {userUnit && (

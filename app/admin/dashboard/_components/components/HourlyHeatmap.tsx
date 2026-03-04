@@ -61,16 +61,16 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-64 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -78,8 +78,8 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
               <Clock className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-[#1B2631] text-lg font-bold">24-Hour Pattern</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">Distribusi gangguan per jam</p>
+              <h3 className="text-[#e2e8f0] text-lg font-bold">24-Hour Pattern</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">Distribusi gangguan per jam</p>
             </div>
           </div>
           {peakHours.length > 0 && (
@@ -87,7 +87,7 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
               <p className="text-2xl font-bold text-red-600">
                 {String(peakHours[0].hour).padStart(2, "0")}:00
               </p>
-              <p className="text-[#5D6D7E] text-xs">Peak hour</p>
+              <p className="text-[#94a3b8] text-xs">Peak hour</p>
             </div>
           )}
         </div>
@@ -110,7 +110,7 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
                     style={{ backgroundColor: INTENSITY_COLORS[intensity] }}
                   >
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className={`text-[10px] font-bold ${intensity >= 4 ? "text-white/90" : "text-[#5D6D7E]"}`}>
+                      <span className={`text-[10px] font-bold ${intensity >= 4 ? "text-white/90" : "text-[#94a3b8]"}`}>
                         {String(hour).padStart(2, "0")}
                       </span>
                     </div>
@@ -129,12 +129,12 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
             </div>
 
             <div className="flex items-center gap-4">
-              <span className="text-[#5D6D7E] text-xs">Intensitas:</span>
+              <span className="text-[#94a3b8] text-xs">Intensitas:</span>
               <div className="flex gap-2">
                 {[0, 1, 2, 3, 4, 5].map((level) => (
                   <div
                     key={level}
-                    className="w-6 h-6 rounded border border-[#E2E8F0]"
+                    className="w-6 h-6 rounded border border-[#1e3552]"
                     style={{ backgroundColor: INTENSITY_COLORS[level] }}
                   />
                 ))}
@@ -149,9 +149,9 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
                 { label: "Siang", time: "12:00 - 18:00", icon: <Sun className="w-4 h-4 text-orange-500" /> },
                 { label: "Malam", time: "18:00 - 24:00", icon: <Moon className="w-4 h-4 text-[#00897B]" /> },
               ].map(({ label, time, icon }) => (
-                <div key={label} className="bg-[#F4F6F8] rounded-lg p-3 border border-[#E2E8F0]">
-                  <div className="flex items-center gap-2 mb-1">{icon}<span className="text-[#5D6D7E] text-xs">{label}</span></div>
-                  <p className="text-[#1B2631] font-bold text-lg">{timePeriodStats[label]}</p>
+                <div key={label} className="bg-[#0d1b2a] rounded-lg p-3 border border-[#1e3552]">
+                  <div className="flex items-center gap-2 mb-1">{icon}<span className="text-[#94a3b8] text-xs">{label}</span></div>
+                  <p className="text-[#e2e8f0] font-bold text-lg">{timePeriodStats[label]}</p>
                   <p className="text-[#94A3B8] text-xs">{time}</p>
                 </div>
               ))}
@@ -163,7 +163,7 @@ export default function HourlyHeatmap({ hourlyCount = [], loading = false }: Hou
                 <div className="space-y-1">
                   {peakHours.map((item, i) => (
                     <div key={i} className="flex items-center justify-between text-xs">
-                      <span className="text-[#1B2631]">#{i + 1} • {String(item.hour).padStart(2, "0")}:00</span>
+                      <span className="text-[#e2e8f0]">#{i + 1} • {String(item.hour).padStart(2, "0")}:00</span>
                       <span className="text-red-600 font-bold">{item.count} gangguan</span>
                     </div>
                   ))}

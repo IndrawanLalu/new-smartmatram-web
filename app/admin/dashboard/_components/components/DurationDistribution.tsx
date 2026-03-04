@@ -55,16 +55,16 @@ export default function DurationDistribution({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-96 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -72,14 +72,14 @@ export default function DurationDistribution({
               <Timer className="w-5 h-5 text-blue-600" />
             </div>
             <div>
-              <h3 className="text-[#1B2631] text-lg font-bold">Duration Distribution</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">Distribusi lama gangguan</p>
+              <h3 className="text-[#e2e8f0] text-lg font-bold">Duration Distribution</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">Distribusi lama gangguan</p>
             </div>
           </div>
           {histogramData.length > 0 && (
             <div className="text-right">
               <p className="text-2xl font-bold text-blue-600">{stats.avg}m</p>
-              <p className="text-[#5D6D7E] text-xs">Rata-rata</p>
+              <p className="text-[#94a3b8] text-xs">Rata-rata</p>
             </div>
           )}
         </div>
@@ -111,12 +111,12 @@ export default function DurationDistribution({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               {[
                 { label: "Min", value: `${stats.min}m`, color: "text-green-600" },
-                { label: "Median", value: `${stats.median}m`, color: "text-[#1B2631]" },
+                { label: "Median", value: `${stats.median}m`, color: "text-[#e2e8f0]" },
                 { label: "Avg", value: `${stats.avg}m`, color: "text-blue-600" },
                 { label: "Max", value: `${stats.max}m`, color: "text-red-600" },
               ].map(({ label, value, color }) => (
-                <div key={label} className="bg-[#F4F6F8] rounded-lg p-3 border border-[#E2E8F0]">
-                  <p className="text-[#5D6D7E] text-xs mb-1">{label}</p>
+                <div key={label} className="bg-[#0d1b2a] rounded-lg p-3 border border-[#1e3552]">
+                  <p className="text-[#94a3b8] text-xs mb-1">{label}</p>
                   <p className={`${color} font-bold text-xl`}>{value}</p>
                 </div>
               ))}
@@ -130,8 +130,8 @@ export default function DurationDistribution({
               ].map(({ label, sublabel, count, bg, border, text, barBg, barFill, icon }) => (
                 <div key={label} className={`${bg} border ${border} rounded-lg p-3`}>
                   <div className="flex items-center gap-2 mb-2">{icon}<span className={`${text} text-xs font-medium`}>{label}</span></div>
-                  <p className="text-[#1B2631] font-bold text-2xl">{count}</p>
-                  <p className="text-[#5D6D7E] text-xs mt-1">{sublabel}</p>
+                  <p className="text-[#e2e8f0] font-bold text-2xl">{count}</p>
+                  <p className="text-[#94a3b8] text-xs mt-1">{sublabel}</p>
                   <div className={`mt-2 ${barBg} rounded-full h-2`}>
                     <div
                       className={`${barFill} h-full rounded-full transition-all`}

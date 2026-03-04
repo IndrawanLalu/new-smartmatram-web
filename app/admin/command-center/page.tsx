@@ -158,7 +158,7 @@ export default function CommandCenterPage() {
       {/* Divider */}
       <div className="flex items-center gap-3 py-1">
         <div className="flex-1 h-px bg-[#E2E8F0]" />
-        <span className="text-[11px] font-semibold text-[#5D6D7E] uppercase tracking-widest">
+        <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">
           Statistik Gangguan
         </span>
         <div className="flex-1 h-px bg-[#E2E8F0]" />

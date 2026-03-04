@@ -176,7 +176,7 @@ export default function TabelSegment() {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
         <MapPin className="w-12 h-12 text-red-400 mx-auto mb-3" />
-        <h3 className="text-[#1B2631] font-semibold mb-2">Error Memuat Data</h3>
+        <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Memuat Data</h3>
         <p className="text-red-600 text-sm mb-4">{error}</p>
         <button onClick={fetchData} className="inline-flex items-center gap-2 px-4 py-2 bg-[#00897B] hover:bg-[#00695C] text-white rounded-lg text-sm">
           <RefreshCw className="w-4 h-4" /> Coba Lagi
@@ -187,7 +187,7 @@ export default function TabelSegment() {
 
   const SortTh = ({ sortKey, children }: { sortKey: string; children: React.ReactNode }) => (
     <th
-      className="text-left px-4 py-3 text-[#00695C] font-semibold text-xs cursor-pointer hover:text-[#00897B] select-none"
+      className="text-left px-4 py-3 text-[#5eead4] font-semibold text-xs cursor-pointer hover:text-[#00897B] select-none"
       onClick={() => handleSort(sortKey)}
     >
       <div className="flex items-center gap-1">
@@ -206,15 +206,15 @@ export default function TabelSegment() {
         {[
           { icon: <MapPin className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50", value: loading ? "..." : summary.totalPenyulang, label: "Total Penyulang", color: "text-blue-600" },
           { icon: <TrendingUp className="w-5 h-5 text-green-600" />, bg: "bg-green-50", value: loading ? "..." : summary.totalKM.toFixed(1), label: "Total KM", color: "text-green-600" },
-          { icon: <Target className="w-5 h-5 text-[#00897B]" />, bg: "bg-[#E0F2F1]", value: loading ? "..." : `${summary.avgPersentase.toFixed(1)}%`, label: "Avg Progress", color: "text-[#00897B]" },
+          { icon: <Target className="w-5 h-5 text-[#00897B]" />, bg: "bg-[#0a2a26]", value: loading ? "..." : `${summary.avgPersentase.toFixed(1)}%`, label: "Avg Progress", color: "text-[#00897B]" },
           { icon: <Activity className="w-5 h-5 text-yellow-700" />, bg: "bg-yellow-50", value: loading ? "..." : `${summary.totalDicek} / ${summary.totalSegmen}`, label: "Segments Checked", color: "text-yellow-700" },
         ].map(({ icon, bg, value, label, color }) => (
-          <div key={label} className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
+          <div key={label} className="bg-[#162334] border border-[#1e3552] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-full ${bg}`}>{icon}</div>
               <div>
                 <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                <p className="text-xs text-[#5D6D7E]">{label}</p>
+                <p className="text-xs text-[#94a3b8]">{label}</p>
               </div>
             </div>
           </div>
@@ -222,23 +222,23 @@ export default function TabelSegment() {
       </div>
 
       {/* Table Card */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-[#E0F2F1]">
+              <div className="p-3 rounded-full bg-[#0a2a26]">
                 <MapPin className="w-6 h-6 text-[#00897B]" />
               </div>
               <div>
-                <h3 className="text-[#1B2631] text-lg font-bold">Data Segment Penyulang</h3>
-                <p className="text-[#5D6D7E] text-sm">
+                <h3 className="text-[#e2e8f0] text-lg font-bold">Data Segment Penyulang</h3>
+                <p className="text-[#94a3b8] text-sm">
                   Data dari Google Sheets — Bulan {new Date().toLocaleDateString("id-ID", { month: "long" })}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {loading && <div className="w-5 h-5 border-2 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />}
-              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-[#F4F6F8] hover:bg-[#E0F2F1] text-[#5D6D7E] disabled:opacity-50 transition-colors">
+              {loading && <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />}
+              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-[#0d1b2a] hover:bg-[#0a2a26] text-[#94a3b8] disabled:opacity-50 transition-colors">
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               </button>
             </div>
@@ -252,14 +252,14 @@ export default function TabelSegment() {
                 placeholder="Cari penyulang..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-[#F4F6F8] border border-[#E2E8F0] rounded-lg text-[#1B2631] text-sm focus:outline-none focus:ring-2 focus:ring-[#00897B]/20 focus:border-[#00897B]"
+                className="w-full pl-9 pr-4 py-2 bg-[#0d1b2a] border border-[#1e3552] rounded-lg text-[#e2e8f0] text-sm focus:outline-none focus:ring-2 focus:ring-[#00897B]/20 focus:border-[#00897B]"
               />
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 rounded-lg bg-[#F4F6F8] hover:bg-[#E0F2F1] text-[#5D6D7E] transition-colors">
+              <button className="p-2 rounded-lg bg-[#0d1b2a] hover:bg-[#0a2a26] text-[#94a3b8] transition-colors">
                 <Filter className="w-4 h-4" />
               </button>
-              <button className="p-2 rounded-lg bg-[#F4F6F8] hover:bg-[#E0F2F1] text-[#5D6D7E] transition-colors">
+              <button className="p-2 rounded-lg bg-[#0d1b2a] hover:bg-[#0a2a26] text-[#94a3b8] transition-colors">
                 <Download className="w-4 h-4" />
               </button>
             </div>
@@ -269,7 +269,7 @@ export default function TabelSegment() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#E0F2F1]">
+              <tr className="bg-[#0a2a26]">
                 <SortTh sortKey="penyulang">Penyulang</SortTh>
                 <SortTh sortKey="totalPanjang">Total KM</SortTh>
                 <SortTh sortKey="totalSegmen">Total Segmen</SortTh>
@@ -282,7 +282,7 @@ export default function TabelSegment() {
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className="border-t border-[#E2E8F0]">
+                  <tr key={i} className="border-t border-[#1e3552]">
                     {Array(7).fill(null).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-[#E2E8F0] rounded animate-pulse" />
@@ -298,18 +298,18 @@ export default function TabelSegment() {
                   </td>
                 </tr>
               ) : sorted.map((item, i) => (
-                <tr key={i} className="border-t border-[#E2E8F0] hover:bg-[#F4F6F8] transition-colors">
-                  <td className="px-4 py-3 font-medium text-[#1B2631]">{item.penyulang}</td>
-                  <td className="px-4 py-3 text-[#5D6D7E]">{item.totalPanjang.toFixed(2)} KM</td>
-                  <td className="px-4 py-3 text-[#5D6D7E]">{item.totalSegmen}</td>
-                  <td className="px-4 py-3 text-[#5D6D7E]">
+                <tr key={i} className="border-t border-[#1e3552] hover:bg-[#0d1b2a] transition-colors">
+                  <td className="px-4 py-3 font-medium text-[#e2e8f0]">{item.penyulang}</td>
+                  <td className="px-4 py-3 text-[#94a3b8]">{item.totalPanjang.toFixed(2)} KM</td>
+                  <td className="px-4 py-3 text-[#94a3b8]">{item.totalSegmen}</td>
+                  <td className="px-4 py-3 text-[#94a3b8]">
                     <div className="flex items-center gap-1">
                       <span>{item.sudahDicek}</span>
                       <span className="text-[#94A3B8]">/ {item.totalSegmen}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3 min-w-[140px]"><ProgressBar pct={item.persentase} /></td>
-                  <td className="px-4 py-3 text-[#5D6D7E]">
+                  <td className="px-4 py-3 text-[#94a3b8]">
                     <div className="flex items-center gap-1">
                       <span>{item.sudahDicekRabas}</span>
                       <span className="text-[#94A3B8]">/ {item.totalSegmen}</span>
@@ -323,7 +323,7 @@ export default function TabelSegment() {
         </div>
 
         {!loading && sorted.length > 0 && (
-          <div className="px-5 py-3 border-t border-[#E2E8F0] flex items-center justify-between text-sm text-[#5D6D7E]">
+          <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between text-sm text-[#94a3b8]">
             <p>Menampilkan {sorted.length} dari {data.length} penyulang</p>
             <p>Total: {summary.totalDicek} / {summary.totalSegmen} segment dicek</p>
           </div>

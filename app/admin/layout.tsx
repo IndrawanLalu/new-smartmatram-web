@@ -13,7 +13,7 @@ export default async function AdminLayout({
 
   return (
     <UserProvider user={user}>
-      <div className="h-screen overflow-hidden bg-[#F4F6F8] flex">
+      <div className="h-screen overflow-hidden bg-[#0d1b2a] flex">
         <AdminSidebar
           userEmail={user.email}
           userName={user.name}

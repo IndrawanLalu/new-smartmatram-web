@@ -128,7 +128,7 @@ export default function MapInner({ garduList, latestData, showAll }: Props) {
           <Marker key={gardu.kode} position={[gardu.lat, gardu.lng]} icon={icon}>
             <Popup>
               <div className="text-xs min-w-[140px]">
-                <div className="font-bold text-[#1B2631] text-sm mb-1">{gardu.nama}</div>
+                <div className="font-bold text-slate-800 text-sm mb-1">{gardu.nama}</div>
                 <div className="text-gray-500 font-mono mb-2">{gardu.kode}</div>
                 {ukur ? (
                   <div className="space-y-1">

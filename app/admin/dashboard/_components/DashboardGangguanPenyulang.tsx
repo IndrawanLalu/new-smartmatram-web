@@ -343,59 +343,59 @@ export default function DashboardGangguanPenyulang() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[#5D6D7E]" />
-            <span className="text-sm font-medium text-[#1B2631]">Filter</span>
+            <Filter className="w-4 h-4 text-[#94a3b8]" />
+            <span className="text-sm font-medium text-[#e2e8f0]">Filter</span>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#5D6D7E]">ULP</label>
+            <label className="text-xs text-[#94a3b8]">ULP</label>
             <div className="relative">
               <select
                 value={selectedULP}
                 onChange={(e) => { setSelectedULP(e.target.value); setCurrentPage(1); }}
-                className="appearance-none border border-[#E2E8F0] rounded-lg px-3 py-2 pr-8 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="appearance-none border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
               >
                 <option value="ALL">🏢 Semua ULP</option>
                 {ulpOptions.map((u) => <option key={u} value={u}>{u}</option>)}
               </select>
-              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-[#5D6D7E] pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-[#94a3b8] pointer-events-none" />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#5D6D7E]">Bulan</label>
+            <label className="text-xs text-[#94a3b8]">Bulan</label>
             <div className="relative">
               <select
                 value={selectedMonth}
                 onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
-                className="appearance-none border border-[#E2E8F0] rounded-lg px-3 py-2 pr-8 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="appearance-none border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
               >
                 {MONTH_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
-              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-[#5D6D7E] pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-[#94a3b8] pointer-events-none" />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#5D6D7E]">Dari Tanggal</label>
+            <label className="text-xs text-[#94a3b8]">Dari Tanggal</label>
             <input
               type="date"
               value={formatDateForInput(startDate)}
               onChange={(e) => { if (e.target.value) { setStartDate(new Date(e.target.value + "T12:00:00")); setCurrentPage(1); } }}
-              className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#5D6D7E]">Sampai Tanggal</label>
+            <label className="text-xs text-[#94a3b8]">Sampai Tanggal</label>
             <input
               type="date"
               value={formatDateForInput(endDate)}
               onChange={(e) => { if (e.target.value) { setEndDate(new Date(e.target.value + "T12:00:00")); setCurrentPage(1); } }}
-              className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
 
@@ -405,7 +405,7 @@ export default function DashboardGangguanPenyulang() {
               { label: "Tahun Ini", onClick: () => { setStartDate(new Date(currentYear, 0, 1, 12)); setEndDate(new Date(currentYear, 11, 31, 12)); setSelectedMonth("ALL"); } },
             ].map(({ label, onClick }) => (
               <button key={label} onClick={onClick}
-                className="px-3 py-2 text-xs bg-[#E0F2F1] text-[#00897B] hover:bg-[#B2DFDB] rounded-lg transition-colors font-medium"
+                className="px-3 py-2 text-xs bg-[#0a2a26] text-[#00897B] hover:bg-[#B2DFDB] rounded-lg transition-colors font-medium"
               >
                 {label}
               </button>
@@ -435,7 +435,7 @@ export default function DashboardGangguanPenyulang() {
             subLabel: "kejadian",
             yoy: yoyComparison.totalGangguan,
             inverse: true,
-            bg: "bg-[#E0F2F1]",
+            bg: "bg-[#0a2a26]",
           },
           {
             icon: <Clock className="w-5 h-5 text-blue-600" />,
@@ -465,14 +465,14 @@ export default function DashboardGangguanPenyulang() {
             bg: "bg-orange-50",
           },
         ].map(({ icon, label, value, subLabel, yoy, inverse, bg }) => (
-          <div key={label} className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm p-4">
+          <div key={label} className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm p-4">
             <div className="flex items-center gap-3 mb-3">
               <div className={`p-2 ${bg} rounded-lg`}>{icon}</div>
-              <span className="text-[#5D6D7E] text-sm">{label}</span>
+              <span className="text-[#94a3b8] text-sm">{label}</span>
             </div>
             <div className="flex items-end justify-between">
               <div>
-                <p className="text-[#1B2631] text-2xl font-bold">{value}</p>
+                <p className="text-[#e2e8f0] text-2xl font-bold">{value}</p>
                 <p className="text-[#94A3B8] text-xs mt-0.5">{subLabel}</p>
               </div>
               {!loading && yoy && <YoyBadge change={yoy.change} inverse={inverse} />}
@@ -534,11 +534,11 @@ export default function DashboardGangguanPenyulang() {
       />
 
       {/* Data Table */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="px-5 pt-5 pb-3 flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h3 className="text-[#1B2631] font-bold text-lg">Data Gangguan</h3>
-            <p className="text-[#5D6D7E] text-sm">{tableData.length} kejadian ditemukan</p>
+            <h3 className="text-[#e2e8f0] font-bold text-lg">Data Gangguan</h3>
+            <p className="text-[#94a3b8] text-sm">{tableData.length} kejadian ditemukan</p>
           </div>
           <div className="relative">
             <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#94A3B8]" />
@@ -547,7 +547,7 @@ export default function DashboardGangguanPenyulang() {
               placeholder="Cari data..."
               value={searchQuery}
               onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-              className="pl-9 pr-4 py-2 border border-[#E2E8F0] rounded-lg text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 w-56"
+              className="pl-9 pr-4 py-2 border border-[#1e3552] rounded-lg text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 w-56"
             />
           </div>
         </div>
@@ -555,7 +555,7 @@ export default function DashboardGangguanPenyulang() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#E0F2F1]">
+              <tr className="bg-[#0a2a26]">
                 {[
                   { key: "TANGGAL", label: "Tanggal" },
                   { key: "ULP", label: "ULP" },
@@ -567,7 +567,7 @@ export default function DashboardGangguanPenyulang() {
                 ].map(({ key, label }) => (
                   <th
                     key={key}
-                    className="text-left px-4 py-3 text-[#00695C] font-semibold text-xs cursor-pointer select-none"
+                    className="text-left px-4 py-3 text-[#5eead4] font-semibold text-xs cursor-pointer select-none"
                     onClick={() => key !== "STATUS" && handleSort(key)}
                   >
                     <div className="flex items-center gap-1">
@@ -580,9 +580,9 @@ export default function DashboardGangguanPenyulang() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={7} className="text-center py-12 text-[#5D6D7E]">
+                <tr><td colSpan={7} className="text-center py-12 text-[#94a3b8]">
                   <div className="flex flex-col items-center gap-2">
-                    <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
                     <span>Memuat data...</span>
                   </div>
                 </td></tr>
@@ -592,8 +592,8 @@ export default function DashboardGangguanPenyulang() {
                 const durasi = convertToSeconds(row.DURASI);
                 const severity = durasi > 1800 ? "critical" : durasi > 300 ? "medium" : "low";
                 return (
-                  <tr key={i} className="border-t border-[#E2E8F0] hover:bg-[#F4F6F8] transition-colors">
-                    <td className="px-4 py-3 text-[#1B2631]">{row.TANGGAL || "-"}</td>
+                  <tr key={i} className="border-t border-[#1e3552] hover:bg-[#0d1b2a] transition-colors">
+                    <td className="px-4 py-3 text-[#e2e8f0]">{row.TANGGAL || "-"}</td>
                     <td className="px-4 py-3">
                       {row.ULP ? (
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
@@ -601,14 +601,14 @@ export default function DashboardGangguanPenyulang() {
                         </span>
                       ) : "-"}
                     </td>
-                    <td className="px-4 py-3 text-[#1B2631]">{row.PENYULANG_GANGGUAN || "-"}</td>
-                    <td className="px-4 py-3 text-[#5D6D7E]">{row.FASILITAS_PADAM || "-"}</td>
+                    <td className="px-4 py-3 text-[#e2e8f0]">{row.PENYULANG_GANGGUAN || "-"}</td>
+                    <td className="px-4 py-3 text-[#94a3b8]">{row.FASILITAS_PADAM || "-"}</td>
                     <td className="px-4 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#F4F6F8] text-[#5D6D7E] rounded-full text-xs">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#0d1b2a] text-[#94a3b8] rounded-full text-xs">
                         <Clock className="w-3 h-3" />{row.DURASI || "-"}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-[#5D6D7E] max-w-[200px] truncate">
+                    <td className="px-4 py-3 text-[#94a3b8] max-w-[200px] truncate">
                       {row.PENYEBAB_GANGGUAN || row["PENYEBAB GANGGUAN"] || "-"}
                     </td>
                     <td className="px-4 py-3">
@@ -635,15 +635,15 @@ export default function DashboardGangguanPenyulang() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="px-5 py-4 border-t border-[#E2E8F0] flex items-center justify-between">
-            <p className="text-[#5D6D7E] text-sm">
+          <div className="px-5 py-4 border-t border-[#1e3552] flex items-center justify-between">
+            <p className="text-[#94a3b8] text-sm">
               Halaman {currentPage} dari {totalPages} ({tableData.length} total)
             </p>
             <div className="flex gap-2">
               <button
                 disabled={currentPage === 1}
                 onClick={() => setCurrentPage((p) => p - 1)}
-                className="px-3 py-1.5 text-sm border border-[#E2E8F0] rounded-lg disabled:opacity-40 hover:bg-[#F4F6F8] transition-colors"
+                className="px-3 py-1.5 text-sm border border-[#1e3552] rounded-lg disabled:opacity-40 hover:bg-[#0d1b2a] transition-colors"
               >
                 ← Prev
               </button>
@@ -653,7 +653,7 @@ export default function DashboardGangguanPenyulang() {
                   <button
                     key={page}
                     onClick={() => setCurrentPage(page)}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === currentPage ? "bg-[#00897B] text-white" : "border border-[#E2E8F0] hover:bg-[#F4F6F8]"}`}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${page === currentPage ? "bg-[#00897B] text-white" : "border border-[#1e3552] hover:bg-[#0d1b2a]"}`}
                   >
                     {page}
                   </button>
@@ -662,7 +662,7 @@ export default function DashboardGangguanPenyulang() {
               <button
                 disabled={currentPage === totalPages}
                 onClick={() => setCurrentPage((p) => p + 1)}
-                className="px-3 py-1.5 text-sm border border-[#E2E8F0] rounded-lg disabled:opacity-40 hover:bg-[#F4F6F8] transition-colors"
+                className="px-3 py-1.5 text-sm border border-[#1e3552] rounded-lg disabled:opacity-40 hover:bg-[#0d1b2a] transition-colors"
               >
                 Next →
               </button>

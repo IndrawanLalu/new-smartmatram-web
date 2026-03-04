@@ -32,8 +32,8 @@ import EditPengukuranModal from "./_components/EditPengukuranModal";
 const BebanBarChart = dynamic(() => import("./_components/BebanBarChart"), {
   ssr: false,
   loading: () => (
-    <div className="h-[300px] flex items-center justify-center text-[#5D6D7E] text-sm">
-      <div className="w-6 h-6 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin mr-2" />
+    <div className="h-[300px] flex items-center justify-center text-[#94a3b8] text-sm">
+      <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin mr-2" />
       Memuat chart...
     </div>
   ),
@@ -47,7 +47,7 @@ const MONTHS = [
 ];
 
 const INPUT_CLASS =
-  "border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white";
+  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
 const PAGE_SIZE = 20;
 
@@ -118,7 +118,7 @@ function KPICard({
   variant?: "default" | "danger" | "warning" | "success" | "info";
 }) {
   const styles = {
-    default: { card: "border-[#E2E8F0]", icon: "bg-[#E0F2F1] text-[#00695C]", value: "text-[#1B2631]" },
+    default: { card: "border-[#1e3552]", icon: "bg-[#0a2a26] text-[#5eead4]", value: "text-[#e2e8f0]" },
     danger:  { card: "border-red-200 bg-red-50/50", icon: "bg-red-100 text-red-600", value: "text-red-700" },
     warning: { card: "border-amber-200 bg-amber-50/50", icon: "bg-amber-100 text-amber-600", value: "text-amber-700" },
     success: { card: "border-green-200 bg-green-50/50", icon: "bg-green-100 text-green-600", value: "text-green-700" },
@@ -126,14 +126,14 @@ function KPICard({
   }[variant];
 
   return (
-    <div className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${styles.card}`}>
+    <div className={`bg-[#162334] rounded-xl border p-4 flex items-center gap-4 ${styles.card}`}>
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${styles.icon}`}>
         <Icon size={18} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-[#5D6D7E] truncate">{label}</p>
+        <p className="text-xs text-[#94a3b8] truncate">{label}</p>
         <p className={`text-2xl font-bold leading-tight ${styles.value}`}>{value}</p>
-        <p className="text-xs text-[#5D6D7E]">{sub}</p>
+        <p className="text-xs text-[#94a3b8]">{sub}</p>
       </div>
     </div>
   );
@@ -167,7 +167,7 @@ function BebanBadge({ pct }: { pct: number }) {
 function ArusCell({ r, s, t }: { r: number; s: number; t: number }) {
   const high = Math.max(r, s, t) > HIGH_CURRENT_A;
   return (
-    <div className={`text-xs font-mono ${high ? "text-red-600 font-semibold" : "text-[#5D6D7E]"}`}>
+    <div className={`text-xs font-mono ${high ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}>
       <span title="R">{Math.round(r)}</span>
       <span className="text-[#E2E8F0] mx-0.5">/</span>
       <span title="S">{Math.round(s)}</span>
@@ -276,8 +276,8 @@ export default function PengukuranGarduPage() {
       </div>
 
       {/* Filter Bar */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-[#1B2631]">Periode:</span>
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-[#e2e8f0]">Periode:</span>
         <select
           value={filter.month}
           onChange={(e) => { setFilter((f) => ({ ...f, month: Number(e.target.value) })); setPage(1); }}
@@ -315,7 +315,7 @@ export default function PengukuranGarduPage() {
 
         <button
           onClick={() => refresh()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#E2E8F0] text-sm text-[#5D6D7E] hover:bg-gray-50 transition-colors ml-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:bg-gray-50 transition-colors ml-auto"
         >
           <RefreshCw size={14} />
           Refresh
@@ -344,7 +344,7 @@ export default function PengukuranGarduPage() {
 
           {/* Overload trafo */}
           {overloadData.length > 0 && (
-            <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
+            <div className="bg-[#162334] rounded-xl border border-red-200 overflow-hidden">
               <div className="px-5 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
                 <TrendingUp size={16} className="text-red-600" />
                 <h3 className="font-semibold text-red-700 text-sm">
@@ -355,8 +355,8 @@ export default function PengukuranGarduPage() {
                 {overloadData.map((d) => (
                   <div key={d.id} className="px-5 py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-[#1B2631]">{d.no_gardu}</p>
-                      <p className="text-xs text-[#5D6D7E]">
+                      <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
+                      <p className="text-xs text-[#94a3b8]">
                         {d.penyulang ?? "—"} · {d.kva_trafo} KVA · {d.tanggal_pengukuran}
                       </p>
                     </div>
@@ -369,7 +369,7 @@ export default function PengukuranGarduPage() {
 
           {/* Jurusan arus tinggi */}
           {highCurrentItems.length > 0 && (
-            <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
+            <div className="bg-[#162334] rounded-xl border border-red-200 overflow-hidden">
               <div className="px-5 py-3 bg-red-50 border-b border-red-100 flex items-center gap-2">
                 <Zap size={16} className="text-red-600" />
                 <h3 className="font-semibold text-red-700 text-sm">
@@ -389,16 +389,16 @@ export default function PengukuranGarduPage() {
                   </thead>
                   <tbody>
                     {highCurrentItems.map((item, i) => (
-                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-red-50/30"}>
-                        <td className="px-4 py-2 font-medium text-[#1B2631]">{item.no_gardu}</td>
+                      <tr key={i} className={i % 2 === 0 ? "bg-[#162334]" : "bg-red-50/30"}>
+                        <td className="px-4 py-2 font-medium text-[#e2e8f0]">{item.no_gardu}</td>
                         <td className="px-4 py-2 font-bold text-red-600">{item.jurusan}</td>
-                        <td className={`px-4 py-2 text-center font-mono ${item.arus_r > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#5D6D7E]"}`}>
+                        <td className={`px-4 py-2 text-center font-mono ${item.arus_r > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#94a3b8]"}`}>
                           {Math.round(item.arus_r)}
                         </td>
-                        <td className={`px-4 py-2 text-center font-mono ${item.arus_s > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#5D6D7E]"}`}>
+                        <td className={`px-4 py-2 text-center font-mono ${item.arus_s > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#94a3b8]"}`}>
                           {Math.round(item.arus_s)}
                         </td>
-                        <td className={`px-4 py-2 text-center font-mono ${item.arus_t > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#5D6D7E]"}`}>
+                        <td className={`px-4 py-2 text-center font-mono ${item.arus_t > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-[#94a3b8]"}`}>
                           {Math.round(item.arus_t)}
                         </td>
                       </tr>
@@ -411,7 +411,7 @@ export default function PengukuranGarduPage() {
 
           {/* Suhu tinggi */}
           {highTempData.length > 0 && (
-            <div className="bg-white rounded-xl border border-amber-200 overflow-hidden">
+            <div className="bg-[#162334] rounded-xl border border-amber-200 overflow-hidden">
               <div className="px-5 py-3 bg-amber-50 border-b border-amber-100 flex items-center gap-2">
                 <Thermometer size={16} className="text-amber-600" />
                 <h3 className="font-semibold text-amber-700 text-sm">
@@ -422,8 +422,8 @@ export default function PengukuranGarduPage() {
                 {highTempData.map((d) => (
                   <div key={d.id} className="px-5 py-3 flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-semibold text-[#1B2631]">{d.no_gardu}</p>
-                      <p className="text-xs text-[#5D6D7E]">
+                      <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
+                      <p className="text-xs text-[#94a3b8]">
                         {d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {d.tanggal_pengukuran}
                       </p>
                     </div>
@@ -437,13 +437,13 @@ export default function PengukuranGarduPage() {
       )}
 
       {/* ── Distribusi Beban Chart ─────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1e3552] flex items-center justify-between">
           <div>
-            <h3 className="font-semibold text-[#1B2631]">Distribusi % Beban Trafo</h3>
-            <p className="text-xs text-[#5D6D7E] mt-0.5">Top 20 gardu dengan beban tertinggi</p>
+            <h3 className="font-semibold text-[#e2e8f0]">Distribusi % Beban Trafo</h3>
+            <p className="text-xs text-[#94a3b8] mt-0.5">Top 20 gardu dengan beban tertinggi</p>
           </div>
-          <div className="flex items-center gap-4 text-xs text-[#5D6D7E]">
+          <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Overload ≥80%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block" /> ≥60%</span>
             <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-[#00897B] inline-block" /> Normal</span>
@@ -452,7 +452,7 @@ export default function PengukuranGarduPage() {
         <div className="p-5">
           {loading ? (
             <div className="h-[300px] flex items-center justify-center">
-              <div className="w-6 h-6 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+              <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
             </div>
           ) : (
             <BebanBarChart data={bebanChartData} />
@@ -461,19 +461,19 @@ export default function PengukuranGarduPage() {
       </div>
 
       {/* ── Rekap Tabel ───────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center gap-3">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+        <div className="px-5 py-4 border-b border-[#1e3552] flex items-center gap-3">
           <div className="relative flex-1 max-w-72">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#5D6D7E]" />
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
             <input
               type="text"
               placeholder="Cari no. gardu, penyulang, alamat..."
               value={search}
               onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              className="border border-[#E2E8F0] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="border border-[#1e3552] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
-          <p className="text-sm text-[#5D6D7E] ml-auto">
+          <p className="text-sm text-[#94a3b8] ml-auto">
             {loading ? "Memuat..." : `${filteredData.length} gardu`}
           </p>
           <button
@@ -494,23 +494,23 @@ export default function PengukuranGarduPage() {
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="bg-[#E0F2F1]">
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold whitespace-nowrap">No. Gardu</th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">Penyulang</th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">Alamat</th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold">KVA</th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold min-w-32">% Beban</th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold">Beban KVA</th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
-                <th className="text-center px-4 py-3 text-xs text-[#00695C] font-semibold">Suhu (°C)</th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold whitespace-nowrap">Tgl Ukur</th>
-                <th className="text-left px-4 py-3 text-xs text-[#00695C] font-semibold">Petugas</th>
+              <tr className="bg-[#0a2a26]">
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">No. Gardu</th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Penyulang</th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Alamat</th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">KVA</th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold min-w-32">% Beban</th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Beban KVA</th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Suhu (°C)</th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Tgl Ukur</th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Petugas</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
-                  <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                  <tr key={i} className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}>
                     {Array.from({ length: 10 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-100 animate-pulse rounded" />
@@ -520,7 +520,7 @@ export default function PengukuranGarduPage() {
                 ))
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-[#5D6D7E] text-sm">
+                  <td colSpan={10} className="text-center py-12 text-[#94a3b8] text-sm">
                     Tidak ada data pengukuran untuk periode ini
                   </td>
                 </tr>
@@ -533,28 +533,28 @@ export default function PengukuranGarduPage() {
                     <tr
                       key={row.id}
                       onClick={() => setSelectedRow(row)}
-                      className={`cursor-pointer hover:bg-teal-50/30 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-gray-50/30"} ${hasAlert ? "border-l-2 border-l-red-400" : ""}`}
+                      className={`cursor-pointer hover:bg-teal-50/30 transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"} ${hasAlert ? "border-l-2 border-l-red-400" : ""}`}
                     >
-                      <td className="px-4 py-3 font-semibold text-[#1B2631] whitespace-nowrap">
+                      <td className="px-4 py-3 font-semibold text-[#e2e8f0] whitespace-nowrap">
                         {row.no_gardu}
                         {hasAlert && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
                       </td>
-                      <td className="px-4 py-3 text-[#5D6D7E]">{row.penyulang ?? "—"}</td>
-                      <td className="px-4 py-3 text-[#5D6D7E] max-w-40 truncate">{row.alamat ?? "—"}</td>
-                      <td className="px-4 py-3 text-center text-[#1B2631] font-medium">{row.kva_trafo}</td>
+                      <td className="px-4 py-3 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
+                      <td className="px-4 py-3 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-4 py-3 text-center text-[#e2e8f0] font-medium">{row.kva_trafo}</td>
                       <td className="px-4 py-3">
                         <BebanBadge pct={row.persen_beban} />
                       </td>
-                      <td className="px-4 py-3 text-center text-[#5D6D7E]">{Math.round(row.beban_kva)}</td>
+                      <td className="px-4 py-3 text-center text-[#94a3b8]">{Math.round(row.beban_kva)}</td>
                       <td className="px-4 py-3 text-center">
                         <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} />
                       </td>
-                      <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-600" : "text-[#5D6D7E]"}`}>
+                      <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-600" : "text-[#94a3b8]"}`}>
                         {row.suhu_trafo}
                         {isHighTemp && "🌡"}
                       </td>
-                      <td className="px-4 py-3 text-[#5D6D7E] whitespace-nowrap">{row.tanggal_pengukuran}</td>
-                      <td className="px-4 py-3 text-[#5D6D7E] truncate max-w-32">{row.petugas_nama ?? "—"}</td>
+                      <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">{row.tanggal_pengukuran}</td>
+                      <td className="px-4 py-3 text-[#94a3b8] truncate max-w-32">{row.petugas_nama ?? "—"}</td>
                     </tr>
                   );
                 })
@@ -564,20 +564,20 @@ export default function PengukuranGarduPage() {
         </div>
 
         {totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-[#E2E8F0] flex items-center justify-between">
-            <p className="text-xs text-[#5D6D7E]">Halaman {page} dari {totalPages}</p>
+          <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
+            <p className="text-xs text-[#94a3b8]">Halaman {page} dari {totalPages}</p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#5D6D7E] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#5D6D7E] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
               >
                 <ChevronRight size={14} />
               </button>

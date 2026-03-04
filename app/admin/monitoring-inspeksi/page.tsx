@@ -16,9 +16,9 @@ import { Zap, TreePine, Map, Layers, LayoutDashboard } from "lucide-react";
 const InspeksiMap = dynamic(() => import("./_components/InspeksiMap"), {
   ssr: false,
   loading: () => (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] flex items-center justify-center h-[520px]">
-      <div className="flex flex-col items-center gap-3 text-[#5D6D7E]">
-        <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] flex items-center justify-center h-[520px]">
+      <div className="flex flex-col items-center gap-3 text-[#94a3b8]">
+        <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         <p className="text-sm">Memuat peta...</p>
       </div>
     </div>
@@ -91,9 +91,9 @@ export default function MonitoringInspeksiPage() {
       <InspeksiKPI user={user} />
 
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
         {/* Tab bar */}
-        <div className="flex border-b border-[#E2E8F0]">
+        <div className="flex border-b border-[#1e3552]">
           {TABS.map(({ id, label, icon: Icon }) => (
             <button
               key={id}
@@ -101,13 +101,13 @@ export default function MonitoringInspeksiPage() {
               className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
                 activeTab === id
                   ? "border-[#00897B] text-[#00897B]"
-                  : "border-transparent text-[#5D6D7E] hover:text-[#1B2631] hover:bg-gray-50"
+                  : "border-transparent text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-gray-50"
               }`}
             >
               <Icon size={15} />
               {label}
               {id === "jaringan" && jaringanHook.rawData.length > 0 && (
-                <span className="ml-1 bg-[#E0F2F1] text-[#00695C] text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                <span className="ml-1 bg-[#0a2a26] text-[#5eead4] text-xs font-semibold px-1.5 py-0.5 rounded-full">
                   {jaringanHook.rawData.length}
                 </span>
               )}
@@ -142,11 +142,11 @@ export default function MonitoringInspeksiPage() {
             <div className="space-y-4">
               {/* Layer toggles */}
               <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-[#1B2631] flex items-center gap-1.5">
+                <span className="text-sm font-medium text-[#e2e8f0] flex items-center gap-1.5">
                   <Layers size={14} />
                   Tampilkan:
                 </span>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#1B2631]">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e2e8f0]">
                   <input
                     type="checkbox"
                     checked={showJaringanOnMap}
@@ -155,7 +155,7 @@ export default function MonitoringInspeksiPage() {
                   />
                   ⚡ Jaringan ({jaringanMapData.length})
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#1B2631]">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e2e8f0]">
                   <input
                     type="checkbox"
                     checked={showPohonOnMap}
@@ -166,7 +166,7 @@ export default function MonitoringInspeksiPage() {
                 </label>
 
                 {/* Legend */}
-                <div className="ml-auto flex items-center gap-3 text-xs text-[#5D6D7E]">
+                <div className="ml-auto flex items-center gap-3 text-xs text-[#94a3b8]">
                   {[
                     { color: "bg-red-500", label: "Urgent / Temuan" },
                     { color: "bg-blue-500", label: "Ditugaskan" },

@@ -76,22 +76,22 @@ function SummaryCard({
   variant?: "default" | "success" | "warning";
 }) {
   const variantClass = {
-    default: "border-[#E2E8F0]",
+    default: "border-[#1e3552]",
     success: "border-green-200 bg-green-50",
     warning: "border-orange-200 bg-orange-50",
   }[variant];
 
   const valueClass = {
-    default: "text-[#1B2631]",
+    default: "text-[#e2e8f0]",
     success: "text-green-700",
     warning: "text-orange-700",
   }[variant];
 
   return (
-    <div className={`bg-white rounded-xl border p-4 ${variantClass}`}>
-      <p className="text-xs text-[#5D6D7E] mb-1">{label}</p>
+    <div className={`bg-[#162334] rounded-xl border p-4 ${variantClass}`}>
+      <p className="text-xs text-[#94a3b8] mb-1">{label}</p>
       <p className={`text-3xl font-bold ${valueClass}`}>{value}</p>
-      <p className="text-xs text-[#5D6D7E] mt-1">{sub}</p>
+      <p className="text-xs text-[#94a3b8] mt-1">{sub}</p>
     </div>
   );
 }
@@ -111,10 +111,10 @@ function ProgressBar({ pct }: { pct: number }) {
 function TeamCard({ stats }: { stats: TeamStats }) {
   if (stats.total === 0) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 opacity-50">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 opacity-50">
         <div className="flex items-center justify-between mb-3">
-          <span className="font-semibold text-[#1B2631]">{stats.name}</span>
-          <span className="text-xs text-[#5D6D7E]">Tidak ada data</span>
+          <span className="font-semibold text-[#e2e8f0]">{stats.name}</span>
+          <span className="text-xs text-[#94a3b8]">Tidak ada data</span>
         </div>
         <ProgressBar pct={0} />
       </div>
@@ -122,15 +122,15 @@ function TeamCard({ stats }: { stats: TeamStats }) {
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] p-4">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
       <div className="flex items-center justify-between mb-2">
-        <span className="font-semibold text-[#1B2631]">{stats.name}</span>
+        <span className="font-semibold text-[#e2e8f0]">{stats.name}</span>
         <span
           className={`text-sm font-bold px-2 py-0.5 rounded-full ${
             stats.pct >= 80
               ? "bg-green-100 text-green-700"
               : stats.pct >= 50
-              ? "bg-[#E0F2F1] text-[#00695C]"
+              ? "bg-[#0a2a26] text-[#5eead4]"
               : stats.pct >= 20
               ? "bg-yellow-50 text-yellow-700"
               : "bg-red-50 text-red-700"
@@ -142,30 +142,30 @@ function TeamCard({ stats }: { stats: TeamStats }) {
 
       <ProgressBar pct={stats.pct} />
 
-      <p className="text-xs text-[#5D6D7E] mt-2 mb-3">
+      <p className="text-xs text-[#94a3b8] mt-2 mb-3">
         {stats.selesai} / {stats.total} selesai
       </p>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-[#5D6D7E]">Selesai</span>
-          <span className="ml-auto font-semibold text-[#1B2631]">{stats.selesai}</span>
+          <span className="text-[#94a3b8]">Selesai</span>
+          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.selesai}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-yellow-400" />
-          <span className="text-[#5D6D7E]">Dalam Proses</span>
-          <span className="ml-auto font-semibold text-[#1B2631]">{stats.dalamProses}</span>
+          <span className="text-[#94a3b8]">Dalam Proses</span>
+          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.dalamProses}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-[#5D6D7E]">Ditugaskan</span>
-          <span className="ml-auto font-semibold text-[#1B2631]">{stats.ditugaskan}</span>
+          <span className="text-[#94a3b8]">Ditugaskan</span>
+          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.ditugaskan}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-400" />
-          <span className="text-[#5D6D7E]">Temuan</span>
-          <span className="ml-auto font-semibold text-[#1B2631]">{stats.perluTindakan}</span>
+          <span className="text-[#94a3b8]">Temuan</span>
+          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.perluTindakan}</span>
         </div>
       </div>
     </div>
@@ -186,17 +186,17 @@ function TeamSection({
   const overallPct = assigned > 0 ? Math.round((totalSelesai / assigned) * 100) : 0;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
       {/* Section header */}
-      <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-[#1e3552] flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">{icon}</span>
-          <h3 className="font-semibold text-[#1B2631]">{title}</h3>
-          <span className="text-xs text-[#5D6D7E] bg-gray-100 px-2 py-0.5 rounded-full">
+          <h3 className="font-semibold text-[#e2e8f0]">{title}</h3>
+          <span className="text-xs text-[#94a3b8] bg-gray-100 px-2 py-0.5 rounded-full">
             {stats.total} total
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-[#5D6D7E]">
+        <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
           {stats.unassigned > 0 && (
             <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium">
               {stats.unassigned} belum ditugaskan
@@ -204,7 +204,7 @@ function TeamSection({
           )}
           <span>
             Progress keseluruhan:{" "}
-            <span className="font-semibold text-[#1B2631]">{overallPct}%</span>
+            <span className="font-semibold text-[#e2e8f0]">{overallPct}%</span>
           </span>
         </div>
       </div>
@@ -212,7 +212,7 @@ function TeamSection({
       {/* Team cards grid */}
       <div className="p-5">
         {stats.total === 0 ? (
-          <p className="text-center py-8 text-[#5D6D7E] text-sm">
+          <p className="text-center py-8 text-[#94a3b8] text-sm">
             Tidak ada data untuk periode ini
           </p>
         ) : (
@@ -277,12 +277,12 @@ export default function InspeksiDashboardTab({ user: _user, jaringanData, pohonD
   return (
     <div className="space-y-6">
       {/* Period filter */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] p-4 flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium text-[#1B2631]">Periode:</span>
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 flex items-center gap-3 flex-wrap">
+        <span className="text-sm font-medium text-[#e2e8f0]">Periode:</span>
         <select
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
-          className="border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white"
+          className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]"
         >
           {MONTHS.map((m, i) => (
             <option key={i} value={i + 1}>{m}</option>
@@ -291,13 +291,13 @@ export default function InspeksiDashboardTab({ user: _user, jaringanData, pohonD
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white"
+          className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]"
         >
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-        <span className="text-xs text-[#5D6D7E] ml-1">
+        <span className="text-xs text-[#94a3b8] ml-1">
           Menampilkan data inspeksi bulan {MONTHS[month - 1]} {year}
         </span>
       </div>

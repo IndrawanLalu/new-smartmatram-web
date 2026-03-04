@@ -49,25 +49,25 @@ export default function PenyulangPerformance({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-96 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-[#E0F2F1] rounded-lg">
+            <div className="p-2 bg-[#0a2a26] rounded-lg">
               <Trophy className="w-5 h-5 text-[#00897B]" />
             </div>
             <div>
-              <h3 className="text-[#1B2631] text-lg font-bold">Penyulang Performance</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">
+              <h3 className="text-[#e2e8f0] text-lg font-bold">Penyulang Performance</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">
                 {sortBy === "worst" ? "Penyulang bermasalah" : "Penyulang terbaik"}
               </p>
             </div>
@@ -76,7 +76,7 @@ export default function PenyulangPerformance({
             <button
               onClick={() => setSortBy("worst")}
               className={`px-3 py-1 text-xs rounded-lg flex items-center gap-1 transition-all ${
-                sortBy === "worst" ? "bg-red-500 text-white" : "bg-[#F4F6F8] text-[#5D6D7E] hover:bg-[#E0F2F1]"
+                sortBy === "worst" ? "bg-red-500 text-white" : "bg-[#0d1b2a] text-[#94a3b8] hover:bg-[#0a2a26]"
               }`}
             >
               <TrendingDown className="w-3 h-3" /> Terburuk
@@ -84,7 +84,7 @@ export default function PenyulangPerformance({
             <button
               onClick={() => setSortBy("best")}
               className={`px-3 py-1 text-xs rounded-lg flex items-center gap-1 transition-all ${
-                sortBy === "best" ? "bg-green-600 text-white" : "bg-[#F4F6F8] text-[#5D6D7E] hover:bg-[#E0F2F1]"
+                sortBy === "best" ? "bg-green-600 text-white" : "bg-[#0d1b2a] text-[#94a3b8] hover:bg-[#0a2a26]"
               }`}
             >
               <TrendingUp className="w-3 h-3" /> Terbaik
@@ -105,7 +105,7 @@ export default function PenyulangPerformance({
                 <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-red-600 font-medium text-sm">Perhatian Khusus</p>
-                  <p className="text-[#5D6D7E] text-xs mt-1">
+                  <p className="text-[#94a3b8] text-xs mt-1">
                     {penyulangData[0].name} memiliki {penyulangData[0].count} gangguan — perlu investigasi mendalam
                   </p>
                 </div>
@@ -117,7 +117,7 @@ export default function PenyulangPerformance({
                 <Award className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-green-700 font-medium text-sm">Performa Excellent</p>
-                  <p className="text-[#5D6D7E] text-xs mt-1">
+                  <p className="text-[#94a3b8] text-xs mt-1">
                     {penyulangData[0].name} hanya {penyulangData[0].count} gangguan — maintain this!
                   </p>
                 </div>
@@ -132,15 +132,15 @@ export default function PenyulangPerformance({
                 return (
                   <div
                     key={i}
-                    className={`bg-[#F4F6F8] hover:bg-[#E0F2F1] border border-[#E2E8F0] rounded-lg p-3 transition-all duration-200 hover:scale-[1.01] ${borderClass}`}
+                    className={`bg-[#0d1b2a] hover:bg-[#0a2a26] border border-[#1e3552] rounded-lg p-3 transition-all duration-200 hover:scale-[1.01] ${borderClass}`}
                   >
                     <div className="flex items-center gap-3">
                       <div className={`shrink-0 w-10 h-10 rounded-lg ${perfClass} flex items-center justify-center font-bold text-lg`}>
                         {getRankBadge(item.rank)}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-[#1B2631] font-medium text-sm truncate">{item.name}</p>
-                        <p className="text-[#5D6D7E] text-xs mt-0.5">{item.count} gangguan • {pct}% dari total</p>
+                        <p className="text-[#e2e8f0] font-medium text-sm truncate">{item.name}</p>
+                        <p className="text-[#94a3b8] text-xs mt-0.5">{item.count} gangguan • {pct}% dari total</p>
                       </div>
                       <div className={`shrink-0 px-3 py-1 rounded-full ${perfClass} font-bold`}>{item.count}</div>
                     </div>
@@ -158,21 +158,21 @@ export default function PenyulangPerformance({
             {Object.keys(penyulangCount).length > showCount && (
               <button
                 onClick={() => setShowCount((p) => p + 10)}
-                className="w-full py-2 bg-[#F4F6F8] hover:bg-[#E0F2F1] border border-[#E2E8F0] rounded-lg text-[#5D6D7E] text-xs transition-all"
+                className="w-full py-2 bg-[#0d1b2a] hover:bg-[#0a2a26] border border-[#1e3552] rounded-lg text-[#94a3b8] text-xs transition-all"
               >
                 Tampilkan Lebih Banyak ({Object.keys(penyulangCount).length - showCount} lainnya)
               </button>
             )}
 
-            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#E2E8F0]">
+            <div className="grid grid-cols-3 gap-3 pt-4 border-t border-[#1e3552]">
               {[
                 { label: "Total Penyulang", value: Object.keys(penyulangCount).length },
                 { label: "Total Gangguan", value: totalGangguan },
                 { label: "Avg per Penyulang", value: Object.keys(penyulangCount).length > 0 ? Math.round(totalGangguan / Object.keys(penyulangCount).length) : 0 },
               ].map(({ label, value }) => (
                 <div key={label} className="text-center">
-                  <p className="text-[#5D6D7E] text-xs mb-1">{label}</p>
-                  <p className="text-[#1B2631] font-bold text-xl">{value}</p>
+                  <p className="text-[#94a3b8] text-xs mb-1">{label}</p>
+                  <p className="text-[#e2e8f0] font-bold text-xl">{value}</p>
                 </div>
               ))}
             </div>

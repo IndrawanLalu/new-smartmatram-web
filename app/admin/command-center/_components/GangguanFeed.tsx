@@ -29,7 +29,7 @@ interface Props {
 
 export default function GangguanFeed({ items, loading }: Props) {
   return (
-    <div className="flex flex-col h-full bg-white rounded-xl border border-[#E2E8F0] overflow-hidden">
+    <div className="flex flex-col h-full bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
       {/* Header */}
       <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-3 py-2.5 shrink-0">
         <div className="flex items-center gap-2">
@@ -46,16 +46,16 @@ export default function GangguanFeed({ items, loading }: Props) {
         {loading && items.length === 0 ? (
           <LoadingSkeleton />
         ) : items.length === 0 ? (
-          <div className="flex items-center justify-center h-20 text-xs text-[#5D6D7E]">Tidak ada data</div>
+          <div className="flex items-center justify-center h-20 text-xs text-[#94a3b8]">Tidak ada data</div>
         ) : (
           <ul className="divide-y divide-[#F4F6F8]">
             {items.map((g, i) => (
-              <li key={i} className="px-3 py-2 hover:bg-[#F4F6F8] transition-colors">
+              <li key={i} className="px-3 py-2 hover:bg-[#0d1b2a] transition-colors">
                 <div className="flex items-start gap-2">
                   <span className={`mt-1 w-2 h-2 rounded-full shrink-0 ${getDotColor(g.parsedDate)}`} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-xs font-semibold text-[#1B2631] truncate max-w-[120px]">
+                      <span className="text-xs font-semibold text-[#e2e8f0] truncate max-w-[120px]">
                         {g.penyulang || "—"}
                       </span>
                       {g.ulp && (
@@ -69,9 +69,9 @@ export default function GangguanFeed({ items, loading }: Props) {
                         <span className="text-[10px] font-mono text-red-600 font-medium">{g.durasi}</span>
                       )}
                       {g.indikator && (
-                        <span className="text-[10px] bg-gray-100 text-[#5D6D7E] px-1 rounded">{g.indikator}</span>
+                        <span className="text-[10px] bg-gray-100 text-[#94a3b8] px-1 rounded">{g.indikator}</span>
                       )}
-                      <span className="text-[10px] text-[#5D6D7E] ml-auto font-mono">
+                      <span className="text-[10px] text-[#94a3b8] ml-auto font-mono">
                         {formatTanggal(g.parsedDate)}
                       </span>
                     </div>

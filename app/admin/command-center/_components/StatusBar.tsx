@@ -24,7 +24,7 @@ export default function StatusBar({
     : "—";
 
   return (
-    <div className="bg-white border border-[#E2E8F0] rounded-xl px-4 py-2.5 flex items-center gap-4 shrink-0">
+    <div className="bg-[#162334] border border-[#1e3552] rounded-xl px-4 py-2.5 flex items-center gap-4 shrink-0">
       {/* LIVE indicator */}
       <div className="flex items-center gap-2 shrink-0">
         <span className="relative flex h-2.5 w-2.5">
@@ -32,7 +32,7 @@ export default function StatusBar({
           <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
         </span>
         <span className="text-xs font-bold text-emerald-600 tracking-widest">LIVE</span>
-        <span className="text-xs text-[#5D6D7E] font-mono">· {timeStr}</span>
+        <span className="text-xs text-[#94a3b8] font-mono">· {timeStr}</span>
       </div>
 
       <div className="w-px h-4 bg-[#E2E8F0] shrink-0" />
@@ -49,20 +49,20 @@ export default function StatusBar({
           icon={<AlertTriangle size={11} />}
           label="Gardu overload"
           value={overloadCount}
-          color={overloadCount > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-[#5D6D7E] bg-gray-50 border-[#E2E8F0]"}
+          color={overloadCount > 0 ? "text-red-600 bg-red-50 border-red-200" : "text-[#94a3b8] bg-gray-50 border-[#1e3552]"}
           pulse={overloadCount > 0}
         />
         <StatChip
           icon={<ClipboardList size={11} />}
           label="Inspeksi urgent"
           value={urgentCount}
-          color={urgentCount > 0 ? "text-orange-600 bg-orange-50 border-orange-200" : "text-[#5D6D7E] bg-gray-50 border-[#E2E8F0]"}
+          color={urgentCount > 0 ? "text-orange-600 bg-orange-50 border-orange-200" : "text-[#94a3b8] bg-gray-50 border-[#1e3552]"}
         />
         <StatChip
           icon={<Building2 size={11} />}
           label="Gardu terpantau"
           value={garduCount}
-          color="text-[#00695C] bg-[#E0F2F1] border-teal-200"
+          color="text-[#5eead4] bg-[#0a2a26] border-teal-200"
         />
       </div>
 
@@ -71,7 +71,7 @@ export default function StatusBar({
         onClick={onRefresh}
         disabled={loading}
         title="Refresh data"
-        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-[#E2E8F0] text-[#5D6D7E] hover:bg-[#E0F2F1] hover:text-[#00695C] hover:border-teal-200 transition-colors disabled:opacity-40"
+        className="shrink-0 w-7 h-7 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-[#0a2a26] hover:text-[#5eead4] hover:border-teal-200 transition-colors disabled:opacity-40"
       >
         <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
       </button>

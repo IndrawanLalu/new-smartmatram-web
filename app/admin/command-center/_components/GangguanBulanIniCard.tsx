@@ -49,7 +49,7 @@ export default function GangguanBulanIniCard({ items }: Props) {
   const totalThisMonth = stats.reduce((sum, s) => sum + s.thisMonth, 0);
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm overflow-hidden">
       <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar size={13} className="text-white/70" />
@@ -64,9 +64,9 @@ export default function GangguanBulanIniCard({ items }: Props) {
         {stats.map(({ ulp, thisMonth, lastMonth, delta }) => (
           <div key={ulp}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-medium text-[#1B2631]">{ulp}</span>
+              <span className="text-[11px] font-medium text-[#e2e8f0]">{ulp}</span>
               <div className="flex items-center gap-2 text-[11px]">
-                <span className="font-mono font-semibold text-[#1B2631]">{thisMonth}</span>
+                <span className="font-mono font-semibold text-[#e2e8f0]">{thisMonth}</span>
                 <span className="text-[#9CA3AF]">vs {lastMonth}</span>
                 {delta !== 0 && (
                   <span className={`font-medium ${delta > 0 ? "text-red-500" : "text-emerald-600"}`}>
@@ -75,7 +75,7 @@ export default function GangguanBulanIniCard({ items }: Props) {
                 )}
               </div>
             </div>
-            <div className="h-1.5 bg-[#F4F6F8] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-[#0d1b2a] rounded-full overflow-hidden">
               <div
                 className="h-full rounded-full bg-[#00897B] transition-all duration-500"
                 style={{ width: `${(thisMonth / maxCount) * 100}%` }}

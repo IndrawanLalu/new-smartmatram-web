@@ -162,7 +162,7 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
           { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50", value: loading ? "..." : avgCount, label: "Rata-rata", color: "text-blue-600" },
           { icon: <Award className="w-5 h-5 text-emerald-600" />, bg: "bg-emerald-50", value: loading ? "..." : analytics.max, label: "Tertinggi", color: "text-emerald-600" },
         ].map(({ icon, bg, value, label, color }) => (
-          <div key={label} className="bg-white border border-[#E2E8F0] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
+          <div key={label} className="bg-[#162334] border border-[#1e3552] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-full ${bg}`}>{icon}</div>
               <div>
@@ -175,7 +175,7 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
       </div>
 
       {/* Chart Card */}
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">

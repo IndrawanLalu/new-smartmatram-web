@@ -24,7 +24,7 @@ export default function BebanStrip({ latestData, avgBeban }: Props) {
     .slice(0, 8);
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] overflow-hidden shrink-0">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden shrink-0">
       {/* Header */}
       <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-3 py-2 flex items-center gap-2">
         <BarChart2 size={13} className="text-teal-200" />
@@ -43,11 +43,11 @@ export default function BebanStrip({ latestData, avgBeban }: Props) {
       {/* Bars */}
       <div className="px-3 py-2.5 grid grid-cols-1 gap-1.5">
         {top8.length === 0 ? (
-          <div className="text-xs text-[#5D6D7E] text-center py-3">Belum ada data pengukuran</div>
+          <div className="text-xs text-[#94a3b8] text-center py-3">Belum ada data pengukuran</div>
         ) : (
           top8.map((g) => (
             <div key={g.id} className="flex items-center gap-2">
-              <span className="text-[10px] font-mono text-[#5D6D7E] w-20 shrink-0 truncate">{g.no_gardu}</span>
+              <span className="text-[10px] font-mono text-[#94a3b8] w-20 shrink-0 truncate">{g.no_gardu}</span>
               <div className="flex-1 h-3 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all ${barColor(g.persen_beban)}`}
@@ -57,7 +57,7 @@ export default function BebanStrip({ latestData, avgBeban }: Props) {
               <span className={`text-[10px] font-mono font-bold w-10 text-right shrink-0 ${textColor(g.persen_beban)}`}>
                 {g.persen_beban.toFixed(0)}%
               </span>
-              <span className="text-[10px] text-[#5D6D7E] font-mono w-14 text-right shrink-0 hidden lg:block">
+              <span className="text-[10px] text-[#94a3b8] font-mono w-14 text-right shrink-0 hidden lg:block">
                 {g.beban_kva.toFixed(0)}/{g.kva_trafo} kVA
               </span>
             </div>

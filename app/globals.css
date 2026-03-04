@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #0d1b2a;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -12,15 +12,25 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Leaflet popup — light agar kontras dengan dark map */
+.leaflet-popup-content-wrapper {
+  background: #f8fafc !important;
+  color: #1e293b !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5) !important;
+}
+.leaflet-popup-tip {
+  background: #f8fafc !important;
+}
+
+/* Dark scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0a1628; }
+::-webkit-scrollbar-thumb { background: #1e3552; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #2d4a6b; }

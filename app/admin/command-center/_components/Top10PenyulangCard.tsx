@@ -27,7 +27,7 @@ export default function Top10PenyulangCard({ items, title, subtitle }: Props) {
   const maxCount = top10[0]?.count ?? 1;
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm overflow-hidden">
       <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Zap size={13} className="text-white/70" />
@@ -49,10 +49,10 @@ export default function Top10PenyulangCard({ items, title, subtitle }: Props) {
                 </span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <span className="text-[11px] font-medium text-[#1B2631] truncate">{penyulang}</span>
-                    <span className="font-mono text-[11px] font-semibold text-[#1B2631] ml-2 shrink-0">{count}x</span>
+                    <span className="text-[11px] font-medium text-[#e2e8f0] truncate">{penyulang}</span>
+                    <span className="font-mono text-[11px] font-semibold text-[#e2e8f0] ml-2 shrink-0">{count}x</span>
                   </div>
-                  <div className="h-1 bg-[#F4F6F8] rounded-full overflow-hidden">
+                  <div className="h-1 bg-[#0d1b2a] rounded-full overflow-hidden">
                     <div
                       className="h-full rounded-full bg-[#00897B] transition-all duration-500"
                       style={{ width: `${(count / maxCount) * 100}%`, opacity: rank === 1 ? 1 : 0.5 + (0.5 * (10 - rank) / 9) }}

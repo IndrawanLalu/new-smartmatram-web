@@ -23,7 +23,7 @@ function KpiCard({
   sub,
   icon,
   iconBg,
-  valueColor = "text-[#1B2631]",
+  valueColor = "text-[#e2e8f0]",
   loading,
 }: {
   label: string;
@@ -35,16 +35,16 @@ function KpiCard({
   loading: boolean;
 }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
+    <div className="bg-[#162334] rounded-xl shadow-sm border border-[#1e3552] p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-sm text-[#5D6D7E]">{label}</p>
+          <p className="text-sm text-[#94a3b8]">{label}</p>
           {loading ? (
             <div className="h-8 w-16 bg-gray-100 animate-pulse rounded mt-1" />
           ) : (
             <p className={`text-3xl font-bold mt-1 ${valueColor}`}>{value}</p>
           )}
-          {sub && <p className="text-xs text-[#5D6D7E] mt-1">{sub}</p>}
+          {sub && <p className="text-xs text-[#94a3b8] mt-1">{sub}</p>}
         </div>
         <div
           className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center shrink-0`}
@@ -146,7 +146,7 @@ export default function InspeksiKPI({ user }: InspeksiKPIProps) {
         value={kpi?.totalJaringan ?? 0}
         sub="total keseluruhan"
         icon={<ClipboardList size={18} className="text-[#00897B]" />}
-        iconBg="bg-[#E0F2F1]"
+        iconBg="bg-[#0a2a26]"
         loading={loading}
       />
       <KpiCard

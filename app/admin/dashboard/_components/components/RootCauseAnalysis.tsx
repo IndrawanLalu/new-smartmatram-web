@@ -49,16 +49,16 @@ export default function RootCauseAnalysis({
 
   if (loading) {
     return (
-      <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm">
+      <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
         <div className="h-96 flex items-center justify-center">
-          <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         </div>
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm hover:shadow-md transition-shadow">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -66,14 +66,14 @@ export default function RootCauseAnalysis({
               <AlertCircle className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h3 className="text-[#1B2631] text-lg font-bold">Root Cause Analysis</h3>
-              <p className="text-[#5D6D7E] text-xs mt-1">Top 10 penyebab gangguan</p>
+              <h3 className="text-[#e2e8f0] text-lg font-bold">Root Cause Analysis</h3>
+              <p className="text-[#94a3b8] text-xs mt-1">Top 10 penyebab gangguan</p>
             </div>
           </div>
           {top3Summary && (
             <div className="text-right">
               <p className="text-2xl font-bold text-yellow-600">{top3Summary}%</p>
-              <p className="text-[#5D6D7E] text-xs">Top 3 causes</p>
+              <p className="text-[#94a3b8] text-xs">Top 3 causes</p>
             </div>
           )}
         </div>
@@ -121,8 +121,8 @@ export default function RootCauseAnalysis({
               {causesData.slice(0, 4).map((item, i) => (
                 <div key={i} className="flex items-center gap-2 text-xs">
                   <div className="w-3 h-3 rounded shrink-0" style={{ backgroundColor: COLORS[i] }} />
-                  <span className="text-[#5D6D7E] truncate">{item.cause}</span>
-                  <span className="text-[#1B2631] font-semibold ml-auto">{item.count}</span>
+                  <span className="text-[#94a3b8] truncate">{item.cause}</span>
+                  <span className="text-[#e2e8f0] font-semibold ml-auto">{item.count}</span>
                 </div>
               ))}
             </div>

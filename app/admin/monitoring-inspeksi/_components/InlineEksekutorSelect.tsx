@@ -18,7 +18,7 @@ export default function InlineEksekutorSelect({ id, currentEksekutor, onUpdate }
 
   if (!canAssignEksekutor(user.role)) {
     return (
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${currentEksekutor ? "bg-blue-50 text-blue-700" : "text-[#5D6D7E]"}`}>
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${currentEksekutor ? "bg-blue-50 text-blue-700" : "text-[#94a3b8]"}`}>
         {currentEksekutor ?? "—"}
       </span>
     );
@@ -37,7 +37,7 @@ export default function InlineEksekutorSelect({ id, currentEksekutor, onUpdate }
       value={currentEksekutor ?? ""}
       onChange={handleChange}
       disabled={saving}
-      className="text-xs px-2 py-1 rounded-lg border border-[#E2E8F0] text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 bg-white cursor-pointer disabled:opacity-60 min-w-28"
+      className="text-xs px-2 py-1 rounded-lg border border-[#1e3552] text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 bg-[#0d1b2a] cursor-pointer disabled:opacity-60 min-w-28"
     >
       <option value="">— Belum ditugaskan</option>
       {EKSEKUTOR_OPTIONS.map((opt) => (

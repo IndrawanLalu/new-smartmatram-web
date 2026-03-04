@@ -23,7 +23,7 @@ interface Props {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const INPUT = "border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-sm text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 w-full";
+const INPUT = "border border-[#1e3552] rounded-lg px-2.5 py-1.5 text-sm text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 w-full";
 const NUM_INPUT = `${INPUT} text-center font-mono`;
 
 const JURUSAN_FIELDS: { field: JurusanNumField; label: string }[] = [
@@ -156,7 +156,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white z-[70] shadow-2xl flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-[#162334] z-[70] shadow-2xl flex flex-col overflow-hidden">
 
         {/* Header */}
         <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-5 py-4 flex items-center justify-between shrink-0">
@@ -181,22 +181,22 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
 
           {/* Info Dasar */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-3">Info Dasar</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Info Dasar</h3>
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Tanggal Pengukuran</label>
+                <label className="text-xs text-[#94a3b8] mb-1 block">Tanggal Pengukuran</label>
                 <input type="date" value={tanggal} onChange={(e) => setTanggal(e.target.value)} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Kapasitas Trafo (KVA)</label>
+                <label className="text-xs text-[#94a3b8] mb-1 block">Kapasitas Trafo (KVA)</label>
                 <input type="number" value={kvaTrfo} onChange={(e) => setKvaTrfo(Number(e.target.value))} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Penyulang</label>
+                <label className="text-xs text-[#94a3b8] mb-1 block">Penyulang</label>
                 <input type="text" value={penyulang} onChange={(e) => setPenyulang(e.target.value)} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Alamat</label>
+                <label className="text-xs text-[#94a3b8] mb-1 block">Alamat</label>
                 <input type="text" value={alamat} onChange={(e) => setAlamat(e.target.value)} className={INPUT} />
               </div>
             </div>
@@ -204,7 +204,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
 
           {/* Arus Total */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-3">Arus Total (A)</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Arus Total (A)</h3>
             <div className="grid grid-cols-4 gap-3">
               {([
                 { label: "Fasa R", val: arusR, set: setArusR },
@@ -213,7 +213,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 { label: "Netral", val: arusN, set: setArusN },
               ] as const).map(({ label, val, set }) => (
                 <div key={label}>
-                  <label className="text-xs text-[#5D6D7E] mb-1 block">{label}</label>
+                  <label className="text-xs text-[#94a3b8] mb-1 block">{label}</label>
                   <input type="number" step="0.1" value={val} onChange={(e) => set(Number(e.target.value))} className={NUM_INPUT} />
                 </div>
               ))}
@@ -222,7 +222,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
 
           {/* Tegangan Fase-Netral */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-3">Tegangan Fase-Netral (V)</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Tegangan Fase-Netral (V)</h3>
             <div className="grid grid-cols-3 gap-3">
               {([
                 { label: "V R-N", val: tegRN, set: setTegRN },
@@ -230,7 +230,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 { label: "V T-N", val: tegTN, set: setTegTN },
               ] as const).map(({ label, val, set }) => (
                 <div key={label}>
-                  <label className="text-xs text-[#5D6D7E] mb-1 block">{label}</label>
+                  <label className="text-xs text-[#94a3b8] mb-1 block">{label}</label>
                   <input type="number" step="0.1" value={val} onChange={(e) => set(Number(e.target.value))} className={NUM_INPUT} />
                 </div>
               ))}
@@ -239,22 +239,22 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
 
           {/* Beban & Suhu */}
           <section>
-            <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider mb-3">Beban & Suhu</h3>
+            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Beban & Suhu</h3>
             <div className="grid grid-cols-3 gap-3">
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Beban KVA (otomatis)</label>
-                <div className="border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-center font-mono text-sm bg-gray-50 text-[#5D6D7E]">
+                <label className="text-xs text-[#94a3b8] mb-1 block">Beban KVA (otomatis)</label>
+                <div className="border border-[#1e3552] rounded-lg px-2.5 py-1.5 text-center font-mono text-sm bg-gray-50 text-[#94a3b8]">
                   {bebanKva.toFixed(2)} kVA
                 </div>
               </div>
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">% Beban (otomatis)</label>
-                <div className="border border-[#E2E8F0] rounded-lg px-2.5 py-1.5 text-center font-mono text-sm bg-gray-50 text-[#5D6D7E]">
+                <label className="text-xs text-[#94a3b8] mb-1 block">% Beban (otomatis)</label>
+                <div className="border border-[#1e3552] rounded-lg px-2.5 py-1.5 text-center font-mono text-sm bg-gray-50 text-[#94a3b8]">
                   {persenBeban.toFixed(1)}%
                 </div>
               </div>
               <div>
-                <label className="text-xs text-[#5D6D7E] mb-1 block">Suhu Trafo (°C)</label>
+                <label className="text-xs text-[#94a3b8] mb-1 block">Suhu Trafo (°C)</label>
                 <input type="number" step="0.1" value={suhu} onChange={(e) => setSuhu(Number(e.target.value))} className={NUM_INPUT} />
               </div>
             </div>
@@ -263,7 +263,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
           {/* Per Jurusan */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wider">Per Jurusan</h3>
+              <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Per Jurusan</h3>
               <button
                 onClick={addJurusan}
                 className="flex items-center gap-1 text-xs text-[#00897B] hover:text-[#004D40] font-medium transition-colors"
@@ -271,13 +271,13 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 <Plus size={12} /> Tambah Jurusan
               </button>
             </div>
-            <div className="border border-[#E2E8F0] rounded-xl overflow-x-auto">
+            <div className="border border-[#1e3552] rounded-xl overflow-x-auto">
               <table className="w-full text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#E0F2F1]">
-                    <th className="text-left px-3 py-2 text-[#00695C] font-semibold">Jur.</th>
+                  <tr className="bg-[#0a2a26]">
+                    <th className="text-left px-3 py-2 text-[#5eead4] font-semibold">Jur.</th>
                     {JURUSAN_FIELDS.map(({ label }) => (
-                      <th key={label} className="text-center px-2 py-2 text-[#00695C] font-semibold">{label}</th>
+                      <th key={label} className="text-center px-2 py-2 text-[#5eead4] font-semibold">{label}</th>
                     ))}
                     <th className="px-2 py-2" />
                   </tr>
@@ -285,19 +285,19 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 <tbody>
                   {jurusanRows.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="text-center py-4 text-[#5D6D7E]">
+                      <td colSpan={9} className="text-center py-4 text-[#94a3b8]">
                         Belum ada data jurusan — klik &quot;Tambah Jurusan&quot;
                       </td>
                     </tr>
                   ) : (
                     jurusanRows.map((j, idx) => (
-                      <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50/50"}>
+                      <tr key={idx} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}>
                         <td className="px-2 py-1.5">
                           <input
                             type="text"
                             value={j.key}
                             onChange={(e) => updateJurusanKey(idx, e.target.value)}
-                            className="border border-[#E2E8F0] rounded px-2 py-1 text-xs w-12 text-center font-bold focus:outline-none focus:border-[#00897B]"
+                            className="border border-[#1e3552] rounded px-2 py-1 text-xs w-12 text-center font-bold focus:outline-none focus:border-[#00897B]"
                             placeholder="A"
                           />
                         </td>
@@ -308,7 +308,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                               step="0.1"
                               value={j[field]}
                               onChange={(e) => updateJurusan(idx, field, Number(e.target.value))}
-                              className="border border-[#E2E8F0] rounded px-2 py-1 text-xs w-20 text-center font-mono focus:outline-none focus:border-[#00897B]"
+                              className="border border-[#1e3552] rounded px-2 py-1 text-xs w-20 text-center font-mono focus:outline-none focus:border-[#00897B]"
                             />
                           </td>
                         ))}
@@ -330,10 +330,10 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[#E2E8F0] flex items-center justify-end gap-3 shrink-0 bg-white">
+        <div className="px-5 py-4 border-t border-[#1e3552] flex items-center justify-end gap-3 shrink-0 bg-[#162334]">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm text-[#5D6D7E] border border-[#E2E8F0] rounded-lg hover:bg-gray-50 transition-colors"
+            className="px-4 py-2 text-sm text-[#94a3b8] border border-[#1e3552] rounded-lg hover:bg-gray-50 transition-colors"
           >
             Batal
           </button>
