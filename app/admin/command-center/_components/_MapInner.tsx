@@ -7,13 +7,13 @@ import "leaflet/dist/leaflet.css";
 import type { GarduMarker } from "../_hooks/useCommandCenter";
 import type { PengukuranGardu } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 
-// ── CSS keyframe untuk ping animation ─────────────────────────────────────────
+// ── CSS ping animation ─────────────────────────────────────────────────────────
 
 const PING_CSS = `
   @keyframes map-ping {
-    0% { transform: scale(1); opacity: 0.8; }
-    70% { transform: scale(2.8); opacity: 0; }
-    100% { transform: scale(2.8); opacity: 0; }
+    0% { transform: scale(1); opacity: 0.9; }
+    70% { transform: scale(3); opacity: 0; }
+    100% { transform: scale(3); opacity: 0; }
   }
   .map-marker-ping {
     animation: map-ping 1.4s cubic-bezier(0, 0, 0.2, 1) infinite;
@@ -23,7 +23,7 @@ const PING_CSS = `
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 function getColor(ukur: PengukuranGardu | undefined): string {
-  if (!ukur) return "#9CA3AF";
+  if (!ukur) return "#4B5563";
   if (ukur.persen_beban >= 80 || ukur.suhu_trafo > 60) return "#EF4444";
   if (ukur.persen_beban >= 60) return "#F59E0B";
   return "#10B981";
@@ -34,13 +34,18 @@ function isDanger(ukur: PengukuranGardu | undefined): boolean {
   return ukur.persen_beban >= 80 || ukur.suhu_trafo > 60;
 }
 
+function isAlert(ukur: PengukuranGardu | undefined): boolean {
+  if (!ukur) return false;
+  return ukur.persen_beban >= 60 || ukur.suhu_trafo > 60;
+}
+
 function createMarkerIcon(color: string, danger: boolean): L.DivIcon {
-  const outerSize = danger ? 22 : 14;
-  const innerSize = danger ? 11 : 10;
+  const outerSize = danger ? 24 : 14;
+  const innerSize = danger ? 10 : 8;
   const pingRing = danger
     ? `<div class="map-marker-ping" style="
         position:absolute;inset:0;border-radius:50%;
-        background:${color};
+        background:${color};opacity:0.5;
       "></div>`
     : "";
 
@@ -58,8 +63,8 @@ function createMarkerIcon(color: string, danger: boolean): L.DivIcon {
           width:${innerSize}px;height:${innerSize}px;
           border-radius:50%;
           background:${color};
-          border:2px solid white;
-          box-shadow:0 1px 5px rgba(0,0,0,0.35);
+          border:1.5px solid rgba(255,255,255,0.15);
+          box-shadow:0 0 10px ${color}CC, 0 0 20px ${color}66;
         "></div>
       </div>
     `,
@@ -74,10 +79,10 @@ function createMarkerIcon(color: string, danger: boolean): L.DivIcon {
 interface Props {
   garduList: GarduMarker[];
   latestData: PengukuranGardu[];
+  showAll: boolean;
 }
 
-export default function MapInner({ garduList, latestData }: Props) {
-  // Inject CSS ping animation ke dokumen
+export default function MapInner({ garduList, latestData, showAll }: Props) {
   useEffect(() => {
     const style = document.createElement("style");
     style.innerHTML = PING_CSS;
@@ -86,6 +91,11 @@ export default function MapInner({ garduList, latestData }: Props) {
   }, []);
 
   const ukurMap = new Map(latestData.map((d) => [d.no_gardu, d]));
+
+  // Default: hanya gardu dengan alert (warning/danger). Checkbox: semua gardu.
+  const visibleGardu = showAll
+    ? garduList
+    : garduList.filter((g) => isAlert(ukurMap.get(g.kode)));
 
   const center: [number, number] =
     garduList.length > 0
@@ -102,12 +112,13 @@ export default function MapInner({ garduList, latestData }: Props) {
       className="h-full w-full rounded-b-xl"
       zoomControl={true}
     >
+      {/* Dark tile layer — CartoDB Dark Matter */}
       <TileLayer
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
 
-      {garduList.map((gardu) => {
+      {visibleGardu.map((gardu) => {
         const ukur = ukurMap.get(gardu.kode);
         const color = getColor(ukur);
         const danger = isDanger(ukur);
