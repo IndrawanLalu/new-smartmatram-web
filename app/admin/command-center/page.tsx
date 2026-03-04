@@ -11,38 +11,41 @@ import AlertPanel from "./_components/AlertPanel";
 import InspeksiPanel from "./_components/InspeksiPanel";
 import BebanStrip from "./_components/BebanStrip";
 import AiInsightPanel, { type AiInsightData } from "./_components/AiInsightPanel";
+import GangguanPerUlpCard from "./_components/GangguanPerUlpCard";
+import GangguanBulanIniCard from "./_components/GangguanBulanIniCard";
+import Top10PenyulangCard from "./_components/Top10PenyulangCard";
 
 export default function CommandCenterPage() {
   const user = useCurrentUser();
-  const { gangguanFeed, inspeksiFeed, garduList, loading, lastRefresh, refresh } =
+  const { gangguanFeed, gangguanAll, inspeksiFeed, garduList, loading, lastRefresh, refresh } =
     useCommandCenter(user);
   const { latestData, overloadData, highTempData, highCurrentItems, avgBeban, loading: loadingGardu } =
     usePengukuranGardu(user);
 
   const now = new Date();
+  const currentYear = now.getFullYear();
+  const currentMonth = now.getMonth();
 
-  // Gangguan bulan ini
+  // Gangguan bulan ini (untuk StatusBar & AI)
   const gangguanCountThisMonth = useMemo(
     () =>
-      gangguanFeed.filter(
+      gangguanAll.filter(
         (g) =>
-          g.parsedDate &&
-          g.parsedDate.getMonth() === now.getMonth() &&
-          g.parsedDate.getFullYear() === now.getFullYear()
+          g.parsedDate?.getMonth() === currentMonth &&
+          g.parsedDate?.getFullYear() === currentYear
       ).length,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [gangguanFeed]
+    [gangguanAll]
   );
 
-  // Top 3 penyulang terbanyak gangguan bulan ini
+  // Untuk AI: top 3 penyulang bulan ini
   const gangguanTerbanyak = useMemo(() => {
     const map = new Map<string, number>();
-    gangguanFeed
+    gangguanAll
       .filter(
         (g) =>
-          g.parsedDate &&
-          g.parsedDate.getMonth() === now.getMonth() &&
-          g.parsedDate.getFullYear() === now.getFullYear()
+          g.parsedDate?.getMonth() === currentMonth &&
+          g.parsedDate?.getFullYear() === currentYear
       )
       .forEach((g) => {
         if (g.penyulang) map.set(g.penyulang, (map.get(g.penyulang) ?? 0) + 1);
@@ -52,7 +55,7 @@ export default function CommandCenterPage() {
       .slice(0, 3)
       .map(([penyulang, count]) => ({ penyulang, count }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gangguanFeed]);
+  }, [gangguanAll]);
 
   const urgentCount = useMemo(
     () => inspeksiFeed.filter((i) => i.status === "Temuan" || i.status === "Perlu Tindakan").length,
@@ -62,6 +65,24 @@ export default function CommandCenterPage() {
   const prosesCount = useMemo(
     () => inspeksiFeed.filter((i) => i.status === "Dalam Proses" || i.status === "Ditugaskan").length,
     [inspeksiFeed]
+  );
+
+  // Data untuk Top 10 cards (filtered by period)
+  const gangguanTahunIni = useMemo(
+    () => gangguanAll.filter((g) => g.parsedDate?.getFullYear() === currentYear),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gangguanAll]
+  );
+
+  const gangguanBulanIni = useMemo(
+    () =>
+      gangguanAll.filter(
+        (g) =>
+          g.parsedDate?.getMonth() === currentMonth &&
+          g.parsedDate?.getFullYear() === currentYear
+      ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [gangguanAll]
   );
 
   // Data summary untuk AI
@@ -87,50 +108,86 @@ export default function CommandCenterPage() {
   );
 
   return (
-    <div className="h-[calc(100vh-48px)] flex flex-col gap-3 overflow-hidden">
-      {/* Status Bar */}
-      <StatusBar
-        gangguanCount={gangguanCountThisMonth}
-        overloadCount={overloadData.length}
-        urgentCount={urgentCount}
-        garduCount={latestData.length}
-        lastRefresh={lastRefresh}
-        loading={loading || loadingGardu}
-        onRefresh={refresh}
-      />
+    <div className="flex flex-col gap-3">
 
-      {/* Main Grid */}
-      <div className="flex-1 min-h-0 grid grid-cols-[288px_1fr_288px] gap-3">
+      {/* ── BAGIAN ATAS: Layar Penuh (above the fold) ─────────────── */}
+      <div className="h-[calc(100vh-48px)] flex flex-col gap-3">
+        <StatusBar
+          gangguanCount={gangguanCountThisMonth}
+          overloadCount={overloadData.length}
+          urgentCount={urgentCount}
+          garduCount={latestData.length}
+          lastRefresh={lastRefresh}
+          loading={loading || loadingGardu}
+          onRefresh={refresh}
+        />
 
-        {/* Kolom Kiri: Gangguan Feed + Inspeksi */}
-        <div className="flex flex-col gap-3 min-h-0">
-          <div className="flex-1 min-h-0">
-            <GangguanFeed items={gangguanFeed} loading={loading} />
+        <div className="flex-1 min-h-0 grid grid-cols-[288px_1fr_288px] gap-3">
+          {/* Kolom Kiri */}
+          <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex-1 min-h-0">
+              <GangguanFeed items={gangguanFeed} loading={loading} />
+            </div>
+            <InspeksiPanel items={inspeksiFeed} loading={loading} />
           </div>
-          <InspeksiPanel items={inspeksiFeed} loading={loading} />
-        </div>
 
-        {/* Kolom Tengah: Peta + Beban Strip */}
-        <div className="flex flex-col gap-3 min-h-0">
-          <div className="flex-1 min-h-0">
-            <GarduMapPanel garduList={garduList} latestData={latestData} />
+          {/* Kolom Tengah */}
+          <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex-1 min-h-0">
+              <GarduMapPanel garduList={garduList} latestData={latestData} />
+            </div>
+            <BebanStrip latestData={latestData} avgBeban={avgBeban} />
           </div>
-          <BebanStrip latestData={latestData} avgBeban={avgBeban} />
-        </div>
 
-        {/* Kolom Kanan: Alert Panel + AI Insight */}
-        <div className="flex flex-col gap-3 min-h-0">
-          <div className="flex-1 min-h-0">
-            <AlertPanel
-              overloadData={overloadData}
-              highTempData={highTempData}
-              highCurrentItems={highCurrentItems}
-            />
+          {/* Kolom Kanan */}
+          <div className="flex flex-col gap-3 min-h-0">
+            <div className="flex-1 min-h-0">
+              <AlertPanel
+                overloadData={overloadData}
+                highTempData={highTempData}
+                highCurrentItems={highCurrentItems}
+              />
+            </div>
+            <AiInsightPanel data={aiData} />
           </div>
-          <AiInsightPanel data={aiData} />
         </div>
-
       </div>
+
+      {/* ── BAGIAN BAWAH: Statistik (scroll ke bawah) ─────────────── */}
+
+      {/* Divider */}
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 h-px bg-[#E2E8F0]" />
+        <span className="text-[11px] font-semibold text-[#5D6D7E] uppercase tracking-widest">
+          Statistik Gangguan
+        </span>
+        <div className="flex-1 h-px bg-[#E2E8F0]" />
+      </div>
+
+      {/* Row 1: Gangguan per ULP */}
+      <div className="grid grid-cols-2 gap-3">
+        <GangguanPerUlpCard items={gangguanAll} />
+        <GangguanBulanIniCard items={gangguanAll} />
+      </div>
+
+      {/* Row 2: Top 10 Penyulang */}
+      <div className="grid grid-cols-2 gap-3 pb-3">
+        <Top10PenyulangCard
+          items={gangguanTahunIni}
+          title="Top 10 Penyulang"
+          subtitle={`Tahun ${currentYear}`}
+          headerFrom="#004D40"
+          headerTo="#00897B"
+        />
+        <Top10PenyulangCard
+          items={gangguanBulanIni}
+          title="Top 10 Penyulang"
+          subtitle={`Bulan Ini`}
+          headerFrom="#7B1FA2"
+          headerTo="#9C27B0"
+        />
+      </div>
+
     </div>
   );
 }

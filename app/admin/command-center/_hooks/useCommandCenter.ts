@@ -40,6 +40,7 @@ export interface GarduMarker {
 
 export function useCommandCenter(user: CurrentUser | null) {
   const [gangguanFeed, setGangguanFeed] = useState<GangguanItem[]>([]);
+  const [gangguanAll, setGangguanAll] = useState<GangguanItem[]>([]);
   const [inspeksiFeed, setInspeksiFeed] = useState<InspeksiItem[]>([]);
   const [garduList, setGarduList] = useState<GarduMarker[]>([]);
   const [loading, setLoading] = useState(true);
@@ -69,9 +70,9 @@ export function useCommandCenter(user: CurrentUser | null) {
           const ta = a.parsedDate?.getTime() ?? 0;
           const tb = b.parsedDate?.getTime() ?? 0;
           return tb - ta;
-        })
-        .slice(0, 50);
-      setGangguanFeed(filtered);
+        });
+      setGangguanAll(filtered);
+      setGangguanFeed(filtered.slice(0, 50));
 
       // 2. Inspeksi terbaru dari Supabase
       let inspQuery = supabaseBrowser
@@ -109,5 +110,5 @@ export function useCommandCenter(user: CurrentUser | null) {
     return () => clearInterval(interval);
   }, [fetchAll]);
 
-  return { gangguanFeed, inspeksiFeed, garduList, loading, lastRefresh, refresh: fetchAll };
+  return { gangguanFeed, gangguanAll, inspeksiFeed, garduList, loading, lastRefresh, refresh: fetchAll };
 }
