@@ -59,7 +59,26 @@ export interface FilterPengukuran {
   penyulang: string;
 }
 
+export interface PhaseOverloadItem {
+  id: string;
+  no_gardu: string;
+  penyulang: string | null;
+  kva_trafo: number;
+  i_nominal: number;
+  arus_r: number;
+  arus_s: number;
+  arus_t: number;
+  max_arus: number;
+  pct_nominal: number;
+  level: "warning" | "overload";
+  phases: ("R" | "S" | "T")[];
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+export function getNominalCurrent(kva: number): number {
+  return (kva * 1000) / (Math.sqrt(3) * 400);
+}
 
 function getHighCurrentItems(data: PengukuranGardu[]): HighCurrentItem[] {
   const result: HighCurrentItem[] = [];
@@ -171,14 +190,44 @@ export function usePengukuranGardu(user: CurrentUser) {
     [latestData]
   );
 
-  // Gardu dengan alert apapun (overload ATAU jurusan tinggi ATAU suhu tinggi)
+  const phaseOverloadItems = useMemo((): PhaseOverloadItem[] => {
+    return latestData
+      .flatMap((row) => {
+        const iNominal = getNominalCurrent(row.kva_trafo);
+        const threshold = iNominal * 0.9;
+        const phases: ("R" | "S" | "T")[] = [];
+        if (row.total_arus_r > threshold) phases.push("R");
+        if (row.total_arus_s > threshold) phases.push("S");
+        if (row.total_arus_t > threshold) phases.push("T");
+        if (phases.length === 0) return [];
+        const maxArus = Math.max(row.total_arus_r, row.total_arus_s, row.total_arus_t);
+        return [{
+          id: row.id,
+          no_gardu: row.no_gardu,
+          penyulang: row.penyulang,
+          kva_trafo: row.kva_trafo,
+          i_nominal: iNominal,
+          arus_r: row.total_arus_r,
+          arus_s: row.total_arus_s,
+          arus_t: row.total_arus_t,
+          max_arus: maxArus,
+          pct_nominal: (maxArus / iNominal) * 100,
+          level: maxArus >= iNominal ? "overload" : "warning",
+          phases,
+        }];
+      })
+      .sort((a, b) => b.pct_nominal - a.pct_nominal);
+  }, [latestData]);
+
+  // Gardu dengan alert apapun
   const alertGarduIds = useMemo(() => {
     const ids = new Set<string>();
     overloadData.forEach((d) => ids.add(d.id));
     highTempData.forEach((d) => ids.add(d.id));
     highCurrentItems.forEach((d) => ids.add(d.id));
+    phaseOverloadItems.forEach((d) => ids.add(d.id));
     return ids;
-  }, [overloadData, highTempData, highCurrentItems]);
+  }, [overloadData, highTempData, highCurrentItems, phaseOverloadItems]);
 
   // Options untuk dropdown filter
   const penyulangOptions = useMemo(
@@ -221,6 +270,7 @@ export function usePengukuranGardu(user: CurrentUser) {
     underloadData,
     highTempData,
     highCurrentItems,
+    phaseOverloadItems,
     alertGarduIds,
     penyulangOptions,
     avgBeban,

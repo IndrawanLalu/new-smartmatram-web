@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { useInspeksiPohon } from "../_hooks/useInspeksiPohon";
+import { useInspeksiPohon, type InspeksiPohon } from "../_hooks/useInspeksiPohon";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineTeamSelect from "./InlineTeamSelect";
 import UrgencyBadge from "./UrgencyBadge";
+import InspeksiPohonDetailModal from "./_InspeksiPohonDetailModal";
 import {
   Search,
   RefreshCw,
@@ -12,6 +14,7 @@ import {
   ChevronLeft,
   ChevronRight,
   AlertTriangle,
+  FileSearch,
 } from "lucide-react";
 
 const STATUS_OPTIONS = [
@@ -87,6 +90,7 @@ export default function InspeksiPohonTab({ user }: Props) {
   const {
     data,
     allData,
+    rawData,
     loading,
     error,
     filter,
@@ -100,9 +104,16 @@ export default function InspeksiPohonTab({ user }: Props) {
     penyulangOptions,
     updateStatus,
     updateTeam,
+    updateKeterangan,
+    updateDeskripsi,
+    uploadFotoSesudah,
+    deleteInspeksi,
     refresh,
   } = useInspeksiPohon(user);
 
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  // Derive dari rawData agar selalu up-to-date saat foto/status diupdate
+  const selectedRow = selectedRowId ? (rawData.find((r) => r.id === selectedRowId) ?? null) : null;
   const showUlpFilter = canSeeAllUnits(user.role);
 
   if (error) {
@@ -313,6 +324,9 @@ export default function InspeksiPohonTab({ user }: Props) {
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Team
                 </th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                  Aksi
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -322,7 +336,7 @@ export default function InspeksiPohonTab({ user }: Props) {
                     key={i}
                     className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}
                   >
-                    {Array.from({ length: 9 }).map((_, j) => (
+                    {Array.from({ length: 10 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-100 animate-pulse rounded" />
                       </td>
@@ -332,7 +346,7 @@ export default function InspeksiPohonTab({ user }: Props) {
               ) : data.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showUlpFilter ? 10 : 9}
+                    colSpan={showUlpFilter ? 11 : 10}
                     className="text-center py-12 text-[#94a3b8] text-sm"
                   >
                     Tidak ada data yang sesuai filter
@@ -400,6 +414,15 @@ export default function InspeksiPohonTab({ user }: Props) {
                         onUpdate={updateTeam}
                       />
                     </td>
+                    <td className="px-4 py-3 text-center">
+                      <button
+                        onClick={() => setSelectedRowId(row.id)}
+                        className="w-7 h-7 flex items-center justify-center mx-auto rounded-lg text-[#94a3b8] hover:text-[#5eead4] hover:bg-[#00897B]/10 transition-colors"
+                        title="Lihat detail"
+                      >
+                        <FileSearch size={15} />
+                      </button>
+                    </td>
                   </tr>
                 ))
               )}
@@ -431,6 +454,23 @@ export default function InspeksiPohonTab({ user }: Props) {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selectedRow && (
+        <InspeksiPohonDetailModal
+          data={selectedRow}
+          user={user}
+          onClose={() => setSelectedRowId(null)}
+          updateStatus={updateStatus}
+          updateKeterangan={updateKeterangan}
+          updateDeskripsi={updateDeskripsi}
+          uploadFotoSesudah={uploadFotoSesudah}
+          deleteInspeksi={async (id) => {
+            await deleteInspeksi(id);
+            setSelectedRowId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -154,6 +154,25 @@ venues           — IoT monitoring
 ```
 Kolom Supabase: `snake_case`. Variabel TS: `camelCase`.
 
+## Supabase Storage
+Bucket: **`inspections`** (public)
+```
+inspections/
+  jaringan/
+    sebelum/    ← foto_sebelum_url (inspeksi jaringan)
+    lokasi/     ← foto_lokasi_url (inspeksi jaringan)
+    sesudah/    ← foto_sesudah_url (inspeksi jaringan) — diupload via app
+  pohon/
+    sebelum/    ← foto_sebelum_url (inspeksi pohon)
+    lokasi/     ← foto_lokasi_url (inspeksi pohon)
+    sesudah/    ← foto_sesudah_url (inspeksi pohon) — diupload via app
+```
+**Catatan migrasi:** foto_sebelum_url dan foto_lokasi_url lama masih berupa Firebase URL
+(`firebasestorage.googleapis.com`). Firebase URL mungkin tidak bisa ditampilkan sebagai `<img>`
+jika bucket Firebase sudah diproteksi — tampilkan link eksternal sebagai fallback.
+
+Upload foto sesudah: `supabaseBrowser.storage.from("inspections").upload("jaringan/sesudah/{id}/{ts}.{ext}")`
+
 ## Clean Code Standards
 
 ### Prinsip Utama

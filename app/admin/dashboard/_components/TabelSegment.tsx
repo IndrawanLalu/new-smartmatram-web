@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Search, RefreshCw, MapPin, CheckCircle, Clock, AlertTriangle,
   TrendingUp, Target, Activity, Filter, Download,
@@ -148,16 +148,19 @@ export default function TabelSegment() {
 
   useEffect(() => { fetchData(); }, []);
 
-  const filtered = data.filter((i) => i.penyulang.toLowerCase().includes(searchTerm.toLowerCase()));
+  const filtered = useMemo(
+    () => data.filter((i) => i.penyulang.toLowerCase().includes(searchTerm.toLowerCase())),
+    [data, searchTerm]
+  );
 
-  const sorted = [...filtered].sort((a, b) => {
+  const sorted = useMemo(() => [...filtered].sort((a, b) => {
     if (!sortConfig.key) return 0;
     const av = (a as unknown as Record<string, unknown>)[sortConfig.key] as number | string;
     const bv = (b as unknown as Record<string, unknown>)[sortConfig.key] as number | string;
     if (av < bv) return sortConfig.direction === "asc" ? -1 : 1;
     if (av > bv) return sortConfig.direction === "asc" ? 1 : -1;
     return 0;
-  });
+  }), [filtered, sortConfig]);
 
   const handleSort = (key: string) => {
     setSortConfig((prev) => ({ key, direction: prev.key === key && prev.direction === "asc" ? "desc" : "asc" }));

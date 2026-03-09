@@ -23,7 +23,7 @@ import { logout } from "@/app/login/actions";
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/admin/peta-gardu", label: "Peta Gardu", icon: Map },
+  { href: "/admin/peta-gardu", label: "Peta Aset", icon: Map },
   {
     href: "/admin/dashboard-penyulang",
     label: "Dashboard Penyulang",

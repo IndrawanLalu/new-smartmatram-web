@@ -1,14 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { type CurrentUser, canSeeAllUnits, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
-import { useInspeksiJaringan } from "../_hooks/useInspeksiJaringan";
+import { useInspeksiJaringan, type InspeksiJaringan } from "../_hooks/useInspeksiJaringan";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
-import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, Image } from "lucide-react";
+import InspeksiDetailModal from "./_InspeksiDetailModal";
+import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, FileSearch } from "lucide-react";
 
 const STATUS_OPTIONS = ["Temuan", "Perlu Tindakan", "Ditugaskan", "Dalam Proses", "Selesai"];
 const CATEGORY_OPTIONS = ["Emergency", "Urgent", "Scheduled", "Preventive", "Normal"];
-const EKSEKUTOR_OPTIONS = ["HARJAR", "HARGAR", "YANGU", "PDKB"];
 
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
@@ -45,6 +46,7 @@ export default function InspeksiJaringanTab({ user }: Props) {
   const {
     data,
     allData,
+    rawData,
     loading,
     error,
     filter,
@@ -57,9 +59,16 @@ export default function InspeksiJaringanTab({ user }: Props) {
     penyulangOptions,
     updateStatus,
     updateEksekutor,
+    updateTemuan,
+    updateDeskripsi,
+    uploadFotoSesudah,
+    deleteInspeksi,
     refresh,
   } = useInspeksiJaringan(user);
 
+  const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  // Derive dari rawData agar selalu up-to-date saat foto/status diupdate
+  const selectedRow = selectedRowId ? (rawData.find((r) => r.id === selectedRowId) ?? null) : null;
   const showUlpFilter = canSeeAllUnits(user.role);
 
   if (error) {
@@ -149,7 +158,7 @@ export default function InspeksiJaringanTab({ user }: Props) {
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Kategori</th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Status</th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Eksekutor</th>
-                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Foto</th>
+                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Aksi</th>
               </tr>
             </thead>
             <tbody>
@@ -204,11 +213,13 @@ export default function InspeksiJaringanTab({ user }: Props) {
                         />
                       </td>
                       <td className="px-4 py-3 text-center">
-                        {row.foto_sebelum_url ? (
-                          <a href={row.foto_sebelum_url} target="_blank" rel="noreferrer" className="text-[#00897B] hover:text-[#004D40]">
-                            <Image size={16} className="mx-auto" />
-                          </a>
-                        ) : <span className="text-gray-300">—</span>}
+                        <button
+                          onClick={() => setSelectedRowId(row.id)}
+                          className="w-7 h-7 flex items-center justify-center mx-auto rounded-lg text-[#94a3b8] hover:text-[#5eead4] hover:bg-[#00897B]/10 transition-colors"
+                          title="Lihat detail"
+                        >
+                          <FileSearch size={15} />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -243,6 +254,23 @@ export default function InspeksiJaringanTab({ user }: Props) {
           </div>
         )}
       </div>
+
+      {/* Detail Modal */}
+      {selectedRow && (
+        <InspeksiDetailModal
+          data={selectedRow}
+          user={user}
+          onClose={() => setSelectedRowId(null)}
+          updateStatus={updateStatus}
+          updateTemuan={updateTemuan}
+          updateDeskripsi={updateDeskripsi}
+          uploadFotoSesudah={uploadFotoSesudah}
+          deleteInspeksi={async (id) => {
+            await deleteInspeksi(id);
+            setSelectedRowId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

@@ -8,8 +8,6 @@ const STATUS_ORDER: InspeksiStatus[] = [
   "Temuan",
   "Perlu Tindakan",
   "Ditugaskan",
-  "Dalam Proses",
-  "Selesai",
 ];
 
 interface InlineStatusSelectProps {
@@ -26,8 +24,12 @@ export default function InlineStatusSelect({
   const user = useCurrentUser();
   const [saving, setSaving] = useState(false);
 
-  if (!canUpdateStatus(user.role)) {
-    const cfg = STATUS_CONFIG[currentStatus as InspeksiStatus];
+  const cfg = STATUS_CONFIG[currentStatus as InspeksiStatus];
+
+  // Status "Dalam Proses" dan "Selesai" hanya bisa diubah via modal
+  const isAdvancedStatus = currentStatus === "Dalam Proses" || currentStatus === "Selesai";
+
+  if (!canUpdateStatus(user.role) || isAdvancedStatus) {
     return (
       <span
         className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${cfg?.bgColor ?? "bg-gray-100"} ${cfg?.color ?? "text-gray-600"}`}
@@ -44,8 +46,6 @@ export default function InlineStatusSelect({
     await onUpdate(id, newStatus);
     setSaving(false);
   };
-
-  const cfg = STATUS_CONFIG[currentStatus as InspeksiStatus];
 
   return (
     <select

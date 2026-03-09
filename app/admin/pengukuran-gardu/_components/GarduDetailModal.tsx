@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertTriangle, Thermometer, Zap, History, ChevronDown, ChevronUp, Pencil } from "lucide-react";
-import { type PengukuranGardu, HIGH_CURRENT_A, HIGH_TEMP_C, OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
+import { X, AlertTriangle, Thermometer, Zap, History, ChevronDown, ChevronUp, Pencil, MessageCircle } from "lucide-react";
+import KirimWAGarduModal from "./_KirimWAGarduModal";
+import { type PengukuranGardu, HIGH_CURRENT_A, HIGH_TEMP_C, OVERLOAD_PCT, getNominalCurrent } from "../_hooks/usePengukuranGardu";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ interface Props {
 
 export default function GarduDetailModal({ row, onClose, onEdit, allData }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [showKirimWA, setShowKirimWA] = useState(false);
 
   if (!row) return null;
 
@@ -65,6 +67,10 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
   const jurusanKeys = Object.keys(perjurusan).sort();
   const isOverload = row.persen_beban >= OVERLOAD_PCT;
   const isHighTemp = row.suhu_trafo > HIGH_TEMP_C;
+  const iNominal = getNominalCurrent(row.kva_trafo);
+  const maxPhaseArus = Math.max(row.total_arus_r, row.total_arus_s, row.total_arus_t);
+  const isPhaseOverload = maxPhaseArus >= iNominal;
+  const isPhaseWarn = !isPhaseOverload && maxPhaseArus >= iNominal * 0.9;
 
   const history = allData
     ?.filter((d) => d.no_gardu === row.no_gardu)
@@ -96,12 +102,28 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                   SUHU TINGGI
                 </span>
               )}
+              {isPhaseOverload && (
+                <span className="bg-orange-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  OVERLOAD 1 FASA
+                </span>
+              )}
+              {isPhaseWarn && (
+                <span className="bg-amber-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  WARNING 1 FASA
+                </span>
+              )}
             </div>
             <p className="text-teal-100 text-sm mt-0.5">
               {row.penyulang ?? "—"} · {row.petugas_unit}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowKirimWA(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors"
+            >
+              <MessageCircle size={13} /> Kirim WO via WA
+            </button>
             <button
               onClick={() => onEdit(row)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors"
@@ -438,6 +460,10 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
           )}
         </div>
       </div>
+
+      {showKirimWA && (
+        <KirimWAGarduModal data={row} onClose={() => setShowKirimWA(false)} />
+      )}
     </>
   );
 }

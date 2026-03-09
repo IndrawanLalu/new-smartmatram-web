@@ -32,6 +32,8 @@ export interface InspeksiPohon {
   prediksi_inspektur: string | null;
   tindakan_rekomendasi: string | null;
   foto_sebelum_url: string | null;
+  foto_lokasi_url: string | null;
+  foto_sesudah_url: string | null;
   koordinat: string | null;
   tgl_inspeksi: string | null;
   tgl_eksekusi: string | null;
@@ -81,7 +83,8 @@ export function useInspeksiPohon(user: CurrentUser) {
       let query = supabaseBrowser
         .from("inspeksi_pohon")
         .select("*")
-        .order("tgl_inspeksi", { ascending: false });
+        .order("tgl_inspeksi", { ascending: false })
+        .order("created_at", { ascending: false });
 
       if (!canSeeAllUnits(user.role) && user.unit) {
         query = query.eq("ulp", user.unit);
@@ -110,8 +113,10 @@ export function useInspeksiPohon(user: CurrentUser) {
         };
       });
 
-      // Sort: SANGAT URGENT dulu
-      enriched.sort((a, b) => a.remainingDays - b.remainingDays);
+      // Sort: terbaru dulu (tgl_inspeksi DESC)
+      enriched.sort((a, b) =>
+        (b.tgl_inspeksi ?? "").localeCompare(a.tgl_inspeksi ?? "")
+      );
       setRawData(enriched);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data");
@@ -151,6 +156,80 @@ export function useInspeksiPohon(user: CurrentUser) {
       const { error: err } = await supabaseBrowser
         .from("inspeksi_pohon")
         .update({ team_name: teamName, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData],
+  );
+
+  // Update keterangan
+  const updateKeterangan = useCallback(
+    async (id: string, keterangan: string) => {
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, keterangan } : item)),
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .update({ keterangan, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData],
+  );
+
+  // Update deskripsi
+  const updateDeskripsi = useCallback(
+    async (id: string, deskripsi: string) => {
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, deskripsi } : item)),
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .update({ deskripsi, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData],
+  );
+
+  // Upload foto sesudah ke Supabase Storage (bucket: inspections/pohon/sesudah/) + update DB
+  const uploadFotoSesudah = useCallback(
+    async (id: string, file: File): Promise<string> => {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const storagePath = `pohon/sesudah/${id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabaseBrowser.storage
+        .from("inspections")
+        .upload(storagePath, file, { upsert: true });
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabaseBrowser.storage
+        .from("inspections")
+        .getPublicUrl(storagePath);
+      const url = urlData.publicUrl;
+
+      const { error: dbErr } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .update({ foto_sesudah_url: url, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (dbErr) throw dbErr;
+
+      setRawData((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, foto_sesudah_url: url } : item,
+        ),
+      );
+      return url;
+    },
+    [],
+  );
+
+  // Delete inspeksi pohon (optimistic)
+  const deleteInspeksi = useCallback(
+    async (id: string) => {
+      setRawData((prev) => prev.filter((item) => item.id !== id));
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .delete()
         .eq("id", id);
       if (err) fetchData();
     },
@@ -235,6 +314,10 @@ export function useInspeksiPohon(user: CurrentUser) {
     penyulangOptions,
     updateStatus,
     updateTeam,
+    updateKeterangan,
+    updateDeskripsi,
+    uploadFotoSesudah,
+    deleteInspeksi,
     refresh: fetchData,
   };
 }

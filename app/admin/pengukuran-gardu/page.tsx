@@ -9,6 +9,7 @@ import {
   UNDERLOAD_PCT,
   HIGH_CURRENT_A,
   HIGH_TEMP_C,
+  getNominalCurrent,
   type PengukuranGardu,
 } from "./_hooks/usePengukuranGardu";
 import {
@@ -27,6 +28,7 @@ import {
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
+import FilterGarduTab from "./_components/FilterGarduTab";
 
 // Chart via dynamic import (recharts tidak SSR-friendly)
 const BebanBarChart = dynamic(() => import("./_components/BebanBarChart"), {
@@ -164,16 +166,28 @@ function BebanBadge({ pct }: { pct: number }) {
   );
 }
 
-function ArusCell({ r, s, t }: { r: number; s: number; t: number }) {
-  const high = Math.max(r, s, t) > HIGH_CURRENT_A;
+function ArusCell({ r, s, t, kva }: { r: number; s: number; t: number; kva?: number }) {
+  const iNom = kva ? getNominalCurrent(kva) : null;
+
+  const phaseCls = (v: number) => {
+    if (v > HIGH_CURRENT_A) return "text-red-600 font-bold";
+    if (iNom && v >= iNom) return "text-red-500 font-semibold";
+    if (iNom && v >= iNom * 0.9) return "text-amber-400 font-semibold";
+    return "text-[#94a3b8]";
+  };
+
+  const hasHighAbs = Math.max(r, s, t) > HIGH_CURRENT_A;
+  const hasPhaseAlert = iNom ? Math.max(r, s, t) >= iNom * 0.9 : false;
+
   return (
-    <div className={`text-xs font-mono ${high ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}>
-      <span title="R">{Math.round(r)}</span>
-      <span className="text-[#E2E8F0] mx-0.5">/</span>
-      <span title="S">{Math.round(s)}</span>
-      <span className="text-[#E2E8F0] mx-0.5">/</span>
-      <span title="T">{Math.round(t)}</span>
-      {high && <AlertTriangle size={10} className="inline ml-1 text-red-500" />}
+    <div className="text-xs font-mono flex items-center justify-center gap-0.5">
+      <span title="R" className={phaseCls(r)}>{Math.round(r)}</span>
+      <span className="text-[#1e3552]">/</span>
+      <span title="S" className={phaseCls(s)}>{Math.round(s)}</span>
+      <span className="text-[#1e3552]">/</span>
+      <span title="T" className={phaseCls(t)}>{Math.round(t)}</span>
+      {hasHighAbs && <AlertTriangle size={10} className="ml-1 text-red-500 shrink-0" />}
+      {!hasHighAbs && hasPhaseAlert && <AlertTriangle size={10} className="ml-1 text-amber-400 shrink-0" />}
     </div>
   );
 }
@@ -182,6 +196,7 @@ function ArusCell({ r, s, t }: { r: number; s: number; t: number }) {
 
 export default function PengukuranGarduPage() {
   const user = useCurrentUser();
+  const [activeTab, setActiveTab] = useState<"rekap" | "filter">("rekap");
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<PengukuranGardu | null>(null);
@@ -209,6 +224,7 @@ export default function PengukuranGarduPage() {
     underloadData,
     highTempData,
     highCurrentItems,
+    phaseOverloadItems,
     alertGarduIds,
     penyulangOptions,
     avgBeban,
@@ -275,6 +291,26 @@ export default function PengukuranGarduPage() {
         </div>
       </div>
 
+      {/* Tab Switcher */}
+      <div className="flex gap-1 bg-[#0d1b2a] border border-[#1e3552] rounded-lg p-1 w-fit">
+        {(["rekap", "filter"] as const).map((tab) => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-4 py-1.5 rounded-md text-xs font-medium transition-colors ${
+              activeTab === tab
+                ? "bg-[#00897B] text-white"
+                : "text-[#94a3b8] hover:text-[#e2e8f0]"
+            }`}
+          >
+            {tab === "rekap" ? "Rekap Bulanan" : "Filter Pengukuran"}
+          </button>
+        ))}
+      </div>
+
+      {activeTab === "filter" && <FilterGarduTab user={user} />}
+
+      {activeTab === "rekap" && <>
       {/* Filter Bar */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-[#e2e8f0]">Periode:</span>
@@ -330,16 +366,17 @@ export default function PengukuranGarduPage() {
       )}
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <KPICard label="Total Pengukuran" value={loading ? "—" : data.length} sub={`${MONTHS[filter.month - 1]} ${filter.year}`} icon={Gauge} />
         <KPICard label="Trafo Overload" value={loading ? "—" : overloadData.length} sub={`beban ≥ ${OVERLOAD_PCT}%`} icon={TrendingUp} variant={overloadData.length > 0 ? "danger" : "default"} />
         <KPICard label="Trafo Underload" value={loading ? "—" : underloadData.length} sub={`beban < ${UNDERLOAD_PCT}%`} icon={TrendingDown} variant={underloadData.length > 0 ? "warning" : "default"} />
         <KPICard label={`Jurusan >${HIGH_CURRENT_A}A`} value={loading ? "—" : highCurrentItems.length} sub="jurusan arus tinggi" icon={Zap} variant={highCurrentItems.length > 0 ? "danger" : "default"} />
+        <KPICard label="Overload 1 Fasa" value={loading ? "—" : phaseOverloadItems.length} sub="arus > I-nominal" icon={AlertTriangle} variant={phaseOverloadItems.filter(d => d.level === "overload").length > 0 ? "danger" : phaseOverloadItems.length > 0 ? "warning" : "default"} />
         <KPICard label={`Suhu Trafo >${HIGH_TEMP_C}°C`} value={loading ? "—" : highTempData.length} sub="suhu tinggi" icon={Thermometer} variant={highTempData.length > 0 ? "warning" : "default"} />
       </div>
 
       {/* ── Alert Section ──────────────────────────────────────────────────── */}
-      {!loading && (overloadData.length > 0 || highCurrentItems.length > 0 || highTempData.length > 0) && (
+      {!loading && (overloadData.length > 0 || highCurrentItems.length > 0 || highTempData.length > 0 || phaseOverloadItems.length > 0) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Overload trafo */}
@@ -403,6 +440,61 @@ export default function PengukuranGarduPage() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Overload 1 fasa */}
+          {phaseOverloadItems.length > 0 && (
+            <div className="bg-[#162334] rounded-xl border border-orange-200 overflow-hidden">
+              <div className="px-5 py-3 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+                <AlertTriangle size={16} className="text-orange-600" />
+                <h3 className="font-semibold text-orange-700 text-sm">
+                  Overload 1 Fasa ({phaseOverloadItems.length})
+                </h3>
+                <span className="text-xs text-orange-500 ml-auto">arus total &gt; 90% I-nominal</span>
+              </div>
+              <div className="overflow-x-auto max-h-64 overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="bg-orange-50 sticky top-0">
+                    <tr>
+                      <th className="text-left px-4 py-2 text-orange-700 font-semibold">Gardu</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">KVA</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">I-Nom (A)</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">R (A)</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">S (A)</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">T (A)</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">% Nom</th>
+                      <th className="text-center px-4 py-2 text-orange-700 font-semibold">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {phaseOverloadItems.map((item, i) => {
+                      const iNom = item.i_nominal;
+                      const cellCls = (v: number) =>
+                        v >= iNom ? "text-red-600 font-bold" :
+                        v >= iNom * 0.9 ? "text-amber-600 font-bold" : "text-[#94a3b8]";
+                      return (
+                        <tr key={item.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-orange-50/20"}>
+                          <td className="px-4 py-2 font-medium text-[#e2e8f0]">{item.no_gardu}</td>
+                          <td className="px-4 py-2 text-center text-[#94a3b8]">{item.kva_trafo}</td>
+                          <td className="px-4 py-2 text-center text-[#94a3b8]">{Math.round(iNom)}</td>
+                          <td className={`px-4 py-2 text-center font-mono ${cellCls(item.arus_r)}`}>{Math.round(item.arus_r)}</td>
+                          <td className={`px-4 py-2 text-center font-mono ${cellCls(item.arus_s)}`}>{Math.round(item.arus_s)}</td>
+                          <td className={`px-4 py-2 text-center font-mono ${cellCls(item.arus_t)}`}>{Math.round(item.arus_t)}</td>
+                          <td className={`px-4 py-2 text-center font-mono font-semibold ${item.level === "overload" ? "text-red-600" : "text-amber-600"}`}>
+                            {Math.round(item.pct_nominal)}%
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${item.level === "overload" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"}`}>
+                              {item.level === "overload" ? "Overload" : "Warning"}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -547,7 +639,7 @@ export default function PengukuranGarduPage() {
                       </td>
                       <td className="px-4 py-3 text-center text-[#94a3b8]">{Math.round(row.beban_kva)}</td>
                       <td className="px-4 py-3 text-center">
-                        <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} />
+                        <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} kva={row.kva_trafo} />
                       </td>
                       <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-600" : "text-[#94a3b8]"}`}>
                         {row.suhu_trafo}
@@ -585,6 +677,7 @@ export default function PengukuranGarduPage() {
           </div>
         )}
       </div>
+      </>}
     </div>
 
     <GarduDetailModal

@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
+
+const CURRENT_YEAR = new Date().getFullYear();
+const PREVIOUS_YEAR = CURRENT_YEAR - 1;
 import { Line } from "react-chartjs-2";
 import {
   Chart as ChartJS,
@@ -22,8 +25,6 @@ const MONTH_MAP: Record<string, number> = {
 type Row = Record<string, string>;
 
 export default function DiagramGangguanPenyulang() {
-  const currentYear = useMemo(() => new Date().getFullYear(), []);
-  const previousYear = useMemo(() => currentYear - 1, [currentYear]);
   const user = useCurrentUser();
   const userUnit = user.unit;
 
@@ -64,12 +65,12 @@ export default function DiagramGangguanPenyulang() {
       if (!d) return;
       const m = d.getMonth();
       const y = d.getFullYear();
-      if (y === currentYear) ti[m]++;
-      else if (y === previousYear) tl[m]++;
+      if (y === CURRENT_YEAR) ti[m]++;
+      else if (y === PREVIOUS_YEAR) tl[m]++;
     });
 
     return { tahunIni: ti, tahunLalu: tl };
-  }, [userUnit, parseDate, currentYear, previousYear]);
+  }, [userUnit, parseDate, CURRENT_YEAR, PREVIOUS_YEAR]);
 
   const fetchData = useCallback(async () => {
     try {
@@ -101,7 +102,7 @@ export default function DiagramGangguanPenyulang() {
     labels: ["Jan","Feb","Mar","Apr","Mei","Jun","Jul","Agu","Sep","Okt","Nov","Des"],
     datasets: [
       {
-        label: `Tahun Ini (${currentYear})`,
+        label: `Tahun Ini (${CURRENT_YEAR})`,
         data: tahunIni,
         borderColor: "rgba(0,137,123,1)",
         backgroundColor: "rgba(0,137,123,0.1)",
@@ -115,7 +116,7 @@ export default function DiagramGangguanPenyulang() {
         pointHoverRadius: 8,
       },
       {
-        label: `Tahun Lalu (${previousYear})`,
+        label: `Tahun Lalu (${PREVIOUS_YEAR})`,
         data: tahunLalu,
         borderColor: "rgba(16,185,129,1)",
         backgroundColor: "rgba(16,185,129,0.1)",
@@ -129,7 +130,7 @@ export default function DiagramGangguanPenyulang() {
         pointHoverRadius: 8,
       },
     ],
-  }), [currentYear, previousYear, tahunIni, tahunLalu]);
+  }), [CURRENT_YEAR, PREVIOUS_YEAR, tahunIni, tahunLalu]);
 
   const chartOptions = useMemo(() => ({
     responsive: true,

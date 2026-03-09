@@ -28,6 +28,7 @@ export interface InspeksiJaringan {
   koordinat: string | null;
   foto_sebelum_url: string | null;
   foto_lokasi_url: string | null;
+  foto_sesudah_url: string | null;
   tgl_inspeksi: string | null;
   tgl_eksekusi: string | null;
   created_at: string;
@@ -73,7 +74,8 @@ export function useInspeksiJaringan(user: CurrentUser) {
       let query = supabaseBrowser
         .from("inspeksi")
         .select("*")
-        .order("tgl_inspeksi", { ascending: false });
+        .order("tgl_inspeksi", { ascending: false })
+        .order("created_at", { ascending: false });
 
       // Filter unit (UP3 lihat semua)
       if (!canSeeAllUnits(user.role) && user.unit) {
@@ -133,6 +135,78 @@ export function useInspeksiJaringan(user: CurrentUser) {
     [fetchData]
   );
 
+  // Update temuan
+  const updateTemuan = useCallback(
+    async (id: string, temuan: string) => {
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, temuan } : item))
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi")
+        .update({ temuan, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData]
+  );
+
+  // Update deskripsi
+  const updateDeskripsi = useCallback(
+    async (id: string, deskripsi: string) => {
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, deskripsi } : item))
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi")
+        .update({ deskripsi, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData]
+  );
+
+  // Upload foto sesudah ke Supabase Storage (bucket: inspections/jaringan/sesudah/) + update DB
+  const uploadFotoSesudah = useCallback(
+    async (id: string, file: File): Promise<string> => {
+      const ext = file.name.split(".").pop() ?? "jpg";
+      const storagePath = `jaringan/sesudah/${id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabaseBrowser.storage
+        .from("inspections")
+        .upload(storagePath, file, { upsert: true });
+      if (upErr) throw upErr;
+
+      const { data: urlData } = supabaseBrowser.storage
+        .from("inspections")
+        .getPublicUrl(storagePath);
+      const url = urlData.publicUrl;
+
+      const { error: dbErr } = await supabaseBrowser
+        .from("inspeksi")
+        .update({ foto_sesudah_url: url, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (dbErr) throw dbErr;
+
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, foto_sesudah_url: url } : item))
+      );
+      return url;
+    },
+    []
+  );
+
+  // Delete inspeksi (optimistic)
+  const deleteInspeksi = useCallback(
+    async (id: string) => {
+      setRawData((prev) => prev.filter((item) => item.id !== id));
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi")
+        .delete()
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData]
+  );
+
   const filteredData = useMemo(() => {
     let data = rawData;
 
@@ -169,7 +243,10 @@ export function useInspeksiJaringan(user: CurrentUser) {
       );
     }
 
-    return data;
+    // Guarantee newest first even after filtering
+    return [...data].sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
   }, [rawData, filter]);
 
   const paginatedData = useMemo(
@@ -206,6 +283,10 @@ export function useInspeksiJaringan(user: CurrentUser) {
     penyulangOptions,
     updateStatus,
     updateEksekutor,
+    updateTemuan,
+    updateDeskripsi,
+    uploadFotoSesudah,
+    deleteInspeksi,
     refresh: fetchData,
   };
 }
