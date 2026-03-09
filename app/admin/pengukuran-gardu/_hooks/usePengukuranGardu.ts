@@ -212,7 +212,7 @@ export function usePengukuranGardu(user: CurrentUser) {
           arus_t: row.total_arus_t,
           max_arus: maxArus,
           pct_nominal: (maxArus / iNominal) * 100,
-          level: maxArus >= iNominal ? "overload" : "warning",
+          level: (maxArus >= iNominal ? "overload" : "warning") as "overload" | "warning",
           phases,
         }];
       })
