@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { canSeeAllUnits } from "@/lib/roles";
+import { canSeeAllUnits, type Role } from "@/lib/roles";
 import {
   type PengukuranGardu,
   getNominalCurrent,
@@ -54,7 +54,7 @@ export const INITIAL_FILTER: FilterGardu = {
 };
 
 interface UserLike {
-  role: string;
+  role: Role;
   unit: string | null;
 }
 
