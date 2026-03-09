@@ -23,7 +23,7 @@ export default function KirimWAGarduModal({ data, onClose }: Props) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
-  const [jenisPemeliharaan, setJenisPemeliharaan] = useState(JENIS_OPTIONS[0]);
+  const [jenisPemeliharaan, setJenisPemeliharaan] = useState<string>(JENIS_OPTIONS[0]);
   const [keterangan, setKeterangan] = useState("");
 
   const woNo = `WO-${data.no_gardu}`;
