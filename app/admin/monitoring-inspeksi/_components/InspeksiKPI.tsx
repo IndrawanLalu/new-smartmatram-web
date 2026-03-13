@@ -58,16 +58,19 @@ function KpiCard({
 
 interface InspeksiKPIProps {
   user: CurrentUser;
+  filterUlp?: string;
 }
 
-export default function InspeksiKPI({ user }: InspeksiKPIProps) {
+export default function InspeksiKPI({ user, filterUlp }: InspeksiKPIProps) {
   const [kpi, setKpi] = useState<KpiData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchKpi() {
       setLoading(true);
-      const ulpFilter = !canSeeAllUnits(user.role) && user.unit ? user.unit : null;
+      const ulpFilter = !canSeeAllUnits(user.role) && user.unit
+        ? user.unit
+        : (filterUlp || null);
 
       const now = new Date();
       const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
@@ -137,7 +140,7 @@ export default function InspeksiKPI({ user }: InspeksiKPIProps) {
     }
 
     fetchKpi();
-  }, [user.role, user.unit]);
+  }, [user.role, user.unit, filterUlp]);
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">

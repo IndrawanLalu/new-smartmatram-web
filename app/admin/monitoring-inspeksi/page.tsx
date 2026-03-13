@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { canSeeAllUnits } from "@/lib/roles";
+import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import InspeksiKPI from "./_components/InspeksiKPI";
 import InspeksiJaringanTab from "./_components/InspeksiJaringanTab";
 import InspeksiPohonTab from "./_components/InspeksiPohonTab";
@@ -16,7 +16,7 @@ import { Zap, TreePine, Map, Layers, LayoutDashboard } from "lucide-react";
 const InspeksiMap = dynamic(() => import("./_components/InspeksiMap"), {
   ssr: false,
   loading: () => (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] flex items-center justify-center h-[520px]">
+    <div className="bg-[#162334] rounded-xl border border-[#1e3552] flex items-center justify-center h-[75vh] min-h-[520px]">
       <div className="flex flex-col items-center gap-3 text-[#94a3b8]">
         <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
         <p className="text-sm">Memuat peta...</p>
@@ -36,6 +36,16 @@ const TABS = [
 
 type TabId = (typeof TABS)[number]["id"];
 
+const STATUS_LIST = ["Temuan", "Perlu Tindakan", "Ditugaskan", "Dalam Proses", "Selesai"] as const;
+
+const STATUS_COLOR: Record<string, string> = {
+  Temuan: "#ef4444",
+  "Perlu Tindakan": "#f97316",
+  Ditugaskan: "#3b82f6",
+  "Dalam Proses": "#eab308",
+  Selesai: "#22c55e",
+};
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function MonitoringInspeksiPage() {
@@ -43,19 +53,32 @@ export default function MonitoringInspeksiPage() {
   const [activeTab, setActiveTab] = useState<TabId>("jaringan");
   const [showPohonOnMap, setShowPohonOnMap] = useState(true);
   const [showJaringanOnMap, setShowJaringanOnMap] = useState(true);
+  const [filterUlp, setFilterUlp] = useState("");
+  const [showStatuses, setShowStatuses] = useState<Record<string, boolean>>({
+    Temuan: true,
+    "Perlu Tindakan": true,
+    Ditugaskan: true,
+    "Dalam Proses": true,
+    Selesai: true,
+  });
 
   // Hooks shared dengan Map tab — fetch sekali, dipakai di tab peta
   const jaringanHook = useInspeksiJaringan(user);
   const pohonHook = useInspeksiPohon(user);
 
-  // Data berkoordinat untuk peta
+  // Data berkoordinat untuk peta (filter ULP jika dipilih)
   const jaringanMapData = useMemo(
-    () => jaringanHook.rawData.filter((d) => d.koordinat),
-    [jaringanHook.rawData]
+    () => jaringanHook.rawData.filter((d) => d.koordinat && (!filterUlp || d.ulp === filterUlp)),
+    [jaringanHook.rawData, filterUlp]
   );
   const pohonMapData = useMemo(
-    () => pohonHook.rawData.filter((d) => d.koordinat),
-    [pohonHook.rawData]
+    () => pohonHook.rawData.filter((d) => d.koordinat && (!filterUlp || d.ulp === filterUlp)),
+    [pohonHook.rawData, filterUlp]
+  );
+
+  const activeStatuses = useMemo(
+    () => STATUS_LIST.filter((s) => showStatuses[s]),
+    [showStatuses]
   );
 
   const unitLabel = user.unit ?? "Semua Unit";
@@ -88,7 +111,24 @@ export default function MonitoringInspeksiPage() {
       </div>
 
       {/* KPI Cards */}
-      <InspeksiKPI user={user} />
+      <InspeksiKPI user={user} filterUlp={filterUlp} />
+
+      {/* Filter ULP global (UP3 only) */}
+      {canSeeAllUnits(user.role) && (
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-[#94a3b8] shrink-0">Filter ULP:</span>
+          <select
+            value={filterUlp}
+            onChange={(e) => setFilterUlp(e.target.value)}
+            className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+          >
+            <option value="">Semua ULP</option>
+            {UNITS.map((u) => (
+              <option key={u.value} value={u.value}>{u.label}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
@@ -123,11 +163,11 @@ export default function MonitoringInspeksiPage() {
         {/* Tab Content */}
         <div className="p-5">
           {activeTab === "jaringan" && (
-            <InspeksiJaringanTab user={user} />
+            <InspeksiJaringanTab user={user} filterUlp={filterUlp} />
           )}
 
           {activeTab === "pohon" && (
-            <InspeksiPohonTab user={user} />
+            <InspeksiPohonTab user={user} filterUlp={filterUlp} />
           )}
 
           {activeTab === "dashboard" && (
@@ -139,10 +179,10 @@ export default function MonitoringInspeksiPage() {
           )}
 
           {activeTab === "peta" && (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {/* Layer toggles */}
-              <div className="flex items-center gap-4">
-                <span className="text-sm font-medium text-[#e2e8f0] flex items-center gap-1.5">
+              <div className="flex items-center gap-4 flex-wrap">
+                <span className="text-sm font-medium text-[#e2e8f0] flex items-center gap-1.5 shrink-0">
                   <Layers size={14} />
                   Tampilkan:
                 </span>
@@ -164,21 +204,28 @@ export default function MonitoringInspeksiPage() {
                   />
                   🌳 Pohon ({pohonMapData.length})
                 </label>
+              </div>
 
-                {/* Legend */}
-                <div className="ml-auto flex items-center gap-3 text-xs text-[#94a3b8]">
-                  {[
-                    { color: "bg-red-500", label: "Urgent / Temuan" },
-                    { color: "bg-blue-500", label: "Ditugaskan" },
-                    { color: "bg-yellow-400", label: "Dalam Proses" },
-                    { color: "bg-green-500", label: "Selesai" },
-                  ].map(({ color, label }) => (
-                    <span key={label} className="flex items-center gap-1">
-                      <span className={`w-2.5 h-2.5 rounded-full ${color}`} />
-                      {label}
-                    </span>
-                  ))}
-                </div>
+              {/* Status filter */}
+              <div className="flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-[#e2e8f0] shrink-0">Status:</span>
+                {STATUS_LIST.map((status) => (
+                  <label key={status} className="flex items-center gap-1.5 cursor-pointer text-sm text-[#e2e8f0]">
+                    <input
+                      type="checkbox"
+                      checked={showStatuses[status]}
+                      onChange={(e) =>
+                        setShowStatuses((prev) => ({ ...prev, [status]: e.target.checked }))
+                      }
+                      className="accent-[#00897B]"
+                    />
+                    <span
+                      className="w-2 h-2 rounded-full shrink-0"
+                      style={{ background: STATUS_COLOR[status] }}
+                    />
+                    {status}
+                  </label>
+                ))}
               </div>
 
               <InspeksiMap
@@ -186,6 +233,7 @@ export default function MonitoringInspeksiPage() {
                 pohonData={pohonMapData}
                 showJaringan={showJaringanOnMap}
                 showPohon={showPohonOnMap}
+                activeStatuses={activeStatuses}
               />
             </div>
           )}

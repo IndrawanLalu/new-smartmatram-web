@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { type CurrentUser, canSeeAllUnits, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
 import { useInspeksiJaringan, type InspeksiJaringan } from "../_hooks/useInspeksiJaringan";
 import InlineStatusSelect from "./InlineStatusSelect";
@@ -40,9 +40,10 @@ function exportCsv(data: ReturnType<typeof useInspeksiJaringan>["allData"]) {
 
 interface Props {
   user: CurrentUser;
+  filterUlp?: string;
 }
 
-export default function InspeksiJaringanTab({ user }: Props) {
+export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
   const {
     data,
     allData,
@@ -70,6 +71,14 @@ export default function InspeksiJaringanTab({ user }: Props) {
   // Derive dari rawData agar selalu up-to-date saat foto/status diupdate
   const selectedRow = selectedRowId ? (rawData.find((r) => r.id === selectedRowId) ?? null) : null;
   const showUlpFilter = canSeeAllUnits(user.role);
+
+  // Sync filterUlp dari page level ke filter internal
+  useEffect(() => {
+    if (filterUlp !== undefined) {
+      setFilter((f) => ({ ...f, ulp: filterUlp, penyulang: "" }));
+      setPage(1);
+    }
+  }, [filterUlp, setFilter, setPage]);
 
   if (error) {
     return (

@@ -453,7 +453,12 @@ export default function FilterGarduTab({ user }: Props) {
                                 FASE-OL
                               </span>
                             )}
-                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && (
+                            {row.wo_sent_at && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-900/40 text-teal-400 border border-teal-500/30 whitespace-nowrap">
+                                WO
+                              </span>
+                            )}
+                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && (
                               <span className="text-[10px] text-[#5eead4]">Normal</span>
                             )}
                           </div>

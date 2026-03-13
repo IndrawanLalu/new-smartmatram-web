@@ -25,16 +25,6 @@ function statusToColor(status: string): string {
   return map[status] ?? "#6b7280";
 }
 
-function urgencyToColor(urgency: string): string {
-  const map: Record<string, string> = {
-    "SANGAT URGENT": "#ef4444",
-    URGENT: "#f97316",
-    "PERLU TINDAKAN": "#eab308",
-    AMAN: "#22c55e",
-  };
-  return map[urgency] ?? "#6b7280";
-}
-
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface InspeksiMapProps {
@@ -42,6 +32,7 @@ interface InspeksiMapProps {
   pohonData: InspeksiPohon[];
   showJaringan: boolean;
   showPohon: boolean;
+  activeStatuses: string[];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -51,6 +42,7 @@ export default function InspeksiMap({
   pohonData,
   showJaringan,
   showPohon,
+  activeStatuses,
 }: InspeksiMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
@@ -107,20 +99,25 @@ export default function InspeksiMap({
           popupAnchor: [0, -30],
         });
 
+      const showPetugas = (status: string) =>
+        status === "Ditugaskan" || status === "Dalam Proses" || status === "Selesai";
+
       if (showJaringan) {
         jaringanData.forEach((item) => {
           const pos = parseKoordinat(item.koordinat);
           if (!pos) return;
+          if (!activeStatuses.includes(item.status)) return;
           const color = statusToColor(item.status);
           const marker = L.marker(pos, { icon: makeIcon(color, "⚡") });
           (marker as unknown as { _customMarker: boolean })._customMarker = true;
           marker
             .addTo(map)
             .bindPopup(
-              `<div style="min-width:180px;font-size:13px">
-                <p style="font-weight:600;margin:0 0 4px">${item.penyulang ?? "—"}</p>
-                <p style="color:#5D6D7E;margin:0 0 2px">📍 ${item.lokasi ?? "—"}</p>
-                <p style="color:#5D6D7E;margin:0 0 4px">🔧 ${item.temuan ?? "—"}</p>
+              `<div style="min-width:200px;font-size:13px">
+                <p style="font-weight:700;margin:0 0 6px;color:#1B2631">⚡ ${item.penyulang ?? "—"}</p>
+                ${item.temuan ? `<p style="color:#5D6D7E;margin:0 0 3px">🔧 ${item.temuan}</p>` : ""}
+                ${showPetugas(item.status) && item.team_name ? `<p style="color:#5D6D7E;margin:0 0 3px">👷 ${item.team_name}</p>` : ""}
+                ${item.keterangan ? `<p style="color:#5D6D7E;margin:0 0 6px;font-style:italic">${item.keterangan}</p>` : ""}
                 <span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:11px">${item.status}</span>
               </div>`
             );
@@ -131,23 +128,25 @@ export default function InspeksiMap({
         pohonData.forEach((item) => {
           const pos = parseKoordinat(item.koordinat);
           if (!pos) return;
-          const color = urgencyToColor(item.urgency);
+          if (!activeStatuses.includes(item.status)) return;
+          const color = statusToColor(item.status);
           const marker = L.marker(pos, { icon: makeIcon(color, "🌳") });
           (marker as unknown as { _customMarker: boolean })._customMarker = true;
           marker
             .addTo(map)
             .bindPopup(
-              `<div style="min-width:180px;font-size:13px">
-                <p style="font-weight:600;margin:0 0 4px">${item.penyulang ?? "—"}</p>
-                <p style="color:#5D6D7E;margin:0 0 2px">🌿 ${item.jenis_pohon ?? "—"} · ${item.tingkat_risiko ?? "—"}</p>
-                <p style="color:#5D6D7E;margin:0 0 4px">⏱ Sisa: ${item.remainingDays === 999 ? "—" : item.remainingDays + " hari"}</p>
-                <span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:11px">${item.urgency}</span>
+              `<div style="min-width:200px;font-size:13px">
+                <p style="font-weight:700;margin:0 0 6px;color:#1B2631">🌳 ${item.penyulang ?? "—"}</p>
+                ${item.temuan ? `<p style="color:#5D6D7E;margin:0 0 3px">🔧 ${item.temuan}</p>` : ""}
+                ${showPetugas(item.status) && item.team_name ? `<p style="color:#5D6D7E;margin:0 0 3px">👷 ${item.team_name}</p>` : ""}
+                ${item.keterangan ? `<p style="color:#5D6D7E;margin:0 0 6px;font-style:italic">${item.keterangan}</p>` : ""}
+                <span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:11px">${item.status}</span>
               </div>`
             );
         });
       }
     });
-  }, [jaringanData, pohonData, showJaringan, showPohon]);
+  }, [jaringanData, pohonData, showJaringan, showPohon, activeStatuses]);
 
   return (
     <>
@@ -156,7 +155,7 @@ export default function InspeksiMap({
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       />
-      <div ref={containerRef} className="h-130 w-full rounded-xl overflow-hidden" />
+      <div ref={containerRef} className="h-[75vh] min-h-[520px] w-full rounded-xl overflow-hidden" />
     </>
   );
 }

@@ -39,6 +39,7 @@ export interface PengukuranGardu {
   petugas_nama: string | null;
   petugas_unit: string;
   created_at: string;
+  wo_sent_at: string | null;
 }
 
 export interface HighCurrentItem {

@@ -1,13 +1,15 @@
 "use client";
 
 import React, { useState } from "react";
-import { X, MessageCircle, Loader2, Download, Share2 } from "lucide-react";
+import { X, MessageCircle, Loader2, Download, Share2, CheckCircle } from "lucide-react";
 import type { DocumentProps } from "@react-pdf/renderer";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 interface Props {
   data: PengukuranGardu;
   onClose: () => void;
+  onWoMarked?: () => void;
 }
 
 const canShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -19,15 +21,30 @@ const JENIS_OPTIONS = [
   "MANUVER BEBAN",
 ] as const;
 
-export default function KirimWAGarduModal({ data, onClose }: Props) {
+export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [jenisPemeliharaan, setJenisPemeliharaan] = useState<string>(JENIS_OPTIONS[0]);
   const [keterangan, setKeterangan] = useState("");
+  const [marking, setMarking] = useState(false);
+  const [marked, setMarked] = useState(data.wo_sent_at !== null);
 
   const woNo = `WO-${data.no_gardu}`;
   const fileName = `${woNo}.pdf`;
+
+  const handleMarkWo = async () => {
+    setMarking(true);
+    const { error } = await supabaseBrowser
+      .from("pengukuran_gardu")
+      .update({ wo_sent_at: new Date().toISOString() })
+      .eq("id", data.id);
+    if (!error) {
+      setMarked(true);
+      onWoMarked?.();
+    }
+    setMarking(false);
+  };
 
   const handleGenerate = async () => {
     setLoading(true);
@@ -94,7 +111,14 @@ export default function KirimWAGarduModal({ data, onClose }: Props) {
           {/* WO info */}
           <div className="bg-[#162334] border border-[#1e3552] rounded-lg px-3 py-2.5">
             <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Work Order</p>
-            <p className="text-sm font-medium text-[#e2e8f0]">{woNo}</p>
+            <div className="flex items-center gap-2">
+              <p className="text-sm font-medium text-[#e2e8f0]">{woNo}</p>
+              {data.wo_sent_at && (
+                <span className="text-[10px] bg-[#00897B]/20 border border-[#00897B]/40 text-[#5eead4] px-1.5 py-0.5 rounded-full font-semibold">
+                  WO {new Date(data.wo_sent_at).toLocaleDateString("id-ID")}
+                </span>
+              )}
+            </div>
             <p className="text-xs text-[#94a3b8] mt-0.5">
               {data.penyulang ?? "—"} · {data.petugas_unit}
             </p>
@@ -155,10 +179,27 @@ export default function KirimWAGarduModal({ data, onClose }: Props) {
 
           {/* Done state */}
           {done && (
-            <div className="bg-[#00897B]/10 border border-[#00897B]/30 rounded-lg px-3 py-2.5">
-              <p className="text-xs text-[#5eead4]">
-                {canShare ? "WO berhasil dibagikan." : `PDF "${fileName}" berhasil didownload.`}
-              </p>
+            <div className="space-y-2">
+              <div className="bg-[#00897B]/10 border border-[#00897B]/30 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-[#5eead4]">
+                  {canShare ? "WO berhasil dibagikan." : `PDF "${fileName}" berhasil didownload.`}
+                </p>
+              </div>
+              {!marked ? (
+                <button
+                  onClick={handleMarkWo}
+                  disabled={marking}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs border border-[#00897B] text-[#5eead4] hover:bg-[#00897B]/10 disabled:opacity-50 transition-colors"
+                >
+                  {marking ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
+                  {marking ? "Menyimpan..." : "Tandai Sudah di-WO"}
+                </button>
+              ) : (
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30">
+                  <CheckCircle size={11} className="text-[#5eead4]" />
+                  <span className="text-xs text-[#5eead4]">Pengukuran ini sudah ditandai WO</span>
+                </div>
+              )}
             </div>
           )}
 

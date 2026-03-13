@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { useInspeksiPohon, type InspeksiPohon } from "../_hooks/useInspeksiPohon";
 import InlineStatusSelect from "./InlineStatusSelect";
@@ -84,9 +84,10 @@ const RISIKO_COLOR: Record<string, string> = {
 
 interface Props {
   user: CurrentUser;
+  filterUlp?: string;
 }
 
-export default function InspeksiPohonTab({ user }: Props) {
+export default function InspeksiPohonTab({ user, filterUlp }: Props) {
   const {
     data,
     allData,
@@ -115,6 +116,14 @@ export default function InspeksiPohonTab({ user }: Props) {
   // Derive dari rawData agar selalu up-to-date saat foto/status diupdate
   const selectedRow = selectedRowId ? (rawData.find((r) => r.id === selectedRowId) ?? null) : null;
   const showUlpFilter = canSeeAllUnits(user.role);
+
+  // Sync filterUlp dari page level ke filter internal
+  useEffect(() => {
+    if (filterUlp !== undefined) {
+      setFilter((f) => ({ ...f, ulp: filterUlp, penyulang: "" }));
+      setPage(1);
+    }
+  }, [filterUlp, setFilter, setPage]);
 
   if (error) {
     return (

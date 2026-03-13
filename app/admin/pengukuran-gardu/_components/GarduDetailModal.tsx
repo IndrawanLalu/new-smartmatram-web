@@ -53,11 +53,12 @@ interface Props {
   onClose: () => void;
   onEdit: (row: PengukuranGardu) => void;
   allData?: PengukuranGardu[];
+  onRefresh?: () => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function GarduDetailModal({ row, onClose, onEdit, allData }: Props) {
+export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefresh }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showKirimWA, setShowKirimWA] = useState(false);
 
@@ -110,6 +111,11 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
               {isPhaseWarn && (
                 <span className="bg-amber-400 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   WARNING 1 FASA
+                </span>
+              )}
+              {row.wo_sent_at && (
+                <span className="bg-[#00695C] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  WO DIKIRIM
                 </span>
               )}
             </div>
@@ -364,6 +370,11 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
                                 OVERLOAD
                               </span>
                             )}
+                            {h.wo_sent_at && (
+                              <span className="text-[10px] bg-teal-700/40 text-teal-300 border border-teal-600/40 px-1.5 py-0.5 rounded-full font-semibold">
+                                WO
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-3 text-xs">
@@ -462,7 +473,11 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData }: Prop
       </div>
 
       {showKirimWA && (
-        <KirimWAGarduModal data={row} onClose={() => setShowKirimWA(false)} />
+        <KirimWAGarduModal
+          data={row}
+          onClose={() => setShowKirimWA(false)}
+          onWoMarked={onRefresh}
+        />
       )}
     </>
   );

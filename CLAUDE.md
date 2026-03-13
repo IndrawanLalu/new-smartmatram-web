@@ -138,21 +138,27 @@ import { canUpdateStatus, canAssignEksekutor, canSeeAllUnits } from "@/lib/roles
 
 ## Supabase Schema
 ```
-petugas          — nama, group_name, ulp, status, phone, email
-user_roles       — role: 'admin', 'UP3', 'petugas'
-gardu            — kode, nama, alamat, feeder, daya, merk, status, tgl_update, lat, lng, beban_kva, beban_persen, beban_total
-jalur            — nama, feeder, penghantar, jarak, status, warna
-jalur_koordinat  — jalur_id, urutan, lat, lng
-inspeksi         — penyulang, status, temuan, tgl_inspeksi (snake_case)
-inspeksi_pohon   — inspeksi pohon/rabas
-preventif        — pekerjaan preventif
+petugas                    — nama, group_name, ulp, status, phone, email
+user_roles                 — role: 'admin', 'UP3', 'petugas'
+gardu                      — kode, nama, alamat, feeder, daya, merk, status, tgl_update, lat, lng, beban_kva, beban_persen, beban_total
+jalur                      — nama, feeder, penghantar, jarak, status, warna (NO ulp column)
+jalur_koordinat            — jalur_id, urutan, lat, lng
+inspeksi                   — penyulang, status, temuan, tgl_inspeksi, koordinat, foto_sesudah_url, team_name, dll
+inspeksi_pohon             — inspeksi pohon/rabas, sama strukturnya dengan inspeksi
+preventif                  — pekerjaan preventif
 preventif_team_names
-pengukuran_gardu
+pengukuran_gardu           — snapshot beban gardu per pengukuran + wo_sent_at TIMESTAMPTZ NULL
 pengukuran_gardu_perjurusan
 notifications
-venues           — IoT monitoring
+venues                     — IoT monitoring
 ```
 Kolom Supabase: `snake_case`. Variabel TS: `camelCase`.
+
+### Catatan Skema Penting
+- `jalur` — TIDAK ada kolom `ulp`, strip sebelum insert/update
+- `pengukuran_gardu.wo_sent_at` — NULL = belum di-WO, NOT NULL = sudah di-WO (timestamp)
+- `inspeksi` dan `inspeksi_pohon` adalah dua tabel terpisah
+- SQL migration WO: `scripts/add-pengukuran-wo-sent.sql` (jalankan manual di Supabase SQL Editor)
 
 ## Supabase Storage
 Bucket: **`inspections`** (public)
@@ -243,14 +249,60 @@ Variable/func  : camelCase
 ```
 
 ## Status Halaman
-| Halaman | Route | Status |
-|---------|-------|--------|
-| Login | `/login` | ✅ Done |
-| Dashboard | `/admin/dashboard` | ✅ Done |
-| Manajemen Petugas | `/admin/petugas` | 🔲 |
-| Peta Gardu | `/admin/peta-gardu` | 🔲 |
-| Dashboard Penyulang | `/admin/dashboard-penyulang` | 🔲 |
-| Monitoring Inspeksi | `/admin/monitoring-inspeksi` | ✅ Done |
+| Halaman | Route | Status | Catatan |
+|---------|-------|--------|---------|
+| Login | `/login` | ✅ Done | |
+| Dashboard | `/admin/dashboard` | ✅ Done | |
+| Command Center | `/admin/command-center` | ✅ Done | Root `/` redirect ke sini |
+| Pengukuran Gardu | `/admin/pengukuran-gardu` | ✅ Done | WO marking, PDF WO, filter multi-kriteria |
+| Monitoring Inspeksi | `/admin/monitoring-inspeksi` | ✅ Done | Peta interaktif, filter ULP+status |
+| Manajemen Petugas | `/admin/petugas` | 🔲 | |
+| Peta Gardu | `/admin/peta-gardu` | 🔲 | |
+| Dashboard Penyulang | `/admin/dashboard-penyulang` | 🔲 | |
+
+## Fitur yang Sudah Dikerjakan (Log)
+
+### Pengukuran Gardu (`/admin/pengukuran-gardu`)
+- Tabel rekap beban gardu dengan filter multi-kriteria (status, penyulang, ULP, overload, suhu)
+- `GarduDetailModal` — detail gardu + riwayat history pengukuran
+- `KirimWAGarduModal` — generate PDF Work Order → share via Web Share API / download
+- **WO Marking** — tombol "Tandai Sudah di-WO" setelah PDF dibuat, update `wo_sent_at` di DB
+  - Badge "WO DIKIRIM" di header modal jika sudah di-WO
+  - Badge "WO" di tabel rekap dan history rows
+  - `onRefresh` callback untuk sync data setelah marking
+
+### Monitoring Inspeksi (`/admin/monitoring-inspeksi`)
+- Tab Jaringan, Pohon, Peta, Dashboard
+- KPI cards (total jaringan, pohon, belum selesai, selesai bulan ini, pohon sangat urgent)
+- **Filter ULP global** — dikelola di page level, di-pass ke semua tab via props
+- Tab Peta — Leaflet map dengan:
+  - Toggle layer Jaringan / Pohon
+  - **Filter status checklist** — Temuan/Perlu Tindakan/Ditugaskan/Dalam Proses/Selesai
+  - Marker berwarna berdasarkan status (bukan urgency)
+  - Popup kaya: penyulang, temuan, petugas (jika ditugaskan/proses/selesai), keterangan
+  - Height `h-[75vh] min-h-[520px]`
+
+### Bug Fixes & Build
+- Fix Vercel TypeScript build errors (literal type inference, Role type widening)
+- Fix root `/` menampilkan halaman test → redirect ke `/admin/command-center`
+
+## Optimasi UI/UX & Performa — Aturan Wajib
+
+### Pola yang HARUS selalu diterapkan:
+1. **State lifting** — filter/state yang dipakai banyak komponen, kelola di parent tertinggi yang perlu, jangan duplikasi
+2. **useMemo untuk filter/transform** — jangan pakai `useEffect` + `useState` untuk derive data
+3. **Konstanta di luar komponen** — array/object yang tidak berubah jangan di-inlined dalam JSX
+4. **Dynamic import + ssr:false** — wajib untuk Leaflet, PDF renderer (`@react-pdf/renderer`)
+5. **Marker cleanup pattern** — Leaflet: flag `_customMarker` + `eachLayer` remove sebelum re-add
+6. **Pagination** — tabel data besar wajib paginate (20/halaman), jangan render semua sekaligus
+7. **Filter di level data, bukan di level render** — `useMemo` dengan dependency array tepat
+8. **`useCallback` hanya jika ada bukti perlu** — jangan defensive, ukur dulu
+
+### Anti-pattern yang harus dihindari:
+- `useEffect` untuk derive state → pakai `useMemo`
+- Fetch data di banyak komponen untuk data yang sama → lift ke parent + pass props
+- Konstanta array/object di dalam komponen body → pindah ke module scope
+- `style={{}}` untuk nilai yang bisa pakai Tailwind class
 
 ## Project Lama (referensi)
 Path: `d:/smart-mataram` — React+Vite+Firebase.
@@ -260,3 +312,4 @@ Gunakan sebagai referensi logika & UI saat migrasi. Jangan copy struktur Firebas
 - Bahasa: Indonesia
 - UI: bersih, elegan, profesional (PLN Teal)
 - Kode: clean code, tidak bikin web berat
+- Performa & optimasi selalu jadi pertimbangan di setiap fitur

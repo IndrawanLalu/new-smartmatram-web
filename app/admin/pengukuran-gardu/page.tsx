@@ -627,9 +627,14 @@ export default function PengukuranGarduPage() {
                       onClick={() => setSelectedRow(row)}
                       className={`cursor-pointer hover:bg-teal-50/30 transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"} ${hasAlert ? "border-l-2 border-l-red-400" : ""}`}
                     >
-                      <td className="px-4 py-3 font-semibold text-[#e2e8f0] whitespace-nowrap">
-                        {row.no_gardu}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <span className="font-semibold text-[#e2e8f0]">{row.no_gardu}</span>
                         {hasAlert && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
+                        {row.wo_sent_at && (
+                          <span className="ml-1.5 text-[10px] bg-teal-900/40 text-teal-400 border border-teal-500/30 px-1.5 py-0.5 rounded-full font-semibold align-middle">
+                            WO
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
                       <td className="px-4 py-3 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
@@ -685,6 +690,7 @@ export default function PengukuranGarduPage() {
       onClose={() => setSelectedRow(null)}
       onEdit={setEditRow}
       allData={data}
+      onRefresh={refresh}
     />
     <EditPengukuranModal
       row={editRow}
