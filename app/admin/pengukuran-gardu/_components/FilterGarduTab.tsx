@@ -509,6 +509,7 @@ export default function FilterGarduTab({ user }: Props) {
 
       {/* ── Modals ──────────────────────────────────────────────────────────── */}
       <GarduDetailModal
+        key={selectedRow?.id}
         row={selectedRow}
         onClose={() => setSelectedRow(null)}
         onEdit={setEditRow}

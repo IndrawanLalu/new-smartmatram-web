@@ -696,6 +696,7 @@ export default function PengukuranGarduPage() {
     </div>
 
     <GarduDetailModal
+      key={selectedRow?.id}
       row={selectedRow}
       onClose={() => setSelectedRow(null)}
       onEdit={setEditRow}
