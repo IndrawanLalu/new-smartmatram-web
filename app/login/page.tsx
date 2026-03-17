@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import Image from "next/image";
 import { Mail, Lock, LogIn, Zap } from "lucide-react";
 import { login } from "./actions";
@@ -8,15 +8,22 @@ import { login } from "./actions";
 export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (submittingRef.current) return; // guard synchronous — tidak bisa di-bypass
+    submittingRef.current = true;
     setLoading(true);
     setError("");
+    const formData = new FormData(e.currentTarget);
     const result = await login(formData);
     if (result?.error) {
       setError(result.error);
       setLoading(false);
+      submittingRef.current = false;
     }
+    // Jika sukses: redirect terjadi, tidak perlu reset
   }
 
   return (
@@ -111,7 +118,7 @@ export default function LoginPage() {
               </p>
             </div>
 
-            <form action={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
               {/* Email */}
               <div>
                 <label className="block text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-1.5">
@@ -120,14 +127,15 @@ export default function LoginPage() {
                 <div className="relative">
                   <Mail
                     size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${loading ? "text-[#4a5568]" : "text-[#94a3b8]"}`}
                   />
                   <input
                     name="email"
                     type="email"
                     required
+                    disabled={loading}
                     placeholder="admin@pln.co.id"
-                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
+                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -140,21 +148,22 @@ export default function LoginPage() {
                 <div className="relative">
                   <Lock
                     size={15}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+                    className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${loading ? "text-[#4a5568]" : "text-[#94a3b8]"}`}
                   />
                   <input
                     name="password"
                     type="password"
                     required
+                    disabled={loading}
                     placeholder="••••••••"
-                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors"
+                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
 
               {/* Error */}
               {error && (
-                <div className="flex items-start gap-2 bg-red-50 border border-red-200 text-red-700 text-sm px-3 py-2.5 rounded-xl">
+                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-3 py-2.5 rounded-xl">
                   <span className="shrink-0 mt-0.5">⚠</span>
                   <span>{error}</span>
                 </div>
@@ -164,12 +173,12 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#004D40] to-[#00897B] text-white font-semibold py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 mt-2"
+                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#004D40] to-[#00897B] text-white font-semibold py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2"
               >
                 {loading ? (
                   <>
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Masuk...
+                    Sedang masuk...
                   </>
                 ) : (
                   <>

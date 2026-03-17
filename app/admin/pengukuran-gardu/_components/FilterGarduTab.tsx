@@ -23,6 +23,11 @@ const LABEL_CLS = "block text-[10px] text-[#94a3b8] uppercase tracking-wider mb-
 const KVA_OPTIONS = [25, 50, 100, 160, 200, 250, 315, 400, 630, 1000];
 const PAGE_SIZE = 20;
 
+function fmtTanggal(s: string): string {
+  const [y, m, d] = s.split("-");
+  return `${d}-${m}-${y}`;
+}
+
 const BEBAN_QUICK = [
   { label: "Overload ≥80%", min: "80", max: "" },
   { label: "Warning 60–80%", min: "60", max: "80" },
@@ -429,7 +434,7 @@ export default function FilterGarduTab({ user }: Props) {
                           {Math.round(row.total_teg_tn)}
                         </td>
                         <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap text-xs">
-                          {row.tanggal_pengukuran}
+                          {fmtTanggal(row.tanggal_pengukuran)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
@@ -458,7 +463,12 @@ export default function FilterGarduTab({ user }: Props) {
                                 WO
                               </span>
                             )}
-                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && (
+                            {row.amg_sent_at && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-900/40 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                                AMG
+                              </span>
+                            )}
+                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && !row.amg_sent_at && (
                               <span className="text-[10px] text-[#5eead4]">Normal</span>
                             )}
                           </div>

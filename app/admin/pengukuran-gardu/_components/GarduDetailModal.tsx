@@ -1,14 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { X, AlertTriangle, Thermometer, Zap, History, ChevronDown, ChevronUp, Pencil, MessageCircle } from "lucide-react";
+import { X, AlertTriangle, Thermometer, Zap, History, ChevronDown, ChevronUp, Pencil, MessageCircle, CheckCircle2 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type PengukuranGardu, HIGH_CURRENT_A, HIGH_TEMP_C, OVERLOAD_PCT, getNominalCurrent } from "../_hooks/usePengukuranGardu";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function val(v: number | null | undefined) {
   return v != null ? Math.round(v) : "—";
+}
+
+function fmtTanggal(s: string): string {
+  const [y, m, d] = s.split("-");
+  return `${d}-${m}-${y}`;
 }
 
 function ArusHighlight({ v, threshold = HIGH_CURRENT_A }: { v: number; threshold?: number }) {
@@ -61,8 +67,28 @@ interface Props {
 export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefresh }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showKirimWA, setShowKirimWA] = useState(false);
+  const [markingAmg, setMarkingAmg] = useState(false);
+  const [amgMarked, setAmgMarked] = useState(false);
 
   if (!row) return null;
+
+  // Sync amgMarked dengan data row (diinisialisasi ulang saat row berubah via key prop)
+  const isAmgDone = amgMarked || !!row.amg_sent_at;
+
+  const rowId = row.id;
+  async function handleMarkAmg() {
+    if (isAmgDone || markingAmg) return;
+    setMarkingAmg(true);
+    const { error } = await supabaseBrowser
+      .from("pengukuran_gardu")
+      .update({ amg_sent_at: new Date().toISOString() })
+      .eq("id", rowId);
+    if (!error) {
+      setAmgMarked(true);
+      onRefresh?.();
+    }
+    setMarkingAmg(false);
+  }
 
   const perjurusan = row.perjurusan ?? {};
   const jurusanKeys = Object.keys(perjurusan).sort();
@@ -118,12 +144,35 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
                   WO DIKIRIM
                 </span>
               )}
+              {isAmgDone && (
+                <span className="bg-blue-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  AMG ✅
+                </span>
+              )}
             </div>
             <p className="text-teal-100 text-sm mt-0.5">
               {row.penyulang ?? "—"} · {row.petugas_unit}
             </p>
           </div>
           <div className="flex items-center gap-2">
+            {isAmgDone ? (
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 text-xs font-medium cursor-default">
+                <CheckCircle2 size={13} /> Sudah di-AMG
+              </span>
+            ) : (
+              <button
+                onClick={handleMarkAmg}
+                disabled={markingAmg}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {markingAmg ? (
+                  <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <CheckCircle2 size={13} />
+                )}
+                Tandai AMG
+              </button>
+            )}
             <button
               onClick={() => setShowKirimWA(true)}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors"
@@ -162,7 +211,12 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
               </div>
               <div>
                 <p className="text-xs text-[#94a3b8]">Tanggal Pengukuran</p>
-                <p className="font-medium text-[#e2e8f0]">{row.tanggal_pengukuran}</p>
+                <p className="font-medium text-[#e2e8f0]">
+                  {fmtTanggal(row.tanggal_pengukuran)}
+                  {row.jam_pengukuran && (
+                    <span className="ml-1.5 text-[#94a3b8] font-normal">{row.jam_pengukuran}</span>
+                  )}
+                </p>
               </div>
               <div>
                 <p className="text-xs text-[#94a3b8]">Petugas</p>
@@ -203,13 +257,23 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
                 </div>
               </div>
               <div>
-                <p className="text-xs text-[#94a3b8] mb-1.5">Tegangan Fase-Netral (Volt)</p>
+                <p className="text-xs text-[#94a3b8] mb-1.5">Tegangan Fasa-Netral (Volt)</p>
                 <div className="grid grid-cols-3 gap-2">
                   <StatBox label="V R-N" value={val(row.total_teg_rn)} unit="V" />
                   <StatBox label="V S-N" value={val(row.total_teg_sn)} unit="V" />
                   <StatBox label="V T-N" value={val(row.total_teg_tn)} unit="V" />
                 </div>
               </div>
+              {(row.total_teg_rs != null || row.total_teg_st != null || row.total_teg_rt != null) && (
+                <div>
+                  <p className="text-xs text-[#94a3b8] mb-1.5">Tegangan Fasa-Fasa (Volt)</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <StatBox label="V R-S" value={val(row.total_teg_rs)} unit="V" />
+                    <StatBox label="V S-T" value={val(row.total_teg_st)} unit="V" />
+                    <StatBox label="V R-T" value={val(row.total_teg_rt)} unit="V" />
+                  </div>
+                </div>
+              )}
               <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${isHighTemp ? "bg-amber-50 border-amber-200" : "bg-[#0d1b2a] border-[#1e3552]"}`}>
                 <div className="flex items-center gap-2">
                   <Thermometer size={16} className={isHighTemp ? "text-amber-600" : "text-[#94a3b8]"} />
@@ -359,7 +423,12 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
                         {/* Entry header */}
                         <div className={`px-4 py-2.5 flex items-center justify-between ${isLatest ? "bg-teal-50" : "bg-[#0d1b2a]"}`}>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-[#e2e8f0]">{h.tanggal_pengukuran}</span>
+                            <span className="text-sm font-semibold text-[#e2e8f0]">
+                              {fmtTanggal(h.tanggal_pengukuran)}
+                              {h.jam_pengukuran && (
+                                <span className="ml-1.5 text-xs text-[#94a3b8] font-normal">{h.jam_pengukuran}</span>
+                              )}
+                            </span>
                             {isLatest && (
                               <span className="text-[10px] bg-[#00897B] text-white px-1.5 py-0.5 rounded-full font-semibold">
                                 terbaru
@@ -373,6 +442,11 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
                             {h.wo_sent_at && (
                               <span className="text-[10px] bg-teal-700/40 text-teal-300 border border-teal-600/40 px-1.5 py-0.5 rounded-full font-semibold">
                                 WO
+                              </span>
+                            )}
+                            {h.amg_sent_at && (
+                              <span className="text-[10px] bg-blue-700/40 text-blue-300 border border-blue-600/40 px-1.5 py-0.5 rounded-full font-semibold">
+                                AMG
                               </span>
                             )}
                           </div>
@@ -405,6 +479,9 @@ export default function GarduDetailModal({ row, onClose, onEdit, allData, onRefr
                           <div><span className="text-[#94a3b8]">Teg S-N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_sn)} V</span></div>
                           <div><span className="text-[#94a3b8]">Teg T-N: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_tn)} V</span></div>
                           <div><span className="text-[#94a3b8]">Suhu: </span><span className={`font-mono font-semibold ${hHighTemp ? "text-amber-600" : "text-[#e2e8f0]"}`}>{h.suhu_trafo} °C</span></div>
+                          {h.total_teg_rs != null && <div><span className="text-[#94a3b8]">Teg R-S: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_rs)} V</span></div>}
+                          {h.total_teg_st != null && <div><span className="text-[#94a3b8]">Teg S-T: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_st)} V</span></div>}
+                          {h.total_teg_rt != null && <div><span className="text-[#94a3b8]">Teg R-T: </span><span className="font-mono text-[#e2e8f0]">{Math.round(h.total_teg_rt)} V</span></div>}
                         </div>
 
                         {/* Per jurusan */}

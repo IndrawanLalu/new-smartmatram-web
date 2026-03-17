@@ -137,7 +137,7 @@ export default function InspeksiMap({
             .bindPopup(
               `<div style="min-width:200px;font-size:13px">
                 <p style="font-weight:700;margin:0 0 6px;color:#1B2631">🌳 ${item.penyulang ?? "—"}</p>
-                ${item.temuan ? `<p style="color:#5D6D7E;margin:0 0 3px">🔧 ${item.temuan}</p>` : ""}
+                ${item.deskripsi ? `<p style="color:#5D6D7E;margin:0 0 3px">🔧 ${item.deskripsi}</p>` : ""}
                 ${showPetugas(item.status) && item.team_name ? `<p style="color:#5D6D7E;margin:0 0 3px">👷 ${item.team_name}</p>` : ""}
                 ${item.keterangan ? `<p style="color:#5D6D7E;margin:0 0 6px;font-style:italic">${item.keterangan}</p>` : ""}
                 <span style="background:${color};color:#fff;padding:2px 8px;border-radius:999px;font-size:11px">${item.status}</span>

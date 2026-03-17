@@ -25,6 +25,7 @@ export interface PengukuranGardu {
   penyulang: string | null;
   kva_trafo: number;
   tanggal_pengukuran: string;
+  jam_pengukuran: string | null;
   total_arus_r: number;
   total_arus_s: number;
   total_arus_t: number;
@@ -32,6 +33,9 @@ export interface PengukuranGardu {
   total_teg_rn: number;
   total_teg_sn: number;
   total_teg_tn: number;
+  total_teg_rs: number | null;
+  total_teg_st: number | null;
+  total_teg_rt: number | null;
   perjurusan: Record<string, JurusanData>;
   beban_kva: number;
   persen_beban: number;
@@ -40,6 +44,7 @@ export interface PengukuranGardu {
   petugas_unit: string;
   created_at: string;
   wo_sent_at: string | null;
+  amg_sent_at: string | null;
 }
 
 export interface HighCurrentItem {

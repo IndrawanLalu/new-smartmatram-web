@@ -53,6 +53,11 @@ const INPUT_CLASS =
 
 const PAGE_SIZE = 20;
 
+function fmtTanggal(s: string): string {
+  const [y, m, d] = s.split("-");
+  return `${d}-${m}-${y}`;
+}
+
 // ── Download CSV ───────────────────────────────────────────────────────────────
 
 function downloadCSV(rows: PengukuranGardu[], filename: string) {
@@ -394,7 +399,7 @@ export default function PengukuranGarduPage() {
                     <div>
                       <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
                       <p className="text-xs text-[#94a3b8]">
-                        {d.penyulang ?? "—"} · {d.kva_trafo} KVA · {d.tanggal_pengukuran}
+                        {d.penyulang ?? "—"} · {d.kva_trafo} KVA · {fmtTanggal(d.tanggal_pengukuran)}
                       </p>
                     </div>
                     <span className="text-lg font-bold text-red-600">{Math.round(d.persen_beban)}%</span>
@@ -516,7 +521,7 @@ export default function PengukuranGarduPage() {
                     <div>
                       <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
                       <p className="text-xs text-[#94a3b8]">
-                        {d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {d.tanggal_pengukuran}
+                        {d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {fmtTanggal(d.tanggal_pengukuran)}
                       </p>
                     </div>
                     <span className="text-lg font-bold text-amber-600">{d.suhu_trafo}°C</span>
@@ -635,6 +640,11 @@ export default function PengukuranGarduPage() {
                             WO
                           </span>
                         )}
+                        {row.amg_sent_at && (
+                          <span className="ml-1 text-[10px] bg-blue-900/40 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full font-semibold align-middle">
+                            AMG
+                          </span>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
                       <td className="px-4 py-3 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
@@ -650,7 +660,7 @@ export default function PengukuranGarduPage() {
                         {row.suhu_trafo}
                         {isHighTemp && "🌡"}
                       </td>
-                      <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">{row.tanggal_pengukuran}</td>
+                      <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">{fmtTanggal(row.tanggal_pengukuran)}</td>
                       <td className="px-4 py-3 text-[#94a3b8] truncate max-w-32">{row.petugas_nama ?? "—"}</td>
                     </tr>
                   );
