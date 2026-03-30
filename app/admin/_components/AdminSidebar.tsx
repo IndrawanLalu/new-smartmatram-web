@@ -15,6 +15,7 @@ import {
   Zap,
   ChevronLeft,
   ChevronRight,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -37,6 +38,7 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   },
   { href: "/admin/pengukuran-gardu", label: "Pengukuran Gardu", icon: Gauge },
   { href: "/admin/command-center", label: "Command Center", icon: Activity },
+  { href: "/admin/morning-brief", label: "Morning Brief", icon: FileText },
 ];
 
 // ── Types ────────────────────────────────────────────────────────────────────
