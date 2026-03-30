@@ -12,6 +12,7 @@ import {
   InspeksiJaringanBriefSection,
   InspeksiPohonBriefSection,
 } from "./_components/InspeksiBriefSection";
+import TelegramScheduleSettings from "./_components/TelegramScheduleSettings";
 
 const PRINT_STYLE = `
 @media print {
@@ -42,6 +43,11 @@ export default function MorningBriefPage() {
 
       <div className="space-y-4">
         <BriefHeader yesterdayLabel={data?.yesterdayLabel ?? "—"} unitLabel={unitLabel} data={data} />
+
+        {/* Telegram schedule — admin & UP3 only */}
+        {(isUp3 || user.role === "admin") && (
+          <TelegramScheduleSettings />
+        )}
 
         {/* Filter ULP — UP3 only */}
         {isUp3 && (
