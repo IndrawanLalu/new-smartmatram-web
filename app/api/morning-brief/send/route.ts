@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import React from "react";
 import { renderToBuffer } from "@react-pdf/renderer";
+import type { DocumentProps } from "@react-pdf/renderer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchSheetData } from "@/lib/sheets";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
@@ -313,7 +314,7 @@ function formatBriefText(data: MorningBriefData): string {
 
 // ── Telegram sender ───────────────────────────────────────────────────────────
 
-async function sendTelegram(token: string, chatId: string, text: string, pdfBuffer: Buffer, fileName: string) {
+async function sendTelegram(token: string, chatId: string, text: string, pdfBuffer: Uint8Array, fileName: string) {
   const base = `https://api.telegram.org/bot${token}`;
 
   // 1. Kirim teks
@@ -326,7 +327,7 @@ async function sendTelegram(token: string, chatId: string, text: string, pdfBuff
   // 2. Kirim PDF
   const form = new FormData();
   form.append("chat_id", chatId);
-  form.append("document", new Blob([pdfBuffer], { type: "application/pdf" }), fileName);
+  form.append("document", new Blob([pdfBuffer.buffer as ArrayBuffer], { type: "application/pdf" }), fileName);
   form.append("caption", `📄 ${fileName.replace(".pdf", "").replace(/-/g, " ")}`);
   await fetch(`${base}/sendDocument`, { method: "POST", body: form });
 }
@@ -368,10 +369,10 @@ export async function GET(request: NextRequest) {
     const text = formatBriefText(data);
 
     const pdfBuffer = await renderToBuffer(
-      React.createElement(MorningBriefDocument as React.ComponentType<{ data: MorningBriefData; unitLabel: string }>, { data, unitLabel: UNIT_LABEL })
+      React.createElement(MorningBriefDocument as React.ComponentType<{ data: MorningBriefData; unitLabel: string }>, { data, unitLabel: UNIT_LABEL }) as React.ReactElement<DocumentProps>
     );
 
-    await sendTelegram(BOT_TOKEN, CHAT_ID, text, Buffer.from(pdfBuffer), `Morning-Brief-${data.yesterday}.pdf`);
+    await sendTelegram(BOT_TOKEN, CHAT_ID, text, pdfBuffer, `Morning-Brief-${data.yesterday}.pdf`);
 
     return NextResponse.json({ ok: true, date: data.yesterday });
   } catch (e) {
