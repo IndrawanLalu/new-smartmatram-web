@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { Sun, Share2, Download, Loader2 } from "lucide-react";
+import type { DocumentProps } from "@react-pdf/renderer";
 import type { MorningBriefData } from "../_hooks/useMorningBrief";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 
@@ -104,7 +105,7 @@ export default function BriefHeader({ yesterdayLabel, unitLabel, data }: BriefHe
       const element = React.createElement(
         MorningBriefDocument as React.ComponentType<{ data: MorningBriefData; unitLabel: string }>,
         { data, unitLabel }
-      ) as React.ReactElement;
+      ) as React.ReactElement<DocumentProps>;
 
       const blob = await pdf(element).toBlob();
       const fileName = `Morning-Brief-${data.yesterday}.pdf`;
