@@ -4,8 +4,10 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import type { DocumentProps } from "@react-pdf/renderer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchSheetData } from "@/lib/sheets";
-import { OVERLOAD_PCT, HIGH_TEMP_C } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 import type { PengukuranGardu } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
+
+const OVERLOAD_PCT = 80;
+const HIGH_TEMP_C = 60;
 import { calcRemainingDays, getUrgencyLevel } from "@/lib/roles";
 import type { InspeksiJaringan } from "@/app/admin/monitoring-inspeksi/_hooks/useInspeksiJaringan";
 import type { InspeksiPohon } from "@/app/admin/monitoring-inspeksi/_hooks/useInspeksiPohon";
