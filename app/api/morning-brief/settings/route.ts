@@ -27,19 +27,15 @@ export async function PUT(request: NextRequest) {
   }
 
   const body = await request.json() as Partial<MorningBriefSettings>;
-  const { send_hour_wita, enabled } = body;
+  const { enabled } = body;
 
-  if (
-    send_hour_wita === undefined || enabled === undefined ||
-    typeof send_hour_wita !== "number" ||
-    send_hour_wita < 0 || send_hour_wita > 23
-  ) {
+  if (enabled === undefined || typeof enabled !== "boolean") {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
   const { error } = await supabaseAdmin
     .from("morning_brief_settings")
-    .upsert({ id: 1, send_hour_wita, enabled, updated_at: new Date().toISOString() });
+    .upsert({ id: 1, send_hour_wita: 8, enabled, updated_at: new Date().toISOString() });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

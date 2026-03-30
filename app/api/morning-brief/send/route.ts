@@ -341,21 +341,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Cek jadwal kirim dari DB
+  // Cek apakah pengiriman diaktifkan
   const { data: scheduleSettings } = await supabaseAdmin
     .from("morning_brief_settings")
-    .select("send_hour_wita, enabled")
+    .select("enabled")
     .eq("id", 1)
     .single();
 
   if (!scheduleSettings?.enabled) {
     return NextResponse.json({ ok: true, skipped: "disabled" });
-  }
-
-  // Jam saat ini dalam WITA (UTC+8)
-  const witaHour = new Date(Date.now() + 8 * 3600 * 1000).getUTCHours();
-  if (witaHour !== scheduleSettings.send_hour_wita) {
-    return NextResponse.json({ ok: true, skipped: `hour ${witaHour} !== ${scheduleSettings.send_hour_wita}` });
   }
 
   const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;

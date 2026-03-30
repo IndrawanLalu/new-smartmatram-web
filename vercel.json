@@ -2,7 +2,7 @@
   "crons": [
     {
       "path": "/api/morning-brief/send",
-      "schedule": "0 * * * *"
+      "schedule": "0 0 * * *"
     }
   ]
 }
