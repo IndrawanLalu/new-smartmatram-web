@@ -275,7 +275,7 @@ export default function MorningBriefDocument({ data, unitLabel }: Props) {
                   <View key={r.id} style={S.tableRow}>
                     <Text style={[S.td, { flex: 1.5 }]}>{r.penyulang ?? "-"}</Text>
                     <Text style={[S.tdGray, { flex: 2 }]}>{r.lokasi ?? "-"}</Text>
-                    <Text style={[S.tdGray, { flex: 2 }]} numberOfLines={1}>{r.temuan ?? r.deskripsi ?? "-"}</Text>
+                    <Text style={[S.tdGray, { flex: 2 }]}>{r.temuan ?? r.deskripsi ?? "-"}</Text>
                     <Text style={[S.td, { flex: 1 }]}>{r.status}</Text>
                   </View>
                 ))}
