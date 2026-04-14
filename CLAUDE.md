@@ -256,6 +256,8 @@ Variable/func  : camelCase
 | Command Center | `/admin/command-center` | ✅ Done | Root `/` redirect ke sini |
 | Pengukuran Gardu | `/admin/pengukuran-gardu` | ✅ Done | WO marking, PDF WO, filter multi-kriteria |
 | Monitoring Inspeksi | `/admin/monitoring-inspeksi` | ✅ Done | Peta interaktif, filter ULP+status |
+| Score Board LM | `/admin/scoreboard` | ✅ Done | Lead Measures, Gangguan Penyulang, Mode Presentasi |
+| Morning Brief | `/admin/morning-brief` | ✅ Done | Auto-send Telegram jam 08.00 WITA |
 | Manajemen Petugas | `/admin/petugas` | 🔲 | |
 | Peta Gardu | `/admin/peta-gardu` | 🔲 | |
 | Dashboard Penyulang | `/admin/dashboard-penyulang` | 🔲 | |
@@ -281,6 +283,54 @@ Variable/func  : camelCase
   - Marker berwarna berdasarkan status (bukan urgency)
   - Popup kaya: penyulang, temuan, petugas (jika ditugaskan/proses/selesai), keterangan
   - Height `h-[75vh] min-h-[520px]`
+
+### Score Board Lead Measures (`/admin/scoreboard`)
+- CRUD Lead Measure (nama, PIC, komitmen minggu depan) + item pekerjaan per LM (unlimited)
+- Tabel target & realisasi per minggu (M1–M4) + total bulanan, inline editable (klik sel → input)
+- Status WIN/LOSE otomatis per minggu dan total (target=0 → tampil "—")
+- **Salin ke Bulan Lain** — duplikasi struktur LM + item, reset realisasi ke 0
+- **Rekap Gangguan Penyulang** — tabel di atas LM, data dari Google Sheets (import) + manual (Supabase `gangguan_detail`)
+  - Import dari Sheets: filter by bulan/tahun/ulp, checklist pilih row, bulk save ke Supabase
+  - CRUD manual: tambah, edit, hapus per baris (titik gangguan, tgl, jam padam, durasi, jml_plgn, jml×plgn_padam, penyebab, pain_point, lesson_learned, tindak_lanjut)
+- **Mode Presentasi** (slide per slide, seperti PowerPoint):
+  - Slide 0: Rekap Gangguan Penyulang (header PLN branded)
+  - Slide 1, 2, ...: masing-masing Lead Measure
+  - Navigasi: tombol `◀ ▶` + keyboard `← →` / `Space`
+  - Dot indicator — klik langsung lompat ke slide
+  - Toolbar floating di bawah tengah: counter "1/5", fullscreen, print, exit
+  - Logo Danantara (kiri) + Logo PLN (kanan) di setiap header slide
+  - Semua tombol edit/hapus disembunyikan, sel jadi read-only
+
+#### Supabase Tables
+- `lead_measures` — id, ulp, bulan, tahun, nama, pic, komitmen, urutan
+- `lead_measure_items` — id, lm_id (FK CASCADE), nama_item, satuan, target_m1..m4, realisasi_m1..m4
+- `gangguan_detail` — id, ulp, bulan, tahun, titik_gangguan, tgl_gangguan, jam_padam, durasi, jml_plgn, jml_x_plgn_padam, penyebab, pain_point, lesson_learned, tindak_lanjut, urutan
+- Script DDL: `scripts/scoreboard-schema.sql`, `scripts/gangguan-detail-schema.sql`
+
+#### Files
+```
+app/admin/scoreboard/
+  page.tsx                          — slide navigation, normal/present mode split
+  _hooks/
+    useScoreboard.ts                — CRUD LM + items, TargetField/RealisasiField types
+    useGangguanDetail.ts            — CRUD gangguan_detail, bulkAdd
+  _components/
+    LMCard.tsx                      — card LM + ItemTable, EditableCell, KomitmenEdit
+    AddLMModal.tsx                  — dual-purpose add/edit via initial? prop
+    AddItemModal.tsx                — form item baru, same-target checkbox atau per-minggu
+    DuplicateModal.tsx              — salin LM ke bulan lain
+    GangguanDetailSection.tsx       — tabel gangguan + presentMode header
+    GangguanDetailModal.tsx         — form add/edit gangguan manual
+    ImportSheetsModal.tsx           — import dari Google Sheets gangguanPenyulang
+```
+
+### Morning Brief (`/admin/morning-brief`)
+- Rangkuman kejadian kemarin: gangguan penyulang, pengukuran gardu (overload/suhu tinggi), inspeksi jaringan & pohon
+- **Auto-send Telegram** jam 08.00 WITA via Vercel cron (`0 0 * * *` — Hobby plan, 1x/hari)
+- Setting jam kirim manual tersimpan di tabel `morning_brief_settings` (id=1 singleton)
+- Cron route: `app/api/morning-brief/send/route.ts` — hardcode `OVERLOAD_PCT=80`, `HIGH_TEMP_C=60` (jangan import dari client hook)
+- Bot Telegram: `@smartmataram_bot`, group "Smart mataram"
+- Env vars Vercel: `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, `CRON_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`
 
 ### Bug Fixes & Build
 - Fix Vercel TypeScript build errors (literal type inference, Role type widening)

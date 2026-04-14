@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { downloadXlsx } from "./_utils/downloadXlsx";
 import {
   usePengukuranGardu,
   OVERLOAD_PCT,
@@ -58,56 +59,6 @@ function fmtTanggal(s: string): string {
   return `${d}-${m}-${y}`;
 }
 
-// ── Download CSV ───────────────────────────────────────────────────────────────
-
-function downloadCSV(rows: PengukuranGardu[], filename: string) {
-  // Kumpulkan semua jurusan unik dari seluruh data
-  const jurusanKeys = [...new Set(
-    rows.flatMap((r) => Object.keys(r.perjurusan ?? {}))
-  )].sort();
-
-  const jurusanHeaders = jurusanKeys.flatMap((k) => [
-    `Jur ${k} Arus R (A)`, `Jur ${k} Arus S (A)`, `Jur ${k} Arus T (A)`, `Jur ${k} Arus N (A)`,
-    `Jur ${k} Teg Ujung R (V)`, `Jur ${k} Teg Ujung S (V)`, `Jur ${k} Teg Ujung T (V)`,
-  ]);
-
-  const headers = [
-    "No. Gardu", "Penyulang", "Alamat", "KVA Trafo",
-    "% Beban", "Beban KVA",
-    "Arus R (A)", "Arus S (A)", "Arus T (A)", "Arus N (A)",
-    "Teg R-N (V)", "Teg S-N (V)", "Teg T-N (V)",
-    "Suhu (°C)", "Tanggal Ukur", "Petugas", "Unit",
-    ...jurusanHeaders,
-  ];
-
-  const csvRows = rows.map((r) => {
-    const jurusanValues = jurusanKeys.flatMap((k) => {
-      const j = r.perjurusan?.[k];
-      return [
-        Math.round(j?.arus?.R ?? 0), Math.round(j?.arus?.S ?? 0),
-        Math.round(j?.arus?.T ?? 0), Math.round(j?.arus?.N ?? 0),
-        Math.round(j?.tegangan?.R ?? 0), Math.round(j?.tegangan?.S ?? 0), Math.round(j?.tegangan?.T ?? 0),
-      ];
-    });
-    return [
-      r.no_gardu, r.penyulang ?? "", r.alamat ?? "", r.kva_trafo,
-      Math.round(r.persen_beban), Math.round(r.beban_kva),
-      Math.round(r.total_arus_r), Math.round(r.total_arus_s), Math.round(r.total_arus_t), Math.round(r.total_arus_n),
-      Math.round(r.total_teg_rn), Math.round(r.total_teg_sn), Math.round(r.total_teg_tn),
-      r.suhu_trafo, r.tanggal_pengukuran, r.petugas_nama ?? "", r.petugas_unit,
-      ...jurusanValues,
-    ].map((v) => `"${v}"`).join(",");
-  });
-
-  const csv = [headers.join(","), ...csvRows].join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -575,16 +526,16 @@ export default function PengukuranGarduPage() {
           </p>
           <button
             onClick={() =>
-              downloadCSV(
+              downloadXlsx(
                 filteredData,
-                `pengukuran_gardu_${MONTHS[filter.month - 1]}_${filter.year}.csv`
+                `Pengukuran_Gardu_${MONTHS[filter.month - 1]}_${filter.year}.xlsx`
               )
             }
             disabled={filteredData.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             <Download size={14} />
-            Download CSV
+            Download XLSX
           </button>
         </div>
 

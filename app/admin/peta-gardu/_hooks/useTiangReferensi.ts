@@ -8,6 +8,14 @@ import type { TiangRef } from "./types";
 const SPREADSHEET_ID = "18BdDjQX2YtvtdeZ1HzQozpxJNxigPHXWpnWPBgEOOK8";
 const API_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
 
+async function fetchSheetNames(): Promise<string[]> {
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}?fields=sheets.properties.title&key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  return (json.sheets ?? []).map((s: { properties: { title: string } }) => s.properties.title);
+}
+
 async function fetchSheetRows(sheetName: string): Promise<Record<string, string>[]> {
   const range = encodeURIComponent(`${sheetName}!A:Z`);
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${range}?key=${API_KEY}`;
@@ -46,13 +54,23 @@ function parseRows(rows: Record<string, string>[], feeder: string): TiangRef[] {
     .filter((t): t is TiangRef => t !== null);
 }
 
-export function useTiangReferensi(feederOptions: string[]) {
+export function useTiangReferensi(_feederOptions?: string[]) {
   const [tiangRef, setTiangRef] = useState<TiangRef[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showLayer, setShowLayer] = useState(true);
   const [snapEnabled, setSnapEnabled] = useState(true);
   const [selectedFeeders, setSelectedFeeders] = useState<string[]>([]);
+  const [sheetNames, setSheetNames] = useState<string[]>([]);
+  const [sheetNamesLoading, setSheetNamesLoading] = useState(true);
+
+  // Fetch sheet names on mount
+  useEffect(() => {
+    fetchSheetNames()
+      .then(setSheetNames)
+      .catch(() => setSheetNames([]))
+      .finally(() => setSheetNamesLoading(false));
+  }, []);
 
   // Cache: feeder name → parsed TiangRef[] (persists across renders)
   const cache = useRef<Map<string, TiangRef[]>>(new Map());
@@ -115,5 +133,7 @@ export function useTiangReferensi(feederOptions: string[]) {
     setSnapEnabled,
     selectedFeeders,
     toggleFeeder,
+    sheetNames,
+    sheetNamesLoading,
   };
 }

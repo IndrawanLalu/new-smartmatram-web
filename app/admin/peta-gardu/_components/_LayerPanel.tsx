@@ -26,6 +26,8 @@ interface Props {
   setShowTiangRef: (v: boolean) => void;
   snapEnabled: boolean;
   setSnapEnabled: (v: boolean) => void;
+  tiangSheetNames: string[];
+  tiangSheetNamesLoading: boolean;
 }
 
 export default function LayerPanel({
@@ -46,6 +48,8 @@ export default function LayerPanel({
   setShowTiangRef,
   snapEnabled,
   setSnapEnabled,
+  tiangSheetNames,
+  tiangSheetNamesLoading,
 }: Props) {
   const exportGeoJSON = (type: "gardu" | "jalur" | "tiang") => {
     let features: object[] = [];
@@ -169,12 +173,16 @@ export default function LayerPanel({
           )}
         </div>
 
-        {/* Checkbox per feeder */}
-        {feederOptions.length === 0 ? (
-          <p className="text-[10px] text-gray-600 italic">Tidak ada data feeder</p>
+        {/* Checkbox per penyulang — dari sheet names spreadsheet tiang ref */}
+        {tiangSheetNamesLoading ? (
+          <p className="text-[10px] text-gray-600 italic flex items-center gap-1">
+            <Loader2 size={9} className="animate-spin" /> Memuat penyulang...
+          </p>
+        ) : tiangSheetNames.length === 0 ? (
+          <p className="text-[10px] text-gray-600 italic">Tidak ada data penyulang</p>
         ) : (
-          <div className="space-y-1 max-h-32 overflow-y-auto pr-1">
-            {feederOptions.map((f) => {
+          <div className="space-y-1 max-h-40 overflow-y-auto pr-1">
+            {tiangSheetNames.map((f) => {
               const checked = tiangRefSelectedFeeders.includes(f);
               return (
                 <label key={f} className="flex items-center gap-2 cursor-pointer group">

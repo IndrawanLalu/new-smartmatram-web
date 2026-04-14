@@ -133,6 +133,8 @@ export default function PetaGarduPage() {
           setShowTiangRef={tiangRef.setShowLayer}
           snapEnabled={tiangRef.snapEnabled}
           setSnapEnabled={tiangRef.setSnapEnabled}
+          tiangSheetNames={tiangRef.sheetNames}
+          tiangSheetNamesLoading={tiangRef.sheetNamesLoading}
         />
 
         {/* Map */}
