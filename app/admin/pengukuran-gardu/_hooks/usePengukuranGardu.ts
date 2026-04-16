@@ -128,17 +128,19 @@ export function usePengukuranGardu(user: CurrentUser) {
     setLoading(true);
     setError(null);
     try {
-      const startDate = `${filter.year}-${String(filter.month).padStart(2, "0")}-01`;
-      const nextMonth = filter.month === 12 ? 1 : filter.month + 1;
-      const nextYear = filter.month === 12 ? filter.year + 1 : filter.year;
-      const endDate = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-
       let query = supabaseBrowser
         .from("pengukuran_gardu")
         .select("*")
-        .gte("tanggal_pengukuran", startDate)
-        .lt("tanggal_pengukuran", endDate)
         .order("tanggal_pengukuran", { ascending: false });
+
+      // month=0 → Semua Bulan, tidak filter tanggal
+      if (filter.month !== 0) {
+        const startDate = `${filter.year}-${String(filter.month).padStart(2, "0")}-01`;
+        const nextMonth = filter.month === 12 ? 1 : filter.month + 1;
+        const nextYear  = filter.month === 12 ? filter.year + 1 : filter.year;
+        const endDate   = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+        query = query.gte("tanggal_pengukuran", startDate).lt("tanggal_pengukuran", endDate);
+      }
 
       if (!canSeeAllUnits(user.role) && user.unit) {
         query = query.eq("petugas_unit", user.unit);

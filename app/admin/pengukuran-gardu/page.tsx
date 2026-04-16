@@ -30,6 +30,7 @@ import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
+import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 
 // Chart via dynamic import (recharts tidak SSR-friendly)
 const BebanBarChart = dynamic(() => import("./_components/BebanBarChart"), {
@@ -152,11 +153,18 @@ function ArusCell({ r, s, t, kva }: { r: number; s: number; t: number; kva?: num
 
 export default function PengukuranGarduPage() {
   const user = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<"rekap" | "filter">("rekap");
+  const [activeTab, setActiveTab] = useState<"rekap" | "filter" | "penyeimbangan">("rekap");
   const [page, setPage] = useState(1);
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<PengukuranGardu | null>(null);
   const [editRow, setEditRow] = useState<PengukuranGardu | null>(null);
+
+  // Debounce search — tunggu 350ms setelah user berhenti mengetik
+  useEffect(() => {
+    const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 1000);
+    return () => clearTimeout(t);
+  }, [searchInput]);
 
   // Centralized ESC: tutup edit dulu, baru detail
   useEffect(() => {
@@ -197,7 +205,7 @@ export default function PengukuranGarduPage() {
 
   const showUlpFilter = canSeeAllUnits(user.role);
 
-  // Client-side search dalam rekap tabel (dari latestData — satu gardu satu baris)
+  // Client-side search — jalan di latestData (sudah termasuk semua bulan kalau filter.month=0)
   const filteredData = useMemo(() => {
     if (!search) return latestData;
     const q = search.toLowerCase();
@@ -249,7 +257,7 @@ export default function PengukuranGarduPage() {
 
       {/* Tab Switcher */}
       <div className="flex gap-1 bg-[#0d1b2a] border border-[#1e3552] rounded-lg p-1 w-fit">
-        {(["rekap", "filter"] as const).map((tab) => (
+        {(["rekap", "filter", "penyeimbangan"] as const).map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -259,12 +267,19 @@ export default function PengukuranGarduPage() {
                 : "text-[#94a3b8] hover:text-[#e2e8f0]"
             }`}
           >
-            {tab === "rekap" ? "Rekap Bulanan" : "Filter Pengukuran"}
+            {tab === "rekap" ? "Rekap Bulanan" : tab === "filter" ? "Filter Pengukuran" : "Penyeimbangan Beban"}
           </button>
         ))}
       </div>
 
       {activeTab === "filter" && <FilterGarduTab user={user} />}
+
+      {activeTab === "penyeimbangan" && (
+        <PenyeimbanganTab
+          latestData={latestData}
+          ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
+        />
+      )}
 
       {activeTab === "rekap" && <>
       {/* Filter Bar */}
@@ -275,6 +290,7 @@ export default function PengukuranGarduPage() {
           onChange={(e) => { setFilter((f) => ({ ...f, month: Number(e.target.value) })); setPage(1); }}
           className={INPUT_CLASS}
         >
+          <option value={0}>Semua Bulan</option>
           {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
         </select>
         <select
@@ -323,7 +339,7 @@ export default function PengukuranGarduPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-        <KPICard label="Total Pengukuran" value={loading ? "—" : data.length} sub={`${MONTHS[filter.month - 1]} ${filter.year}`} icon={Gauge} />
+        <KPICard label="Total Pengukuran" value={loading ? "—" : data.length} sub={filter.month === 0 ? "Semua Bulan" : `${MONTHS[filter.month - 1]} ${filter.year}`} icon={Gauge} />
         <KPICard label="Trafo Overload" value={loading ? "—" : overloadData.length} sub={`beban ≥ ${OVERLOAD_PCT}%`} icon={TrendingUp} variant={overloadData.length > 0 ? "danger" : "default"} />
         <KPICard label="Trafo Underload" value={loading ? "—" : underloadData.length} sub={`beban < ${UNDERLOAD_PCT}%`} icon={TrendingDown} variant={underloadData.length > 0 ? "warning" : "default"} />
         <KPICard label={`Jurusan >${HIGH_CURRENT_A}A`} value={loading ? "—" : highCurrentItems.length} sub="jurusan arus tinggi" icon={Zap} variant={highCurrentItems.length > 0 ? "danger" : "default"} />
@@ -516,8 +532,8 @@ export default function PengukuranGarduPage() {
             <input
               type="text"
               placeholder="Cari no. gardu, penyulang, alamat..."
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               className="border border-[#1e3552] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
@@ -528,7 +544,7 @@ export default function PengukuranGarduPage() {
             onClick={() =>
               downloadXlsx(
                 filteredData,
-                `Pengukuran_Gardu_${MONTHS[filter.month - 1]}_${filter.year}.xlsx`
+                `Pengukuran_Gardu_${filter.month === 0 ? "Semua" : `${MONTHS[filter.month - 1]}_${filter.year}`}.xlsx`
               )
             }
             disabled={filteredData.length === 0}

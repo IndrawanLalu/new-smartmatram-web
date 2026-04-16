@@ -9,6 +9,7 @@ import LMCard from "./_components/LMCard";
 import AddLMModal from "./_components/AddLMModal";
 import DuplicateModal from "./_components/DuplicateModal";
 import GangguanDetailSection from "./_components/GangguanDetailSection";
+import OverloadMonitorSection from "./_components/OverloadMonitorSection";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -46,10 +47,10 @@ export default function ScoreboardPage() {
   const [slideIndex, setSlideIndex] = useState(0);
 
   const { data, loading, error, refresh, addLM, deleteLM, addItem, deleteItem,
-    updateRealisasi, updateKomitmen, updateLM, updateItemMeta, updateTarget, duplicateToMonth } =
+    updateRealisasi, updateKomitmen, updateLM, updateItemMeta, updateItemKomitmen, updateTarget, duplicateToMonth } =
     useScoreboard(bulan, tahun, ulp);
 
-  const totalSlides = 1 + data.length; // slide 0 = gangguan, slide 1..N = LM
+  const totalSlides = 1 + data.length + 1; // slide 0 = gangguan, 1..N = LM, last = overload monitor
 
   // Track fullscreen state
   useEffect(() => {
@@ -202,7 +203,7 @@ export default function ScoreboardPage() {
           )}
 
           {/* Slides 1..N: Lead Measures */}
-          {slideIndex > 0 && data[slideIndex - 1] && (
+          {slideIndex > 0 && slideIndex <= data.length && data[slideIndex - 1] && (
             <div className="space-y-4">
               <SlideHeader />
               <LMCard
@@ -214,9 +215,24 @@ export default function ScoreboardPage() {
                 onAddItem={addItem}
                 onDeleteItem={deleteItem}
                 onUpdateItemMeta={updateItemMeta}
+                onUpdateItemKomitmen={updateItemKomitmen}
                 onUpdateRealisasi={updateRealisasi}
                 onUpdateTarget={updateTarget}
                 onUpdateKomitmen={updateKomitmen}
+              />
+            </div>
+          )}
+
+          {/* Slide terakhir: Monitoring Overload & Overbalast */}
+          {slideIndex === totalSlides - 1 && (
+            <div className="space-y-4">
+              <SlideHeader />
+              <OverloadMonitorSection
+                bulan={bulan}
+                tahun={tahun}
+                ulp={ulp}
+                bulanLabel={bulanLabel}
+                presentMode
               />
             </div>
           )}
@@ -350,6 +366,7 @@ export default function ScoreboardPage() {
                   onAddItem={addItem}
                   onDeleteItem={deleteItem}
                   onUpdateItemMeta={updateItemMeta}
+                  onUpdateItemKomitmen={updateItemKomitmen}
                   onUpdateRealisasi={updateRealisasi}
                   onUpdateTarget={updateTarget}
                   onUpdateKomitmen={updateKomitmen}
@@ -357,6 +374,14 @@ export default function ScoreboardPage() {
               ))}
             </div>
           )}
+
+          {/* Monitoring Overload & Overbalast */}
+          <OverloadMonitorSection
+            bulan={bulan}
+            tahun={tahun}
+            ulp={ulp}
+            bulanLabel={bulanLabel}
+          />
 
           {showAddLM && (
             <AddLMModal onClose={() => setShowAddLM(false)} onSave={addLM} />

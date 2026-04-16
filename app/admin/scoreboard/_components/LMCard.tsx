@@ -75,6 +75,7 @@ interface LMCardProps {
   onAddItem: (lmId: string, nama: string, satuan: string, targets: { m1: number; m2: number; m3: number; m4: number }) => Promise<unknown>;
   onDeleteItem: (id: string) => void;
   onUpdateItemMeta: (id: string, nama_item: string, satuan: string) => Promise<unknown>;
+  onUpdateItemKomitmen: (id: string, val: string) => void;
   onUpdateRealisasi: (id: string, field: RealisasiField, value: number) => void;
   onUpdateTarget: (id: string, field: TargetField, value: number) => void;
   onUpdateKomitmen: (id: string, val: string) => void;
@@ -84,7 +85,7 @@ interface LMCardProps {
 
 export default function LMCard({
   lm, index, presentMode, onDeleteLM, onUpdateLM, onAddItem, onDeleteItem, onUpdateItemMeta,
-  onUpdateRealisasi, onUpdateTarget, onUpdateKomitmen,
+  onUpdateItemKomitmen, onUpdateRealisasi, onUpdateTarget, onUpdateKomitmen,
 }: LMCardProps) {
   const [showAddItem, setShowAddItem] = useState(false);
   const [showEditLM, setShowEditLM] = useState(false);
@@ -123,52 +124,41 @@ export default function LMCard({
           )}
         </div>
 
-        {/* Body: items table + komitmen */}
-        <div className="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-[#E2E8F0]">
-
-          {/* Items area */}
-          <div className="flex-1 p-4">
-            {lm.items.length === 0 ? (
-              <p className="text-sm text-gray-400 italic py-2">Belum ada item pekerjaan.</p>
-            ) : (
-              <div className="space-y-3">
-                {lm.items.map((item, idx) => (
-                  <ItemTable
-                    key={item.id}
-                    item={item}
-                    index={idx}
-                    presentMode={presentMode}
-                    onDelete={() => onDeleteItem(item.id)}
-                    onUpdateMeta={onUpdateItemMeta}
-                    onUpdateRealisasi={onUpdateRealisasi}
-                    onUpdateTarget={onUpdateTarget}
-                  />
-                ))}
-              </div>
-            )}
-
-            {!presentMode && (
-              <button
-                onClick={() => setShowAddItem(true)}
-                className="mt-4 flex items-center gap-1.5 text-sm text-[#00897B] hover:text-[#004D40] font-medium transition-colors"
-              >
-                <Plus size={15} /> Tambah Item Pekerjaan
-              </button>
-            )}
-          </div>
-
-          {/* Komitmen + PIC */}
-          <div className="md:w-60 p-4 bg-amber-50 flex flex-col">
-            <p className="text-xs font-bold text-amber-800 uppercase tracking-wider mb-2">
-              Komitmen Minggu Depan
+        {/* Body: items table full-width */}
+        <div className="p-4">
+          {lm.pic && (
+            <p className="text-xs text-[#5D6D7E] mb-3">
+              PIC: <span className="font-semibold text-[#1B2631]">{lm.pic}</span>
             </p>
-            <KomitmenEdit value={lm.komitmen} onSave={(v) => onUpdateKomitmen(lm.id, v)} />
-            {lm.pic && (
-              <p className="mt-auto pt-3 text-xs text-amber-700 border-t border-amber-200">
-                PIC: <span className="font-semibold">{lm.pic}</span>
-              </p>
-            )}
-          </div>
+          )}
+          {lm.items.length === 0 ? (
+            <p className="text-sm text-gray-400 italic py-2">Belum ada item pekerjaan.</p>
+          ) : (
+            <div className="space-y-3">
+              {lm.items.map((item, idx) => (
+                <ItemTable
+                  key={item.id}
+                  item={item}
+                  index={idx}
+                  presentMode={presentMode}
+                  onDelete={() => onDeleteItem(item.id)}
+                  onUpdateMeta={onUpdateItemMeta}
+                  onUpdateKomitmen={onUpdateItemKomitmen}
+                  onUpdateRealisasi={onUpdateRealisasi}
+                  onUpdateTarget={onUpdateTarget}
+                />
+              ))}
+            </div>
+          )}
+
+          {!presentMode && (
+            <button
+              onClick={() => setShowAddItem(true)}
+              className="mt-4 flex items-center gap-1.5 text-sm text-[#00897B] hover:text-[#004D40] font-medium transition-colors"
+            >
+              <Plus size={15} /> Tambah Item Pekerjaan
+            </button>
+          )}
         </div>
       </div>
 
@@ -194,13 +184,14 @@ export default function LMCard({
 // ── ItemTable ─────────────────────────────────────────────────────────────────
 
 function ItemTable({
-  item, index, presentMode, onDelete, onUpdateMeta, onUpdateRealisasi, onUpdateTarget,
+  item, index, presentMode, onDelete, onUpdateMeta, onUpdateKomitmen, onUpdateRealisasi, onUpdateTarget,
 }: {
   item: LMItem;
   index: number;
   presentMode?: boolean;
   onDelete: () => void;
   onUpdateMeta: (id: string, nama: string, satuan: string) => Promise<unknown>;
+  onUpdateKomitmen: (id: string, val: string) => void;
   onUpdateRealisasi: (id: string, field: RealisasiField, value: number) => void;
   onUpdateTarget: (id: string, field: TargetField, value: number) => void;
 }) {
@@ -351,6 +342,23 @@ function ItemTable({
           </tr>
         </tbody>
       </table>
+
+      {/* Komitmen per item */}
+      <div className="border-t border-[#E2E8F0] px-3 py-2 bg-amber-50">
+        <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
+          Komitmen Minggu Depan
+        </p>
+        {presentMode ? (
+          <p className="text-xs text-amber-900 leading-relaxed min-h-5">
+            {item.komitmen || <span className="text-amber-300 italic">—</span>}
+          </p>
+        ) : (
+          <KomitmenEdit
+            value={item.komitmen ?? ""}
+            onSave={(v) => onUpdateKomitmen(item.id, v)}
+          />
+        )}
+      </div>
     </div>
   );
 }
