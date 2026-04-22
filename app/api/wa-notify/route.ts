@@ -1,89 +1,124 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSupabaseServer } from "@/lib/supabase-server";
 
 const WA_BOT_URL = process.env.WA_BOT_URL ?? "http://127.0.0.1:3001";
-const WA_GROUP_ID = process.env.WA_GROUP_ID ?? "";
 
-// ── Format pesan WA ───────────────────────────────────────────────────────────
+// ── Group ID mapping per ULP ──────────────────────────────────────────────────
+const GROUP_PERABASAN: Record<string, string> = {
+  AMPENAN:    process.env.WA_GROUP_PERABASAN_AMPENAN    ?? "",
+  CAKRANEGARA: process.env.WA_GROUP_PERABASAN_CAKRANEGARA ?? "",
+  GERUNG:     process.env.WA_GROUP_PERABASAN_GERUNG     ?? "",
+  TANJUNG:    process.env.WA_GROUP_PERABASAN_TANJUNG    ?? "",
+};
 
-function buildMessage(data: {
-  temuan: string;
-  ulp: string;
-  penyulang: string;
-  lokasi: string;
-  urgency: string;
-  petugasNama: string;
-  kategori?: string;
-  keterangan?: string;
-}) {
+const GROUP_JARINGAN: Record<string, string> = {
+  AMPENAN:    process.env.WA_GROUP_JARINGAN_AMPENAN    ?? "",
+  CAKRANEGARA: process.env.WA_GROUP_JARINGAN_CAKRANEGARA ?? "",
+  GERUNG:     process.env.WA_GROUP_JARINGAN_GERUNG     ?? "",
+  TANJUNG:    process.env.WA_GROUP_JARINGAN_TANJUNG    ?? "",
+};
+
+// ── Format pesan ──────────────────────────────────────────────────────────────
+
+function buildPohonMessage(data: Record<string, string>) {
   const tgl = new Date().toLocaleString("id-ID", {
     timeZone: "Asia/Makassar",
     dateStyle: "full",
     timeStyle: "short",
   });
-
-  const urgencyIcon = data.urgency === "Sangat Urgent" ? "🚨🚨" : "⚠️";
-
   return [
-    `${urgencyIcon} *TEMUAN ${data.urgency.toUpperCase()} — INSPEKSI POHON*`,
+    `🚨🌳 *TEMUAN POHON — RISIKO SANGAT TINGGI*`,
     ``,
     `📅 *Waktu:* ${tgl} WITA`,
     `🏢 *ULP:* ${data.ulp}`,
-    `⚡ *Penyulang:* ${data.penyulang}`,
-    `📍 *Lokasi:* ${data.lokasi}`,
-    data.kategori ? `🏷️ *Kategori:* ${data.kategori}` : null,
-    `🌳 *Temuan:* ${data.temuan}`,
+    `⚡ *Penyulang:* ${data.penyulang ?? "-"}`,
+    `📍 *Lokasi:* ${data.lokasi ?? "-"}`,
+    `🌳 *Temuan:* ${data.temuan ?? "-"}`,
     data.keterangan ? `📝 *Keterangan:* ${data.keterangan}` : null,
-    `👤 *Inspektor:* ${data.petugasNama}`,
+    `👤 *Inspektor:* ${data.nama_inspektor ?? "-"}`,
     ``,
-    `⚡ *Perlu tindakan segera oleh tim PERABASAN!*`,
+    `⚠️ *Perlu tindakan segera oleh tim PERABASAN!*`,
     ``,
     `_SMART MATARAM — PLN UP3 Mataram_`,
-  ]
-    .filter(Boolean)
-    .join("\n");
+  ].filter(Boolean).join("\n");
 }
 
-// ── POST /api/wa-notify ───────────────────────────────────────────────────────
+function buildJaringanMessage(data: Record<string, string>) {
+  const tgl = new Date().toLocaleString("id-ID", {
+    timeZone: "Asia/Makassar",
+    dateStyle: "full",
+    timeStyle: "short",
+  });
+  return [
+    `🚨⚡ *TEMUAN JARINGAN — URGENT*`,
+    ``,
+    `📅 *Waktu:* ${tgl} WITA`,
+    `🏢 *ULP:* ${data.ulp}`,
+    `⚡ *Penyulang:* ${data.penyulang ?? "-"}`,
+    `📍 *Lokasi:* ${data.lokasi ?? "-"}`,
+    `🔧 *Temuan:* ${data.temuan ?? "-"}`,
+    data.keterangan ? `📝 *Keterangan:* ${data.keterangan}` : null,
+    `👤 *Inspektor:* ${data.nama_inspektor ?? "-"}`,
+    ``,
+    `⚠️ *Perlu tindakan segera oleh tim Jaringan!*`,
+    ``,
+    `_SMART MATARAM — PLN UP3 Mataram_`,
+  ].filter(Boolean).join("\n");
+}
+
+// ── Helper kirim ke WA Bot ────────────────────────────────────────────────────
+
+async function sendWA(groupId: string, message: string, imageUrl?: string) {
+  if (!groupId) return;
+  await fetch(`${WA_BOT_URL}/send`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ groupId, message, imageUrl: imageUrl ?? null }),
+  });
+}
+
+// ── POST /api/wa-notify — dipanggil oleh Supabase Webhook ────────────────────
 
 export async function POST(req: NextRequest) {
-  // Pastikan user sudah login
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  if (!WA_GROUP_ID) {
-    return NextResponse.json({ error: "WA_GROUP_ID belum dikonfigurasi di .env" }, { status: 500 });
+  // Verifikasi secret dari Supabase webhook
+  const secret = req.headers.get("x-webhook-secret");
+  if (secret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = await req.json() as {
-    temuan: string;
-    ulp: string;
-    penyulang: string;
-    lokasi: string;
-    urgency: string;
-    petugasNama: string;
-    imageUrl?: string;
-    kategori?: string;
-    keterangan?: string;
+  const body = await req.json();
+
+  // Supabase webhook payload: { type, table, record, old_record }
+  const { type, table, record } = body as {
+    type: string;
+    table: string;
+    record: Record<string, string>;
   };
 
-  const message = buildMessage(body);
+  // Hanya proses INSERT
+  if (type !== "INSERT") return NextResponse.json({ skipped: true });
+
+  const ulp = (record.ulp ?? "").toUpperCase();
+  const imageUrl = record.foto_sebelum_url || record.foto_lokasi_url || undefined;
 
   try {
-    const res = await fetch(`${WA_BOT_URL}/send`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        groupId: WA_GROUP_ID,
-        message,
-        imageUrl: body.imageUrl ?? null,
-      }),
-    });
+    if (table === "inspeksi_pohon" && record.tingkat_risiko === "Sangat Tinggi") {
+      const groupId = GROUP_PERABASAN[ulp];
+      if (!groupId) {
+        console.warn(`[wa-notify] Group PERABASAN untuk ULP ${ulp} belum dikonfigurasi`);
+        return NextResponse.json({ skipped: true, reason: "group not configured" });
+      }
+      const message = buildPohonMessage(record);
+      await sendWA(groupId, message, imageUrl);
+    }
 
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.error ?? "WA bot error");
+    else if (table === "inspeksi" && record.category === "Urgent") {
+      const groupId = GROUP_JARINGAN[ulp];
+      if (!groupId) {
+        console.warn(`[wa-notify] Group Jaringan untuk ULP ${ulp} belum dikonfigurasi`);
+        return NextResponse.json({ skipped: true, reason: "group not configured" });
+      }
+      const message = buildJaringanMessage(record);
+      await sendWA(groupId, message, imageUrl);
     }
 
     return NextResponse.json({ success: true });
