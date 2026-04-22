@@ -24,7 +24,7 @@ import { logout } from "@/app/login/actions";
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
-  { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/admin/dashboard", label: "Dashboards", icon: LayoutDashboard },
   { href: "/admin/peta-gardu", label: "Peta Aset", icon: Map },
   {
     href: "/admin/dashboard-penyulang",
@@ -80,7 +80,9 @@ export default function AdminSidebar({
               <p className="text-white font-bold text-sm leading-tight">
                 SMART Mataram
               </p>
-              <p className="text-[#5eead4] text-xs opacity-70">PLN ULP Ampenan</p>
+              <p className="text-[#5eead4] text-xs opacity-70">
+                PLN ULP Ampenan
+              </p>
             </div>
           )}
         </div>
@@ -109,7 +111,10 @@ export default function AdminSidebar({
                   : "text-gray-400 hover:text-gray-200 hover:bg-white/5"
               } ${collapsed ? "justify-center" : ""}`}
             >
-              <Icon size={16} className={`shrink-0 ${isActive ? "text-[#00897B]" : ""}`} />
+              <Icon
+                size={16}
+                className={`shrink-0 ${isActive ? "text-[#00897B]" : ""}`}
+              />
               {!collapsed && <span className="truncate">{label}</span>}
             </Link>
           );
@@ -120,7 +125,9 @@ export default function AdminSidebar({
       <div className="p-2 border-t border-[#1e3552]">
         {!collapsed && (
           <div className="px-3 pb-2 space-y-0.5">
-            <p className="text-gray-200 text-xs font-medium truncate">{userName}</p>
+            <p className="text-gray-200 text-xs font-medium truncate">
+              {userName}
+            </p>
             <p className="text-gray-500 text-xs truncate">{userEmail}</p>
             <div className="flex items-center gap-1.5 pt-1">
               <span className="bg-[#00897B]/20 text-[#5eead4] text-xs font-semibold px-1.5 py-0.5 rounded border border-[#00897B]/30">
