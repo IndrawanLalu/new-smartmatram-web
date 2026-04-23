@@ -10,6 +10,8 @@ export default async function AdminLayout({
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
+  if (!user.is_active) redirect("/login?error=inactive");
+  if (user.platform === "mobile") redirect("/login?error=no_web_access");
 
   return (
     <UserProvider user={user}>

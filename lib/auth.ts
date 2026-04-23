@@ -32,7 +32,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const admin = createAdminClient();
   const { data: roleData } = await admin
     .from("user_roles")
-    .select("role, unit, name")
+    .select("role, unit, name, platform, is_active")
     .eq("user_id", user.id)
     .single();
 
@@ -42,5 +42,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     name: roleData?.name || user.email?.split("@")[0] || "User",
     role: (roleData?.role as Role) ?? "inspektor",
     unit: (roleData?.unit as Unit) ?? null,
+    platform: roleData?.platform ?? "all",
+    is_active: roleData?.is_active ?? true,
   };
 }

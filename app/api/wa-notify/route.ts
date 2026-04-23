@@ -94,8 +94,8 @@ export async function POST(req: NextRequest) {
     record: Record<string, string>;
   };
 
-  // Hanya proses INSERT
-  if (type !== "INSERT") return NextResponse.json({ skipped: true });
+  // Hanya proses INSERT dan UPDATE
+  if (type !== "INSERT" && type !== "UPDATE") return NextResponse.json({ skipped: true });
 
   const ulp = (record.ulp ?? "").toUpperCase();
   const imageUrl = record.foto_sebelum_url || record.foto_lokasi_url || undefined;

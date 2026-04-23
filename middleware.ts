@@ -15,7 +15,7 @@ export async function middleware(request: NextRequest) {
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
-          );
+        );
         },
       },
     },
@@ -25,14 +25,12 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Kalau belum login dan akses /admin → redirect ke /login
   if (!user && request.nextUrl.pathname.startsWith("/admin")) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Kalau sudah login dan akses /login → redirect ke /admin
-  if (user && request.nextUrl.pathname === "/login") {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+  if (user && request.nextUrl.pathname === "/login" && !request.nextUrl.searchParams.get("error")) {
+    return NextResponse.redirect(new URL("/admin/command-center", request.url));
   }
 
   return supabaseResponse;

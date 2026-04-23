@@ -1,14 +1,29 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Mail, Lock, LogIn, Zap } from "lucide-react";
 import { login } from "./actions";
+import { supabaseBrowser } from "@/lib/supabase-browser";
+
+const ACCESS_ERRORS: Record<string, string> = {
+  inactive: "Akun Anda telah dinonaktifkan. Hubungi admin.",
+  no_web_access: "Akun Anda hanya untuk aplikasi mobile, tidak bisa login ke web.",
+};
 
 export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const errKey = params.get("error");
+    if (errKey && ACCESS_ERRORS[errKey]) {
+      setError(ACCESS_ERRORS[errKey]);
+      supabaseBrowser.auth.signOut();
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import ChangePasswordModal from "./ChangePasswordModal";
 import {
   LayoutDashboard,
   Map,
@@ -12,11 +13,13 @@ import {
   Gauge,
   Activity,
   LogOut,
+  Lock,
   Zap,
   ChevronLeft,
   ChevronRight,
   FileText,
   Target,
+  UserCog,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -41,6 +44,7 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/command-center", label: "Command Center", icon: Activity },
   { href: "/admin/morning-brief", label: "Morning Brief", icon: FileText },
   { href: "/admin/scoreboard", label: "Score Board LM", icon: Target },
+  { href: "/admin/user-management", label: "Manajemen User", icon: UserCog },
 ];
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -62,6 +66,7 @@ export default function AdminSidebar({
 }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const [changePwOpen, setChangePwOpen] = useState(false);
 
   return (
     <aside
@@ -139,6 +144,16 @@ export default function AdminSidebar({
             </div>
           </div>
         )}
+        <button
+          onClick={() => setChangePwOpen(true)}
+          title={collapsed ? "Ganti Password" : undefined}
+          className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-gray-500 hover:text-gray-200 hover:bg-white/5 transition-colors ${
+            collapsed ? "justify-center" : ""
+          }`}
+        >
+          <Lock size={16} className="shrink-0" />
+          {!collapsed && <span>Ganti Password</span>}
+        </button>
         <form action={logout}>
           <button
             type="submit"
@@ -152,6 +167,8 @@ export default function AdminSidebar({
           </button>
         </form>
       </div>
+
+      {changePwOpen && <ChangePasswordModal onClose={() => setChangePwOpen(false)} />}
     </aside>
   );
 }

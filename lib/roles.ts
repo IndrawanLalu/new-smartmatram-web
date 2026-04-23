@@ -36,7 +36,9 @@ export interface CurrentUser {
   email: string;
   name: string;
   role: Role;
-  unit: Unit | null; // null = akses semua unit (UP3)
+  unit: Unit | null;
+  platform: string;
+  is_active: boolean;
 }
 
 // ── Units ────────────────────────────────────────────────────────────────────

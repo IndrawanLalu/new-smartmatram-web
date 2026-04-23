@@ -21,9 +21,15 @@ app.use(express.json({ limit: "10mb" }));
 
 // ── WhatsApp Client ──────────────────────────────────────────────────────────
 
+// Pakai system Chromium agar dependency dikelola apt (tidak crash saat Puppeteer update Chrome)
+const CHROMIUM_PATH =
+  process.env.CHROMIUM_PATH ||
+  "/usr/bin/chromium-browser";
+
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "./wa-bot/session" }),
   puppeteer: {
+    executablePath: CHROMIUM_PATH,
     headless: true,
     args: [
       "--no-sandbox",

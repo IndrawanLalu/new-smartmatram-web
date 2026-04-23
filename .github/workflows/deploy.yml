@@ -26,9 +26,12 @@ jobs:
             pnpm install --frozen-lockfile
 
             echo "🔨 Build Next.js..."
-            pnpm build
-
-            echo "🔄 Restart app..."
-            pm2 restart smart-mataram
-
-            echo "✅ Deploy selesai!"
+            if pnpm build; then
+              echo "🔄 Restart app..."
+              pm2 restart smart-mataram
+              echo "✅ Deploy selesai!"
+            else
+              echo "❌ Build gagal! App tetap jalan dengan versi sebelumnya."
+              git reset --hard HEAD~1
+              exit 1
+            fi
