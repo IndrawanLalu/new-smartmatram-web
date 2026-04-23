@@ -21,15 +21,9 @@ app.use(express.json({ limit: "10mb" }));
 
 // ── WhatsApp Client ──────────────────────────────────────────────────────────
 
-// Pakai system Chromium agar dependency dikelola apt (tidak crash saat Puppeteer update Chrome)
-const CHROMIUM_PATH =
-  process.env.CHROMIUM_PATH ||
-  "/usr/bin/chromium-browser";
-
 const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "./wa-bot/session" }),
   puppeteer: {
-    executablePath: CHROMIUM_PATH,
     headless: true,
     args: [
       "--no-sandbox",
@@ -62,17 +56,20 @@ client.on("ready", () => {
 });
 
 client.on("disconnected", (reason) => {
-  console.log("❌ WhatsApp disconnect:", reason);
+  console.log("❌ WhatsApp disconnect:", reason, "— exit untuk PM2 restart");
   isReady = false;
-  setTimeout(() => {
-    console.log("🔄 Mencoba reconnect...");
-    client.initialize();
-  }, 10000);
+  process.exit(1);
 });
 
 client.on("auth_failure", (msg) => {
-  console.error("❌ Auth gagal:", msg);
-  isReady = false;
+  console.error("❌ Auth gagal:", msg, "— exit untuk PM2 restart");
+  process.exit(1);
+});
+
+// Tangkap Chrome crash (unhandledRejection) dan exit agar PM2 restart bersih
+process.on("unhandledRejection", (reason) => {
+  console.error("❌ Unhandled rejection:", reason?.message ?? reason);
+  process.exit(1);
 });
 
 client.initialize();

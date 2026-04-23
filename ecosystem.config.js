@@ -20,9 +20,12 @@ module.exports = {
       instances: 1,
       autorestart: true,
       watch: false,
-      // Restart jika crash, tunggu 5 detik sebelum retry
       restart_delay: 5000,
       max_restarts: 10,
+      env: {
+        // Pakai Chrome bundled Puppeteer (bukan snap), tapi cegah auto-download versi baru
+        PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true",
+      },
     },
   ],
 };
