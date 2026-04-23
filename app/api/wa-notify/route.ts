@@ -65,15 +65,34 @@ function buildJaringanMessage(data: Record<string, string>) {
   ].filter(Boolean).join("\n");
 }
 
-// ── Helper kirim ke WA Bot ────────────────────────────────────────────────────
+// ── Helper kirim ke WA Bot dengan retry ──────────────────────────────────────
 
-async function sendWA(groupId: string, message: string, imageUrl?: string) {
+async function sendWAWithRetry(
+  groupId: string,
+  message: string,
+  imageUrl?: string,
+  maxRetries = 5,
+  delayMs = 5000,
+) {
   if (!groupId) return;
-  await fetch(`${WA_BOT_URL}/send`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ groupId, message, imageUrl: imageUrl ?? null }),
-  });
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      const res = await fetch(`${WA_BOT_URL}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ groupId, message, imageUrl: imageUrl ?? null }),
+      });
+      if (res.ok) {
+        console.log(`[wa-notify] Pesan terkirim (percobaan ${i + 1})`);
+        return;
+      }
+      console.warn(`[wa-notify] Bot response ${res.status}, retry ${i + 1}/${maxRetries}...`);
+    } catch {
+      console.warn(`[wa-notify] Bot tidak bisa dihubungi, retry ${i + 1}/${maxRetries}...`);
+    }
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
+  console.error(`[wa-notify] Gagal kirim setelah ${maxRetries}x percobaan`);
 }
 
 // ── POST /api/wa-notify — dipanggil oleh Supabase Webhook ────────────────────
@@ -100,31 +119,31 @@ export async function POST(req: NextRequest) {
   const ulp = (record.ulp ?? "").toUpperCase();
   const imageUrl = record.foto_sebelum_url || record.foto_lokasi_url || undefined;
 
-  try {
-    if (table === "inspeksi_pohon" && record.tingkat_risiko === "Sangat Tinggi") {
-      const groupId = GROUP_PERABASAN[ulp];
-      if (!groupId) {
-        console.warn(`[wa-notify] Group PERABASAN untuk ULP ${ulp} belum dikonfigurasi`);
-        return NextResponse.json({ skipped: true, reason: "group not configured" });
-      }
-      const message = buildPohonMessage(record);
-      await sendWA(groupId, message, imageUrl);
-    }
+  let groupId: string | undefined;
+  let message: string | undefined;
 
-    else if (table === "inspeksi" && record.category === "Urgent") {
-      const groupId = GROUP_JARINGAN[ulp];
-      if (!groupId) {
-        console.warn(`[wa-notify] Group Jaringan untuk ULP ${ulp} belum dikonfigurasi`);
-        return NextResponse.json({ skipped: true, reason: "group not configured" });
-      }
-      const message = buildJaringanMessage(record);
-      await sendWA(groupId, message, imageUrl);
+  if (table === "inspeksi_pohon" && record.tingkat_risiko === "Sangat Tinggi") {
+    groupId = GROUP_PERABASAN[ulp];
+    if (!groupId) {
+      console.warn(`[wa-notify] Group PERABASAN untuk ULP ${ulp} belum dikonfigurasi`);
+      return NextResponse.json({ skipped: true, reason: "group not configured" });
     }
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Unknown error";
-    console.error("[wa-notify] Error:", msg);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    message = buildPohonMessage(record);
+  } else if (table === "inspeksi" && record.category === "Urgent") {
+    groupId = GROUP_JARINGAN[ulp];
+    if (!groupId) {
+      console.warn(`[wa-notify] Group Jaringan untuk ULP ${ulp} belum dikonfigurasi`);
+      return NextResponse.json({ skipped: true, reason: "group not configured" });
+    }
+    message = buildJaringanMessage(record);
+  } else {
+    return NextResponse.json({ skipped: true });
   }
+
+  // Langsung return 200 ke Supabase, proses kirim WA di background dengan retry
+  sendWAWithRetry(groupId, message, imageUrl).catch((err) =>
+    console.error("[wa-notify] Background send error:", err)
+  );
+
+  return NextResponse.json({ success: true });
 }
