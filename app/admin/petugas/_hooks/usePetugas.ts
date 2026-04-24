@@ -49,6 +49,7 @@ export function usePetugas(filterUlp?: string) {
 
   const addPetugas = async (input: SavePetugasInput): Promise<string | null> => {
     const { error: err } = await supabaseBrowser.from("petugas").insert({
+      id: crypto.randomUUID(),
       nama: input.nama.trim(),
       group_name: input.group_name,
       ulp: input.ulp,
