@@ -14,6 +14,7 @@
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode = require("qrcode-terminal");
 const express = require("express");
+const cron = require("node-cron");
 
 const PORT = process.env.WA_BOT_PORT || 3001;
 const app = express();
@@ -127,6 +128,142 @@ app.post("/send", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// ── Realisasi Harian — Cron jam 18.00 WITA ───────────────────────────────────
+
+const SHEETS_ID = "153-gxDh8XrlT1AbNWb5jws0MVc-qD9IQNxxJLRqlKJg";
+const SHEETS_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
+const GROUP_REALISASI = "120363422224550410@g.us";
+
+const BULAN_ID = [
+  "januari","februari","maret","april","mei","juni",
+  "juli","agustus","september","oktober","november","desember",
+];
+
+function parseTanggal(str) {
+  if (!str) return null;
+  str = str.trim();
+  // Format: "01 April 2026"
+  const parts = str.split(" ");
+  if (parts.length === 3) {
+    const m = BULAN_ID.indexOf(parts[1].toLowerCase());
+    if (m >= 0) return new Date(parseInt(parts[2]), m, parseInt(parts[0]));
+  }
+  // Format: "01/04/2026"
+  const slash = str.split("/");
+  if (slash.length === 3)
+    return new Date(parseInt(slash[2]), parseInt(slash[1]) - 1, parseInt(slash[0]));
+  return null;
+}
+
+function isSameDayWITA(d) {
+  if (!d) return false;
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Makassar" }));
+  return d.getFullYear() === now.getFullYear() &&
+    d.getMonth() === now.getMonth() &&
+    d.getDate() === now.getDate();
+}
+
+async function fetchRealisasiHarian() {
+  const range = encodeURIComponent("Realisasi Harian!A:F");
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SHEETS_ID}/values/${range}?key=${SHEETS_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Sheets error: ${res.status}`);
+  const json = await res.json();
+  const rows = json.values ?? [];
+  if (rows.length < 2) return [];
+  const headers = rows[0];
+  return rows.slice(1).map((row) => {
+    const obj = {};
+    headers.forEach((h, i) => { obj[h] = row[i] ?? ""; });
+    return obj;
+  });
+}
+
+function buildRealisasiMessage(rows) {
+  const now = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Makassar" }));
+  const tglStr = now.toLocaleDateString("id-ID", {
+    timeZone: "Asia/Makassar",
+    weekday: "long",
+    day: "2-digit",
+    month: "long",
+    year: "numeric",
+  });
+
+  // Group by Tim Pelaksana
+  const byTim = {};
+  for (const row of rows) {
+    const tim = (row["Tim Pelaksana"] || row["tim_pelaksana"] || "").trim();
+    if (!tim) continue;
+    if (!byTim[tim]) byTim[tim] = { wo: 0, realisasi: 0 };
+    byTim[tim].wo += parseInt(row["wo"] || row["WO"] || "0") || 0;
+    byTim[tim].realisasi += parseInt(row["realisasi"] || row["Realisasi"] || "0") || 0;
+  }
+
+  const timList = Object.keys(byTim).sort();
+  let totalWO = 0;
+  let totalReal = 0;
+
+  const lines = [
+    `📋 *REALISASI PEKERJAAN HARIAN*`,
+    `📅 ${tglStr}`,
+    ``,
+  ];
+
+  if (timList.length === 0) {
+    lines.push(`_Tidak ada data pekerjaan hari ini._`);
+  } else {
+    // Header kolom
+    lines.push(`*Tim Pelaksana*`);
+    lines.push(`${"─".repeat(30)}`);
+    for (const tim of timList) {
+      const { wo, realisasi } = byTim[tim];
+      totalWO += wo;
+      totalReal += realisasi;
+      const pct = wo > 0 ? Math.round((realisasi / wo) * 100) : 0;
+      const icon = realisasi >= wo ? "✅" : realisasi > 0 ? "⚠️" : "❌";
+      lines.push(`${icon} *${tim}*  WO: ${wo} | Real: ${realisasi} (${pct}%)`);
+    }
+    lines.push(``);
+    const totalPct = totalWO > 0 ? Math.round((totalReal / totalWO) * 100) : 0;
+    lines.push(`📊 *Total: WO ${totalWO} | Realisasi ${totalReal} (${totalPct}%)*`);
+  }
+
+  lines.push(``);
+  lines.push(`_SMART MATARAM — PLN UP3 Mataram_`);
+  return lines.join("\n");
+}
+
+async function kirimRealisasiHarian() {
+  try {
+    console.log("[realisasi] Fetch data dari Google Sheets...");
+    const allRows = await fetchRealisasiHarian();
+    const todayRows = allRows.filter((r) => {
+      const tgl = parseTanggal(r["tanggal"] || r["Tanggal"] || "");
+      return isSameDayWITA(tgl);
+    });
+
+    console.log(`[realisasi] ${todayRows.length} baris hari ini`);
+    const message = buildRealisasiMessage(todayRows);
+    await client.sendMessage(GROUP_REALISASI, message);
+    console.log("[realisasi] ✅ Pesan realisasi harian terkirim");
+  } catch (err) {
+    console.error("[realisasi] ❌ Gagal kirim:", err.message);
+  }
+}
+
+// Setiap hari jam 18.00 WITA
+cron.schedule("0 18 * * *", () => {
+  if (!isReady) {
+    console.warn("[realisasi] Bot belum siap, skip");
+    return;
+  }
+  kirimRealisasiHarian();
+}, { timezone: "Asia/Makassar" });
+
+console.log("⏰ Cron realisasi harian terjadwal: 18.00 WITA");
+
+// ── HTTP Server ───────────────────────────────────────────────────────────────
 
 app.listen(PORT, "127.0.0.1", () => {
   console.log(`🤖 WA Bot service berjalan di port ${PORT}`);
