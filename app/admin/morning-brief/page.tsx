@@ -13,6 +13,7 @@ import {
   InspeksiPohonBriefSection,
 } from "./_components/InspeksiBriefSection";
 import TelegramScheduleSettings from "./_components/TelegramScheduleSettings";
+import RealisasiProbisBriefSection from "./_components/RealisasiProbisBriefSection";
 
 const PRINT_STYLE = `
 @media print {
@@ -84,6 +85,14 @@ export default function MorningBriefPage() {
 
         {!loading && data && (
           <>
+            <div className="brief-section">
+              <RealisasiProbisBriefSection
+                items={data.realisasiProbis.items}
+                totalWO={data.realisasiProbis.totalWO}
+                totalRealisasi={data.realisasiProbis.totalRealisasi}
+              />
+            </div>
+
             <div className="brief-section">
               <GangguanBriefSection
                 items={data.gangguan.items}

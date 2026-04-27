@@ -27,6 +27,28 @@ export interface PetugasRekap {
   jumlahBulanIni: number;
 }
 
+export interface RealisasiTimRow {
+  tim: string;
+  wo: number;
+  realisasi: number;
+}
+
+export const REALISASI_TIMS = [
+  "HARJAR 1",
+  "RABAS 1",
+  "RABAS 2",
+  "RABAS 3",
+  "INSPEKSI JTM TIER 1",
+  "INSPEKSI JTM TIER 2",
+  "MUTASI TRAFO 1",
+  "INSPEKSI GARDU 1",
+  "INSPEKSI GARDU 2",
+  "INSPEKSI JTR 1",
+  "PENYEIMBANGAN 1",
+  "HARGARDU 1",
+  "PENGUKURAN GARDU 1",
+] as const;
+
 export interface EksekutorRekap {
   eksekutor: string;
   jaringan: number;
@@ -80,6 +102,11 @@ export interface MorningBriefData {
     totalPohon: number;
     totalJaringanBulanIni: number;
     totalPohonBulanIni: number;
+  };
+  realisasiProbis: {
+    items: RealisasiTimRow[];
+    totalWO: number;
+    totalRealisasi: number;
   };
 }
 
@@ -145,6 +172,23 @@ function isSameDay(date: Date, yStr: string): boolean {
 function isWithinMonth(dateStr: string | undefined | null, monthStart: string, todayStr: string): boolean {
   if (!dateStr) return false;
   return dateStr >= monthStart && dateStr <= todayStr;
+}
+
+// Parse tanggal sheet format "01 April 2026" atau "01/04/2026" → "YYYY-MM-DD"
+function parseTanggalSheet(str: string): string | null {
+  const BULAN: Record<string, number> = {
+    januari: 1, februari: 2, maret: 3, april: 4, mei: 5, juni: 6,
+    juli: 7, agustus: 8, september: 9, oktober: 10, november: 11, desember: 12,
+  };
+  const parts = str.trim().split(" ");
+  if (parts.length === 3) {
+    const m = BULAN[parts[1].toLowerCase()];
+    if (m) return `${parts[2]}-${String(m).padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  const slash = str.trim().split("/");
+  if (slash.length === 3)
+    return `${slash[2]}-${slash[1].padStart(2, "0")}-${slash[0].padStart(2, "0")}`;
+  return null;
 }
 
 // Status yang dianggap sebagai "pekerjaan dikerjakan"
@@ -283,6 +327,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
           pengukuranBulanResult,
           jaringanBulanResult,
           pohonBulanResult,
+          realisasiRaw,
         ] = await Promise.all([
           // 1. Gangguan (Google Sheets — cached 5 min)
           fetchSheetData("gangguanPenyulang", "A:S"),
@@ -375,6 +420,9 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
             return q;
           })(),
+
+          // 9. Realisasi Probis (Google Sheets)
+          fetchSheetData("Realisasi Harian", "A:F"),
         ]);
 
         if (cancelled) return;
@@ -471,6 +519,27 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
           }))
           .filter((r) => r.urgency === "SANGAT URGENT");
 
+        // ── Process Realisasi Probis ──────────────────────────────────────────
+        const byTim: Record<string, { wo: number; realisasi: number }> = {};
+        if (Array.isArray(realisasiRaw)) {
+          for (const row of realisasiRaw as Record<string, string>[]) {
+            const tgl = parseTanggalSheet(row["tanggal"] || row["Tanggal"] || "");
+            if (tgl !== yStr) continue;
+            const tim = (row["Tim Pelaksana"] || row["tim_pelaksana"] || "").trim();
+            if (!tim) continue;
+            if (!byTim[tim]) byTim[tim] = { wo: 0, realisasi: 0 };
+            byTim[tim].wo += parseInt(row["wo"] || row["WO"] || "0") || 0;
+            byTim[tim].realisasi += parseInt(row["realisasi"] || row["Realisasi"] || "0") || 0;
+          }
+        }
+        const realisasiItems: RealisasiTimRow[] = REALISASI_TIMS.map((tim) => ({
+          tim,
+          wo: byTim[tim]?.wo ?? 0,
+          realisasi: byTim[tim]?.realisasi ?? 0,
+        }));
+        const totalWO = realisasiItems.reduce((s, r) => s + r.wo, 0);
+        const totalRealisasi = realisasiItems.reduce((s, r) => s + r.realisasi, 0);
+
         // ── Eksekusi rekap ────────────────────────────────────────────────────
         const eksekutorRekap = buildEksekutorRekap(
           jaringanRows, pohonRows,
@@ -524,6 +593,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
             totalJaringanBulanIni: selesaiJaringanBulan,
             totalPohonBulanIni: selesaiPohonBulan,
           },
+          realisasiProbis: { items: realisasiItems, totalWO, totalRealisasi },
         });
       } catch (e) {
         if (!cancelled) {
