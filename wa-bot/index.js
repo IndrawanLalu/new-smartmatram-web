@@ -34,7 +34,6 @@ const client = new Client({
       "--disable-accelerated-2d-canvas",
       "--no-first-run",
       "--no-zygote",
-      "--single-process",
       "--disable-gpu",
     ],
   },
@@ -70,7 +69,13 @@ client.on("auth_failure", (msg) => {
 
 // Tangkap Chrome crash (unhandledRejection) dan exit agar PM2 restart bersih
 process.on("unhandledRejection", (reason) => {
-  console.error("❌ Unhandled rejection:", reason?.message ?? reason);
+  const msg = reason?.message ?? String(reason);
+  // Error transient saat Chrome startup — abaikan, bukan fatal
+  if (msg.includes("main frame too early") || msg.includes("Session closed") || msg.includes("Target closed")) {
+    console.warn("⚠️ Transient Chrome error (diabaikan):", msg);
+    return;
+  }
+  console.error("❌ Unhandled rejection:", msg);
   process.exit(1);
 });
 
