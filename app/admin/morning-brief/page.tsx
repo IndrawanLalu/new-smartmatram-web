@@ -30,7 +30,13 @@ export default function MorningBriefPage() {
   const isUp3 = canSeeAllUnits(user.role);
   const [filterUlp, setFilterUlp] = useState("");
 
-  const { data, loading, error } = useMorningBrief(user, filterUlp);
+  const [selectedDate, setSelectedDate] = useState(() => {
+    // Default: kemarin WIB
+    const wib = new Date(Date.now() + 7 * 3600 * 1000 - 86400 * 1000);
+    return wib.toISOString().slice(0, 10);
+  });
+
+  const { data, loading, error } = useMorningBrief(user, filterUlp, selectedDate);
 
   const unitLabel = isUp3
     ? filterUlp ? `ULP ${filterUlp} · UP3 Mataram` : "PLN UP3 Mataram — Semua ULP"
@@ -49,6 +55,17 @@ export default function MorningBriefPage() {
         {(isUp3 || user.role === "admin") && (
           <TelegramScheduleSettings />
         )}
+
+        {/* Filter Tanggal + ULP */}
+        <div className="flex flex-wrap items-center gap-3 print:hidden">
+          <input
+            type="date"
+            value={selectedDate}
+            max={new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10)}
+            onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+            className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+          />
+        </div>
 
         {/* Filter ULP — UP3 only */}
         {isUp3 && (

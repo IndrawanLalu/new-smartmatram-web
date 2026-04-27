@@ -27,10 +27,17 @@ export interface PetugasRekap {
   jumlahBulanIni: number;
 }
 
+export interface RealisasiTimDetail {
+  jenisPekerjaan: string;
+  wo: number;
+  realisasi: number;
+}
+
 export interface RealisasiTimRow {
   tim: string;
   wo: number;
   realisasi: number;
+  detail: RealisasiTimDetail[];
 }
 
 export const REALISASI_TIMS = [
@@ -140,9 +147,9 @@ function getTodayStr(): string {
   return getWibDateStr(0);
 }
 
-function getMonthStartStr(): string {
-  const [y, m] = getWibDateStr(0).split("-").map(Number);
-  return `${y}-${String(m).padStart(2, "0")}-01`;
+function addDays(dateStr: string, days: number): string {
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
 // Convert WIB midnight of a YYYY-MM-DD date to UTC ISO string
@@ -214,14 +221,13 @@ function isSelesaiBulanIni(
   status: string,
   updatedAt: string | undefined,
   monthStart: string,
-  todayStr: string
+  selectedStr: string,
 ): boolean {
-  if (tglEksekusi && tglEksekusi >= monthStart && tglEksekusi <= todayStr) return true;
+  if (tglEksekusi && tglEksekusi >= monthStart && tglEksekusi <= selectedStr) return true;
   if (!tglEksekusi && updatedAt && EKSEKUSI_STATUSES.includes(status)) {
     const ms = new Date(updatedAt).getTime();
-    // End of today WIB = start of tomorrow WIB
-    const tomorrowStr = getWibDateStr(1);
-    return ms >= new Date(wibStartUtc(monthStart)).getTime() && ms < new Date(wibStartUtc(tomorrowStr)).getTime();
+    const nextDay = addDays(selectedStr, 1);
+    return ms >= new Date(wibStartUtc(monthStart)).getTime() && ms < new Date(wibStartUtc(nextDay)).getTime();
   }
   return false;
 }
@@ -298,7 +304,7 @@ function buildPetugasRekap(
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
-export function useMorningBrief(user: CurrentUser, filterUlp = "") {
+export function useMorningBrief(user: CurrentUser, filterUlp = "", selectedDate?: string) {
   const [data, setData] = useState<MorningBriefData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -313,9 +319,9 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
       setLoading(true);
       setError(null);
 
-      const yStr = getYesterdayStr();
-      const todayStr = getTodayStr();
-      const monthStart = getMonthStartStr();
+      const yStr = selectedDate || getYesterdayStr();
+      const nextDayStr = addDays(yStr, 1);
+      const monthStart = yStr.slice(0, 7) + "-01";
 
       try {
         const [
@@ -350,7 +356,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .select("*")
               .or(
                 `tgl_inspeksi.eq.${yStr},tgl_eksekusi.eq.${yStr},` +
-                `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(todayStr)},tgl_eksekusi.is.null)`
+                `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`
               )
               .order("tgl_inspeksi", { ascending: false });
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
@@ -364,7 +370,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .select("*")
               .or(
                 `tgl_inspeksi.eq.${yStr},tgl_eksekusi.eq.${yStr},` +
-                `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(todayStr)},tgl_eksekusi.is.null)`
+                `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`
               )
               .order("tgl_inspeksi", { ascending: false });
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
@@ -378,7 +384,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .select("id,deskripsi,penyulang,lokasi,ulp,status,prediksi_inspektur,tgl_inspeksi,tgl_eksekusi,jenis_pohon,created_at,eksekutor,team_name,tingkat_risiko,petugas,inspektor,foto_sebelum_url,foto_lokasi_url,foto_sesudah_url,koordinat,tinggi_pohon,jarak_ke_jaringan,tindakan_rekomendasi")
               .neq("status", "Selesai")
               .not("prediksi_inspektur", "is", null)
-              .lte("prediksi_inspektur", todayStr)
+              .lte("prediksi_inspektur", yStr)
               .order("prediksi_inspektur", { ascending: true });
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
             return q;
@@ -390,7 +396,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .from("pengukuran_gardu")
               .select("id,petugas_nama,petugas_unit,tanggal_pengukuran,persen_beban,suhu_trafo,wo_sent_at,amg_sent_at")
               .gte("tanggal_pengukuran", monthStart)
-              .lte("tanggal_pengukuran", todayStr);
+              .lte("tanggal_pengukuran", yStr);
             if (effectiveUnit) q = q.eq("petugas_unit", effectiveUnit);
             return q;
           })(),
@@ -402,7 +408,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .select("id,eksekutor,team_name,tgl_inspeksi,tgl_eksekusi,updated_at,status,ulp")
               .or(
                 `tgl_inspeksi.gte.${monthStart},tgl_eksekusi.gte.${monthStart},` +
-                `and(updated_at.gte.${wibStartUtc(monthStart)},tgl_eksekusi.is.null)`
+                `and(updated_at.gte.${wibStartUtc(monthStart)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`
               );
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
             return q;
@@ -415,14 +421,14 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
               .select("id,eksekutor,team_name,tgl_inspeksi,tgl_eksekusi,updated_at,status,ulp")
               .or(
                 `tgl_inspeksi.gte.${monthStart},tgl_eksekusi.gte.${monthStart},` +
-                `and(updated_at.gte.${wibStartUtc(monthStart)},tgl_eksekusi.is.null)`
+                `and(updated_at.gte.${wibStartUtc(monthStart)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`
               );
             if (effectiveUnit) q = q.eq("ulp", effectiveUnit);
             return q;
           })(),
 
           // 9. Realisasi Probis (Google Sheets)
-          fetchSheetData("Realisasi Harian", "A:F"),
+          fetchSheetData("Realisasi Harian", "A:G"),
         ]);
 
         if (cancelled) return;
@@ -480,15 +486,15 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
         const jaringanRows = (jaringanResult.data ?? []) as JaringanRow[];
         const newTemuan = jaringanRows.filter((r) => r.tgl_inspeksi === yStr);
         const selesaiJaringan = jaringanRows.filter((r) =>
-          isSelesaiKemarin(r.tgl_eksekusi, r.status, r.updated_at, yStr, todayStr)
+          isSelesaiKemarin(r.tgl_eksekusi, r.status, r.updated_at, yStr, nextDayStr)
         );
 
         const jaringanBulanRows = (jaringanBulanResult.data ?? []) as SlimInspeksi[];
         const newTemuanJaringanBulan = jaringanBulanRows.filter(
-          (r) => r.tgl_inspeksi && isWithinMonth(r.tgl_inspeksi, monthStart, todayStr)
+          (r) => r.tgl_inspeksi && isWithinMonth(r.tgl_inspeksi, monthStart, yStr)
         ).length;
         const selesaiJaringanBulan = jaringanBulanRows.filter((r) =>
-          isSelesaiBulanIni(r.tgl_eksekusi, r.status, r.updated_at, monthStart, todayStr)
+          isSelesaiBulanIni(r.tgl_eksekusi, r.status, r.updated_at, monthStart, yStr)
         ).length;
 
         // ── Process Inspeksi Pohon ────────────────────────────────────────────
@@ -496,15 +502,15 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
         const pohonRows = (pohonResult.data ?? []) as PohonRow[];
         const newTemuanPohon = pohonRows.filter((r) => r.tgl_inspeksi === yStr);
         const selesaiPohon = pohonRows.filter((r) =>
-          isSelesaiKemarin(r.tgl_eksekusi, r.status, r.updated_at, yStr, todayStr)
+          isSelesaiKemarin(r.tgl_eksekusi, r.status, r.updated_at, yStr, nextDayStr)
         );
 
         const pohonBulanRows = (pohonBulanResult.data ?? []) as SlimInspeksi[];
         const newTemuanPohonBulan = pohonBulanRows.filter(
-          (r) => r.tgl_inspeksi && isWithinMonth(r.tgl_inspeksi, monthStart, todayStr)
+          (r) => r.tgl_inspeksi && isWithinMonth(r.tgl_inspeksi, monthStart, yStr)
         ).length;
         const selesaiPohonBulan = pohonBulanRows.filter((r) =>
-          isSelesaiBulanIni(r.tgl_eksekusi, r.status, r.updated_at, monthStart, todayStr)
+          isSelesaiBulanIni(r.tgl_eksekusi, r.status, r.updated_at, monthStart, yStr)
         ).length;
 
         // Sangat urgent
@@ -520,22 +526,39 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
           .filter((r) => r.urgency === "SANGAT URGENT");
 
         // ── Process Realisasi Probis ──────────────────────────────────────────
-        const byTim: Record<string, { wo: number; realisasi: number }> = {};
+        const HAS_DETAIL_TIMS = new Set(["HARJAR 1", "RABAS 1", "RABAS 2", "RABAS 3"]);
+        type TimAgg = { wo: number; realisasi: number; detail: Record<string, { wo: number; realisasi: number }> };
+        const byTim: Record<string, TimAgg> = {};
         if (Array.isArray(realisasiRaw)) {
           for (const row of realisasiRaw as Record<string, string>[]) {
             const tgl = parseTanggalSheet(row["tanggal"] || row["Tanggal"] || "");
             if (tgl !== yStr) continue;
             const tim = (row["Tim Pelaksana"] || row["tim_pelaksana"] || "").trim();
             if (!tim) continue;
-            if (!byTim[tim]) byTim[tim] = { wo: 0, realisasi: 0 };
-            byTim[tim].wo += parseInt(row["wo"] || row["WO"] || "0") || 0;
-            byTim[tim].realisasi += parseInt(row["realisasi"] || row["Realisasi"] || "0") || 0;
+            if (!byTim[tim]) byTim[tim] = { wo: 0, realisasi: 0, detail: {} };
+            const wo = parseInt(row["wo"] || row["WO"] || "0") || 0;
+            const real = parseInt(row["realisasi"] || row["Realisasi"] || "0") || 0;
+            byTim[tim].wo += wo;
+            byTim[tim].realisasi += real;
+            if (HAS_DETAIL_TIMS.has(tim)) {
+              const jenis = (row["Jenis Pekerjaan"] || row["jenis_pekerjaan"] || row["JENIS PEKERJAAN"] || "").trim();
+              if (jenis) {
+                if (!byTim[tim].detail[jenis]) byTim[tim].detail[jenis] = { wo: 0, realisasi: 0 };
+                byTim[tim].detail[jenis].wo += wo;
+                byTim[tim].detail[jenis].realisasi += real;
+              }
+            }
           }
         }
         const realisasiItems: RealisasiTimRow[] = REALISASI_TIMS.map((tim) => ({
           tim,
           wo: byTim[tim]?.wo ?? 0,
           realisasi: byTim[tim]?.realisasi ?? 0,
+          detail: Object.entries(byTim[tim]?.detail ?? {}).map(([jenisPekerjaan, v]) => ({
+            jenisPekerjaan,
+            wo: v.wo,
+            realisasi: v.realisasi,
+          })),
         }));
         const totalWO = realisasiItems.reduce((s, r) => s + r.wo, 0);
         const totalRealisasi = realisasiItems.reduce((s, r) => s + r.realisasi, 0);
@@ -544,13 +567,13 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
         const eksekutorRekap = buildEksekutorRekap(
           jaringanRows, pohonRows,
           jaringanBulanRows, pohonBulanRows,
-          yStr, todayStr, monthStart
+          yStr, nextDayStr, monthStart
         );
 
         setData({
           yesterday: yStr,
           yesterdayLabel: formatDateLabel(yStr),
-          monthLabel: formatMonthLabel(todayStr),
+          monthLabel: formatMonthLabel(yStr),
           gangguan: {
             items: gangguanItems,
             total: gangguanItems.length,
@@ -606,7 +629,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "") {
 
     fetchAll();
     return () => { cancelled = true; };
-  }, [user.role, user.unit, effectiveUnit]);
+  }, [user.role, user.unit, effectiveUnit, selectedDate]);
 
   return { data, loading, error };
 }

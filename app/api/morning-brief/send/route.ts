@@ -17,6 +17,13 @@ export const maxDuration = 60;
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const UNIT = "AMPENAN";
+
+const REALISASI_TIMS = [
+  "HARJAR 1", "RABAS 1", "RABAS 2", "RABAS 3",
+  "INSPEKSI JTM TIER 1", "INSPEKSI JTM TIER 2", "MUTASI TRAFO 1",
+  "INSPEKSI GARDU 1", "INSPEKSI GARDU 2", "INSPEKSI JTR 1",
+  "PENYEIMBANGAN 1", "HARGARDU 1", "PENGUKURAN GARDU 1",
+] as const;
 const UNIT_LABEL = "ULP Ampenan · PLN UP3 Mataram";
 
 const HARI: Record<number, string> = {
@@ -62,6 +69,22 @@ function parseIndDate(str: string): Date | null {
   if (m2) return new Date(Number(m2[3]), Number(m2[2]) - 1, Number(m2[1]));
   return null;
 }
+function parseTanggalSheet(str: string): string | null {
+  const BULAN: Record<string, number> = {
+    januari: 1, februari: 2, maret: 3, april: 4, mei: 5, juni: 6,
+    juli: 7, agustus: 8, september: 9, oktober: 10, november: 11, desember: 12,
+  };
+  const parts = str.trim().split(" ");
+  if (parts.length === 3) {
+    const m = BULAN[parts[1].toLowerCase()];
+    if (m) return `${parts[2]}-${String(m).padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+  }
+  const slash = str.trim().split("/");
+  if (slash.length === 3)
+    return `${slash[2]}-${slash[1].padStart(2, "0")}-${slash[0].padStart(2, "0")}`;
+  return null;
+}
+
 function isSameDay(date: Date, yStr: string): boolean {
   const [y, m, d] = yStr.split("-").map(Number);
   return date.getFullYear() === y && date.getMonth() === m - 1 && date.getDate() === d;
@@ -132,7 +155,7 @@ async function fetchData(): Promise<MorningBriefData> {
 
   const [
     gangguanRaw, pengResult, jarResult, pohResult, pohUrgentResult,
-    pengBulanResult, jarBulanResult, pohBulanResult,
+    pengBulanResult, jarBulanResult, pohBulanResult, realisasiRaw,
   ] = await Promise.all([
     fetchSheetData("gangguanPenyulang", "A:S"),
 
@@ -167,6 +190,8 @@ async function fetchData(): Promise<MorningBriefData> {
       .select("id,eksekutor,team_name,tgl_inspeksi,tgl_eksekusi,updated_at,status,ulp")
       .or(`tgl_inspeksi.gte.${monthStart},tgl_eksekusi.gte.${monthStart},and(updated_at.gte.${wibStartUtc(monthStart)},tgl_eksekusi.is.null)`)
       .eq("ulp", UNIT),
+
+    fetchSheetData("Realisasi Harian", "A:G"),
   ]);
 
   // Gangguan
@@ -251,7 +276,30 @@ async function fetchData(): Promise<MorningBriefData> {
       totalJaringan: selesaiJar.length, totalPohon: selesaiPoh.length,
       totalJaringanBulanIni: selesaiJarBulan, totalPohonBulanIni: selesaiPohBulan,
     },
-    realisasiProbis: { items: [], totalWO: 0, totalRealisasi: 0 },
+    realisasiProbis: (() => {
+      const byTim: Record<string, { wo: number; realisasi: number }> = {};
+      if (Array.isArray(realisasiRaw)) {
+        for (const row of realisasiRaw as Record<string, string>[]) {
+          const tgl = parseTanggalSheet(row["tanggal"] || row["Tanggal"] || "");
+          if (tgl !== yStr) continue;
+          const tim = (row["Tim Pelaksana"] || row["tim_pelaksana"] || "").trim();
+          if (!tim) continue;
+          if (!byTim[tim]) byTim[tim] = { wo: 0, realisasi: 0 };
+          byTim[tim].wo += parseInt(row["wo"] || row["WO"] || "0") || 0;
+          byTim[tim].realisasi += parseInt(row["realisasi"] || row["Realisasi"] || "0") || 0;
+        }
+      }
+      const items = REALISASI_TIMS.map((tim) => ({
+        tim, detail: [],
+        wo: byTim[tim]?.wo ?? 0,
+        realisasi: byTim[tim]?.realisasi ?? 0,
+      }));
+      return {
+        items,
+        totalWO: items.reduce((s, r) => s + r.wo, 0),
+        totalRealisasi: items.reduce((s, r) => s + r.realisasi, 0),
+      };
+    })(),
   };
 }
 
@@ -262,6 +310,19 @@ function formatBriefText(data: MorningBriefData): string {
   lines.push(`☀️ *MORNING BRIEF — ${data.yesterdayLabel.toUpperCase()}*`);
   lines.push(`_${UNIT_LABEL}_`);
   lines.push("");
+
+  const rp = data.realisasiProbis;
+  if (rp.totalWO > 0) {
+    const rpPct = Math.round((rp.totalRealisasi / rp.totalWO) * 100);
+    lines.push(`📋 *REALISASI PROBIS*`);
+    for (const { tim, wo, realisasi } of rp.items) {
+      const pct = wo > 0 ? Math.round((realisasi / wo) * 100) : 0;
+      const icon = wo === 0 ? "—" : realisasi >= wo ? "✅" : realisasi > 0 ? "⚠️" : "❌";
+      lines.push(`${icon} ${tim}  WO: ${wo || "—"} | Real: ${wo > 0 ? realisasi : "—"}${wo > 0 ? ` (${pct}%)` : ""}`);
+    }
+    lines.push(`📊 *Total: WO ${rp.totalWO} | Realisasi ${rp.totalRealisasi} (${rpPct}%)*`);
+    lines.push("");
+  }
 
   const g = data.gangguan;
   lines.push(`🔴 *GANGGUAN PENYULANG*`);

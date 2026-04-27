@@ -97,6 +97,49 @@ export default function MorningBriefDocument({ data, unitLabel }: Props) {
           <Text style={S.headerUnit}>{unitLabel}</Text>
         </View>
 
+        {/* ── Realisasi Probis ─────────────────────────────────────────────── */}
+        {data.realisasiProbis.totalWO > 0 && (
+          <View style={S.section}>
+            <SectionHeader
+              title="Realisasi Probis"
+              sub="Realisasi harian per tim pelaksana"
+              bulan={data.realisasiProbis.totalWO}
+              bulanLabel="WO"
+              kemarin={data.realisasiProbis.totalRealisasi}
+            />
+            <View style={S.sectionBody}>
+              <View style={S.table}>
+                <View style={S.tableHead}>
+                  <Text style={[S.th, { flex: 3 }]}>Tim Pelaksana</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center" }]}>WO</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center" }]}>Realisasi</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center" }]}>%</Text>
+                </View>
+                {data.realisasiProbis.items.map((row) => {
+                  const pct = row.wo > 0 ? Math.round((row.realisasi / row.wo) * 100) : 0;
+                  const color = row.wo === 0 ? "#94A3B8" : row.realisasi >= row.wo ? "#065F46" : row.realisasi > 0 ? "#92400E" : "#991B1B";
+                  return (
+                    <View key={row.tim} style={S.tableRow}>
+                      <Text style={[S.td, { flex: 3 }]}>{row.tim}</Text>
+                      <Text style={[S.tdGray, { flex: 1, textAlign: "center" }]}>{row.wo || "—"}</Text>
+                      <Text style={[S.td, { flex: 1, textAlign: "center", color }]}>{row.wo > 0 ? row.realisasi : "—"}</Text>
+                      <Text style={[S.td, { flex: 1, textAlign: "center", color }]}>{row.wo > 0 ? `${pct}%` : "—"}</Text>
+                    </View>
+                  );
+                })}
+                <View style={[S.tableRow, { backgroundColor: "#E0F2F1", borderTop: "1 solid #B2DFDB" }]}>
+                  <Text style={[S.th, { flex: 3, color: "#00695C" }]}>TOTAL</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center", color: "#5D6D7E" }]}>{data.realisasiProbis.totalWO}</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center", color: "#00695C" }]}>{data.realisasiProbis.totalRealisasi}</Text>
+                  <Text style={[S.th, { flex: 1, textAlign: "center", color: "#00695C" }]}>
+                    {Math.round((data.realisasiProbis.totalRealisasi / data.realisasiProbis.totalWO) * 100)}%
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        )}
+
         {/* ── Gangguan Penyulang ────────────────────────────────────────────── */}
         <View style={S.section}>
           <SectionHeader
