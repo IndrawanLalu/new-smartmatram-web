@@ -138,7 +138,7 @@ app.post("/send", async (req, res) => {
 
 const SHEETS_ID = "153-gxDh8XrlT1AbNWb5jws0MVc-qD9IQNxxJLRqlKJg";
 const SHEETS_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
-const GROUP_REALISASI = "120363422224550410@g.us";
+const GROUP_REALISASI = "120363399387396042@g.us";
 
 const BULAN_ID = [
   "januari","februari","maret","april","mei","juni",
