@@ -257,6 +257,17 @@ async function kirimRealisasiHarian() {
   }
 }
 
+// Test manual — hapus setelah selesai testing
+app.post("/test-realisasi", async (req, res) => {
+  if (!isReady) return res.status(503).json({ error: "Bot belum siap" });
+  try {
+    await kirimRealisasiHarian();
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Setiap hari jam 18.00 WITA
 cron.schedule("0 18 * * *", () => {
   if (!isReady) {
