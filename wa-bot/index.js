@@ -25,6 +25,7 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "./wa-bot/session" }),
   puppeteer: {
     headless: true,
+    executablePath: "/usr/bin/google-chrome-stable",
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
