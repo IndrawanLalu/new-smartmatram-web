@@ -50,10 +50,10 @@ export default function TelegramScheduleSettings() {
         <div className="flex items-center gap-2.5">
           <Send size={15} className="text-[#00897B] shrink-0" />
           <div>
-            <p className="font-semibold text-[#1B2631] text-sm">Kirim Otomatis ke Telegram</p>
+            <p className="font-semibold text-[#1B2631] text-sm">Kirim Otomatis ke WhatsApp</p>
             <p className="text-xs text-[#94a3b8] mt-0.5">
               Setiap hari pukul <span className="font-medium text-[#5D6D7E]">08:00 WITA</span>
-              {" · "}Grup <span className="font-medium text-[#5D6D7E]">Smart mataram</span>
+              {" · "}Grup <span className="font-medium text-[#5D6D7E]">TEKNIK AMPENAN</span>
             </p>
           </div>
         </div>

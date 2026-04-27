@@ -1,20 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
-import React from "react";
-import { renderToBuffer } from "@react-pdf/renderer";
-import type { DocumentProps } from "@react-pdf/renderer";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchSheetData } from "@/lib/sheets";
 import type { PengukuranGardu } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
-
-const OVERLOAD_PCT = 80;
-const HIGH_TEMP_C = 60;
 import { calcRemainingDays, getUrgencyLevel } from "@/lib/roles";
 import type { InspeksiJaringan } from "@/app/admin/monitoring-inspeksi/_hooks/useInspeksiJaringan";
 import type { InspeksiPohon } from "@/app/admin/monitoring-inspeksi/_hooks/useInspeksiPohon";
 import type {
   MorningBriefData, GangguanItem, PetugasRekap, EksekutorRekap,
 } from "@/app/admin/morning-brief/_hooks/useMorningBrief";
-import MorningBriefDocument from "@/app/admin/morning-brief/_components/_MorningBriefDocument";
+
+const OVERLOAD_PCT = 80;
+const HIGH_TEMP_C = 60;
 
 export const maxDuration = 60;
 
@@ -255,6 +251,7 @@ async function fetchData(): Promise<MorningBriefData> {
       totalJaringan: selesaiJar.length, totalPohon: selesaiPoh.length,
       totalJaringanBulanIni: selesaiJarBulan, totalPohonBulanIni: selesaiPohBulan,
     },
+    realisasiProbis: { items: [], totalWO: 0, totalRealisasi: 0 },
   };
 }
 
@@ -314,36 +311,25 @@ function formatBriefText(data: MorningBriefData): string {
   return lines.join("\n");
 }
 
-// ── Telegram sender ───────────────────────────────────────────────────────────
+// ── WA sender ─────────────────────────────────────────────────────────────────
 
-async function sendTelegram(token: string, chatId: string, text: string, pdfBuffer: Uint8Array, fileName: string) {
-  const base = `https://api.telegram.org/bot${token}`;
-
-  // 1. Kirim teks
-  await fetch(`${base}/sendMessage`, {
+async function sendWA(groupId: string, text: string) {
+  const res = await fetch(`${process.env.WA_BOT_URL ?? "http://127.0.0.1:3001"}/send`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ chat_id: chatId, text, parse_mode: "Markdown" }),
+    body: JSON.stringify({ groupId, message: text }),
   });
-
-  // 2. Kirim PDF
-  const form = new FormData();
-  form.append("chat_id", chatId);
-  form.append("document", new Blob([pdfBuffer.buffer as ArrayBuffer], { type: "application/pdf" }), fileName);
-  form.append("caption", `📄 ${fileName.replace(".pdf", "").replace(/-/g, " ")}`);
-  await fetch(`${base}/sendDocument`, { method: "POST", body: form });
+  if (!res.ok) throw new Error(`WA bot error: ${res.status}`);
 }
 
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function GET(request: NextRequest) {
-  // Vercel cron auth
   const auth = request.headers.get("authorization");
   if (auth !== `Bearer ${process.env.CRON_SECRET}`) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Cek apakah pengiriman diaktifkan
   const { data: scheduleSettings } = await supabaseAdmin
     .from("morning_brief_settings")
     .select("enabled")
@@ -354,22 +340,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "disabled" });
   }
 
-  const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-  const CHAT_ID = process.env.TELEGRAM_CHAT_ID;
-  if (!BOT_TOKEN || !CHAT_ID) {
-    return NextResponse.json({ error: "Telegram env vars not set" }, { status: 500 });
+  const GROUP_ID = process.env.WA_GROUP_MORNING_BRIEF;
+  if (!GROUP_ID) {
+    return NextResponse.json({ error: "WA_GROUP_MORNING_BRIEF env var not set" }, { status: 500 });
   }
 
   try {
     const data = await fetchData();
     const text = formatBriefText(data);
-
-    const pdfBuffer = await renderToBuffer(
-      React.createElement(MorningBriefDocument as React.ComponentType<{ data: MorningBriefData; unitLabel: string }>, { data, unitLabel: UNIT_LABEL }) as React.ReactElement<DocumentProps>
-    );
-
-    await sendTelegram(BOT_TOKEN, CHAT_ID, text, pdfBuffer, `Morning-Brief-${data.yesterday}.pdf`);
-
+    await sendWA(GROUP_ID, text);
     return NextResponse.json({ ok: true, date: data.yesterday });
   } catch (e) {
     console.error("Morning brief send error:", e);
