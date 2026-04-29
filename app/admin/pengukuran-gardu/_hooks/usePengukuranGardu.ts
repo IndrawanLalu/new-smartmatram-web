@@ -267,6 +267,21 @@ export function usePengukuranGardu(user: CurrentUser) {
     [latestData]
   );
 
+  // Patch satu baris di local state — tanpa re-fetch semua data
+  const patchRow = useCallback((id: string, patch: Partial<PengukuranGardu>) => {
+    setData(prev => prev.map(r => r.id === id ? { ...r, ...patch } : r));
+  }, []);
+
+  // Re-fetch satu baris dari DB lalu patch ke state (dipakai setelah edit)
+  const fetchAndPatchRow = useCallback(async (id: string) => {
+    const { data: row } = await supabaseBrowser
+      .from("pengukuran_gardu")
+      .select("*")
+      .eq("id", id)
+      .single();
+    if (row) patchRow(id, row as PengukuranGardu);
+  }, [patchRow]);
+
   return {
     data,
     latestData,
@@ -284,5 +299,7 @@ export function usePengukuranGardu(user: CurrentUser) {
     avgBeban,
     bebanChartData,
     refresh: fetchData,
+    patchRow,
+    fetchAndPatchRow,
   };
 }

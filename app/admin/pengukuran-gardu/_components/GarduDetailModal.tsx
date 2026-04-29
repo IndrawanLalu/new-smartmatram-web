@@ -14,7 +14,7 @@ import {
   CheckCircle2,
 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
-import { supabaseBrowser } from "@/lib/supabase-browser";
+import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
 import {
   type PengukuranGardu,
   HIGH_CURRENT_A,
@@ -107,7 +107,7 @@ interface Props {
   onClose: () => void;
   onEdit: (row: PengukuranGardu) => void;
   allData?: PengukuranGardu[];
-  onRefresh?: () => void;
+  onPatchRow?: (id: string, patch: Partial<PengukuranGardu>) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -117,31 +117,42 @@ export default function GarduDetailModal({
   onClose,
   onEdit,
   allData,
-  onRefresh,
+  onPatchRow,
 }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [showKirimWA, setShowKirimWA] = useState(false);
-  const [markingAmg, setMarkingAmg] = useState(false);
+  const [amgLoading, setAmgLoading] = useState(false);
   const [amgMarked, setAmgMarked] = useState(false);
+  const [amgReset, setAmgReset] = useState(false);
+  const [amgSuccess, setAmgSuccess] = useState(false);
+  const [amgError, setAmgError] = useState<string | null>(null);
 
   if (!row) return null;
 
-  // Sync amgMarked dengan data row (diinisialisasi ulang saat row berubah via key prop)
-  const isAmgDone = amgMarked || !!row.amg_sent_at;
+  const isAmgDone = !amgReset && (amgMarked || !!row.amg_sent_at);
 
-  const rowId = row.id;
-  async function handleMarkAmg() {
-    if (isAmgDone || markingAmg) return;
-    setMarkingAmg(true);
-    const { error } = await supabaseBrowser
-      .from("pengukuran_gardu")
-      .update({ amg_sent_at: new Date().toISOString() })
-      .eq("id", rowId);
-    if (!error) {
+  async function handleKirimAmg() {
+    if (amgLoading) return;
+    setAmgLoading(true);
+    setAmgReset(false);
+    setAmgError(null);
+    try {
+      const res = await fetch("/api/kirim-amg", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pengukuranId: row!.id }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setAmgMarked(true);
-      onRefresh?.();
+      setAmgSuccess(true);
+      setTimeout(() => setAmgSuccess(false), 2800);
+      onPatchRow?.(row!.id, { amg_sent_at: new Date().toISOString() });
+    } catch (e) {
+      setAmgError(e instanceof Error ? e.message : "Gagal kirim ke AMG");
+    } finally {
+      setAmgLoading(false);
     }
-    setMarkingAmg(false);
   }
 
   const perjurusan = row.perjurusan ?? {};
@@ -166,6 +177,16 @@ export default function GarduDetailModal({
 
   return (
     <>
+      <LoadingOverlay
+        loading={amgLoading}
+        success={amgSuccess}
+        icon="📡"
+        title="Proses Kirim Data ke AMG"
+        subtitle="Login & mengirim data pengukuran..."
+        successTitle="Data Berhasil Dikirim!"
+        successSubtitle="Data pengukuran tersimpan di AMG"
+      />
+
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-black/40 z-40 backdrop-blur-sm"
@@ -216,22 +237,43 @@ export default function GarduDetailModal({
           </div>
           <div className="flex items-center gap-2">
             {isAmgDone ? (
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 text-xs font-medium cursor-default">
-                <CheckCircle2 size={13} /> Sudah di-AMG
-              </span>
+              <div className="flex flex-col items-end gap-1">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 text-xs font-medium cursor-default">
+                  <CheckCircle2 size={13} /> Terkirim ke AMG
+                </span>
+                <button
+                  onClick={() => { setAmgReset(true); setAmgError(null); }}
+                  className="text-[10px] text-[#94a3b8] hover:text-white underline leading-tight"
+                >
+                  Kirim Ulang
+                </button>
+              </div>
             ) : (
-              <button
-                onClick={handleMarkAmg}
-                disabled={markingAmg}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {markingAmg ? (
-                  <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
-                ) : (
-                  <CheckCircle2 size={13} />
+              <div className="flex flex-col items-end gap-1">
+                <button
+                  onClick={handleKirimAmg}
+                  disabled={amgLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {amgLoading ? (
+                    <span className="w-3 h-3 border border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <CheckCircle2 size={13} />
+                  )}
+                  {amgLoading ? "Mengirim ke AMG..." : "Kirim ke AMG"}
+                </button>
+                {amgError && (
+                  <div className="flex flex-col items-end gap-0.5">
+                    <span className="text-red-300 text-[10px] max-w-[200px] text-right leading-tight">{amgError}</span>
+                    <button
+                      onClick={handleKirimAmg}
+                      className="text-[10px] text-[#5eead4] hover:text-white underline leading-tight"
+                    >
+                      Coba Lagi
+                    </button>
+                  </div>
                 )}
-                Tandai AMG
-              </button>
+              </div>
             )}
             <button
               onClick={() => setShowKirimWA(true)}
@@ -907,7 +949,7 @@ export default function GarduDetailModal({
         <KirimWAGarduModal
           data={row}
           onClose={() => setShowKirimWA(false)}
-          onWoMarked={onRefresh}
+          onWoMarked={(sentAt) => onPatchRow?.(row.id, { wo_sent_at: sentAt })}
         />
       )}
     </>

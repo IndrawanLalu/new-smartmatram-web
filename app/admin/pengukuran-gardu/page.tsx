@@ -194,6 +194,8 @@ export default function PengukuranGarduPage() {
     avgBeban,
     bebanChartData,
     refresh,
+    patchRow,
+    fetchAndPatchRow,
   } = usePengukuranGardu(user);
 
   const now = new Date();
@@ -668,12 +670,12 @@ export default function PengukuranGarduPage() {
       onClose={() => setSelectedRow(null)}
       onEdit={setEditRow}
       allData={data}
-      onRefresh={refresh}
+      onPatchRow={patchRow}
     />
     <EditPengukuranModal
       row={editRow}
       onClose={() => setEditRow(null)}
-      onSaved={() => { setEditRow(null); setSelectedRow(null); refresh(); }}
+      onSaved={(id) => { setEditRow(null); setSelectedRow(null); fetchAndPatchRow(id); }}
     />
     </>
   );

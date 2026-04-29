@@ -18,7 +18,7 @@ type JurusanNumField = keyof Omit<JurusanRow, "key">;
 interface Props {
   row: PengukuranGardu | null;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: (id: string) => void;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -145,7 +145,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
         .eq("id", row.id);
 
       if (err) throw err;
-      onSaved();
+      onSaved(row.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal menyimpan");
     } finally {

@@ -347,12 +347,17 @@ app/admin/scoreboard/
 6. **Pagination** — tabel data besar wajib paginate (20/halaman), jangan render semua sekaligus
 7. **Filter di level data, bukan di level render** — `useMemo` dengan dependency array tepat
 8. **`useCallback` hanya jika ada bukti perlu** — jangan defensive, ukur dulu
+9. **Local patch, bukan full refresh** — setelah mutasi satu baris (update field, marking), patch state lokal via `patchRow(id, patch)` — jangan re-fetch semua data. Re-fetch hanya untuk mutasi yang mengubah banyak baris. Contoh pola di `usePengukuranGardu`: `patchRow` (instant) dan `fetchAndPatchRow` (re-fetch 1 baris setelah edit kompleks).
+10. **Server-side first** — default Server Component, `use client` hanya jika butuh state/event/effect. Data fetching di server jika memungkinkan.
+11. **Reusable components** — jika komponen/UI sama dipakai ≥2 tempat, ekstrak ke `app/admin/_components/`. Contoh: `LoadingOverlay.tsx` (spinner + success state).
 
 ### Anti-pattern yang harus dihindari:
 - `useEffect` untuk derive state → pakai `useMemo`
 - Fetch data di banyak komponen untuk data yang sama → lift ke parent + pass props
 - Konstanta array/object di dalam komponen body → pindah ke module scope
 - `style={{}}` untuk nilai yang bisa pakai Tailwind class
+- **Full refresh setelah mutasi satu baris** → patch state lokal saja, urutan tabel tidak berubah
+- **`onRefresh` callback yang memanggil re-fetch semua** → ganti dengan `onPatchRow(id, patch)`
 
 ## Project Lama (referensi)
 Path: `d:/smart-mataram` — React+Vite+Firebase.

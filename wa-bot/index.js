@@ -78,6 +78,24 @@ process.on("unhandledRejection", (reason) => {
   process.exit(1);
 });
 
+// ── Heartbeat — deteksi zombie state (Chrome hidup tapi WA mati) ──────────────
+// whatsapp-web.js tidak emit "disconnected" saat Chrome/sesi jadi stale.
+// Tanpa ini, bot stuck: isReady=true tapi sendMessage selalu gagal.
+setInterval(async () => {
+  if (!isReady) return;
+  try {
+    const state = await client.getState();
+    if (state !== "CONNECTED") {
+      console.error(`❌ Heartbeat: state = ${state} (bukan CONNECTED) — exit untuk PM2 restart`);
+      process.exit(1);
+    }
+    console.log(`💓 Heartbeat OK — state: ${state}`);
+  } catch (err) {
+    console.error("❌ Heartbeat gagal:", err.message, "— exit untuk PM2 restart");
+    process.exit(1);
+  }
+}, 5 * 60 * 1000); // setiap 5 menit
+
 client.initialize();
 
 // ── HTTP API ─────────────────────────────────────────────────────────────────
@@ -129,6 +147,15 @@ app.post("/send", async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error("❌ Gagal kirim pesan:", err.message);
+    // Jika error berasal dari koneksi Chrome/WA yang mati, exit agar PM2 restart
+    const isConnErr = ["Session closed", "Target closed", "Protocol error", "net::ERR", "Navigation", "Execution context"].some(
+      (s) => err.message.includes(s)
+    );
+    if (isConnErr) {
+      res.status(503).json({ error: "Bot terputus, sedang restart..." });
+      setTimeout(() => process.exit(1), 500); // beri waktu response terkirim dulu
+      return;
+    }
     res.status(500).json({ error: err.message });
   }
 });

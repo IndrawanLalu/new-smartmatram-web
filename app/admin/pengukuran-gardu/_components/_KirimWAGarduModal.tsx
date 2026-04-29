@@ -9,7 +9,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 interface Props {
   data: PengukuranGardu;
   onClose: () => void;
-  onWoMarked?: () => void;
+  onWoMarked?: (sentAt: string) => void;
 }
 
 const canShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -40,8 +40,9 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
       .update({ wo_sent_at: new Date().toISOString() })
       .eq("id", data.id);
     if (!error) {
+      const sentAt = new Date().toISOString();
       setMarked(true);
-      onWoMarked?.();
+      onWoMarked?.(sentAt);
     }
     setMarking(false);
   };
