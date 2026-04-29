@@ -1,0 +1,43 @@
+{
+  // OpenClaw config untuk Smart Mataram — PLN ULP Ampenan
+  // Simpan file ini di VPS: ~/.openclaw/openclaw.json
+
+  "identity": {
+    "name": "Smart Mataram",
+    "theme": "asisten monitoring jaringan listrik PLN ULP Ampenan",
+    "emoji": "⚡"
+  },
+
+  "agents": {
+    "defaults": {
+      "model": {
+        // Jalankan: openclaw models list --provider google
+        // untuk melihat nama model yang tersedia
+        "primary": "google/gemini-2.0-flash"
+      }
+    }
+  },
+
+  "channels": {
+    "whatsapp": {
+      // dmPolicy allowlist: hanya nomor di bawah yang bisa chat dengan bot
+      // Format: "+628xxxxxxxxxx" (dengan kode negara)
+      "dmPolicy": "allowlist",
+      "allowFrom": [
+        "+62XXXXXXXXXX"
+      ]
+    }
+  },
+
+  "skills": {
+    "entries": {
+      "smart-mataram": {
+        "enabled": true,
+        "env": {
+          "SMART_MATARAM_URL": "${SMART_MATARAM_URL}",
+          "AGENT_SECRET": "${AGENT_SECRET}"
+        }
+      }
+    }
+  }
+}
