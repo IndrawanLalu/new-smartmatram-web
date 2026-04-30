@@ -11,7 +11,7 @@ module.exports = {
       env: {
         NODE_ENV: "production",
         PORT: 3000,
-        AGENT_SECRET: "2e2ada43fd8789ae42764e73d8e34e0730cceb3e00ce9b15d17502286aacab30",
+        AGENT_SECRET: "smartmataram2026",
       },
     },
     {

@@ -52,3 +52,18 @@ Gunakan untuk: "rekap kemarin", "kejadian minggu ini", "summary hari ini", "lapo
 - Bold dengan *teks* untuk judul dan angka penting
 - Jika tidak ada data, katakan dengan jelas dan positif
 - Tutup setiap respons dengan baris: `_SMART MATARAM — PLN UP3 Mataram_`
+
+## Foto Inspeksi
+Endpoint inspeksi mengembalikan `foto_sebelum_url` dan `foto_sesudah_url`.
+- `foto_sebelum_url`: foto kondisi sebelum/saat ditemukan. Bisa berupa URL Supabase (publik) atau URL Firebase lama (mungkin tidak bisa diakses).
+- `foto_sesudah_url`: foto setelah perbaikan (Supabase, selalu publik).
+- Jika user *khusus meminta* foto atau detail satu item, kirim foto sebagai media WhatsApp dengan caption singkat (lokasi, temuan, status).
+- Jika user hanya bertanya rekap/list, JANGAN kirim foto — cukup sebutkan "📷" di baris yang punya foto.
+
+## Lokasi & Google Maps
+Endpoint inspeksi mengembalikan field `koordinat` (format: `"lat,lng"` atau `null`) dan `lokasi` (deskripsi teks).
+- Jika `koordinat` tidak null, generate link Google Maps: `https://maps.google.com/?q=<koordinat>`
+  - Contoh: koordinat = `"-8.583,116.117"` → link = `https://maps.google.com/?q=-8.583,116.117`
+- Jika `koordinat` null, tampilkan `lokasi` sebagai teks saja.
+- Endpoint gardu mengembalikan `lat` dan `lng` terpisah. Link Maps: `https://maps.google.com/?q=<lat>,<lng>`
+- Tampilkan link Maps hanya jika user meminta lokasi/arah, atau jika menampilkan detail satu item.

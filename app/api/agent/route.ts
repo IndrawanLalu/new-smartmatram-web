@@ -29,13 +29,13 @@ async function queryGardu(q: string) {
 async function queryInspeksiUrgent() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url")
       .eq("category", "Urgent")
       .not("status", "eq", "Selesai")
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat")
       .eq("tingkat_risiko", "Sangat Tinggi")
       .not("status", "eq", "Selesai")
       .order("tgl_inspeksi", { ascending: false })
@@ -52,12 +52,12 @@ async function queryInspeksiUrgent() {
 async function queryInspeksiBelumDitugaskan() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, ulp, koordinat, foto_sebelum_url")
       .in("status", ["Temuan", "Perlu Tindakan"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, ulp, koordinat")
       .in("status", ["Temuan", "Perlu Tindakan"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
@@ -73,12 +73,12 @@ async function queryInspeksiBelumDitugaskan() {
 async function queryInspeksiBelumSelesai() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url")
       .in("status", ["Ditugaskan", "Dalam Proses"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp")
+      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat")
       .in("status", ["Ditugaskan", "Dalam Proses"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
