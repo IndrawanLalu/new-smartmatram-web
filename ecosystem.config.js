@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "smart-mataram",
-      script: "node_modules/.bin/next",
-      args: "start",
+      script: "node",
+      args: "node_modules/next/dist/bin/next start",
       cwd: "/var/www/smart-mataram",
       instances: 1,
       autorestart: true,
