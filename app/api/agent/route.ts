@@ -5,6 +5,9 @@ const AGENT_SECRET = process.env.AGENT_SECRET ?? "";
 const OVERLOAD_PCT = 80;
 const HIGH_TEMP_C  = 60;
 
+const INSPEKSI_FIELDS = "id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url";
+const POHON_FIELDS    = "id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url";
+
 // WITA = UTC+8
 function witaDate(offsetDays = 0): string {
   const d = new Date(Date.now() + (8 + offsetDays * 24) * 3_600_000);
@@ -29,13 +32,13 @@ async function queryGardu(q: string) {
 async function queryInspeksiUrgent() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url")
+      .select(INSPEKSI_FIELDS)
       .eq("category", "Urgent")
       .not("status", "eq", "Selesai")
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat")
+      .select(POHON_FIELDS)
       .eq("tingkat_risiko", "Sangat Tinggi")
       .not("status", "eq", "Selesai")
       .order("tgl_inspeksi", { ascending: false })
@@ -52,12 +55,12 @@ async function queryInspeksiUrgent() {
 async function queryInspeksiBelumDitugaskan() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, ulp, koordinat, foto_sebelum_url")
+      .select(INSPEKSI_FIELDS)
       .in("status", ["Temuan", "Perlu Tindakan"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, ulp, koordinat")
+      .select(POHON_FIELDS)
       .in("status", ["Temuan", "Perlu Tindakan"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
@@ -73,12 +76,12 @@ async function queryInspeksiBelumDitugaskan() {
 async function queryInspeksiBelumSelesai() {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
-      .select("id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url")
+      .select(INSPEKSI_FIELDS)
       .in("status", ["Ditugaskan", "Dalam Proses"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
-      .select("id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat")
+      .select(POHON_FIELDS)
       .in("status", ["Ditugaskan", "Dalam Proses"])
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
@@ -91,6 +94,50 @@ async function queryInspeksiBelumSelesai() {
   });
 }
 
+async function queryInspeksiSearch(params: URLSearchParams) {
+  const jenis        = params.get("jenis") ?? "all";
+  const status       = params.get("status") ?? "all";
+  const tanggalDari  = params.get("tanggal_dari") ?? "";
+  const tanggalSampai = params.get("tanggal_sampai") ?? "";
+  const limit        = Math.min(parseInt(params.get("limit") ?? "10"), 20);
+
+  const STATUS_VALUES = ["Temuan", "Perlu Tindakan", "Ditugaskan", "Dalam Proses", "Selesai"];
+
+  function buildQuery(table: "inspeksi" | "inspeksi_pohon", fields: string) {
+    let qb = supabaseAdmin.from(table).select(fields);
+    if (status !== "all" && STATUS_VALUES.includes(status)) qb = qb.eq("status", status);
+    if (tanggalDari)   qb = qb.gte("tgl_inspeksi", tanggalDari);
+    if (tanggalSampai) qb = qb.lte("tgl_inspeksi", tanggalSampai);
+    return qb.order("tgl_inspeksi", { ascending: false }).limit(limit);
+  }
+
+  const results: { jaringan?: unknown[]; pohon?: unknown[] } = {};
+
+  if (jenis === "jaringan" || jenis === "all") {
+    const { data } = await buildQuery("inspeksi", INSPEKSI_FIELDS);
+    results.jaringan = data ?? [];
+  }
+  if (jenis === "pohon" || jenis === "all") {
+    const { data } = await buildQuery("inspeksi_pohon", POHON_FIELDS);
+    results.pohon = data ?? [];
+  }
+
+  const total = (results.jaringan?.length ?? 0) + (results.pohon?.length ?? 0);
+  return NextResponse.json({ type: "inspeksi_search", total, ...results });
+}
+
+async function queryInspeksiDetail(id: string, jenis: string) {
+  if (!id) return NextResponse.json({ error: "id wajib diisi" }, { status: 400 });
+
+  const table  = jenis === "pohon" ? "inspeksi_pohon" : "inspeksi";
+  const fields = jenis === "pohon" ? POHON_FIELDS : INSPEKSI_FIELDS;
+
+  const { data, error } = await supabaseAdmin.from(table).select(fields).eq("id", id).single();
+  if (error || !data) return NextResponse.json({ error: "Data tidak ditemukan" }, { status: 404 });
+
+  return NextResponse.json({ type: "inspeksi_detail", data });
+}
+
 async function queryPengukuranAnomali() {
   const { data } = await supabaseAdmin
     .from("pengukuran_gardu")
@@ -99,7 +146,6 @@ async function queryPengukuranAnomali() {
     .order("tanggal_pengukuran", { ascending: false })
     .limit(50);
 
-  // Deduplicate — ambil terbaru per gardu (data sudah sort DESC)
   const seen = new Set<string>();
   const unique = (data ?? []).filter(r => {
     if (seen.has(r.no_gardu)) return false;
@@ -130,11 +176,7 @@ async function queryPengukuranBelumAmg() {
     return true;
   });
 
-  return NextResponse.json({
-    type: "pengukuran_belum_amg",
-    total: unique.length,
-    results: unique,
-  });
+  return NextResponse.json({ type: "pengukuran_belum_amg", total: unique.length, results: unique });
 }
 
 async function queryRekap(periode: string) {
@@ -154,15 +196,9 @@ async function queryRekap(periode: string) {
   }
 
   const [{ data: insp }, { data: pohon }, { data: ukur }] = await Promise.all([
-    supabaseAdmin.from("inspeksi")
-      .select("id, status, category")
-      .gte("created_at", startDate),
-    supabaseAdmin.from("inspeksi_pohon")
-      .select("id, status, tingkat_risiko")
-      .gte("created_at", startDate),
-    supabaseAdmin.from("pengukuran_gardu")
-      .select("id, no_gardu, persen_beban, suhu_trafo")
-      .gte("tanggal_pengukuran", startDate),
+    supabaseAdmin.from("inspeksi").select("id, status, category").gte("created_at", startDate),
+    supabaseAdmin.from("inspeksi_pohon").select("id, status, tingkat_risiko").gte("created_at", startDate),
+    supabaseAdmin.from("pengukuran_gardu").select("id, no_gardu, persen_beban, suhu_trafo").gte("tanggal_pengukuran", startDate),
   ]);
 
   return NextResponse.json({
@@ -174,9 +210,9 @@ async function queryRekap(periode: string) {
       selesai: insp?.filter(i => i.status === "Selesai").length ?? 0,
     },
     inspeksi_pohon: {
-      total:        pohon?.length ?? 0,
+      total:         pohon?.length ?? 0,
       sangat_tinggi: pohon?.filter(p => p.tingkat_risiko === "Sangat Tinggi").length ?? 0,
-      selesai:      pohon?.filter(p => p.status === "Selesai").length ?? 0,
+      selesai:       pohon?.filter(p => p.status === "Selesai").length ?? 0,
     },
     pengukuran: {
       total:       ukur?.length ?? 0,
@@ -198,19 +234,23 @@ export async function GET(req: NextRequest) {
   const type   = searchParams.get("type") ?? "";
   const q      = searchParams.get("q") ?? "";
   const periode = searchParams.get("periode") ?? "hari_ini";
+  const id      = searchParams.get("id") ?? "";
+  const jenis   = searchParams.get("jenis") ?? "jaringan";
 
   switch (type) {
     case "gardu":                     return queryGardu(q);
     case "inspeksi_urgent":           return queryInspeksiUrgent();
     case "inspeksi_belum_ditugaskan": return queryInspeksiBelumDitugaskan();
     case "inspeksi_belum_selesai":    return queryInspeksiBelumSelesai();
+    case "inspeksi_search":           return queryInspeksiSearch(searchParams);
+    case "inspeksi_detail":           return queryInspeksiDetail(id, jenis);
     case "pengukuran_anomali":        return queryPengukuranAnomali();
     case "pengukuran_belum_amg":      return queryPengukuranBelumAmg();
     case "rekap":                     return queryRekap(periode);
     default:
       return NextResponse.json({
         error: `Type '${type}' tidak dikenal`,
-        pilihan: ["gardu", "inspeksi_urgent", "inspeksi_belum_ditugaskan", "inspeksi_belum_selesai", "pengukuran_anomali", "pengukuran_belum_amg", "rekap"],
+        pilihan: ["gardu", "inspeksi_urgent", "inspeksi_belum_ditugaskan", "inspeksi_belum_selesai", "inspeksi_search", "inspeksi_detail", "pengukuran_anomali", "pengukuran_belum_amg", "rekap"],
       }, { status: 400 });
   }
 }

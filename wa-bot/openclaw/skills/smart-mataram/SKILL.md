@@ -24,46 +24,69 @@ Gunakan untuk: "cari gardu AM275", "gardu di jalan sriwijaya", "info trafo ampen
 
 ### Inspeksi Urgent Belum Selesai
 `GET ${SMART_MATARAM_URL}/api/agent?type=inspeksi_urgent`
-Gunakan untuk: "inspeksi urgent belum dikerjakan", "temuan sangat tinggi yang masih open", "risiko tinggi belum selesai"
+Gunakan untuk: "inspeksi urgent", "temuan sangat tinggi yang masih open", "risiko tinggi belum selesai"
 
 ### Inspeksi Belum Ditugaskan
 `GET ${SMART_MATARAM_URL}/api/agent?type=inspeksi_belum_ditugaskan`
-Gunakan untuk: "temuan yang belum ada eksekutornya", "inspeksi belum ditugaskan", "yang belum di-assign"
+Gunakan untuk: "temuan yang belum ada eksekutornya", "inspeksi belum ditugaskan"
 
-### Inspeksi Ditugaskan Tapi Belum Selesai
+### Inspeksi Belum Selesai
 `GET ${SMART_MATARAM_URL}/api/agent?type=inspeksi_belum_selesai`
-Gunakan untuk: "pekerjaan yang masih dalam proses", "inspeksi belum selesai", "yang sudah ditugaskan tapi belum kelar"
+Gunakan untuk: "pekerjaan yang masih dalam proses", "inspeksi belum selesai"
+
+### Pencarian Inspeksi Fleksibel
+`GET ${SMART_MATARAM_URL}/api/agent?type=inspeksi_search&jenis=<jaringan|pohon|all>&status=<status|all>&tanggal_dari=<YYYY-MM-DD>&tanggal_sampai=<YYYY-MM-DD>&limit=<10>`
+
+Parameter (semua opsional):
+- `jenis`: `jaringan`, `pohon`, atau `all` (default: all)
+- `status`: `Temuan`, `Perlu Tindakan`, `Ditugaskan`, `Dalam Proses`, `Selesai`, atau `all` (default: all)
+- `tanggal_dari` / `tanggal_sampai`: format YYYY-MM-DD (filter by tgl_inspeksi)
+- `limit`: max 20 (default: 10)
+
+Gunakan untuk:
+- "tampilkan temuan kemarin" → tanggal_dari=kemarin, tanggal_sampai=kemarin
+- "inspeksi hari ini" → tanggal_dari=hari_ini, tanggal_sampai=hari_ini
+- "yang sudah selesai minggu ini" → status=Selesai + tanggal_dari=awal_minggu
+- "semua inspeksi pohon bulan ini" → jenis=pohon + tanggal_dari=awal_bulan
+- "temuan terbaru" → tanpa filter tanggal, limit=5
+
+Tanggal hari ini (WITA): hitung dari konteks percakapan atau gunakan tanggal sistem.
+
+### Detail Inspeksi (foto + koordinat lengkap)
+`GET ${SMART_MATARAM_URL}/api/agent?type=inspeksi_detail&id=<id>&jenis=<jaringan|pohon>`
+
+Gunakan untuk:
+- "tampilkan foto temuan nomor 3" → gunakan id dari hasil list sebelumnya
+- "detail temuan [lokasi/temuan tertentu]" → cari id dari inspeksi_search dulu
+- "kirim foto sebelum dan sesudah [temuan X]"
 
 ### Anomali Pengukuran Gardu
 `GET ${SMART_MATARAM_URL}/api/agent?type=pengukuran_anomali`
-Gunakan untuk: "gardu overload", "beban tinggi", "suhu trafo bermasalah", "gardu yang kritis"
+Gunakan untuk: "gardu overload", "beban tinggi", "suhu trafo bermasalah"
 
 ### Pengukuran Belum Dikirim ke AMG
 `GET ${SMART_MATARAM_URL}/api/agent?type=pengukuran_belum_amg`
-Gunakan untuk: "gardu belum di-AMG", "pengukuran belum terkirim", "yang belum di-input AMG"
+Gunakan untuk: "gardu belum di-AMG", "pengukuran belum terkirim"
 
 ### Rekap Data
 `GET ${SMART_MATARAM_URL}/api/agent?type=rekap&periode=<hari_ini|kemarin|minggu_ini|bulan_ini>`
-Gunakan untuk: "rekap kemarin", "kejadian minggu ini", "summary hari ini", "laporan bulan ini"
+Gunakan untuk: "rekap kemarin", "summary hari ini", "laporan bulan ini"
 
 ## Format Respons WhatsApp
 - Ringkas — maksimal 10 item jika berupa list, sisanya sebut "dan X lainnya"
 - Gunakan emoji: ⚡ gardu/jaringan, 🌳 pohon/rabas, 📊 rekap, 🔴 urgent/overload, ✅ selesai
 - Bold dengan *teks* untuk judul dan angka penting
+- Nomori setiap item di list (1. 2. 3. ...) agar user bisa minta detail berdasarkan nomor
 - Jika tidak ada data, katakan dengan jelas dan positif
 - Tutup setiap respons dengan baris: `_SMART MATARAM — PLN UP3 Mataram_`
 
 ## Foto Inspeksi
-Endpoint inspeksi mengembalikan `foto_sebelum_url` dan `foto_sesudah_url`.
-- `foto_sebelum_url`: foto kondisi sebelum/saat ditemukan. Bisa berupa URL Supabase (publik) atau URL Firebase lama (mungkin tidak bisa diakses).
-- `foto_sesudah_url`: foto setelah perbaikan (Supabase, selalu publik).
-- Jika user *khusus meminta* foto atau detail satu item, kirim foto sebagai media WhatsApp dengan caption singkat (lokasi, temuan, status).
-- Jika user hanya bertanya rekap/list, JANGAN kirim foto — cukup sebutkan "📷" di baris yang punya foto.
+Response inspeksi mengandung `foto_sebelum_url` dan `foto_sesudah_url`.
+- Jika user meminta foto atau detail satu item, kirim foto sebagai media WhatsApp dengan caption singkat.
+- Coba kirim `foto_sesudah_url` dulu (lebih baru). Jika null, coba `foto_sebelum_url`.
+- Jika user hanya bertanya list/rekap, JANGAN kirim foto — cukup tampilkan "📷" di item yang punya foto.
 
 ## Lokasi & Google Maps
-Endpoint inspeksi mengembalikan field `koordinat` (format: `"lat,lng"` atau `null`) dan `lokasi` (deskripsi teks).
-- Jika `koordinat` tidak null, generate link Google Maps: `https://maps.google.com/?q=<koordinat>`
-  - Contoh: koordinat = `"-8.583,116.117"` → link = `https://maps.google.com/?q=-8.583,116.117`
-- Jika `koordinat` null, tampilkan `lokasi` sebagai teks saja.
-- Endpoint gardu mengembalikan `lat` dan `lng` terpisah. Link Maps: `https://maps.google.com/?q=<lat>,<lng>`
-- Tampilkan link Maps hanya jika user meminta lokasi/arah, atau jika menampilkan detail satu item.
+- Field `koordinat` format `"lat,lng"` atau null. Jika ada → link: `https://maps.google.com/?q=<koordinat>`
+- Field `lat`+`lng` (gardu) → link: `https://maps.google.com/?q=<lat>,<lng>`
+- Tampilkan link Maps jika user minta lokasi/arah, atau saat menampilkan detail satu item.
