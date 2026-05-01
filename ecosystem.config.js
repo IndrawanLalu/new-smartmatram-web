@@ -24,8 +24,11 @@ module.exports = {
       restart_delay: 5000,
       max_restarts: 10,
       env: {
-        // Pakai Chrome bundled Puppeteer (bukan snap), tapi cegah auto-download versi baru
         PUPPETEER_SKIP_CHROMIUM_DOWNLOAD: "true",
+        SMART_MATARAM_URL: "http://localhost:3000",
+        AGENT_SECRET: "smartmataram2026",
+        WA_ALLOWED_GROUPS: "120363420657048053@g.us",
+        WA_ALLOWED_DMS: "6287761506513",
       },
     },
   ],

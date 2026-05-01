@@ -16,7 +16,10 @@ const qrcode  = require("qrcode-terminal");
 const express = require("express");
 const { handleCommand } = require("./commands");
 
-const PORT = process.env.WA_BOT_PORT || 3001;
+const PORT          = process.env.WA_BOT_PORT || 3001;
+const ALLOWED_GROUPS = new Set((process.env.WA_ALLOWED_GROUPS || "").split(",").filter(Boolean));
+const ALLOWED_DMS    = new Set((process.env.WA_ALLOWED_DMS    || "").split(",").filter(Boolean));
+
 const app = express();
 app.use(express.json({ limit: "10mb" }));
 
@@ -59,11 +62,16 @@ client.on("ready", () => {
 // ── Incoming message handler ─────────────────────────────────────────────────
 
 client.on("message_create", async (msg) => {
-  // Abaikan pesan dari bot sendiri
   if (msg.fromMe) return;
 
   const text = (msg.body ?? "").trim();
   if (!text.startsWith("#")) return;
+
+  // Access control — group atau DM
+  const isGroup   = msg.from.endsWith("@g.us");
+  const senderNum = msg.from.replace("@c.us", "");
+  if (isGroup  && ALLOWED_GROUPS.size > 0 && !ALLOWED_GROUPS.has(msg.from)) return;
+  if (!isGroup && ALLOWED_DMS.size    > 0 && !ALLOWED_DMS.has(senderNum))   return;
 
   console.log(`📨 Command dari ${msg.from}: ${text}`);
 
