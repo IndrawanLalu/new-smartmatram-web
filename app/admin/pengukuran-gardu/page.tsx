@@ -25,6 +25,13 @@ import {
   ChevronLeft,
   ChevronRight,
   Download,
+  Send,
+  X,
+  CheckSquare2,
+  Square,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
@@ -159,6 +166,9 @@ export default function PengukuranGarduPage() {
   const [search, setSearch] = useState("");
   const [selectedRow, setSelectedRow] = useState<PengukuranGardu | null>(null);
   const [editRow, setEditRow] = useState<PengukuranGardu | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [amgStatus, setAmgStatus] = useState<Record<string, "sending" | "ok" | "error">>({});
+  const [isBulkSending, setIsBulkSending] = useState(false);
 
   // Debounce search — tunggu 350ms setelah user berhenti mengetik
   useEffect(() => {
@@ -196,6 +206,7 @@ export default function PengukuranGarduPage() {
     refresh,
     patchRow,
     fetchAndPatchRow,
+    deleteRow,
   } = usePengukuranGardu(user);
 
   const now = new Date();
@@ -225,6 +236,58 @@ export default function PengukuranGarduPage() {
     [filteredData, page]
   );
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+
+  const pageIds = useMemo(() => paginatedData.map((r) => r.id), [paginatedData]);
+  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+
+  function toggleSelect(e: React.MouseEvent, id: string) {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleSelectAll(e: React.MouseEvent) {
+    e.stopPropagation();
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (allPageSelected) pageIds.forEach((id) => next.delete(id));
+      else pageIds.forEach((id) => next.add(id));
+      return next;
+    });
+  }
+
+  function clearSelection() {
+    setSelectedIds(new Set());
+    setAmgStatus({});
+  }
+
+  async function handleBulkAmg() {
+    if (isBulkSending) return;
+    const ids = Array.from(selectedIds);
+    setIsBulkSending(true);
+    setAmgStatus(Object.fromEntries(ids.map((id) => [id, "sending"])));
+    for (const id of ids) {
+      try {
+        const res = await fetch("/api/kirim-amg", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pengukuranId: id }),
+        });
+        if (res.ok) {
+          setAmgStatus((prev) => ({ ...prev, [id]: "ok" }));
+          patchRow(id, { amg_sent_at: new Date().toISOString() });
+        } else {
+          setAmgStatus((prev) => ({ ...prev, [id]: "error" }));
+        }
+      } catch {
+        setAmgStatus((prev) => ({ ...prev, [id]: "error" }));
+      }
+    }
+    setIsBulkSending(false);
+  }
 
   return (
     <>
@@ -561,6 +624,11 @@ export default function PengukuranGarduPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="bg-[#0a2a26]">
+                <th className="px-3 py-3 w-8" onClick={toggleSelectAll}>
+                  <div className="flex items-center justify-center cursor-pointer text-[#5eead4]">
+                    {allPageSelected ? <CheckSquare2 size={15} /> : <Square size={15} />}
+                  </div>
+                </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">No. Gardu</th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Penyulang</th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Alamat</th>
@@ -577,7 +645,7 @@ export default function PengukuranGarduPage() {
               {loading ? (
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr key={i} className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}>
-                    {Array.from({ length: 10 }).map((_, j) => (
+                    {Array.from({ length: 11 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
                         <div className="h-4 bg-gray-100 animate-pulse rounded" />
                       </td>
@@ -586,7 +654,7 @@ export default function PengukuranGarduPage() {
                 ))
               ) : paginatedData.length === 0 ? (
                 <tr>
-                  <td colSpan={10} className="text-center py-12 text-[#94a3b8] text-sm">
+                  <td colSpan={11} className="text-center py-12 text-[#94a3b8] text-sm">
                     Tidak ada data pengukuran untuk periode ini
                   </td>
                 </tr>
@@ -599,8 +667,16 @@ export default function PengukuranGarduPage() {
                     <tr
                       key={row.id}
                       onClick={() => setSelectedRow(row)}
-                      className={`cursor-pointer hover:bg-teal-50/30 transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"} ${hasAlert ? "border-l-2 border-l-red-400" : ""}`}
+                      className={`cursor-pointer hover:bg-teal-50/30 transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"} ${hasAlert ? "border-l-2 border-l-red-400" : ""} ${selectedIds.has(row.id) ? "bg-teal-900/20" : ""}`}
                     >
+                      <td className="px-3 py-3 w-8" onClick={(e) => toggleSelect(e, row.id)}>
+                        <div className="flex items-center justify-center cursor-pointer text-[#5eead4]">
+                          {amgStatus[row.id] === "sending" ? <Loader2 size={14} className="animate-spin text-blue-400" /> :
+                           amgStatus[row.id] === "ok"      ? <CheckCircle2 size={14} className="text-green-400" /> :
+                           amgStatus[row.id] === "error"   ? <XCircle size={14} className="text-red-400" /> :
+                           selectedIds.has(row.id)         ? <CheckSquare2 size={14} /> : <Square size={14} className="text-[#1e3552]" />}
+                        </div>
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <span className="font-semibold text-[#e2e8f0]">{row.no_gardu}</span>
                         {hasAlert && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
@@ -664,6 +740,49 @@ export default function PengukuranGarduPage() {
       </>}
     </div>
 
+    {/* Floating bulk AMG toolbar */}
+    {selectedIds.size > 0 && (
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0d1b2a] border border-[#1e3552] rounded-2xl shadow-2xl px-5 py-3">
+        {isBulkSending ? (
+          <>
+            <Loader2 size={16} className="animate-spin text-blue-400 shrink-0" />
+            <span className="text-sm text-[#e2e8f0]">
+              Mengirim{" "}
+              {Object.values(amgStatus).filter((s) => s === "ok" || s === "error").length}
+              /{selectedIds.size}...
+            </span>
+          </>
+        ) : Object.keys(amgStatus).length > 0 ? (
+          <>
+            <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+            <span className="text-sm text-[#e2e8f0]">
+              <span className="text-green-400 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} berhasil</span>
+              {Object.values(amgStatus).filter((s) => s === "error").length > 0 && (
+                <span className="text-red-400 font-semibold ml-2">{Object.values(amgStatus).filter((s) => s === "error").length} gagal</span>
+              )}
+            </span>
+            <button onClick={clearSelection} className="ml-2 p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]">
+              <X size={14} />
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-medium text-[#e2e8f0]">{selectedIds.size} gardu dipilih</span>
+            <button
+              onClick={handleBulkAmg}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              <Send size={13} />
+              Kirim AMG
+            </button>
+            <button onClick={clearSelection} className="p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]">
+              <X size={14} />
+            </button>
+          </>
+        )}
+      </div>
+    )}
+
     <GarduDetailModal
       key={selectedRow?.id}
       row={selectedRow}
@@ -671,6 +790,7 @@ export default function PengukuranGarduPage() {
       onEdit={setEditRow}
       allData={data}
       onPatchRow={patchRow}
+      onDeleteRow={async (id) => { await deleteRow(id); if (selectedRow?.id === id) setSelectedRow(null); }}
     />
     <EditPengukuranModal
       row={editRow}

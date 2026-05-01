@@ -131,7 +131,8 @@ export function usePengukuranGardu(user: CurrentUser) {
       let query = supabaseBrowser
         .from("pengukuran_gardu")
         .select("*")
-        .order("tanggal_pengukuran", { ascending: false });
+        .order("tanggal_pengukuran", { ascending: false })
+        .order("created_at", { ascending: false });
 
       // month=0 → Semua Bulan, tidak filter tanggal
       if (filter.month !== 0) {
@@ -282,6 +283,12 @@ export function usePengukuranGardu(user: CurrentUser) {
     if (row) patchRow(id, row as PengukuranGardu);
   }, [patchRow]);
 
+  // Hapus satu baris dari DB dan local state
+  const deleteRow = useCallback(async (id: string) => {
+    await supabaseBrowser.from("pengukuran_gardu").delete().eq("id", id);
+    setData(prev => prev.filter(r => r.id !== id));
+  }, []);
+
   return {
     data,
     latestData,
@@ -301,5 +308,6 @@ export function usePengukuranGardu(user: CurrentUser) {
     refresh: fetchData,
     patchRow,
     fetchAndPatchRow,
+    deleteRow,
   };
 }

@@ -12,6 +12,7 @@ import {
   Pencil,
   MessageCircle,
   CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
@@ -108,6 +109,7 @@ interface Props {
   onEdit: (row: PengukuranGardu) => void;
   allData?: PengukuranGardu[];
   onPatchRow?: (id: string, patch: Partial<PengukuranGardu>) => void;
+  onDeleteRow?: (id: string) => Promise<void>;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -118,8 +120,11 @@ export default function GarduDetailModal({
   onEdit,
   allData,
   onPatchRow,
+  onDeleteRow,
 }: Props) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [showKirimWA, setShowKirimWA] = useState(false);
   const [amgLoading, setAmgLoading] = useState(false);
   const [amgMarked, setAmgMarked] = useState(false);
@@ -171,9 +176,20 @@ export default function GarduDetailModal({
   const history =
     allData
       ?.filter((d) => d.no_gardu === row.no_gardu)
-      .sort((a, b) =>
-        b.tanggal_pengukuran.localeCompare(a.tanggal_pengukuran),
-      ) ?? [];
+      .sort((a, b) => {
+        const byDate = b.tanggal_pengukuran.localeCompare(a.tanggal_pengukuran);
+        if (byDate !== 0) return byDate;
+        return b.created_at.localeCompare(a.created_at);
+      }) ?? [];
+
+  async function handleDelete(id: string) {
+    if (!onDeleteRow || deleteLoading) return;
+    setDeleteLoading(true);
+    await onDeleteRow(id);
+    setDeletingId(null);
+    setDeleteLoading(false);
+    if (id === row?.id) onClose();
+  }
 
   return (
     <>
@@ -713,6 +729,33 @@ export default function GarduDetailModal({
                             >
                               <Pencil size={9} /> Edit
                             </button>
+                            {onDeleteRow && (
+                              deletingId === h.id ? (
+                                <div className="flex items-center gap-1">
+                                  <span className="text-[10px] text-red-400">Yakin hapus?</span>
+                                  <button
+                                    onClick={() => handleDelete(h.id)}
+                                    disabled={deleteLoading}
+                                    className="text-[10px] text-white bg-red-500 hover:bg-red-600 font-semibold rounded px-1.5 py-0.5 disabled:opacity-50"
+                                  >
+                                    Ya
+                                  </button>
+                                  <button
+                                    onClick={() => setDeletingId(null)}
+                                    className="text-[10px] text-[#94a3b8] hover:text-white border border-[#1e3552] rounded px-1.5 py-0.5"
+                                  >
+                                    Batal
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setDeletingId(h.id)}
+                                  className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 font-semibold transition-colors border border-red-500/30 rounded px-1.5 py-0.5"
+                                >
+                                  <Trash2 size={9} /> Hapus
+                                </button>
+                              )
+                            )}
                           </div>
                         </div>
 

@@ -6,7 +6,7 @@ const OVERLOAD_PCT = 80;
 const HIGH_TEMP_C  = 60;
 
 const INSPEKSI_FIELDS = "id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url";
-const POHON_FIELDS    = "id, penyulang, lokasi, temuan, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url";
+const POHON_FIELDS    = "id, penyulang, lokasi, deskripsi, status, tingkat_risiko, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_sesudah_url";
 
 // WITA = UTC+8
 function witaDate(offsetDays = 0): string {
@@ -138,6 +138,25 @@ async function queryInspeksiDetail(id: string, jenis: string) {
   return NextResponse.json({ type: "inspeksi_detail", data });
 }
 
+async function queryPengukuran(noGardu: string) {
+  if (!noGardu) return NextResponse.json({ error: "no_gardu wajib diisi" }, { status: 400 });
+  const { data } = await supabaseAdmin
+    .from("pengukuran_gardu")
+    .select("id, no_gardu, penyulang, tanggal_pengukuran, jam_pengukuran, persen_beban, beban_kva, kva_trafo, suhu_trafo, total_arus_r, total_arus_s, total_arus_t, total_arus_n, petugas_nama, petugas_unit, amg_sent_at, wo_sent_at")
+    .ilike("no_gardu", `%${noGardu}%`)
+    .order("tanggal_pengukuran", { ascending: false })
+    .order("created_at", { ascending: false })
+    .limit(5);
+  const results = data ?? [];
+  const seen = new Set<string>();
+  const latest = results.filter(r => {
+    if (seen.has(r.no_gardu)) return false;
+    seen.add(r.no_gardu);
+    return true;
+  });
+  return NextResponse.json({ type: "pengukuran", total: latest.length, results: latest });
+}
+
 async function queryPengukuranAnomali() {
   const { data } = await supabaseAdmin
     .from("pengukuran_gardu")
@@ -239,6 +258,7 @@ export async function GET(req: NextRequest) {
 
   switch (type) {
     case "gardu":                     return queryGardu(q);
+    case "pengukuran":                return queryPengukuran(q);
     case "inspeksi_urgent":           return queryInspeksiUrgent();
     case "inspeksi_belum_ditugaskan": return queryInspeksiBelumDitugaskan();
     case "inspeksi_belum_selesai":    return queryInspeksiBelumSelesai();
@@ -250,7 +270,7 @@ export async function GET(req: NextRequest) {
     default:
       return NextResponse.json({
         error: `Type '${type}' tidak dikenal`,
-        pilihan: ["gardu", "inspeksi_urgent", "inspeksi_belum_ditugaskan", "inspeksi_belum_selesai", "inspeksi_search", "inspeksi_detail", "pengukuran_anomali", "pengukuran_belum_amg", "rekap"],
+        pilihan: ["gardu", "pengukuran", "inspeksi_urgent", "inspeksi_belum_ditugaskan", "inspeksi_belum_selesai", "inspeksi_search", "inspeksi_detail", "pengukuran_anomali", "pengukuran_belum_amg", "rekap"],
       }, { status: 400 });
   }
 }

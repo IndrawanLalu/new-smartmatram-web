@@ -12,8 +12,9 @@
  */
 
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
-const qrcode = require("qrcode-terminal");
+const qrcode  = require("qrcode-terminal");
 const express = require("express");
+const { handleCommand } = require("./commands");
 
 const PORT = process.env.WA_BOT_PORT || 3001;
 const app = express();
@@ -53,6 +54,26 @@ client.on("authenticated", () => {
 client.on("ready", () => {
   console.log("✅ WhatsApp Bot siap digunakan!");
   isReady = true;
+});
+
+// ── Incoming message handler ─────────────────────────────────────────────────
+
+client.on("message_create", async (msg) => {
+  // Abaikan pesan dari bot sendiri
+  if (msg.fromMe) return;
+
+  const text = (msg.body ?? "").trim();
+  if (!text.startsWith("#")) return;
+
+  console.log(`📨 Command dari ${msg.from}: ${text}`);
+
+  try {
+    const reply = await handleCommand(text);
+    if (reply) await msg.reply(reply);
+  } catch (err) {
+    console.error("❌ Error handle command:", err.message);
+    await msg.reply("⚠️ Terjadi kesalahan saat memproses perintah. Coba lagi.").catch(() => {});
+  }
 });
 
 client.on("disconnected", (reason) => {

@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "pengukuranId wajib diisi" }, { status: 400 });
   }
   if (!AMG_USER || !AMG_PASS) {
-    return NextResponse.json({ error: "AMG_USERNAME / AMG_PASSWORD belum diset di .env" }, { status: 500 });
+    return NextResponse.json({ error: "Konfigurasi AMG belum lengkap di server. Tambahkan AMG_USERNAME dan AMG_PASSWORD di .env.local VPS, lalu restart PM2." }, { status: 500 });
   }
 
   // 1. Ambil data dari Supabase
@@ -133,7 +133,13 @@ export async function POST(req: NextRequest) {
   try {
     sessionCookie = await loginAmg();
   } catch (e) {
-    return NextResponse.json({ error: String(e) }, { status: 401 });
+    const msg = String(e);
+    const isNetwork = msg.includes("fetch failed") || msg.includes("ECONNREFUSED") || msg.includes("EHOSTUNREACH");
+    return NextResponse.json({
+      error: isNetwork
+        ? "Server tidak bisa menjangkau AMG (10.33.1.77). Fitur ini hanya berfungsi jika server berada di jaringan intranet PLN."
+        : msg,
+    }, { status: isNetwork ? 503 : 401 });
   }
 
   // 3. POST data ke cUkur/ (form save_ukur di cGardu submit ke cUkur controller)
@@ -151,7 +157,11 @@ export async function POST(req: NextRequest) {
       redirect: "manual",
     });
   } catch (e) {
-    return NextResponse.json({ error: "Gagal kirim ke AMG: " + String(e) }, { status: 503 });
+    const msg = String(e);
+    const hint = msg.includes("ECONNREFUSED") || msg.includes("fetch failed") || msg.includes("EHOSTUNREACH")
+      ? " — Pastikan server bisa mengakses jaringan intranet PLN (10.33.1.77)."
+      : "";
+    return NextResponse.json({ error: "Gagal kirim ke AMG: " + msg + hint }, { status: 503 });
   }
 
   // Pastikan bukan redirect ke halaman login (session ditolak)
