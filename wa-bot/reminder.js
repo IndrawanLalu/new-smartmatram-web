@@ -1,19 +1,20 @@
 /**
  * SMART MATARAM — Reminder Inspeksi Urgent
- * Kirim pengingat ke group WA setiap 2 jam (07:00–17:00 WITA)
- * untuk temuan urgent (jaringan) dan sangat tinggi (pohon) yang belum selesai.
+ * Kirim pengingat ke group WA setiap 2 jam (07:00–17:00 WITA).
+ * Setiap temuan dikirim satu per satu dengan foto + keterangan.
  */
 
-const cron     = require("node-cron");
+const cron           = require("node-cron");
 const { MessageMedia } = require("whatsapp-web.js");
 
 const SMART_MATARAM_URL = process.env.SMART_MATARAM_URL || "http://localhost:3000";
 const AGENT_SECRET      = process.env.AGENT_SECRET || "";
 const GROUP_ID          = (process.env.WA_ALLOWED_GROUPS || "").split(",").filter(Boolean)[0];
 
-const MAX_PHOTOS = 3;
+const MAX_ITEMS = 5;
+const SEND_DELAY_MS = 1500;
 
-// ── Formatter ─────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function fmtTanggal(s) {
   if (!s) return "—";
@@ -21,50 +22,37 @@ function fmtTanggal(s) {
   return `${d}-${m}-${y}`;
 }
 
-function buildReminderText(jaringan, pohon) {
-  const total = (jaringan?.length ?? 0) + (pohon?.length ?? 0);
-  const lines = [
-    `🚨 *PENGINGAT TEMUAN URGENT*`,
-    `Ada *${total}* temuan yang belum diselesaikan:`,
-    "",
-  ];
-
-  if (jaringan?.length > 0) {
-    lines.push(`⚡ *Jaringan — Urgent* (${jaringan.length}):`);
-    jaringan.slice(0, 5).forEach((item, i) => {
-      lines.push(`${i + 1}. ${item.lokasi || "—"} · ${item.penyulang || "—"}`);
-      if (item.temuan) lines.push(`    📋 ${item.temuan}`);
-      if (item.tgl_inspeksi) lines.push(`    📅 ${fmtTanggal(item.tgl_inspeksi)}`);
-    });
-    if (jaringan.length > 5) lines.push(`_...dan ${jaringan.length - 5} lainnya_`);
-    lines.push("");
-  }
-
-  if (pohon?.length > 0) {
-    lines.push(`🌳 *Pohon — Sangat Tinggi* (${pohon.length}):`);
-    pohon.slice(0, 5).forEach((item, i) => {
-      lines.push(`${i + 1}. ${item.lokasi || "—"} · ${item.penyulang || "—"}`);
-      if (item.deskripsi) lines.push(`    📋 ${item.deskripsi}`);
-      if (item.tgl_inspeksi) lines.push(`    📅 ${fmtTanggal(item.tgl_inspeksi)}`);
-    });
-    if (pohon.length > 5) lines.push(`_...dan ${pohon.length - 5} lainnya_`);
-  }
-
-  lines.push("", "⚠️ _Mohon segera ditindaklanjuti!_");
-  lines.push("_SMART MATARAM — PLN UP3 Mataram_");
-  return lines.join("\n");
+function mapsLink(koordinat) {
+  if (!koordinat) return null;
+  const parts = String(koordinat).split(",");
+  if (parts.length < 2) return null;
+  const lat = parseFloat(parts[0].trim());
+  const lng = parseFloat(parts[1].trim());
+  if (isNaN(lat) || isNaN(lng)) return null;
+  return `https://maps.google.com/?q=${lat},${lng}`;
 }
 
-// ── Photo collector ───────────────────────────────────────────────────────────
+function delay(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-function collectPhotoUrls(jaringan, pohon) {
-  const urls = [];
-  for (const item of [...(jaringan ?? []), ...(pohon ?? [])]) {
-    const url = item.foto_sesudah_url || item.foto_sebelum_url;
-    if (url && urls.length < MAX_PHOTOS) urls.push(url);
-    if (urls.length >= MAX_PHOTOS) break;
-  }
-  return urls;
+function formatCaption(item, type) {
+  const isJaringan = type === "jaringan";
+  const emo        = isJaringan ? "⚡" : "🌳";
+  const label      = isJaringan ? "URGENT" : "SANGAT TINGGI";
+  const deskripsi  = isJaringan ? item.temuan : item.deskripsi;
+
+  const lines = [
+    `${emo} *${label}*`,
+    `📍 ${item.lokasi || "—"} · ${item.penyulang || "—"}`,
+  ];
+  if (deskripsi)          lines.push(`📋 ${deskripsi}`);
+  if (item.tgl_inspeksi)  lines.push(`📅 ${fmtTanggal(item.tgl_inspeksi)}`);
+  if (item.nama_inspektor) lines.push(`👤 ${item.nama_inspektor}`);
+  const maps = mapsLink(item.koordinat);
+  if (maps) lines.push(`🗺️ ${maps}`);
+  lines.push("", "_SMART MATARAM — PLN UP3 Mataram_");
+  return lines.join("\n");
 }
 
 // ── Main send ─────────────────────────────────────────────────────────────────
@@ -86,44 +74,64 @@ async function sendUrgentReminder(client, jenis = "all") {
     return;
   }
 
-  const jaringan = jenis === "pohon"    ? [] : data.jaringan;
-  const pohon    = jenis === "jaringan" ? [] : data.pohon;
-  const total = (jaringan?.length ?? 0) + (pohon?.length ?? 0);
+  const rawJaringan = jenis === "pohon"    ? [] : (data.jaringan ?? []);
+  const rawPohon    = jenis === "jaringan" ? [] : (data.pohon    ?? []);
 
-  if (total === 0) {
+  // Gabung, tandai tipe, urutkan paling lama dulu, ambil max 5
+  const items = [
+    ...rawJaringan.map((i) => ({ ...i, _type: "jaringan" })),
+    ...rawPohon.map((i)    => ({ ...i, _type: "pohon" })),
+  ]
+    .sort((a, b) => new Date(a.tgl_inspeksi) - new Date(b.tgl_inspeksi))
+    .slice(0, MAX_ITEMS);
+
+  if (items.length === 0) {
     console.log("💚 Reminder: tidak ada temuan urgent, skip kirim.");
     return;
   }
 
-  const chatId = GROUP_ID.includes("@g.us") ? GROUP_ID : `${GROUP_ID}@g.us`;
-  const text   = buildReminderText(jaringan, pohon);
-  const photos = collectPhotoUrls(jaringan, pohon);
+  const totalAll = rawJaringan.length + rawPohon.length;
+  const chatId   = GROUP_ID.includes("@g.us") ? GROUP_ID : `${GROUP_ID}@g.us`;
 
+  // Header
   try {
-    if (photos.length > 0) {
-      // Kirim foto pertama + caption teks
-      const media = await MessageMedia.fromUrl(photos[0], { unsafeMime: true });
-      await client.sendMessage(chatId, media, { caption: text });
-
-      // Foto tambahan tanpa caption
-      for (let i = 1; i < photos.length; i++) {
-        try {
-          const m = await MessageMedia.fromUrl(photos[i], { unsafeMime: true });
-          await client.sendMessage(chatId, m);
-        } catch (e) {
-          console.warn(`⚠️ Reminder: gagal kirim foto ${i + 1}:`, e.message);
-        }
-      }
-    } else {
-      await client.sendMessage(chatId, text);
-    }
-    console.log(`🚨 Reminder terkirim ke ${chatId} — ${total} temuan urgent.`);
+    const more = totalAll > MAX_ITEMS ? ` _(dan ${totalAll - MAX_ITEMS} lainnya)_` : "";
+    await client.sendMessage(
+      chatId,
+      `🚨 *PENGINGAT TEMUAN URGENT*\nAda *${totalAll}* temuan belum diselesaikan${more}:`
+    );
+    await delay(SEND_DELAY_MS);
   } catch (err) {
-    console.error("❌ Reminder: gagal kirim pesan:", err.message);
+    console.error("❌ Reminder: gagal kirim header:", err.message);
+    return;
   }
+
+  // Kirim satu per satu
+  for (const item of items) {
+    const caption  = formatCaption(item, item._type);
+    const photoUrl = item.foto_sesudah_url || item.foto_sebelum_url;
+
+    try {
+      if (photoUrl) {
+        const media = await MessageMedia.fromUrl(photoUrl, { unsafeMime: true });
+        await client.sendMessage(chatId, media, { caption });
+      } else {
+        await client.sendMessage(chatId, caption);
+      }
+      console.log(`  ✅ Terkirim: ${item._type} — ${item.lokasi}`);
+    } catch (err) {
+      console.warn(`  ⚠️ Gagal kirim item ${item.lokasi}:`, err.message);
+      // Tetap lanjut ke item berikutnya
+      try { await client.sendMessage(chatId, caption); } catch (_) {}
+    }
+
+    await delay(SEND_DELAY_MS);
+  }
+
+  console.log(`🚨 Reminder selesai — ${items.length}/${totalAll} terkirim ke ${chatId}`);
 }
 
-// ── Cron scheduler ─────────────────────────────────────────────────────────────
+// ── Cron scheduler ────────────────────────────────────────────────────────────
 
 function startReminderCron(client, getIsReady) {
   // Setiap 2 jam: 07, 09, 11, 13, 15, 17 WITA
