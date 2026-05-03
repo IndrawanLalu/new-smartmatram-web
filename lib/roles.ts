@@ -134,6 +134,9 @@ export const canAssignEksekutor = (role: Role) =>
 /** Role yang bisa akses halaman admin (semua kecuali field staff murni) */
 export const canAccessAdmin = (role: Role): boolean => true; // semua role bisa login ke admin
 
+/** Role yang bisa manage settings (WA group, dll) */
+export const canManageSettings = (role: Role) => role === "UP3" || role === "admin";
+
 /** Filter data berdasarkan role dan unit user
  *
  * Pakai ini di setiap hook yang fetch data inspeksi/pohon:

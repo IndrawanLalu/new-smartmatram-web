@@ -401,9 +401,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: true, skipped: "disabled" });
   }
 
-  const GROUP_ID = process.env.WA_GROUP_MORNING_BRIEF;
+  const { data: waSetting } = await supabaseAdmin
+    .from("wa_settings")
+    .select("group_id")
+    .eq("id", "morning_brief")
+    .eq("enabled", true)
+    .single();
+
+  const GROUP_ID = waSetting?.group_id || process.env.WA_GROUP_MORNING_BRIEF;
   if (!GROUP_ID) {
-    return NextResponse.json({ error: "WA_GROUP_MORNING_BRIEF env var not set" }, { status: 500 });
+    return NextResponse.json({ error: "Group WA morning brief belum dikonfigurasi" }, { status: 500 });
   }
 
   try {

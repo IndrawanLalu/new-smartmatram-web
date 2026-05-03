@@ -20,6 +20,7 @@ import {
   FileText,
   Target,
   UserCog,
+  MessageSquare,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -45,6 +46,7 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/morning-brief", label: "Morning Brief", icon: FileText },
   { href: "/admin/scoreboard", label: "Score Board LM", icon: Target },
   { href: "/admin/user-management", label: "Manajemen User", icon: UserCog },
+  { href: "/admin/settings/wa", label: "Setting WA Group", icon: MessageSquare },
 ];
 
 // ── Types ────────────────────────────────────────────────────────────────────

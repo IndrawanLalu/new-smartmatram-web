@@ -1,21 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 const WA_BOT_URL = process.env.WA_BOT_URL ?? "http://127.0.0.1:3001";
 
-// ── Group ID mapping per ULP ──────────────────────────────────────────────────
-const GROUP_PERABASAN: Record<string, string> = {
-  AMPENAN:    process.env.WA_GROUP_PERABASAN_AMPENAN    ?? "",
-  CAKRANEGARA: process.env.WA_GROUP_PERABASAN_CAKRANEGARA ?? "",
-  GERUNG:     process.env.WA_GROUP_PERABASAN_GERUNG     ?? "",
-  TANJUNG:    process.env.WA_GROUP_PERABASAN_TANJUNG    ?? "",
-};
+// ── Fetch group ID dari DB ────────────────────────────────────────────────────
 
-const GROUP_JARINGAN: Record<string, string> = {
-  AMPENAN:    process.env.WA_GROUP_JARINGAN_AMPENAN    ?? "",
-  CAKRANEGARA: process.env.WA_GROUP_JARINGAN_CAKRANEGARA ?? "",
-  GERUNG:     process.env.WA_GROUP_JARINGAN_GERUNG     ?? "",
-  TANJUNG:    process.env.WA_GROUP_JARINGAN_TANJUNG    ?? "",
-};
+async function getGroupId(category: string, ulp: string): Promise<string> {
+  const { data } = await supabaseAdmin
+    .from("wa_settings")
+    .select("group_id")
+    .eq("category", category)
+    .eq("ulp", ulp)
+    .eq("enabled", true)
+    .single();
+  return data?.group_id ?? "";
+}
 
 // ── Format pesan ──────────────────────────────────────────────────────────────
 
@@ -98,39 +97,35 @@ async function sendWAWithRetry(
 // ── POST /api/wa-notify — dipanggil oleh Supabase Webhook ────────────────────
 
 export async function POST(req: NextRequest) {
-  // Verifikasi secret dari Supabase webhook
   const secret = req.headers.get("x-webhook-secret");
   if (secret !== process.env.CRON_SECRET) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   const body = await req.json();
-
-  // Supabase webhook payload: { type, table, record, old_record }
   const { type, table, record } = body as {
     type: string;
     table: string;
     record: Record<string, string>;
   };
 
-  // Hanya proses INSERT dan UPDATE
   if (type !== "INSERT" && type !== "UPDATE") return NextResponse.json({ skipped: true });
 
-  const ulp = (record.ulp ?? "").toUpperCase();
+  const ulp      = (record.ulp ?? "").toUpperCase();
   const imageUrl = record.foto_sebelum_url || record.foto_lokasi_url || undefined;
 
-  let groupId: string | undefined;
-  let message: string | undefined;
+  let groupId: string;
+  let message: string;
 
   if (table === "inspeksi_pohon" && record.tingkat_risiko === "Sangat Tinggi") {
-    groupId = GROUP_PERABASAN[ulp];
+    groupId = await getGroupId("perabasan", ulp);
     if (!groupId) {
       console.warn(`[wa-notify] Group PERABASAN untuk ULP ${ulp} belum dikonfigurasi`);
       return NextResponse.json({ skipped: true, reason: "group not configured" });
     }
     message = buildPohonMessage(record);
   } else if (table === "inspeksi" && record.category === "Urgent") {
-    groupId = GROUP_JARINGAN[ulp];
+    groupId = await getGroupId("jaringan", ulp);
     if (!groupId) {
       console.warn(`[wa-notify] Group Jaringan untuk ULP ${ulp} belum dikonfigurasi`);
       return NextResponse.json({ skipped: true, reason: "group not configured" });
@@ -140,7 +135,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ skipped: true });
   }
 
-  // Langsung return 200 ke Supabase, proses kirim WA di background dengan retry
   sendWAWithRetry(groupId, message, imageUrl).catch((err) =>
     console.error("[wa-notify] Background send error:", err)
   );
