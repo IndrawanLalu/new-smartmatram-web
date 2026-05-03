@@ -80,30 +80,31 @@ function normalizeGarduQuery(raw) {
 // ── Command handlers ──────────────────────────────────────────────────────────
 
 async function cmdHelp() {
-  return [
-    "📟 *SMART MATARAM BOT*",
-    "Perintah yang tersedia:",
-    "",
-    "*#gardu <kode/nama/alamat>*",
-    "  Info gardu + lokasi Maps",
-    "  Contoh: #gardu AM005",
-    "          #gardu ampenan baru",
-    "",
-    "*#beban <kode/nama>*",
-    "  Data pengukuran terakhir gardu",
-    "  Contoh: #beban AM005",
-    "",
-    "*#overload*",
-    "  Daftar gardu overload & suhu tinggi",
-    "",
-    "*#inspeksi urgent*",
-    "  Temuan urgent yang belum selesai",
-    "",
-    "*#rekap*",
-    "  Rekap data hari ini",
-    "",
-    "_SMART MATARAM — PLN UP3 Mataram_",
-  ].join("\n");
+  return (
+    "📟 *SMART MATARAM BOT*\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n" +
+    "\n" +
+    "🔍 *#gardu <kode/nama/alamat>*\n" +
+    "Info gardu + lokasi Maps\n" +
+    "» #gardu AM005\n" +
+    "» #gardu ampenan baru\n" +
+    "\n" +
+    "⚡ *#beban <kode>*\n" +
+    "Data pengukuran terakhir gardu\n" +
+    "» #beban AM005\n" +
+    "\n" +
+    "🔴 *#overload*\n" +
+    "Gardu overload (≥80%) & suhu tinggi\n" +
+    "\n" +
+    "🚨 *#inspeksi urgent*\n" +
+    "Temuan urgent yang belum selesai\n" +
+    "\n" +
+    "📊 *#rekap*\n" +
+    "Ringkasan data hari ini\n" +
+    "\n" +
+    "━━━━━━━━━━━━━━━━━━━━\n" +
+    "_SMART MATARAM — PLN UP3 Mataram_"
+  );
 }
 
 async function cmdGardu(args) {

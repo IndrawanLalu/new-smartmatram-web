@@ -14,7 +14,8 @@
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode  = require("qrcode-terminal");
 const express = require("express");
-const { handleCommand } = require("./commands");
+const { handleCommand }      = require("./commands");
+const { startReminderCron }  = require("./reminder");
 
 const PORT          = process.env.WA_BOT_PORT || 3001;
 const ALLOWED_GROUPS = new Set((process.env.WA_ALLOWED_GROUPS || "").split(",").filter(Boolean));
@@ -57,13 +58,12 @@ client.on("authenticated", () => {
 client.on("ready", () => {
   console.log("✅ WhatsApp Bot siap digunakan!");
   isReady = true;
+  startReminderCron(client, () => isReady);
 });
 
 // ── Incoming message handler ─────────────────────────────────────────────────
 
-client.on("message_create", async (msg) => {
-  if (msg.fromMe) return;
-
+client.on("message", async (msg) => {
   const text = (msg.body ?? "").trim();
   if (!text.startsWith("#")) return;
 
@@ -76,6 +76,8 @@ client.on("message_create", async (msg) => {
   console.log(`📨 Command dari ${msg.from}: ${text}`);
 
   try {
+    const chat = await msg.getChat();
+    await chat.sendStateTyping();
     const reply = await handleCommand(text);
     if (reply) await msg.reply(reply);
   } catch (err) {
