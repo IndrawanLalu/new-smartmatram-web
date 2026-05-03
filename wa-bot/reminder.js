@@ -69,7 +69,7 @@ function collectPhotoUrls(jaringan, pohon) {
 
 // ── Main send ─────────────────────────────────────────────────────────────────
 
-async function sendUrgentReminder(client) {
+async function sendUrgentReminder(client, jenis = "all") {
   if (!GROUP_ID) {
     console.warn("⚠️ Reminder: WA_ALLOWED_GROUPS tidak diset, skip.");
     return;
@@ -86,7 +86,8 @@ async function sendUrgentReminder(client) {
     return;
   }
 
-  const { jaringan, pohon } = data;
+  const jaringan = jenis === "pohon"    ? [] : data.jaringan;
+  const pohon    = jenis === "jaringan" ? [] : data.pohon;
   const total = (jaringan?.length ?? 0) + (pohon?.length ?? 0);
 
   if (total === 0) {

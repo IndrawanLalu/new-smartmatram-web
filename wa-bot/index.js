@@ -195,8 +195,9 @@ app.post("/send", async (req, res) => {
 app.post("/test-reminder", async (req, res) => {
   if (!isReady) return res.status(503).json({ error: "Bot belum siap" });
   const { sendUrgentReminder } = require("./reminder");
-  await sendUrgentReminder(client);
-  res.json({ ok: true });
+  const jenis = req.query.jenis ?? "all"; // "all" | "jaringan" | "pohon"
+  await sendUrgentReminder(client, jenis);
+  res.json({ ok: true, jenis });
 });
 
 // ── HTTP Server ───────────────────────────────────────────────────────────────
