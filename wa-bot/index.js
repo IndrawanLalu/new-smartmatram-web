@@ -191,6 +191,14 @@ app.post("/send", async (req, res) => {
   }
 });
 
+// Trigger reminder manual — untuk testing
+app.post("/test-reminder", async (req, res) => {
+  if (!isReady) return res.status(503).json({ error: "Bot belum siap" });
+  const { sendUrgentReminder } = require("./reminder");
+  await sendUrgentReminder(client);
+  res.json({ ok: true });
+});
+
 // ── HTTP Server ───────────────────────────────────────────────────────────────
 
 app.listen(PORT, "127.0.0.1", () => {

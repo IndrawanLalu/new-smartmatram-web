@@ -142,4 +142,4 @@ function startReminderCron(client, getIsReady) {
   console.log("⏰ Reminder cron aktif — jam 07, 09, 11, 13, 15, 17 WITA.");
 }
 
-module.exports = { startReminderCron };
+module.exports = { startReminderCron, sendUrgentReminder };
