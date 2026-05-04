@@ -117,7 +117,7 @@ export async function GET(req: NextRequest) {
     row.getCell("lokasi").value   = r.lokasi ?? "";
 
     if (maps) {
-      row.getCell("koordinat").value = { text: "Lihat di Maps", hyperlink: maps };
+      row.getCell("koordinat").value = { text: maps, hyperlink: maps };
       row.getCell("koordinat").font  = { color: { argb: "FF0563C1" }, underline: true };
     } else {
       row.getCell("koordinat").value = r.koordinat ?? "";
