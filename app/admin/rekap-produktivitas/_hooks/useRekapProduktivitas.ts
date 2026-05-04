@@ -42,37 +42,36 @@ export function useRekapProduktivitas(user: CurrentUser) {
       const endDay    = new Date(y, m, 0).getDate();
       const endDate   = `${y}-${pad(m)}-${pad(endDay)}`;
 
-      function baseQuery(table: "inspeksi" | "inspeksi_pohon", fields: string) {
-        let qb = supabaseBrowser.from(table).select(fields)
+      function inspeksiQuery(table: "inspeksi" | "inspeksi_pohon") {
+        let qb = supabaseBrowser.from(table).select("team_name, tgl_eksekusi")
           .eq("eksekutor", filter.eksekutor)
-          .not("team_name", "is", null);
+          .not("team_name",    "is", null)
+          .not("tgl_eksekusi", "is", null)
+          .gte("tgl_eksekusi", startDate)
+          .lte("tgl_eksekusi", endDate);
         if (filter.ulp) qb = qb.eq("ulp", filter.ulp);
         return qb;
       }
 
-      // Fetch semua team_name yang pernah ada (tanpa filter tanggal)
-      const [{ data: all1 }, { data: all2 },
-             { data: d1   }, { data: d2   }] = await Promise.all([
-        baseQuery("inspeksi",      "team_name"),
-        baseQuery("inspeksi_pohon","team_name"),
-        // Data bulan yang dipilih (dengan filter tanggal)
-        baseQuery("inspeksi",      "team_name, tgl_eksekusi")
-          .not("tgl_eksekusi", "is", null)
-          .gte("tgl_eksekusi", startDate)
-          .lte("tgl_eksekusi", endDate),
-        baseQuery("inspeksi_pohon","team_name, tgl_eksekusi")
-          .not("tgl_eksekusi", "is", null)
-          .gte("tgl_eksekusi", startDate)
-          .lte("tgl_eksekusi", endDate),
+      // Fetch master petugas + data bulan sekaligus
+      let petugasQuery = supabaseBrowser.from("petugas")
+        .select("nama")
+        .eq("group_name", filter.eksekutor)
+        .eq("status", "Aktif");
+      if (filter.ulp) petugasQuery = petugasQuery.eq("ulp", filter.ulp);
+
+      const [{ data: petugasList }, { data: d1 }, { data: d2 }] = await Promise.all([
+        petugasQuery,
+        inspeksiQuery("inspeksi"),
+        inspeksiQuery("inspeksi_pohon"),
       ]);
 
-      // Kumpulkan semua nama unik
-      const allNames = new Set<string>();
-      for (const item of [...(all1 ?? []), ...(all2 ?? [])]) {
-        if (item.team_name) allNames.add(item.team_name as string);
-      }
+      // Semua nama dari master petugas
+      const allNames = new Set<string>(
+        (petugasList ?? []).map((p) => p.nama as string).filter(Boolean)
+      );
 
-      // Hitung per hari dari data bulan
+      // Inisialisasi map dari master petugas
       const map = new Map<string, Record<number, number>>();
       for (const name of allNames) map.set(name, {});
 
