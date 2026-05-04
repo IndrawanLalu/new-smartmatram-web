@@ -12,6 +12,7 @@ const AGENT_SECRET      = process.env.AGENT_SECRET || "";
 
 const MAX_ITEMS     = 5;
 const SEND_DELAY_MS = 1500;
+const DARI_TANGGAL  = "2026-03-01"; // data sebelum ini diabaikan
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -74,7 +75,7 @@ async function fetchWaSettings() {
 
 async function fetchUrgent() {
   try {
-    const url = `${SMART_MATARAM_URL}/api/agent?type=inspeksi_urgent`;
+    const url = `${SMART_MATARAM_URL}/api/agent?type=inspeksi_urgent&dari_tanggal=${DARI_TANGGAL}`;
     const res  = await fetch(url, { headers: { "x-agent-secret": AGENT_SECRET } });
     if (!res.ok) throw new Error(`API error ${res.status}`);
     return await res.json();

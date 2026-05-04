@@ -29,18 +29,20 @@ async function queryGardu(q: string) {
   return NextResponse.json({ type: "gardu", total: data?.length ?? 0, results: data ?? [] });
 }
 
-async function queryInspeksiUrgent() {
+async function queryInspeksiUrgent(dariTanggal?: string) {
   const [{ data: jaringan }, { data: pohon }] = await Promise.all([
     supabaseAdmin.from("inspeksi")
       .select(INSPEKSI_FIELDS)
       .eq("category", "Urgent")
       .not("status", "eq", "Selesai")
+      .gte("tgl_inspeksi", dariTanggal ?? "1900-01-01")
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
     supabaseAdmin.from("inspeksi_pohon")
       .select(POHON_FIELDS)
       .eq("tingkat_risiko", "Sangat Tinggi")
       .not("status", "eq", "Selesai")
+      .gte("tgl_inspeksi", dariTanggal ?? "1900-01-01")
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),
   ]);
@@ -250,16 +252,17 @@ export async function GET(req: NextRequest) {
   }
 
   const { searchParams } = new URL(req.url);
-  const type   = searchParams.get("type") ?? "";
-  const q      = searchParams.get("q") ?? "";
-  const periode = searchParams.get("periode") ?? "hari_ini";
-  const id      = searchParams.get("id") ?? "";
-  const jenis   = searchParams.get("jenis") ?? "jaringan";
+  const type        = searchParams.get("type") ?? "";
+  const q           = searchParams.get("q") ?? "";
+  const periode     = searchParams.get("periode") ?? "hari_ini";
+  const id          = searchParams.get("id") ?? "";
+  const jenis       = searchParams.get("jenis") ?? "jaringan";
+  const dariTanggal = searchParams.get("dari_tanggal") ?? undefined;
 
   switch (type) {
     case "gardu":                     return queryGardu(q);
     case "pengukuran":                return queryPengukuran(q);
-    case "inspeksi_urgent":           return queryInspeksiUrgent();
+    case "inspeksi_urgent":           return queryInspeksiUrgent(dariTanggal);
     case "inspeksi_belum_ditugaskan": return queryInspeksiBelumDitugaskan();
     case "inspeksi_belum_selesai":    return queryInspeksiBelumSelesai();
     case "inspeksi_search":           return queryInspeksiSearch(searchParams);
