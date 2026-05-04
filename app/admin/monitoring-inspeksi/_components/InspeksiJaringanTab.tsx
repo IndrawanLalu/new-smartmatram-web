@@ -14,28 +14,16 @@ const CATEGORY_OPTIONS = ["Emergency", "Urgent", "Scheduled", "Preventive", "Nor
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
-function exportCsv(data: ReturnType<typeof useInspeksiJaringan>["allData"]) {
-  const headers = ["Tgl Inspeksi", "ULP", "Penyulang", "Temuan", "Deskripsi", "Lokasi", "Kategori", "Status", "Eksekutor", "Tgl Eksekusi"];
-  const rows = data.map((d) => [
-    d.tgl_inspeksi ?? "",
-    d.ulp ?? "",
-    d.penyulang ?? "",
-    d.temuan ?? "",
-    d.deskripsi ?? "",
-    d.lokasi ?? "",
-    d.category ?? "",
-    d.status,
-    d.eksekutor ?? "",
-    d.tgl_eksekusi ?? "",
-  ]);
-  const csv = [headers, ...rows].map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `inspeksi-jaringan-${new Date().toISOString().split("T")[0]}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
+function exportExcel(filter: Record<string, string>) {
+  const params = new URLSearchParams({ jenis: "jaringan" });
+  if (filter.search)    params.set("search",    filter.search);
+  if (filter.startDate) params.set("startDate", filter.startDate);
+  if (filter.endDate)   params.set("endDate",   filter.endDate);
+  if (filter.ulp)       params.set("ulp",       filter.ulp);
+  if (filter.penyulang) params.set("penyulang", filter.penyulang);
+  if (filter.status)    params.set("status",    filter.status);
+  if (filter.category)  params.set("category",  filter.category);
+  window.open(`/api/export/inspeksi?${params.toString()}`);
 }
 
 interface Props {
@@ -140,9 +128,9 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
             <RefreshCw size={14} />
             Refresh
           </button>
-          <button onClick={() => exportCsv(allData)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a2a26] text-[#5eead4] text-sm font-medium hover:bg-[#b2dfdb] transition-colors">
+          <button onClick={() => exportExcel(filter)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a2a26] text-[#5eead4] text-sm font-medium hover:bg-[#b2dfdb] transition-colors">
             <Download size={14} />
-            Export CSV
+            Export Excel
           </button>
         </div>
       </div>
