@@ -42,34 +42,47 @@ export function useRekapProduktivitas(user: CurrentUser) {
       const endDay    = new Date(y, m, 0).getDate();
       const endDate   = `${y}-${pad(m)}-${pad(endDay)}`;
 
-      const FIELDS = "team_name, tgl_eksekusi";
-
-      function applyFilters(qb: ReturnType<typeof supabaseBrowser.from>) {
-        qb = (qb as ReturnType<typeof supabaseBrowser.from>)
-          .select(FIELDS)
+      function baseQuery(table: "inspeksi" | "inspeksi_pohon", fields: string) {
+        let qb = supabaseBrowser.from(table).select(fields)
           .eq("eksekutor", filter.eksekutor)
-          .not("team_name",    "is", null)
-          .not("tgl_eksekusi", "is", null)
-          .gte("tgl_eksekusi", startDate)
-          .lte("tgl_eksekusi", endDate);
+          .not("team_name", "is", null);
         if (filter.ulp) qb = qb.eq("ulp", filter.ulp);
         return qb;
       }
 
-      const [{ data: d1 }, { data: d2 }] = await Promise.all([
-        applyFilters(supabaseBrowser.from("inspeksi")),
-        applyFilters(supabaseBrowser.from("inspeksi_pohon")),
+      // Fetch semua team_name yang pernah ada (tanpa filter tanggal)
+      const [{ data: all1 }, { data: all2 },
+             { data: d1   }, { data: d2   }] = await Promise.all([
+        baseQuery("inspeksi",      "team_name"),
+        baseQuery("inspeksi_pohon","team_name"),
+        // Data bulan yang dipilih (dengan filter tanggal)
+        baseQuery("inspeksi",      "team_name, tgl_eksekusi")
+          .not("tgl_eksekusi", "is", null)
+          .gte("tgl_eksekusi", startDate)
+          .lte("tgl_eksekusi", endDate),
+        baseQuery("inspeksi_pohon","team_name, tgl_eksekusi")
+          .not("tgl_eksekusi", "is", null)
+          .gte("tgl_eksekusi", startDate)
+          .lte("tgl_eksekusi", endDate),
       ]);
 
-      const combined = [...(d1 ?? []), ...(d2 ?? [])] as { team_name: string; tgl_eksekusi: string }[];
+      // Kumpulkan semua nama unik
+      const allNames = new Set<string>();
+      for (const item of [...(all1 ?? []), ...(all2 ?? [])]) {
+        if (item.team_name) allNames.add(item.team_name as string);
+      }
 
+      // Hitung per hari dari data bulan
       const map = new Map<string, Record<number, number>>();
+      for (const name of allNames) map.set(name, {});
+
+      const combined = [...(d1 ?? []), ...(d2 ?? [])] as { team_name: string; tgl_eksekusi: string }[];
       for (const item of combined) {
         const name = item.team_name;
         const day  = new Date(item.tgl_eksekusi).getDate();
-        if (!map.has(name)) map.set(name, {});
-        const dm = map.get(name)!;
-        dm[day]  = (dm[day] ?? 0) + 1;
+        const dm   = map.get(name);
+        if (!dm) continue;
+        dm[day] = (dm[day] ?? 0) + 1;
       }
 
       const result: PetugasRow[] = Array.from(map.entries())
