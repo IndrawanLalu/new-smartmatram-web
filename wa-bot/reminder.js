@@ -179,7 +179,7 @@ async function sendUrgentReminder(client, jenis = "all") {
 
 function startReminderCron(client, getIsReady) {
   cron.schedule(
-    "0 7,9,11,13,15,17 * * *",
+    "0 8,11,15,18 * * *",
     async () => {
       if (!getIsReady()) {
         console.log("⏭️ Reminder: bot belum siap, skip.");
@@ -191,7 +191,7 @@ function startReminderCron(client, getIsReady) {
     { timezone: "Asia/Makassar" }
   );
 
-  console.log("⏰ Reminder cron aktif — jam 07, 09, 11, 13, 15, 17 WITA.");
+  console.log("⏰ Reminder cron aktif — jam 08, 11, 15, 18 WITA.");
 }
 
 module.exports = { startReminderCron, sendUrgentReminder };
