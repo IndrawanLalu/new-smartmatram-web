@@ -15,13 +15,14 @@ interface WaSetting {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  jaringan:     "⚡ Jaringan Urgent",
-  perabasan:    "🌳 Pohon Sangat Tinggi",
-  morning_brief:"☀️ Morning Brief",
-  reminder:     "🚨 Reminder Urgent",
+  jaringan:          "⚡ Notifikasi Jaringan Urgent",
+  perabasan:         "🌳 Notifikasi Pohon Sangat Tinggi",
+  morning_brief:     "☀️ Morning Brief",
+  reminder_jaringan: "🚨⚡ Reminder Jaringan Urgent",
+  reminder_pohon:    "🚨🌳 Reminder Pohon Sangat Tinggi",
 };
 
-const CATEGORY_ORDER = ["jaringan", "perabasan", "morning_brief", "reminder"];
+const CATEGORY_ORDER = ["jaringan", "perabasan", "morning_brief", "reminder_jaringan", "reminder_pohon"];
 
 export default function WaSettingsPage() {
   const user = useCurrentUser();

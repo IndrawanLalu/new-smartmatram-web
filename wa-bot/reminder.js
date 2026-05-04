@@ -57,14 +57,13 @@ function formatCaption(item, type) {
 
 // ── Fetch group settings dari DB ──────────────────────────────────────────────
 
-async function fetchWaSettings() {
+async function fetchWaSettings(category) {
   try {
     const url = `${SMART_MATARAM_URL}/api/wa-settings`;
     const res  = await fetch(url, { headers: { "x-agent-secret": AGENT_SECRET } });
     if (!res.ok) throw new Error(`API error ${res.status}`);
     const all = await res.json();
-    // { category, ulp, group_id, enabled }
-    return all.filter((s) => s.category === "reminder" && s.enabled && s.group_id);
+    return all.filter((s) => s.category === category && s.enabled && s.group_id);
   } catch (err) {
     console.error("❌ Reminder: gagal fetch wa-settings:", err.message);
     return [];
@@ -122,50 +121,58 @@ async function sendToGroup(client, chatId, items, totalAll) {
 // ── Main send ─────────────────────────────────────────────────────────────────
 
 async function sendUrgentReminder(client, jenis = "all") {
-  const [settings, urgentData] = await Promise.all([fetchWaSettings(), fetchUrgent()]);
+  const [settingsJaringan, settingsPohon, urgentData] = await Promise.all([
+    fetchWaSettings("reminder_jaringan"),
+    fetchWaSettings("reminder_pohon"),
+    fetchUrgent(),
+  ]);
 
   if (!urgentData) return;
 
   const rawJaringan = jenis === "pohon"    ? [] : (urgentData.jaringan ?? []);
   const rawPohon    = jenis === "jaringan" ? [] : (urgentData.pohon    ?? []);
 
-  if (settings.length === 0) {
-    console.warn("⚠️ Reminder: tidak ada group reminder aktif di DB.");
-    return;
-  }
+  let anySent = false;
 
-  // Kirim per ULP yang ada settingnya
-  for (const setting of settings) {
+  // ── Reminder Jaringan ─────────────────────────────────────────────────────
+  for (const setting of settingsJaringan) {
     const ulp    = (setting.ulp ?? "").toUpperCase();
-    const chatId = setting.group_id.includes("@g.us")
-      ? setting.group_id
-      : `${setting.group_id}@g.us`;
+    const chatId = setting.group_id.includes("@g.us") ? setting.group_id : `${setting.group_id}@g.us`;
+    const data   = ulp ? rawJaringan.filter((i) => (i.ulp ?? "").toUpperCase() === ulp) : rawJaringan;
 
-    // Filter per ULP (jika ulp kosong = semua ULP)
-    const jaringanUlp = ulp
-      ? rawJaringan.filter((i) => (i.ulp ?? "").toUpperCase() === ulp)
-      : rawJaringan;
-    const pohonUlp = ulp
-      ? rawPohon.filter((i) => (i.ulp ?? "").toUpperCase() === ulp)
-      : rawPohon;
+    if (data.length === 0) { console.log(`💚 Reminder Jaringan ${ulp}: tidak ada temuan, skip.`); continue; }
 
-    const totalAll = jaringanUlp.length + pohonUlp.length;
-    if (totalAll === 0) {
-      console.log(`💚 Reminder ${ulp || "ALL"}: tidak ada temuan, skip.`);
-      continue;
-    }
-
-    const items = [
-      ...jaringanUlp.map((i) => ({ ...i, _type: "jaringan" })),
-      ...pohonUlp.map((i)    => ({ ...i, _type: "pohon" })),
-    ]
+    const items = data
+      .map((i) => ({ ...i, _type: "jaringan" }))
       .sort((a, b) => new Date(a.tgl_inspeksi) - new Date(b.tgl_inspeksi))
       .slice(0, MAX_ITEMS);
 
-    console.log(`🚨 Reminder ${ulp || "ALL"} → ${chatId} (${totalAll} temuan)`);
-    await sendToGroup(client, chatId, items, totalAll);
-    await delay(SEND_DELAY_MS * 2); // jeda antar ULP
+    console.log(`🚨 Reminder Jaringan ${ulp} → ${chatId} (${data.length} temuan)`);
+    await sendToGroup(client, chatId, items, data.length);
+    await delay(SEND_DELAY_MS * 2);
+    anySent = true;
   }
+
+  // ── Reminder Pohon ────────────────────────────────────────────────────────
+  for (const setting of settingsPohon) {
+    const ulp    = (setting.ulp ?? "").toUpperCase();
+    const chatId = setting.group_id.includes("@g.us") ? setting.group_id : `${setting.group_id}@g.us`;
+    const data   = ulp ? rawPohon.filter((i) => (i.ulp ?? "").toUpperCase() === ulp) : rawPohon;
+
+    if (data.length === 0) { console.log(`💚 Reminder Pohon ${ulp}: tidak ada temuan, skip.`); continue; }
+
+    const items = data
+      .map((i) => ({ ...i, _type: "pohon" }))
+      .sort((a, b) => new Date(a.tgl_inspeksi) - new Date(b.tgl_inspeksi))
+      .slice(0, MAX_ITEMS);
+
+    console.log(`🚨 Reminder Pohon ${ulp} → ${chatId} (${data.length} temuan)`);
+    await sendToGroup(client, chatId, items, data.length);
+    await delay(SEND_DELAY_MS * 2);
+    anySent = true;
+  }
+
+  if (!anySent) console.warn("⚠️ Reminder: tidak ada group reminder aktif di DB.");
 }
 
 // ── Cron scheduler ────────────────────────────────────────────────────────────
