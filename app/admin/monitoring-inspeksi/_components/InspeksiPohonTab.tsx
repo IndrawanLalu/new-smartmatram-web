@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { useInspeksiPohon, type InspeksiPohon } from "../_hooks/useInspeksiPohon";
+import { useInspeksiPohon, type InspeksiPohon, type FilterPohon } from "../_hooks/useInspeksiPohon";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
 import InlineTeamSelect from "./InlineTeamSelect";
@@ -31,7 +31,7 @@ const URGENCY_OPTIONS = ["SANGAT URGENT", "URGENT", "PERLU TINDAKAN", "AMAN"];
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
-function exportExcel(filter: Record<string, string>) {
+function exportExcel(filter: FilterPohon) {
   const params = new URLSearchParams({ jenis: "pohon" });
   if (filter.search)       params.set("search",        filter.search);
   if (filter.startDate)    params.set("startDate",     filter.startDate);

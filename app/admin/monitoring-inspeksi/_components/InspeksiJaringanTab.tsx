@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { type CurrentUser, canSeeAllUnits, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
-import { useInspeksiJaringan, type InspeksiJaringan } from "../_hooks/useInspeksiJaringan";
+import { useInspeksiJaringan, type InspeksiJaringan, type FilterJaringan } from "../_hooks/useInspeksiJaringan";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
 import InspeksiDetailModal from "./_InspeksiDetailModal";
@@ -14,7 +14,7 @@ const CATEGORY_OPTIONS = ["Emergency", "Urgent", "Scheduled", "Preventive", "Nor
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
-function exportExcel(filter: Record<string, string>) {
+function exportExcel(filter: FilterJaringan) {
   const params = new URLSearchParams({ jenis: "jaringan" });
   if (filter.search)    params.set("search",    filter.search);
   if (filter.startDate) params.set("startDate", filter.startDate);
