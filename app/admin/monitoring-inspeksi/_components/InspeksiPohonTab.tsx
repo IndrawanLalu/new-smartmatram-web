@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { useInspeksiPohon, type InspeksiPohon } from "../_hooks/useInspeksiPohon";
 import InlineStatusSelect from "./InlineStatusSelect";
+import InlineEksekutorSelect from "./InlineEksekutorSelect";
 import InlineTeamSelect from "./InlineTeamSelect";
 import UrgencyBadge from "./UrgencyBadge";
 import InspeksiPohonDetailModal from "./_InspeksiPohonDetailModal";
@@ -71,6 +72,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
     ulpOptions,
     penyulangOptions,
     updateStatus,
+    updateEksekutor,
     updateTeam,
     updateKeterangan,
     updateDeskripsi,
@@ -298,6 +300,9 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                  Eksekutor
+                </th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Team
                 </th>
                 <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
@@ -322,7 +327,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               ) : data.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showUlpFilter ? 11 : 10}
+                    colSpan={showUlpFilter ? 12 : 11}
                     className="text-center py-12 text-[#94a3b8] text-sm"
                   >
                     Tidak ada data yang sesuai filter
@@ -381,6 +386,13 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                         id={row.id}
                         currentStatus={row.status}
                         onUpdate={updateStatus}
+                      />
+                    </td>
+                    <td className="px-4 py-3">
+                      <InlineEksekutorSelect
+                        id={row.id}
+                        currentEksekutor={row.eksekutor}
+                        onUpdate={updateEksekutor}
                       />
                     </td>
                     <td className="px-4 py-3">

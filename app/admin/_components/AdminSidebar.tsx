@@ -90,7 +90,7 @@ export default function AdminSidebar({
                 SMART Mataram
               </p>
               <p className="text-[#5eead4] text-xs opacity-70">
-                PLN ULP Ampenan
+                {userUnit ? `PLN ULP ${userUnit}` : "PLN UP3 Mataram"}
               </p>
             </div>
           )}

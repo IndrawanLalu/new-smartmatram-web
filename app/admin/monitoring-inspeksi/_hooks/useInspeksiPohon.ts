@@ -162,6 +162,23 @@ export function useInspeksiPohon(user: CurrentUser) {
     [fetchData],
   );
 
+  // Update eksekutor
+  const updateEksekutor = useCallback(
+    async (id: string, eksekutor: string | null) => {
+      setRawData((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, eksekutor } : item,
+        ),
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .update({ eksekutor, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData],
+  );
+
   // Update keterangan
   const updateKeterangan = useCallback(
     async (id: string, keterangan: string) => {
@@ -313,6 +330,7 @@ export function useInspeksiPohon(user: CurrentUser) {
     ulpOptions,
     penyulangOptions,
     updateStatus,
+    updateEksekutor,
     updateTeam,
     updateKeterangan,
     updateDeskripsi,

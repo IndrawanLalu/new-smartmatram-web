@@ -4,7 +4,7 @@ import { useState } from "react";
 import { canAssignEksekutor } from "@/lib/roles";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 
-const EKSEKUTOR_OPTIONS = ["HARJAR", "HARGAR", "YANGU", "PDKB"] as const;
+const EKSEKUTOR_OPTIONS = ["HARJAR", "HARGAR", "PERABASAN", "YANGU", "PDKB"] as const;
 
 interface Props {
   id: string;

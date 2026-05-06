@@ -57,7 +57,7 @@ export function useRekapProduktivitas(user: CurrentUser) {
       let petugasQuery = supabaseBrowser.from("petugas")
         .select("nama")
         .eq("group_name", filter.eksekutor)
-        .eq("status", "Aktif");
+        .eq("status", "aktif");
       if (filter.ulp) petugasQuery = petugasQuery.eq("ulp", filter.ulp);
 
       const [{ data: petugasList }, { data: d1 }, { data: d2 }] = await Promise.all([
