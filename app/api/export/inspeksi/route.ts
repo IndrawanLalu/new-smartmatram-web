@@ -26,7 +26,7 @@ async function fetchImageBuffer(
     if (!res.ok) return null;
     const ct  = res.headers.get("content-type") ?? "";
     const ext = ct.includes("png") ? "png" : ct.includes("gif") ? "gif" : "jpeg";
-    return { buffer: Buffer.from(await res.arrayBuffer()), extension: ext };
+    return { buffer: Buffer.from(await res.arrayBuffer()) as unknown as Buffer, extension: ext };
   } catch {
     return null;
   }
@@ -140,8 +140,10 @@ export async function GET(req: NextRequest) {
     if (fotoSebelum) {
       const img = await fetchImageBuffer(fotoSebelum);
       if (img) {
-        const imgId = workbook.addImage({ buffer: img.buffer, extension: img.extension });
-        sheet.addImage(imgId, { tl: { col: 7, row: i + 1 }, br: { col: 8, row: i + 2 } });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const imgId = workbook.addImage({ buffer: img.buffer, extension: img.extension } as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sheet.addImage(imgId, { tl: { col: 7, row: i + 1 }, br: { col: 8, row: i + 2 } } as any);
         hasImage = true;
       } else {
         row.getCell("foto1").value = fotoSebelum;
@@ -152,8 +154,10 @@ export async function GET(req: NextRequest) {
     if (fotoLokasi) {
       const img = await fetchImageBuffer(fotoLokasi);
       if (img) {
-        const imgId = workbook.addImage({ buffer: img.buffer, extension: img.extension });
-        sheet.addImage(imgId, { tl: { col: 8, row: i + 1 }, br: { col: 9, row: i + 2 } });
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const imgId = workbook.addImage({ buffer: img.buffer, extension: img.extension } as any);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        sheet.addImage(imgId, { tl: { col: 8, row: i + 1 }, br: { col: 9, row: i + 2 } } as any);
         hasImage = true;
       } else {
         row.getCell("foto2").value = fotoLokasi;
@@ -169,7 +173,7 @@ export async function GET(req: NextRequest) {
   const label    = isJaringan ? "inspeksi-jaringan" : "inspeksi-pohon";
   const date     = new Date().toISOString().slice(0, 10);
 
-  return new NextResponse(buffer as Buffer, {
+  return new NextResponse(new Uint8Array(buffer as ArrayBuffer), {
     status: 200,
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
