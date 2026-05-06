@@ -3,7 +3,13 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CheckCircle, XCircle, Pencil, Check, X } from "lucide-react";
+import { CheckCircle, XCircle, Pencil, Check, X, ChevronDown, Loader2 } from "lucide-react";
+
+interface WaGroup {
+  id: string;
+  name: string;
+  participants?: number;
+}
 
 interface WaSetting {
   id: string;
@@ -34,6 +40,9 @@ export default function WaSettingsPage() {
   const [editVal, setEditVal] = useState("");
   const [saving, setSaving]   = useState(false);
   const [toast, setToast]     = useState<string | null>(null);
+  const [groups, setGroups]   = useState<WaGroup[]>([]);
+  const [groupsLoading, setGroupsLoading] = useState(false);
+  const [showPicker, setShowPicker] = useState(false);
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -64,12 +73,24 @@ export default function WaSettingsPage() {
     setRows(prev => prev.map(r => r.id === row.id ? data : r));
   }
 
+  async function fetchGroups() {
+    if (groups.length > 0) { setShowPicker(true); return; }
+    setGroupsLoading(true);
+    const res = await fetch("/api/wa-groups");
+    const data = await res.json();
+    setGroupsLoading(false);
+    if (!res.ok) { showToast(`❌ ${data.error ?? "Gagal ambil daftar group"}`); return; }
+    setGroups(data);
+    setShowPicker(true);
+  }
+
   function startEdit(row: WaSetting) {
     setEditId(row.id);
     setEditVal(row.group_id);
+    setShowPicker(false);
   }
 
-  function cancelEdit() { setEditId(null); setEditVal(""); }
+  function cancelEdit() { setEditId(null); setEditVal(""); setShowPicker(false); }
 
   async function saveEdit(row: WaSetting) {
     setSaving(true);
@@ -132,17 +153,51 @@ export default function WaSettingsPage() {
                     <td className="px-4 py-3 text-[#1B2631] font-medium">{row.label}</td>
                     <td className="px-4 py-3">
                       {editId === row.id ? (
-                        <input
-                          autoFocus
-                          value={editVal}
-                          onChange={e => setEditVal(e.target.value)}
-                          onKeyDown={e => {
-                            if (e.key === "Enter") saveEdit(row);
-                            if (e.key === "Escape") cancelEdit();
-                          }}
-                          placeholder="contoh: 120363420657048053@g.us"
-                          className="w-full border border-[#00897B] rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#00897B]/20"
-                        />
+                        <div className="relative">
+                          <div className="flex gap-1.5 items-center">
+                            <input
+                              autoFocus
+                              value={editVal}
+                              onChange={e => setEditVal(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === "Enter") saveEdit(row);
+                                if (e.key === "Escape") cancelEdit();
+                              }}
+                              placeholder="contoh: 120363420657048053@g.us"
+                              className="flex-1 border border-[#00897B] rounded px-2 py-1 text-xs focus:outline-none focus:ring-2 focus:ring-[#00897B]/20"
+                            />
+                            <button
+                              type="button"
+                              onClick={fetchGroups}
+                              disabled={groupsLoading}
+                              className="flex items-center gap-1 px-2 py-1 rounded border border-[#00897B] text-[#00897B] text-xs hover:bg-[#E0F2F1] disabled:opacity-50 whitespace-nowrap"
+                              title="Pilih dari daftar group"
+                            >
+                              {groupsLoading
+                                ? <Loader2 size={12} className="animate-spin" />
+                                : <ChevronDown size={12} />}
+                              Pilih
+                            </button>
+                          </div>
+                          {showPicker && groups.length > 0 && (
+                            <div className="absolute z-20 top-full left-0 right-0 mt-1 bg-white border border-[#E2E8F0] rounded-lg shadow-lg max-h-52 overflow-y-auto">
+                              {groups.map(g => (
+                                <button
+                                  key={g.id}
+                                  type="button"
+                                  onClick={() => { setEditVal(g.id); setShowPicker(false); }}
+                                  className="w-full text-left px-3 py-2 text-xs hover:bg-[#E0F2F1] border-b border-[#E2E8F0] last:border-0"
+                                >
+                                  <span className="font-medium text-[#1B2631]">{g.name}</span>
+                                  {g.participants != null && (
+                                    <span className="text-gray-400 ml-1">({g.participants} anggota)</span>
+                                  )}
+                                  <div className="font-mono text-gray-400 text-[10px] truncate">{g.id}</div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       ) : (
                         <span className={`font-mono text-xs ${row.group_id ? "text-[#1B2631]" : "text-gray-400 italic"}`}>
                           {row.group_id || "— belum diisi —"}
