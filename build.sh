@@ -7,9 +7,11 @@ pm2 stop smart-mataram 2>/dev/null || echo "  (smart-mataram belum jalan)"
 echo "📥 Git pull..."
 git pull origin main
 
-echo "🔒 Kill proses next build yang mungkin masih jalan..."
-pkill -f "next build" 2>/dev/null; sleep 1; true
+echo "🔒 Kill semua proses next yang mungkin masih jalan..."
+pkill -f "next" 2>/dev/null; sleep 2; true
 rm -f .next/lock
+# Paksa hapus lock jika masih ada
+[ -f .next/lock ] && rm -f .next/lock && echo "  lock dihapus paksa"
 
 echo "📦 Install dependencies..."
 pnpm install --frozen-lockfile
