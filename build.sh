@@ -7,11 +7,17 @@ pm2 stop smart-mataram 2>/dev/null || echo "  (smart-mataram belum jalan)"
 echo "📥 Git pull..."
 git pull origin main
 
-echo "🔒 Kill semua proses next yang mungkin masih jalan..."
-pkill -f "next" 2>/dev/null; sleep 2; true
-rm -f .next/lock
-# Paksa hapus lock jika masih ada
-[ -f .next/lock ] && rm -f .next/lock && echo "  lock dihapus paksa"
+echo "🔒 Hapus lock build lama jika ada..."
+if [ -f .next/lock ]; then
+  LOCK_PID=$(cat .next/lock 2>/dev/null || true)
+  if [ -n "$LOCK_PID" ]; then
+    echo "  kill PID $LOCK_PID yang pegang lock..."
+    kill -9 "$LOCK_PID" 2>/dev/null || true
+    sleep 1
+  fi
+  rm -f .next/lock
+  echo "  lock dihapus"
+fi
 
 echo "📦 Install dependencies..."
 pnpm install --frozen-lockfile
