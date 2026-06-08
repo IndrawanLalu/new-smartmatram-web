@@ -7,7 +7,8 @@ pm2 stop smart-mataram 2>/dev/null || echo "  (smart-mataram belum jalan)"
 echo "📥 Git pull..."
 git pull origin main
 
-echo "🔒 Hapus lock build lama jika ada..."
+echo "🔒 Kill proses next build yang mungkin masih jalan..."
+pkill -f "next build" 2>/dev/null; sleep 1; true
 rm -f .next/lock
 
 echo "📦 Install dependencies..."
