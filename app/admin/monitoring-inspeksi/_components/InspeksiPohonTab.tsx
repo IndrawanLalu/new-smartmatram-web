@@ -1,11 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
+import { type CurrentUser, canSeeAllUnits, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
 import { useInspeksiPohon, type InspeksiPohon, type FilterPohon } from "../_hooks/useInspeksiPohon";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
 import InlineTeamSelect from "./InlineTeamSelect";
+import InlineCategorySelect from "./InlineCategorySelect";
 import UrgencyBadge from "./UrgencyBadge";
 import InspeksiPohonDetailModal from "./_InspeksiPohonDetailModal";
 import {
@@ -27,6 +28,7 @@ const STATUS_OPTIONS = [
 ];
 const RISIKO_OPTIONS = ["Rendah", "Sedang", "Tinggi", "Sangat Tinggi"];
 const URGENCY_OPTIONS = ["SANGAT URGENT", "URGENT", "PERLU TINDAKAN", "AMAN"];
+const CATEGORY_OPTIONS = Object.keys(CATEGORY_CONFIG) as InspeksiCategory[];
 
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
@@ -39,6 +41,7 @@ function exportExcel(filter: FilterPohon) {
   if (filter.ulp)          params.set("ulp",           filter.ulp);
   if (filter.penyulang)    params.set("penyulang",     filter.penyulang);
   if (filter.status)       params.set("status",        filter.status);
+  if (filter.category)     params.set("category",      filter.category);
   if (filter.tingkatRisiko) params.set("tingkat_risiko", filter.tingkatRisiko);
   window.open(`/api/export/inspeksi?${params.toString()}`);
 }
@@ -76,6 +79,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
     updateTeam,
     updateKeterangan,
     updateDeskripsi,
+    updateCategory,
     uploadFotoSesudah,
     deleteInspeksi,
     refresh,
@@ -241,6 +245,20 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
             ))}
           </select>
 
+          <select
+            value={filter.category}
+            onChange={(e) => {
+              setFilter((f) => ({ ...f, category: e.target.value }));
+              setPage(1);
+            }}
+            className={INPUT_CLASS}
+          >
+            <option value="">Semua Kategori</option>
+            {CATEGORY_OPTIONS.map((c) => (
+              <option key={c} value={c}>{CATEGORY_CONFIG[c].label}</option>
+            ))}
+          </select>
+
           <button
             onClick={refresh}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:bg-gray-50 transition-colors"
@@ -291,6 +309,9 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                   Inspektor
                 </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                  Kategori
+                </th>
+                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Risiko
                 </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
@@ -327,7 +348,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               ) : data.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showUlpFilter ? 12 : 11}
+                    colSpan={showUlpFilter ? 13 : 12}
                     className="text-center py-12 text-[#94a3b8] text-sm"
                   >
                     Tidak ada data yang sesuai filter
@@ -363,6 +384,13 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                     </td>
                     <td className="px-4 py-3 text-center text-[#94a3b8]">
                       {row.inspektor != null ? `${row.inspektor} ` : "—"}
+                    </td>
+                    <td className="px-4 py-3">
+                      <InlineCategorySelect
+                        id={row.id}
+                        currentCategory={row.category}
+                        onUpdate={updateCategory}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       {row.tingkat_risiko ? (
@@ -452,6 +480,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
           updateStatus={updateStatus}
           updateKeterangan={updateKeterangan}
           updateDeskripsi={updateDeskripsi}
+          updateCategory={updateCategory}
           uploadFotoSesudah={uploadFotoSesudah}
           deleteInspeksi={async (id) => {
             await deleteInspeksi(id);

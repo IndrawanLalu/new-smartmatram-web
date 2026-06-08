@@ -13,12 +13,16 @@ import TrendChart from "./components/TrendChart";
 import RootCauseAnalysis from "./components/RootCauseAnalysis";
 import HourlyHeatmap from "./components/HourlyHeatmap";
 import DurationDistribution from "./components/DurationDistribution";
+import UlpRadarChart from "./components/UlpRadarChart";
+import PenyulangRadarChart from "./components/PenyulangRadarChart";
 import PenyulangPerformance from "./components/PenyulangPerformance";
 import {
   FasilitasBreakdown, TechnicalIndicators, GeographicBreakdown,
 } from "./components/AdditionalCharts";
 
 type Row = Record<string, string>;
+
+const ULP_STREAK_LIST = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"] as const;
 
 const MONTH_OPTIONS = [
   { value: "ALL", label: "📅 Semua Bulan" },
@@ -118,7 +122,7 @@ export default function DashboardGangguanPenyulang() {
   // ─── Processed Data ──────────────────────────────────────────────────────────
 
   const processedData = useMemo(() => {
-    if (!rawData.length) return { filtered: [] as Row[], metrics: {} as Record<string, unknown>, yoyComparison: {} as Record<string, unknown> };
+    if (!rawData.length) return { filtered: [] as Row[], metrics: {} as Record<string, unknown>, yoyComparison: {} as Record<string, unknown>, rangeStart: "", rangeEnd: "", ulpStreaks: [] as { ulp: string; days: number; from: string; to: string }[] };
 
     const firstRow = rawData[0];
     const isHeader = firstRow?.TANGGAL?.toLowerCase().includes("tanggal");
@@ -157,6 +161,7 @@ export default function DashboardGangguanPenyulang() {
       quickRecovery: 0,
       extendedOutage: 0,
       criticalCount: 0,
+      dailyCount: Array(7).fill(0) as number[],
       dailyTrend: {} as Record<string, number>,
       monthlyTrend: {} as Record<string, number>,
       avgDurasi: 0,
@@ -199,6 +204,7 @@ export default function DashboardGangguanPenyulang() {
 
       const date = parseDate(row.TANGGAL);
       if (date) {
+        metrics.dailyCount[(date.getDay() + 6) % 7]++;
         const dk = date.toISOString().split("T")[0];
         metrics.dailyTrend[dk] = (metrics.dailyTrend[dk] || 0) + 1;
         const mk = `${date.getFullYear()}-${MONTH_NAMES[date.getMonth()]}`;
@@ -231,8 +237,56 @@ export default function DashboardGangguanPenyulang() {
       reliability: { current: metrics.reliabilityScore, previous: prevRelScore, change: prevRelScore > 0 ? ((metrics.reliabilityScore - prevRelScore) / prevRelScore) * 100 : 0 },
     };
 
-    return { filtered, metrics, yoyComparison };
-  }, [rawData, selectedULP, startDate, endDate, isDateInRange, convertToSeconds, parseDate]);
+    // ─── Effective date range ────────────────────────────────────────────────────
+    // When selectedMonth is active, clamp to actual data range to avoid huge gaps
+    const trendKeys = Object.keys(metrics.dailyTrend).sort();
+    const rangeStart = selectedMonth !== "ALL" && trendKeys.length > 0
+      ? trendKeys[0]
+      : formatDateForInput(startDate);
+    const rangeEnd = selectedMonth !== "ALL" && trendKeys.length > 0
+      ? trendKeys[trendKeys.length - 1]
+      : formatDateForInput(endDate);
+
+    // ─── Longest no-gangguan streak per ULP ─────────────────────────────────────
+    const ulpsToStreak = selectedULP === "ALL"
+      ? (ULP_STREAK_LIST as readonly string[])
+      : [selectedULP];
+
+    const gangguanByUlp: Record<string, Set<string>> = {};
+    ulpsToStreak.forEach(u => { gangguanByUlp[u] = new Set(); });
+    filtered.forEach(row => {
+      const ulp = row.ULP?.trim().toUpperCase();
+      if (ulp && gangguanByUlp[ulp]) {
+        const d = parseDate(row.TANGGAL);
+        if (d) gangguanByUlp[ulp].add(d.toISOString().split("T")[0]);
+      }
+    });
+
+    const todayStr = new Date().toISOString().split("T")[0];
+    const streakEnd = rangeEnd > todayStr ? todayStr : rangeEnd;
+
+    const ulpStreaks = ulpsToStreak.map(ulp => {
+      const gangguan = gangguanByUlp[ulp];
+      let maxDays = 0, maxFrom = "", maxTo = "";
+      let streak = 0, streakFrom = "";
+      const cur = new Date(rangeStart + "T12:00:00");
+      const end = new Date(streakEnd + "T12:00:00");
+      while (cur <= end) {
+        const key = cur.toISOString().split("T")[0];
+        if (!gangguan.has(key)) {
+          if (streak === 0) streakFrom = key;
+          streak++;
+          if (streak > maxDays) { maxDays = streak; maxFrom = streakFrom; maxTo = key; }
+        } else {
+          streak = 0; streakFrom = "";
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+      return { ulp, days: maxDays, from: maxFrom, to: maxTo };
+    }).filter(s => s.days > 0);
+
+    return { filtered, metrics, yoyComparison, rangeStart, rangeEnd: streakEnd, ulpStreaks };
+  }, [rawData, selectedULP, selectedMonth, startDate, endDate, isDateInRange, convertToSeconds, parseDate]);
 
   // ─── Table Logic ─────────────────────────────────────────────────────────────
 
@@ -296,16 +350,19 @@ export default function DashboardGangguanPenyulang() {
     const pct = Math.abs(change).toFixed(1);
     if (Math.abs(change) < 0.1) return null;
     return (
-      <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${isGood ? "bg-green-100 text-green-700" : "bg-red-100 text-red-600"}`}>
+      <span className={`inline-flex items-center gap-0.5 text-xs font-semibold px-2 py-0.5 rounded-full ${isGood ? "bg-green-900/20 text-green-400" : "bg-red-900/20 text-red-400"}`}>
         {isGood ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
         {pct}%
       </span>
     );
   }
 
-  const { metrics, yoyComparison } = processedData as {
+  const { metrics, yoyComparison, rangeStart, rangeEnd, ulpStreaks } = processedData as {
     metrics: Record<string, unknown>;
     yoyComparison: Record<string, { current: number; previous: number; change: number }>;
+    rangeStart: string;
+    rangeEnd: string;
+    ulpStreaks: { ulp: string; days: number; from: string; to: string }[];
   };
 
   // ─── Render ───────────────────────────────────────────────────────────────────
@@ -356,7 +413,7 @@ export default function DashboardGangguanPenyulang() {
               <select
                 value={selectedULP}
                 onChange={(e) => { setSelectedULP(e.target.value); setCurrentPage(1); }}
-                className="appearance-none border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="appearance-none bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
               >
                 <option value="ALL">🏢 Semua ULP</option>
                 {ulpOptions.map((u) => <option key={u} value={u}>{u}</option>)}
@@ -371,7 +428,7 @@ export default function DashboardGangguanPenyulang() {
               <select
                 value={selectedMonth}
                 onChange={(e) => { setSelectedMonth(e.target.value); setCurrentPage(1); }}
-                className="appearance-none border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="appearance-none bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
               >
                 {MONTH_OPTIONS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
               </select>
@@ -385,7 +442,7 @@ export default function DashboardGangguanPenyulang() {
               type="date"
               value={formatDateForInput(startDate)}
               onChange={(e) => { if (e.target.value) { setStartDate(new Date(e.target.value + "T12:00:00")); setCurrentPage(1); } }}
-              className="border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
 
@@ -395,7 +452,7 @@ export default function DashboardGangguanPenyulang() {
               type="date"
               value={formatDateForInput(endDate)}
               onChange={(e) => { if (e.target.value) { setEndDate(new Date(e.target.value + "T12:00:00")); setCurrentPage(1); } }}
-              className="border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             />
           </div>
 
@@ -416,9 +473,9 @@ export default function DashboardGangguanPenyulang() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
-          <p className="text-red-700 text-sm">{error}</p>
+        <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+          <p className="text-red-400 text-sm">{error}</p>
           <button onClick={fetchData} className="ml-auto px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs">
             Coba Lagi
           </button>
@@ -438,31 +495,31 @@ export default function DashboardGangguanPenyulang() {
             bg: "bg-[#0a2a26]",
           },
           {
-            icon: <Clock className="w-5 h-5 text-blue-600" />,
+            icon: <Clock className="w-5 h-5 text-blue-400" />,
             label: "Avg Durasi",
             value: loading ? "..." : `${Math.round(metrics.avgDurasi as number)} mnt`,
             subLabel: "per kejadian",
             yoy: yoyComparison.avgDurasi,
             inverse: true,
-            bg: "bg-blue-50",
+            bg: "bg-blue-900/20",
           },
           {
-            icon: <Zap className="w-5 h-5 text-green-600" />,
+            icon: <Zap className="w-5 h-5 text-green-400" />,
             label: "Quick Recovery",
             value: loading ? "..." : `${(metrics.totalGangguan as number) > 0 ? (((metrics.quickRecovery as number) / (metrics.totalGangguan as number)) * 100).toFixed(1) : "0"}%`,
             subLabel: "≤ 5 menit",
             yoy: yoyComparison.quickRecovery,
             inverse: false,
-            bg: "bg-green-50",
+            bg: "bg-green-900/20",
           },
           {
-            icon: <Target className="w-5 h-5 text-orange-600" />,
+            icon: <Target className="w-5 h-5 text-orange-400" />,
             label: "Reliability",
             value: loading ? "..." : `${(metrics.reliabilityScore as number)?.toFixed(1)}%`,
             subLabel: "score",
             yoy: yoyComparison.reliability,
             inverse: false,
-            bg: "bg-orange-50",
+            bg: "bg-orange-900/20",
           },
         ].map(({ icon, label, value, subLabel, yoy, inverse, bg }) => (
           <div key={label} className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm p-4">
@@ -491,6 +548,9 @@ export default function DashboardGangguanPenyulang() {
         <TrendChart
           dailyTrend={(metrics.dailyTrend as Record<string, number>) ?? {}}
           monthlyTrend={(metrics.monthlyTrend as Record<string, number>) ?? {}}
+          rangeStart={rangeStart}
+          rangeEnd={rangeEnd}
+          ulpStreaks={ulpStreaks}
           loading={loading}
         />
         <RootCauseAnalysis
@@ -503,10 +563,24 @@ export default function DashboardGangguanPenyulang() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <HourlyHeatmap
           hourlyCount={(metrics.hourlyCount as number[]) ?? []}
+          dailyCount={(metrics.dailyCount as number[]) ?? []}
           loading={loading}
         />
         <DurationDistribution
           durasiArray={(metrics.durasiArray as number[]) ?? []}
+          loading={loading}
+        />
+      </div>
+
+      {/* Radar Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <UlpRadarChart
+          filtered={processedData.filtered}
+          loading={loading}
+        />
+        <PenyulangRadarChart
+          filtered={processedData.filtered}
+          penyulangCount={(metrics.penyulangCount as Record<string, number>) ?? {}}
           loading={loading}
         />
       </div>
@@ -596,7 +670,7 @@ export default function DashboardGangguanPenyulang() {
                     <td className="px-4 py-3 text-[#e2e8f0]">{row.TANGGAL || "-"}</td>
                     <td className="px-4 py-3">
                       {row.ULP ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-700 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-900/20 text-blue-400 rounded-full text-xs">
                           <MapPin className="w-3 h-3" />{row.ULP}
                         </span>
                       ) : "-"}
@@ -613,15 +687,15 @@ export default function DashboardGangguanPenyulang() {
                     </td>
                     <td className="px-4 py-3">
                       {severity === "critical" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-50 text-red-600 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-red-900/20 text-red-400 rounded-full text-xs">
                           <AlertTriangle className="w-3 h-3" /> Critical
                         </span>
                       ) : severity === "medium" ? (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-50 text-yellow-700 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-900/20 text-yellow-400 rounded-full text-xs">
                           <AlertCircle className="w-3 h-3" /> Medium
                         </span>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-50 text-green-700 rounded-full text-xs">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-900/20 text-green-400 rounded-full text-xs">
                           <CheckCircle className="w-3 h-3" /> Low
                         </span>
                       )}

@@ -5,30 +5,64 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
-import { TrendingUp, Calendar } from "lucide-react";
+import { TrendingUp, Calendar, ShieldCheck } from "lucide-react";
+
+interface UlpStreak {
+  ulp: string;
+  days: number;
+  from: string;
+  to: string;
+}
 
 interface TrendChartProps {
   dailyTrend?: Record<string, number>;
   monthlyTrend?: Record<string, number>;
+  rangeStart?: string;
+  rangeEnd?: string;
+  ulpStreaks?: UlpStreak[];
   loading?: boolean;
+}
+
+function formatStreakDate(dateStr: string): string {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr + "T12:00:00");
+  return d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export default function TrendChart({
   dailyTrend = {},
   monthlyTrend = {},
+  rangeStart,
+  rangeEnd,
+  ulpStreaks = [],
   loading = false,
 }: TrendChartProps) {
   const [viewMode, setViewMode] = useState<"daily" | "monthly">("daily");
 
   const dailyData = useMemo(() => {
+    if (rangeStart && rangeEnd) {
+      const result = [];
+      const cur = new Date(rangeStart + "T12:00:00");
+      const end = new Date(rangeEnd + "T12:00:00");
+      while (cur <= end) {
+        const key = cur.toISOString().split("T")[0];
+        result.push({
+          date: cur.toLocaleDateString("id-ID", { day: "2-digit", month: "short" }),
+          fullDate: key,
+          count: dailyTrend[key] || 0,
+        });
+        cur.setDate(cur.getDate() + 1);
+      }
+      return result;
+    }
     return Object.keys(dailyTrend)
       .sort()
       .map((date) => ({
-        date: new Date(date).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }),
+        date: new Date(date + "T12:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short" }),
         fullDate: date,
         count: dailyTrend[date] || 0,
       }));
-  }, [dailyTrend]);
+  }, [dailyTrend, rangeStart, rangeEnd]);
 
   const monthlyData = useMemo(() => {
     if (!monthlyTrend || Object.keys(monthlyTrend).length === 0) return [];
@@ -55,6 +89,11 @@ export default function TrendChart({
 
   const chartData = viewMode === "daily" ? dailyData : monthlyData;
   const hasData = chartData.length > 0;
+
+  // Thin out X-axis labels when there are many data points
+  const xInterval = viewMode === "daily"
+    ? Math.max(0, Math.floor(dailyData.length / 14) - 1)
+    : 0;
 
   const trendPercentage = useMemo(() => {
     if (chartData.length < 2) return 0;
@@ -110,7 +149,7 @@ export default function TrendChart({
           <div className="mt-3 flex items-center gap-2">
             <Calendar className="w-4 h-4 text-[#94a3b8]" />
             <span className="text-[#94a3b8] text-xs">Trend: </span>
-            <span className={`text-sm font-bold ${parseFloat(String(trendPercentage)) > 0 ? "text-red-600" : "text-green-600"}`}>
+            <span className={`text-sm font-bold ${parseFloat(String(trendPercentage)) > 0 ? "text-red-400" : "text-green-400"}`}>
               {parseFloat(String(trendPercentage)) > 0 ? "+" : ""}{trendPercentage}%
             </span>
           </div>
@@ -127,30 +166,31 @@ export default function TrendChart({
         ) : (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
               <XAxis
                 dataKey={viewMode === "daily" ? "date" : "month"}
-                stroke="rgba(0,0,0,0.4)"
+                stroke="rgba(255,255,255,0.5)"
                 style={{ fontSize: "11px" }}
                 angle={-45}
                 textAnchor="end"
                 height={80}
+                interval={xInterval}
               />
-              <YAxis stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
+              <YAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: "11px" }} allowDecimals={false} />
               <Tooltip
                 contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }}
                 labelStyle={{ color: "white", fontWeight: 600 }}
                 itemStyle={{ color: "#6ee7b7" }}
               />
-              <Legend wrapperStyle={{ color: "rgba(0,0,0,0.7)", fontSize: "12px" }} />
+              <Legend wrapperStyle={{ color: "rgba(255,255,255,0.8)", fontSize: "12px" }} />
               <Line
                 type="monotone"
                 dataKey="count"
                 name="Jumlah Gangguan"
                 stroke="#00897B"
-                strokeWidth={3}
-                dot={{ fill: "#00897B", r: 4 }}
-                activeDot={{ r: 6, fill: "#00695C" }}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 5, fill: "#00695C" }}
               />
             </LineChart>
           </ResponsiveContainer>
@@ -160,6 +200,31 @@ export default function TrendChart({
           <div className="mt-3 flex items-center justify-between text-xs text-[#94A3B8]">
             <span>Total periode: {chartData.reduce((s, i) => s + i.count, 0)} gangguan</span>
             <span>{chartData.length} {viewMode === "daily" ? "hari" : "bulan"}</span>
+          </div>
+        )}
+
+        {/* Longest no-gangguan streak per ULP — daily view only */}
+        {viewMode === "daily" && ulpStreaks.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-[#1e3552]">
+            <div className="flex items-center gap-2 mb-3">
+              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+              <span className="text-[#94a3b8] text-xs font-medium uppercase tracking-wide">
+                Rentang Terpanjang Tanpa Gangguan
+              </span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {ulpStreaks.map(({ ulp, days, from, to }) => (
+                <div key={ulp} className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-4 py-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[#5eead4] text-xs font-semibold">{ulp}</span>
+                    <span className="text-emerald-400 font-bold text-sm">{days} hari</span>
+                  </div>
+                  <p className="text-[#94a3b8] text-xs">
+                    {formatStreakDate(from)} — {formatStreakDate(to)}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

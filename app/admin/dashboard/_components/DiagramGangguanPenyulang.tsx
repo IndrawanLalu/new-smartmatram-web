@@ -137,11 +137,11 @@ export default function DiagramGangguanPenyulang() {
     maintainAspectRatio: false,
     layout: { padding: { top: 20, bottom: 10, left: 10, right: 10 } },
     scales: {
-      x: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: 500 } } },
-      y: { grid: { color: "rgba(0,0,0,0.06)" }, ticks: { color: "rgba(0,0,0,0.6)", font: { size: 12, weight: 500 }, stepSize: 1 }, beginAtZero: true },
+      x: { grid: { color: "rgba(255,255,255,0.08)" }, ticks: { color: "rgba(255,255,255,0.6)", font: { size: 12, weight: 500 } } },
+      y: { grid: { color: "rgba(255,255,255,0.08)" }, ticks: { color: "rgba(255,255,255,0.6)", font: { size: 12, weight: 500 }, stepSize: 1 }, beginAtZero: true },
     },
     plugins: {
-      legend: { position: "top" as const, labels: { color: "rgba(0,0,0,0.8)", font: { size: 13, weight: 600 }, usePointStyle: true, pointStyle: "circle", padding: 20 } },
+      legend: { position: "top" as const, labels: { color: "rgba(255,255,255,0.8)", font: { size: 13, weight: 600 }, usePointStyle: true, pointStyle: "circle", padding: 20 } },
       tooltip: {
         backgroundColor: "rgba(0,0,0,0.8)",
         titleColor: "rgba(255,255,255,1)",
@@ -172,10 +172,10 @@ export default function DiagramGangguanPenyulang() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-8 text-center">
         <BarChart3 className="w-12 h-12 text-red-400 mx-auto mb-3" />
-        <h3 className="text-slate-700 font-semibold mb-2">Error Memuat Chart</h3>
-        <p className="text-red-600 text-sm mb-4">{error}</p>
+        <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Memuat Chart</h3>
+        <p className="text-red-400 text-sm mb-4">{error}</p>
         <button onClick={fetchData} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Coba Lagi
         </button>
@@ -192,13 +192,13 @@ export default function DiagramGangguanPenyulang() {
               <TrendingUp className="w-6 h-6 text-[#00897B]" />
             </div>
             <div>
-              <h3 className="text-slate-800 text-lg font-semibold">Gangguan Penyulang</h3>
-              <p className="text-slate-400 text-sm">Trend bulanan tahun ini vs tahun lalu{userUnit && ` — ${userUnit}`}</p>
+              <h3 className="text-[#e2e8f0] text-lg font-semibold">Gangguan Penyulang</h3>
+              <p className="text-[#94a3b8] text-sm">Trend bulanan tahun ini vs tahun lalu{userUnit && ` — ${userUnit}`}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {loading && <div className="w-5 h-5 border-2 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />}
-            <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors">
+            {loading && <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />}
+            <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-[#162334] hover:bg-[#1e3552] text-[#94a3b8] disabled:opacity-50 transition-colors">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
@@ -208,11 +208,11 @@ export default function DiagramGangguanPenyulang() {
           {[
             { label: "Total Tahun Ini", value: loading ? "..." : totalIni.toLocaleString(), color: "text-[#00897B]" },
             { label: "Total Tahun Lalu", value: loading ? "..." : totalLalu.toLocaleString(), color: "text-emerald-600" },
-            { label: "Perubahan", value: loading ? "..." : `${pctChange > 0 ? "+" : ""}${pctChange.toFixed(1)}%`, color: pctChange > 0 ? "text-red-600" : pctChange < 0 ? "text-emerald-600" : "text-slate-500" },
+            { label: "Perubahan", value: loading ? "..." : `${pctChange > 0 ? "+" : ""}${pctChange.toFixed(1)}%`, color: pctChange > 0 ? "text-red-400" : pctChange < 0 ? "text-emerald-400" : "text-[#94a3b8]" },
           ].map(({ label, value, color }) => (
-            <div key={label} className="text-center p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div key={label} className="text-center p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
-              <div className="text-xs text-slate-500">{label}</div>
+              <div className="text-xs text-[#94a3b8]">{label}</div>
             </div>
           ))}
         </div>
@@ -223,8 +223,8 @@ export default function DiagramGangguanPenyulang() {
           {loading ? (
             <div className="h-full flex items-center justify-center">
               <div className="text-center">
-                <div className="w-12 h-12 border-4 border-slate-200 border-t-[#00897B] rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-slate-400">Memuat data chart...</p>
+                <div className="w-12 h-12 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-[#94a3b8]">Memuat data chart...</p>
               </div>
             </div>
           ) : (
@@ -233,13 +233,13 @@ export default function DiagramGangguanPenyulang() {
         </div>
 
         {!loading && lastFetch && (
-          <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <div className="flex items-center justify-between text-slate-500 text-sm">
+          <div className="mt-4 p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
+            <div className="flex items-center justify-between text-[#94a3b8] text-sm">
               <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
                 <span>Data diperbarui: {lastFetch.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
               </div>
-              {userUnit && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">Unit: {userUnit}</span>}
+              {userUnit && <span className="text-xs bg-[#1e3552] text-[#94a3b8] px-2 py-1 rounded">Unit: {userUnit}</span>}
             </div>
           </div>
         )}

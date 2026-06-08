@@ -68,8 +68,8 @@ export default function DurationDistribution({
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg">
-              <Timer className="w-5 h-5 text-blue-600" />
+            <div className="p-2 bg-blue-900/20 rounded-lg">
+              <Timer className="w-5 h-5 text-blue-400" />
             </div>
             <div>
               <h3 className="text-[#e2e8f0] text-lg font-bold">Duration Distribution</h3>
@@ -94,9 +94,9 @@ export default function DurationDistribution({
           <div className="space-y-4">
             <ResponsiveContainer width="100%" height={300}>
               <BarChart data={histogramData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                <XAxis dataKey="label" stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
-                <YAxis stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis dataKey="label" stroke="rgba(255,255,255,0.5)" style={{ fontSize: "11px" }} />
+                <YAxis stroke="rgba(255,255,255,0.5)" style={{ fontSize: "11px" }} />
                 <Tooltip
                   contentStyle={{ background: "rgba(15,23,42,0.95)", border: "1px solid rgba(255,255,255,0.2)", borderRadius: "8px" }}
                   labelStyle={{ color: "white", fontWeight: 600 }}
@@ -124,9 +124,9 @@ export default function DurationDistribution({
 
             <div className="grid grid-cols-3 gap-3">
               {[
-                { label: "Quick Recovery", sublabel: "≤ 5 menit", count: severity.quick, bg: "bg-green-50", border: "border-green-200", text: "text-green-600", barBg: "bg-green-200", barFill: "bg-green-500", icon: <Zap className="w-4 h-4 text-green-600" /> },
-                { label: "Medium", sublabel: "5-30 menit", count: severity.medium, bg: "bg-yellow-50", border: "border-yellow-200", text: "text-yellow-700", barBg: "bg-yellow-200", barFill: "bg-yellow-500", icon: <Timer className="w-4 h-4 text-yellow-600" /> },
-                { label: "Critical", sublabel: "> 30 menit", count: severity.critical, bg: "bg-red-50", border: "border-red-200", text: "text-red-600", barBg: "bg-red-200", barFill: "bg-red-500", icon: <AlertTriangle className="w-4 h-4 text-red-600" /> },
+                { label: "Quick Recovery", sublabel: "≤ 5 menit", count: severity.quick, bg: "bg-green-900/20", border: "border-green-700/30", text: "text-green-400", barBg: "bg-green-900/40", barFill: "bg-green-500", icon: <Zap className="w-4 h-4 text-green-400" /> },
+                { label: "Medium", sublabel: "5-30 menit", count: severity.medium, bg: "bg-yellow-900/20", border: "border-yellow-700/30", text: "text-yellow-400", barBg: "bg-yellow-900/40", barFill: "bg-yellow-500", icon: <Timer className="w-4 h-4 text-yellow-400" /> },
+                { label: "Critical", sublabel: "> 30 menit", count: severity.critical, bg: "bg-red-900/20", border: "border-red-700/30", text: "text-red-400", barBg: "bg-red-900/40", barFill: "bg-red-500", icon: <AlertTriangle className="w-4 h-4 text-red-400" /> },
               ].map(({ label, sublabel, count, bg, border, text, barBg, barFill, icon }) => (
                 <div key={label} className={`${bg} border ${border} rounded-lg p-3`}>
                   <div className="flex items-center gap-2 mb-2">{icon}<span className={`${text} text-xs font-medium`}>{label}</span></div>

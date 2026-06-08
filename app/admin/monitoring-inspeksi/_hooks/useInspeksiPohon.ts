@@ -25,6 +25,7 @@ export interface InspeksiPohon {
   lokasi: string | null;
   ulp: string | null;
   status: string;
+  category: string | null;
   jenis_pohon: string | null;
   tinggi_pohon: number | null;
   jarak_ke_jaringan: number | null;
@@ -50,6 +51,7 @@ export interface FilterPohon {
   penyulang: string;
   tingkatRisiko: string;
   urgency: string;
+  category: string;
   startDate: string;
   endDate: string;
 }
@@ -69,6 +71,7 @@ export function useInspeksiPohon(user: CurrentUser) {
     penyulang: "",
     tingkatRisiko: "",
     urgency: "",
+    category: "",
     startDate: new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0],
     endDate: now.toISOString().split("T")[0],
   });
@@ -209,6 +212,21 @@ export function useInspeksiPohon(user: CurrentUser) {
     [fetchData],
   );
 
+  // Update category
+  const updateCategory = useCallback(
+    async (id: string, category: string | null) => {
+      setRawData((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, category } : item)),
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi_pohon")
+        .update({ category, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData],
+  );
+
   // Upload foto sesudah ke Supabase Storage (bucket: inspections/pohon/sesudah/) + update DB
   const uploadFotoSesudah = useCallback(
     async (id: string, file: File): Promise<string> => {
@@ -277,6 +295,9 @@ export function useInspeksiPohon(user: CurrentUser) {
     if (filter.urgency) {
       data = data.filter((d) => d.urgency === filter.urgency);
     }
+    if (filter.category) {
+      data = data.filter((d) => d.category === filter.category);
+    }
     if (filter.search) {
       const q = filter.search.toLowerCase();
       data = data.filter(
@@ -334,6 +355,7 @@ export function useInspeksiPohon(user: CurrentUser) {
     updateTeam,
     updateKeterangan,
     updateDeskripsi,
+    updateCategory,
     uploadFotoSesudah,
     deleteInspeksi,
     refresh: fetchData,

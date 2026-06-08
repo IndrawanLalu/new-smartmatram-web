@@ -147,7 +147,10 @@ export default function GarduDetailModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pengukuranId: row!.id }),
       });
-      const json = await res.json() as { ok?: boolean; error?: string };
+      const json = await res.json() as { ok?: boolean; error?: string; sentTo?: string[] };
+      if (process.env.NODE_ENV !== "production") {
+        console.log("[kirim-amg]", { status: res.status, sentTo: json.sentTo });
+      }
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setAmgMarked(true);
       setAmgSuccess(true);

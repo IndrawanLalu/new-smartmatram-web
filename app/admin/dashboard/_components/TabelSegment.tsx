@@ -79,9 +79,9 @@ function getGradient(pct: number) {
 }
 
 function getTextColor(pct: number) {
-  if (pct >= 80) return "text-green-600";
-  if (pct >= 60) return "text-yellow-700";
-  return "text-red-600";
+  if (pct >= 80) return "text-green-400";
+  if (pct >= 60) return "text-yellow-400";
+  return "text-red-400";
 }
 
 function ProgressBar({ pct }: { pct: number }) {
@@ -92,7 +92,7 @@ function ProgressBar({ pct }: { pct: number }) {
         <span className={`text-xs font-semibold ${getTextColor(pct)}`}>{pct.toFixed(1)}%</span>
         <span className="text-xs text-[#94A3B8]">{label}</span>
       </div>
-      <div className="w-full bg-[#E2E8F0] rounded-full h-2 overflow-hidden">
+      <div className="w-full bg-[#1e3552] rounded-full h-2 overflow-hidden">
         <div
           className={`h-full bg-linear-to-r ${getGradient(pct)} transition-all duration-1000 rounded-full`}
           style={{ width: `${Math.min(pct, 100)}%` }}
@@ -177,7 +177,7 @@ export default function TabelSegment() {
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-8 text-center">
         <MapPin className="w-12 h-12 text-red-400 mx-auto mb-3" />
         <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Memuat Data</h3>
         <p className="text-red-600 text-sm mb-4">{error}</p>
@@ -207,10 +207,10 @@ export default function TabelSegment() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: <MapPin className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50", value: loading ? "..." : summary.totalPenyulang, label: "Total Penyulang", color: "text-blue-600" },
-          { icon: <TrendingUp className="w-5 h-5 text-green-600" />, bg: "bg-green-50", value: loading ? "..." : summary.totalKM.toFixed(1), label: "Total KM", color: "text-green-600" },
+          { icon: <MapPin className="w-5 h-5 text-blue-400" />, bg: "bg-blue-900/20", value: loading ? "..." : summary.totalPenyulang, label: "Total Penyulang", color: "text-blue-400" },
+          { icon: <TrendingUp className="w-5 h-5 text-green-400" />, bg: "bg-green-900/20", value: loading ? "..." : summary.totalKM.toFixed(1), label: "Total KM", color: "text-green-400" },
           { icon: <Target className="w-5 h-5 text-[#00897B]" />, bg: "bg-[#0a2a26]", value: loading ? "..." : `${summary.avgPersentase.toFixed(1)}%`, label: "Avg Progress", color: "text-[#00897B]" },
-          { icon: <Activity className="w-5 h-5 text-yellow-700" />, bg: "bg-yellow-50", value: loading ? "..." : `${summary.totalDicek} / ${summary.totalSegmen}`, label: "Segments Checked", color: "text-yellow-700" },
+          { icon: <Activity className="w-5 h-5 text-yellow-400" />, bg: "bg-yellow-900/20", value: loading ? "..." : `${summary.totalDicek} / ${summary.totalSegmen}`, label: "Segments Checked", color: "text-yellow-400" },
         ].map(({ icon, bg, value, label, color }) => (
           <div key={label} className="bg-[#162334] border border-[#1e3552] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
             <div className="flex items-center gap-3">
@@ -288,7 +288,7 @@ export default function TabelSegment() {
                   <tr key={i} className="border-t border-[#1e3552]">
                     {Array(7).fill(null).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-[#E2E8F0] rounded animate-pulse" />
+                        <div className="h-4 bg-[#1e3552] rounded animate-pulse" />
                       </td>
                     ))}
                   </tr>

@@ -5,11 +5,12 @@ import { type CurrentUser, canSeeAllUnits, CATEGORY_CONFIG, type InspeksiCategor
 import { useInspeksiJaringan, type InspeksiJaringan, type FilterJaringan } from "../_hooks/useInspeksiJaringan";
 import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
+import InlineCategorySelect from "./InlineCategorySelect";
 import InspeksiDetailModal from "./_InspeksiDetailModal";
 import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, FileSearch } from "lucide-react";
 
 const STATUS_OPTIONS = ["Temuan", "Perlu Tindakan", "Ditugaskan", "Dalam Proses", "Selesai"];
-const CATEGORY_OPTIONS = ["Emergency", "Urgent", "Scheduled", "Preventive", "Normal"];
+const CATEGORY_OPTIONS = Object.keys(CATEGORY_CONFIG) as InspeksiCategory[];
 
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
@@ -48,6 +49,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
     penyulangOptions,
     updateStatus,
     updateEksekutor,
+    updateCategory,
     updateTemuan,
     updateDeskripsi,
     uploadFotoSesudah,
@@ -120,7 +122,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
           {/* Kategori */}
           <select value={filter.category} onChange={(e) => { setFilter((f) => ({ ...f, category: e.target.value })); setPage(1); }} className={INPUT_CLASS}>
             <option value="">Semua Kategori</option>
-            {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{c}</option>)}
+            {CATEGORY_OPTIONS.map((c) => <option key={c} value={c}>{CATEGORY_CONFIG[c].label}</option>)}
           </select>
 
           {/* Actions */}
@@ -176,9 +178,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
                   </td>
                 </tr>
               ) : (
-                data.map((row, i) => {
-                  const catCfg = CATEGORY_CONFIG[row.category as InspeksiCategory];
-                  return (
+                data.map((row, i) => (
                     <tr key={row.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"}>
                       <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">{row.tgl_inspeksi ?? "—"}</td>
                       {showUlpFilter && <td className="px-4 py-3 text-[#94a3b8]">{row.ulp ?? "—"}</td>}
@@ -189,11 +189,11 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
                       </td>
                       <td className="px-4 py-3 text-[#94a3b8] truncate max-w-32">{row.lokasi ?? "—"}</td>
                       <td className="px-4 py-3">
-                        {catCfg ? (
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${catCfg.bgColor} ${catCfg.color}`}>
-                            {catCfg.label}
-                          </span>
-                        ) : "—"}
+                        <InlineCategorySelect
+                          id={row.id}
+                          currentCategory={row.category}
+                          onUpdate={updateCategory}
+                        />
                       </td>
                       <td className="px-4 py-3">
                         <InlineStatusSelect
@@ -219,8 +219,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
                         </button>
                       </td>
                     </tr>
-                  );
-                })
+                ))
               )}
             </tbody>
           </table>

@@ -135,6 +135,23 @@ export function useInspeksiJaringan(user: CurrentUser) {
     [fetchData]
   );
 
+  // Optimistic category update
+  const updateCategory = useCallback(
+    async (id: string, category: string | null) => {
+      setRawData((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, category } : item
+        )
+      );
+      const { error: err } = await supabaseBrowser
+        .from("inspeksi")
+        .update({ category, updated_at: new Date().toISOString() })
+        .eq("id", id);
+      if (err) fetchData();
+    },
+    [fetchData]
+  );
+
   // Update temuan
   const updateTemuan = useCallback(
     async (id: string, temuan: string) => {
@@ -283,6 +300,7 @@ export function useInspeksiJaringan(user: CurrentUser) {
     penyulangOptions,
     updateStatus,
     updateEksekutor,
+    updateCategory,
     updateTemuan,
     updateDeskripsi,
     uploadFotoSesudah,

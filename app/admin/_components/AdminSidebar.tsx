@@ -22,6 +22,10 @@ import {
   UserCog,
   MessageSquare,
   CalendarDays,
+  BrainCircuit,
+  ShieldCheck,
+  Table2,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -30,6 +34,8 @@ import { logout } from "@/app/login/actions";
 
 const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/dashboard", label: "Dashboards", icon: LayoutDashboard },
+  { href: "/admin/advanced-dashboard", label: "Advanced Analytics", icon: BrainCircuit },
+  { href: "/admin/efektifitas-inspeksi", label: "Efektivitas Inspeksi", icon: ShieldCheck },
   { href: "/admin/peta-gardu", label: "Peta Aset", icon: Map },
   {
     href: "/admin/dashboard-penyulang",
@@ -49,6 +55,8 @@ const NAV_ITEMS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/admin/user-management", label: "Manajemen User", icon: UserCog },
   { href: "/admin/rekap-produktivitas", label: "Rekap Produktivitas", icon: CalendarDays },
   { href: "/admin/settings/wa", label: "Setting WA Group", icon: MessageSquare },
+  { href: "/admin/yantek", label: "Analisis Yantek", icon: Wrench },
+  { href: "/admin/json-to-table", label: "JSON ke Tabel", icon: Table2 },
 ];
 
 // ── Types ────────────────────────────────────────────────────────────────────

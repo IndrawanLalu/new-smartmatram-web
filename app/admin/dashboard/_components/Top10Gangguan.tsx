@@ -63,14 +63,14 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
     layout: { padding: { top: 10, bottom: 10, left: 10, right: 30 } },
     scales: {
       x: {
-        grid: { color: "rgba(0,0,0,0.06)" },
-        ticks: { color: "rgba(0,0,0,0.6)", font: { size: 11, weight: "500" as const }, stepSize: 1 },
+        grid: { color: "rgba(255,255,255,0.08)" },
+        ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11, weight: "500" as const }, stepSize: 1 },
         beginAtZero: true,
       },
       y: {
         grid: { display: false },
         ticks: {
-          color: "rgba(0,0,0,0.6)",
+          color: "rgba(255,255,255,0.6)",
           font: { size: 11, weight: "500" as const },
           padding: 10,
           maxRotation: 0,
@@ -112,10 +112,10 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-8 text-center">
         <BarChart3 className="w-12 h-12 text-red-400 mx-auto mb-3" />
-        <h3 className="text-slate-700 font-semibold mb-2">Error Memuat Top 10</h3>
-        <p className="text-red-600 text-sm mb-4">{error}</p>
+        <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Memuat Top 10</h3>
+        <p className="text-red-400 text-sm mb-4">{error}</p>
         <button onClick={refresh} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Coba Lagi
         </button>
@@ -132,8 +132,8 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
               <Trophy className="w-6 h-6 text-[#00897B]" />
             </div>
             <div>
-              <h3 className="text-slate-800 text-lg font-semibold">Top 10 Penyulang Bermasalah</h3>
-              <p className="text-slate-400 text-sm">
+              <h3 className="text-[#e2e8f0] text-lg font-semibold">Top 10 Penyulang Bermasalah</h3>
+              <p className="text-[#94a3b8] text-sm">
                 {startDate && endDate
                   ? `Periode ${format(startDate, "dd MMM")} — ${format(endDate, "dd MMM yyyy")}`
                   : "Semua data"
@@ -142,8 +142,8 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {loading && <div className="w-5 h-5 border-2 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />}
-            <button onClick={refresh} disabled={loading} className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors">
+            {loading && <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />}
+            <button onClick={refresh} disabled={loading} className="p-2 rounded-full bg-[#162334] hover:bg-[#1e3552] text-[#94a3b8] disabled:opacity-50 transition-colors">
               <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
             </button>
           </div>
@@ -155,22 +155,22 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
             { label: "Total Gangguan", value: loading ? "..." : totalGangguan.toLocaleString(), color: "text-[#00897B]" },
             { label: "Rata-rata", value: loading ? "..." : avgGangguan, color: "text-orange-600" },
           ].map(({ label, value, color }) => (
-            <div key={label} className="text-center p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div key={label} className="text-center p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
               <div className={`text-2xl font-bold ${color}`}>{value}</div>
-              <div className="text-xs text-slate-500">{label}</div>
+              <div className="text-xs text-[#94a3b8]">{label}</div>
             </div>
           ))}
         </div>
 
         {!loading && topPenyulang && (
-          <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-200">
+          <div className="mt-4 p-3 rounded-lg bg-red-900/20 border border-red-700/30">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600" />
+              <AlertTriangle className="w-5 h-5 text-red-400" />
               <div>
-                <p className="text-red-700 font-medium text-sm">
+                <p className="text-red-400 font-medium text-sm">
                   Penyulang Terbermasalah: <span className="font-bold">{topPenyulang[0]}</span>
                 </p>
-                <p className="text-red-600 text-xs">{topPenyulang[1]} kali gangguan dalam periode ini</p>
+                <p className="text-red-400 text-xs">{topPenyulang[1]} kali gangguan dalam periode ini</p>
               </div>
             </div>
           </div>
@@ -200,8 +200,8 @@ export default function Top10Gangguan({ startDate, endDate }: Top10GangguanProps
         </div>
 
         {!loading && gangguanTerbanyak.length > 0 && (
-          <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <div className="flex items-center justify-between text-slate-500 text-sm">
+          <div className="mt-4 p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
+            <div className="flex items-center justify-between text-[#94a3b8] text-sm">
               <span>Intensitas warna menunjukkan ranking gangguan</span>
               <div className="text-xs">
                 Diperbarui: {lastFetch ? lastFetch.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) : "Belum ada data"}

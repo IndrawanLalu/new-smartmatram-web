@@ -129,22 +129,22 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
     scales: {
       x: {
         beginAtZero: true,
-        grid: { color: "rgba(0,0,0,0.06)" },
-        ticks: { color: "rgba(0,0,0,0.6)", font: { size: 11 } },
+        grid: { color: "rgba(255,255,255,0.08)" },
+        ticks: { color: "rgba(255,255,255,0.6)", font: { size: 11 } },
       },
       y: {
         grid: { display: false },
-        ticks: { color: "rgba(0,0,0,0.6)", font: { size: 10 }, padding: 8 },
+        ticks: { color: "rgba(255,255,255,0.6)", font: { size: 10 }, padding: 8 },
       },
     },
   };
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-8 text-center">
         <AlertTriangle className="w-12 h-12 text-red-400 mx-auto mb-3" />
-        <h3 className="text-slate-700 font-semibold mb-2">Error Memuat Chart</h3>
-        <p className="text-red-600 text-sm mb-4">{error}</p>
+        <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Memuat Chart</h3>
+        <p className="text-red-400 text-sm mb-4">{error}</p>
         <button onClick={fetchData} className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm">
           <RefreshCw className="w-4 h-4" /> Coba Lagi
         </button>
@@ -157,17 +157,17 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
       {/* Analytics Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { icon: <AlertTriangle className="w-5 h-5 text-red-600" />, bg: "bg-red-50", value: loading ? "..." : analytics.total, label: "Total Temuan", color: "text-red-600" },
-          { icon: <Target className="w-5 h-5 text-amber-600" />, bg: "bg-amber-50", value: loading ? "..." : analytics.cat, label: "Jenis Temuan", color: "text-amber-600" },
-          { icon: <TrendingUp className="w-5 h-5 text-blue-600" />, bg: "bg-blue-50", value: loading ? "..." : avgCount, label: "Rata-rata", color: "text-blue-600" },
-          { icon: <Award className="w-5 h-5 text-emerald-600" />, bg: "bg-emerald-50", value: loading ? "..." : analytics.max, label: "Tertinggi", color: "text-emerald-600" },
+          { icon: <AlertTriangle className="w-5 h-5 text-red-400" />, bg: "bg-red-900/20", value: loading ? "..." : analytics.total, label: "Total Temuan", color: "text-red-400" },
+          { icon: <Target className="w-5 h-5 text-amber-400" />, bg: "bg-amber-900/20", value: loading ? "..." : analytics.cat, label: "Jenis Temuan", color: "text-amber-400" },
+          { icon: <TrendingUp className="w-5 h-5 text-blue-400" />, bg: "bg-blue-900/20", value: loading ? "..." : avgCount, label: "Rata-rata", color: "text-blue-400" },
+          { icon: <Award className="w-5 h-5 text-emerald-400" />, bg: "bg-emerald-900/20", value: loading ? "..." : analytics.max, label: "Tertinggi", color: "text-emerald-400" },
         ].map(({ icon, bg, value, label, color }) => (
           <div key={label} className="bg-[#162334] border border-[#1e3552] rounded-xl shadow-sm hover:shadow-md transition-shadow p-4">
             <div className="flex items-center gap-3">
               <div className={`p-2 rounded-full ${bg}`}>{icon}</div>
               <div>
                 <p className={`text-2xl font-bold ${color}`}>{value}</p>
-                <p className="text-xs text-slate-500">{label}</p>
+                <p className="text-xs text-[#94a3b8]">{label}</p>
               </div>
             </div>
           </div>
@@ -179,19 +179,19 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-3 rounded-full bg-red-50">
-                <BarChart3 className="w-6 h-6 text-red-600" />
+              <div className="p-3 rounded-full bg-red-900/20">
+                <BarChart3 className="w-6 h-6 text-red-400" />
               </div>
               <div>
-                <h3 className="text-slate-800 text-lg font-semibold">TOP 20 Temuan Inspeksi</h3>
-                <p className="text-slate-400 text-sm">
+                <h3 className="text-[#e2e8f0] text-lg font-semibold">TOP 20 Temuan Inspeksi</h3>
+                <p className="text-[#94a3b8] text-sm">
                   {startDate && endDate && `Periode: ${startDate.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })} — ${endDate.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}`}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {loading && <div className="w-5 h-5 border-2 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />}
-              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors">
+              {loading && <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />}
+              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-[#162334] hover:bg-[#1e3552] text-[#94a3b8] disabled:opacity-50 transition-colors">
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               </button>
             </div>
@@ -199,24 +199,24 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
 
           <div className="flex items-center justify-between mt-4">
             <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-2.5 w-4 h-4 text-slate-400" />
+              <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#94a3b8]" />
               <input
                 type="text"
                 placeholder="Cari jenis temuan..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-[#00897B]/30 focus:border-[#00897B]"
+                className="w-full pl-9 pr-4 py-2 bg-[#0d1b2a] border border-[#1e3552] rounded-lg text-[#e2e8f0] text-sm focus:outline-none focus:ring-2 focus:ring-[#00897B]/30 focus:border-[#00897B]"
               />
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setSortOrder((p) => p === "desc" ? "asc" : "desc")}
-                className="px-3 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors flex items-center gap-1 text-xs"
+                className="px-3 py-2 rounded-lg bg-[#0d1b2a] hover:bg-[#0a2a26] text-[#94a3b8] transition-colors flex items-center gap-1 text-xs"
               >
                 <Filter className="w-4 h-4" />
                 {sortOrder === "desc" ? "↓" : "↑"}
               </button>
-              <button className="p-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors">
+              <button className="p-2 rounded-lg bg-[#0d1b2a] hover:bg-[#0a2a26] text-[#94a3b8] transition-colors">
                 <Download className="w-4 h-4" />
               </button>
             </div>
@@ -228,12 +228,12 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
             {loading ? (
               <div className="h-full flex items-center justify-center">
                 <div className="text-center">
-                  <div className="w-8 h-8 border-2 border-slate-200 border-t-[#00897B] rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-slate-400">Memuat data temuan...</p>
+                  <div className="w-8 h-8 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin mx-auto mb-4" />
+                  <p className="text-[#94a3b8]">Memuat data temuan...</p>
                 </div>
               </div>
             ) : filtered.length === 0 ? (
-              <div className="h-full flex items-center justify-center text-slate-400 text-center">
+              <div className="h-full flex items-center justify-center text-[#94a3b8] text-center">
                 <div>
                   <BarChart3 className="w-16 h-16 mx-auto mb-4 opacity-50" />
                   <p className="text-lg mb-2">Tidak ada data temuan</p>
@@ -246,7 +246,7 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
           </div>
 
           {!loading && filtered.length > 0 && (
-            <div className="mt-4 flex items-center justify-between text-sm text-slate-400">
+            <div className="mt-4 flex items-center justify-between text-sm text-[#94a3b8]">
               <p>Menampilkan {filtered.length} dari {temuanTerbanyak.length} jenis temuan{searchTerm && ` (filter: "${searchTerm}")`}</p>
               {periodDays > 0 && (
                 <div className="flex items-center gap-1">

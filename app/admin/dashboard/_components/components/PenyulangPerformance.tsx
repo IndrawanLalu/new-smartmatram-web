@@ -29,9 +29,9 @@ export default function PenyulangPerformance({
 
   function getPerformanceClass(count: number) {
     const pct = totalGangguan > 0 ? (count / totalGangguan) * 100 : 0;
-    if (pct > 10) return "text-red-600 bg-red-50";
-    if (pct > 5) return "text-yellow-700 bg-yellow-50";
-    return "text-green-600 bg-green-50";
+    if (pct > 10) return "text-red-400 bg-red-900/20";
+    if (pct > 5) return "text-yellow-400 bg-yellow-900/20";
+    return "text-green-400 bg-green-900/20";
   }
 
   function getRankBadge(rank: number): string | number {
@@ -101,10 +101,10 @@ export default function PenyulangPerformance({
         ) : (
           <div className="space-y-3">
             {sortBy === "worst" && penyulangData[0]?.count > 10 && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3 flex items-start gap-3">
-                <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+              <div className="bg-red-900/20 border border-red-700/30 rounded-lg p-3 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-red-600 font-medium text-sm">Perhatian Khusus</p>
+                  <p className="text-red-400 font-medium text-sm">Perhatian Khusus</p>
                   <p className="text-[#94a3b8] text-xs mt-1">
                     {penyulangData[0].name} memiliki {penyulangData[0].count} gangguan — perlu investigasi mendalam
                   </p>
@@ -113,10 +113,10 @@ export default function PenyulangPerformance({
             )}
 
             {sortBy === "best" && penyulangData[0]?.count <= 3 && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-3">
-                <Award className="w-5 h-5 text-green-600 shrink-0 mt-0.5" />
+              <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-3 flex items-start gap-3">
+                <Award className="w-5 h-5 text-green-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-green-700 font-medium text-sm">Performa Excellent</p>
+                  <p className="text-green-400 font-medium text-sm">Performa Excellent</p>
                   <p className="text-[#94a3b8] text-xs mt-1">
                     {penyulangData[0].name} hanya {penyulangData[0].count} gangguan — maintain this!
                   </p>
@@ -144,7 +144,7 @@ export default function PenyulangPerformance({
                       </div>
                       <div className={`shrink-0 px-3 py-1 rounded-full ${perfClass} font-bold`}>{item.count}</div>
                     </div>
-                    <div className="mt-2 bg-[#E2E8F0] rounded-full h-1.5 overflow-hidden">
+                    <div className="mt-2 bg-[#1e3552] rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-full transition-all duration-500 ${sortBy === "worst" ? (parseFloat(pct) > 10 ? "bg-red-500" : parseFloat(pct) > 5 ? "bg-yellow-500" : "bg-green-500") : "bg-green-500"}`}
                         style={{ width: `${Math.min(parseFloat(pct) * 2, 100)}%` }}

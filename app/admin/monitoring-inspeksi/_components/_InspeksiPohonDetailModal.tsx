@@ -16,7 +16,9 @@ import {
 } from "lucide-react";
 import {
   STATUS_CONFIG,
+  CATEGORY_CONFIG,
   type InspeksiStatus,
+  type InspeksiCategory,
   canSeeAllUnits,
   canUpdateStatus,
 } from "@/lib/roles";
@@ -49,6 +51,7 @@ interface Props {
   updateDeskripsi: (id: string, deskripsi: string) => Promise<void>;
   uploadFotoSesudah: (id: string, file: File) => Promise<string>;
   deleteInspeksi: (id: string) => Promise<void>;
+  updateCategory?: (id: string, category: string | null) => Promise<void>;
 }
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
@@ -119,6 +122,7 @@ export default function InspeksiPohonDetailModal({
   updateDeskripsi,
   uploadFotoSesudah,
   deleteInspeksi,
+  updateCategory,
 }: Props) {
   const [keteranganDraft, setKeteranganDraft] = useState(data.keterangan ?? "");
   const [savingKeterangan, setSavingKeterangan] = useState(false);
@@ -255,6 +259,14 @@ export default function InspeksiPohonDetailModal({
               {data.jenis_pohon ?? data.deskripsi ?? "Detail Inspeksi Pohon"}
             </h2>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+              {(() => {
+                const catCfg = CATEGORY_CONFIG[data.category as InspeksiCategory];
+                return catCfg ? (
+                  <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${catCfg.bgColor} ${catCfg.color}`}>
+                    {catCfg.label}
+                  </span>
+                ) : null;
+              })()}
               <span
                 className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusCfg?.bgColor ?? "bg-gray-700"} ${statusCfg?.color ?? "text-gray-300"}`}
               >
@@ -292,6 +304,23 @@ export default function InspeksiPohonDetailModal({
               label="Sisa Hari"
               value={data.remainingDays === 999 ? "—" : `${data.remainingDays} hari`}
             />
+            <div>
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">Kategori</p>
+              {updateCategory ? (
+                <select
+                  value={data.category ?? ""}
+                  onChange={(e) => updateCategory(data.id, e.target.value || null)}
+                  className="text-sm bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-2 py-1 text-[#e2e8f0] focus:outline-none focus:border-[#00897B] w-full"
+                >
+                  <option value="">— Pilih Kategori —</option>
+                  {(Object.keys(CATEGORY_CONFIG) as InspeksiCategory[]).map((c) => (
+                    <option key={c} value={c}>{CATEGORY_CONFIG[c].label}</option>
+                  ))}
+                </select>
+              ) : (
+                <p className="text-sm text-[#e2e8f0]">{CATEGORY_CONFIG[data.category as InspeksiCategory]?.label ?? "—"}</p>
+              )}
+            </div>
           </div>
 
           {/* Koordinat */}

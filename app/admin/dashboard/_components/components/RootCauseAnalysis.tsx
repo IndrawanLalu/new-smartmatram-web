@@ -62,8 +62,8 @@ export default function RootCauseAnalysis({
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-50 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-red-600" />
+            <div className="p-2 bg-red-900/20 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-red-400" />
             </div>
             <div>
               <h3 className="text-[#e2e8f0] text-lg font-bold">Root Cause Analysis</h3>
@@ -79,9 +79,9 @@ export default function RootCauseAnalysis({
         </div>
 
         {causesData.length > 0 && causesData[0].cumulative <= 80 && (
-          <div className="mt-3 flex items-center gap-2 bg-yellow-50 border border-yellow-200 rounded-lg px-3 py-2">
-            <TrendingDown className="w-4 h-4 text-yellow-600" />
-            <span className="text-yellow-700 text-xs">
+          <div className="mt-3 flex items-center gap-2 bg-yellow-900/20 border border-yellow-700/30 rounded-lg px-3 py-2">
+            <TrendingDown className="w-4 h-4 text-yellow-400" />
+            <span className="text-yellow-300 text-xs">
               Pareto Principle: Focus pada top causes untuk impact maksimal
             </span>
           </div>
@@ -97,12 +97,12 @@ export default function RootCauseAnalysis({
           <>
             <ResponsiveContainer width="100%" height={400}>
               <BarChart data={causesData} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                <XAxis type="number" stroke="rgba(0,0,0,0.4)" style={{ fontSize: "11px" }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.08)" />
+                <XAxis type="number" stroke="rgba(255,255,255,0.5)" style={{ fontSize: "11px" }} />
                 <YAxis
                   type="category"
                   dataKey="cause"
-                  stroke="rgba(0,0,0,0.4)"
+                  stroke="rgba(255,255,255,0.5)"
                   style={{ fontSize: "10px" }}
                   width={120}
                 />

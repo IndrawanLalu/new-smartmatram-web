@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { canSeeAllUnits, UNITS, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
 import InspeksiKPI from "./_components/InspeksiKPI";
 import InspeksiJaringanTab from "./_components/InspeksiJaringanTab";
 import InspeksiPohonTab from "./_components/InspeksiPohonTab";
@@ -54,6 +54,10 @@ export default function MonitoringInspeksiPage() {
   const [showPohonOnMap, setShowPohonOnMap] = useState(true);
   const [showJaringanOnMap, setShowJaringanOnMap] = useState(true);
   const [filterUlp, setFilterUlp] = useState("");
+  // Filter khusus tab Peta (independen dari tab lain)
+  const [filterMapUlp, setFilterMapUlp] = useState("");
+  const [filterMapPenyulang, setFilterMapPenyulang] = useState("");
+  const [filterMapCategory, setFilterMapCategory] = useState("");
   const [showStatuses, setShowStatuses] = useState<Record<string, boolean>>({
     Temuan: true,
     "Perlu Tindakan": true,
@@ -66,14 +70,35 @@ export default function MonitoringInspeksiPage() {
   const jaringanHook = useInspeksiJaringan(user);
   const pohonHook = useInspeksiPohon(user);
 
-  // Data berkoordinat untuk peta (filter ULP jika dipilih)
+  // Penyulang unik untuk filter peta (gabungan jaringan + pohon)
+  const mapPenyulangOptions = useMemo(() => {
+    const all = [
+      ...jaringanHook.rawData.map((d) => d.penyulang),
+      ...pohonHook.rawData.map((d) => d.penyulang),
+    ];
+    return [...new Set(all.filter(Boolean))].sort() as string[];
+  }, [jaringanHook.rawData, pohonHook.rawData]);
+
+  // Data berkoordinat untuk peta — filter ULP (tab lain) + filter map independen
   const jaringanMapData = useMemo(
-    () => jaringanHook.rawData.filter((d) => d.koordinat && (!filterUlp || d.ulp === filterUlp)),
-    [jaringanHook.rawData, filterUlp]
+    () => jaringanHook.rawData.filter((d) =>
+      d.koordinat &&
+      (!filterUlp || d.ulp === filterUlp) &&
+      (!filterMapUlp || d.ulp === filterMapUlp) &&
+      (!filterMapPenyulang || d.penyulang === filterMapPenyulang) &&
+      (!filterMapCategory || d.category === filterMapCategory)
+    ),
+    [jaringanHook.rawData, filterUlp, filterMapUlp, filterMapPenyulang, filterMapCategory]
   );
   const pohonMapData = useMemo(
-    () => pohonHook.rawData.filter((d) => d.koordinat && (!filterUlp || d.ulp === filterUlp)),
-    [pohonHook.rawData, filterUlp]
+    () => pohonHook.rawData.filter((d) =>
+      d.koordinat &&
+      (!filterUlp || d.ulp === filterUlp) &&
+      (!filterMapUlp || d.ulp === filterMapUlp) &&
+      (!filterMapPenyulang || d.penyulang === filterMapPenyulang) &&
+      (!filterMapCategory || d.category === filterMapCategory)
+    ),
+    [pohonHook.rawData, filterUlp, filterMapUlp, filterMapPenyulang, filterMapCategory]
   );
 
   const activeStatuses = useMemo(
@@ -180,6 +205,50 @@ export default function MonitoringInspeksiPage() {
 
           {activeTab === "peta" && (
             <div className="space-y-3">
+              {/* Filter baris atas: ULP + Penyulang + Kategori */}
+              <div className="flex flex-wrap gap-2">
+                {canSeeAllUnits(user.role) && (
+                  <select
+                    value={filterMapUlp}
+                    onChange={(e) => { setFilterMapUlp(e.target.value); setFilterMapPenyulang(""); }}
+                    className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  >
+                    <option value="">Semua ULP</option>
+                    {UNITS.map((u) => (
+                      <option key={u.value} value={u.value}>{u.label}</option>
+                    ))}
+                  </select>
+                )}
+                <select
+                  value={filterMapPenyulang}
+                  onChange={(e) => setFilterMapPenyulang(e.target.value)}
+                  className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                >
+                  <option value="">Semua Penyulang</option>
+                  {mapPenyulangOptions.map((p) => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+                <select
+                  value={filterMapCategory}
+                  onChange={(e) => setFilterMapCategory(e.target.value)}
+                  className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                >
+                  <option value="">Semua Kategori</option>
+                  {(Object.keys(CATEGORY_CONFIG) as InspeksiCategory[]).map((c) => (
+                    <option key={c} value={c}>{CATEGORY_CONFIG[c].label}</option>
+                  ))}
+                </select>
+                {(filterMapUlp || filterMapPenyulang || filterMapCategory) && (
+                  <button
+                    onClick={() => { setFilterMapUlp(""); setFilterMapPenyulang(""); setFilterMapCategory(""); }}
+                    className="px-3 py-1.5 text-sm text-[#94a3b8] hover:text-[#e2e8f0] border border-[#1e3552] rounded-lg transition-colors"
+                  >
+                    Reset filter
+                  </button>
+                )}
+              </div>
+
               {/* Layer toggles */}
               <div className="flex items-center gap-4 flex-wrap">
                 <span className="text-sm font-medium text-[#e2e8f0] flex items-center gap-1.5 shrink-0">

@@ -5,7 +5,12 @@ const AMG_BASE = process.env.AMG_URL ?? "http://10.33.1.77/gardu";
 const AMG_USER = process.env.AMG_USERNAME ?? "";
 const AMG_PASS = process.env.AMG_PASSWORD ?? "";
 
-const KODE_PREFIX = process.env.AMG_KODE_PREFIX ?? "44150"; // ULP AMPENAN
+// Semua prefix yang mungkin dipakai AMG (pisahkan dengan koma di .env.local)
+// AMG_KODE_PREFIXES=44150,44151  ← tambahkan jika default ini tidak cukup
+const KODE_PREFIXES = (process.env.AMG_KODE_PREFIXES ?? "44150,44151")
+  .split(",")
+  .map(p => p.trim())
+  .filter(Boolean);
 
 // YYYY-MM-DD → DD-MM-YYYY
 function toAmgDate(s: string): string {
@@ -25,14 +30,14 @@ function calcUnbalance(r: number, s: number, t: number): string {
   return ((sumDev / (3 * avg)) * 100).toFixed(2);
 }
 
-function buildBody(row: Record<string, unknown>): URLSearchParams {
+function buildBody(row: Record<string, unknown>, prefix: string): URLSearchParams {
   const perjurusan = (row.perjurusan ?? {}) as Record<string, {
     arus: { R: number; S: number; T: number; N: number };
     tegangan: { R: number; S: number; T: number };
   }>;
 
   const f: Record<string, string> = {
-    kode:               KODE_PREFIX + String(row.no_gardu ?? ""),
+    kode:               prefix + String(row.no_gardu ?? ""),
     i_nominal:          calcINominal(Number(row.kva_trafo ?? 0)),
     daya_trafo:         String(row.kva_trafo ?? 0),
     mode:               "input",
@@ -90,6 +95,7 @@ const BROWSER_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36
 async function loginAmg(): Promise<string> {
   const res = await fetch(`${AMG_BASE}/index.php/cLogin/login`, {
     method: "POST",
+    signal: AbortSignal.timeout(12_000),
     headers: {
       "Content-Type": "application/x-www-form-urlencoded",
       "User-Agent": BROWSER_UA,
@@ -134,7 +140,11 @@ export async function POST(req: NextRequest) {
     sessionCookie = await loginAmg();
   } catch (e) {
     const msg = String(e);
+    const isTimeout = msg.includes("TimeoutError") || msg.includes("AbortError");
     const isNetwork = msg.includes("fetch failed") || msg.includes("ECONNREFUSED") || msg.includes("EHOSTUNREACH");
+    if (isTimeout) {
+      return NextResponse.json({ error: "AMG tidak merespons saat login (timeout 12 detik)" }, { status: 504 });
+    }
     return NextResponse.json({
       error: isNetwork
         ? "Server tidak bisa menjangkau AMG (10.33.1.77). Fitur ini hanya berfungsi jika server berada di jaringan intranet PLN."
@@ -142,35 +152,48 @@ export async function POST(req: NextRequest) {
     }, { status: isNetwork ? 503 : 401 });
   }
 
-  // 3. POST data ke cUkur/ (form save_ukur di cGardu submit ke cUkur controller)
-  let saveRes: Response;
-  try {
-    saveRes = await fetch(`${AMG_BASE}/index.php/cUkur/save_ukur`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "User-Agent": BROWSER_UA,
-        "Cookie": sessionCookie,
-        "Referer": `${AMG_BASE}/index.php/cUkur/save_ukur`,
-      },
-      body: buildBody(row as Record<string, unknown>),
-      redirect: "manual",
-    });
-  } catch (e) {
-    const msg = String(e);
-    const hint = msg.includes("ECONNREFUSED") || msg.includes("fetch failed") || msg.includes("EHOSTUNREACH")
-      ? " — Pastikan server bisa mengakses jaringan intranet PLN (10.33.1.77)."
-      : "";
-    return NextResponse.json({ error: "Gagal kirim ke AMG: " + msg + hint }, { status: 503 });
+  // 3. Kirim ke semua prefix yang dikenal — AMG mengabaikan kode yang tidak ada
+  const noGardu = String(row.no_gardu ?? "");
+  console.log("[kirim-amg] no_gardu:", noGardu, "| prefixes:", KODE_PREFIXES, "| tgl:", toAmgDate(String(row.tanggal_pengukuran ?? "")));
+
+  const results: { prefix: string; status: number; err?: string }[] = [];
+
+  for (const prefix of KODE_PREFIXES) {
+    const formBody = buildBody(row as Record<string, unknown>, prefix);
+    try {
+      const res = await fetch(`${AMG_BASE}/index.php/cUkur/save_ukur`, {
+        method: "POST",
+        signal: AbortSignal.timeout(15_000),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": BROWSER_UA,
+          "Cookie": sessionCookie,
+          "Referer": `${AMG_BASE}/index.php/cUkur/save_ukur`,
+        },
+        body: formBody,
+        redirect: "manual",
+      });
+      // Drain body agar koneksi tidak menggantung
+      try { await res.text(); } catch { /* ok */ }
+      results.push({ prefix, status: res.status });
+    } catch (e) {
+      const msg = String(e);
+      results.push({ prefix, status: 0, err: msg });
+    }
   }
 
-  // Pastikan bukan redirect ke halaman login (session ditolak)
-  const redirectTo = saveRes.headers.get("location") ?? "";
-  if (redirectTo.toLowerCase().includes("login")) {
-    return NextResponse.json({ error: "AMG menolak session — coba kirim ulang" }, { status: 401 });
-  }
-  if (saveRes.status !== 200 && saveRes.status !== 302 && saveRes.status !== 301) {
-    return NextResponse.json({ error: `AMG error (HTTP ${saveRes.status})` }, { status: 502 });
+  console.log("[kirim-amg] results:", JSON.stringify(results));
+
+  // Jika semua gagal network (bukan HTTP error AMG), kembalikan error
+  const allNetworkFail = results.every(r => r.status === 0);
+  if (allNetworkFail) {
+    const firstErr = results[0]?.err ?? "";
+    const isTimeout = firstErr.includes("TimeoutError") || firstErr.includes("AbortError");
+    const isNetwork = firstErr.includes("ECONNREFUSED") || firstErr.includes("fetch failed") || firstErr.includes("EHOSTUNREACH");
+    if (isTimeout) return NextResponse.json({ error: "AMG tidak merespons dalam 15 detik" }, { status: 504 });
+    return NextResponse.json({
+      error: isNetwork ? "Server tidak bisa menjangkau AMG (10.33.1.77)." : firstErr,
+    }, { status: 503 });
   }
 
   // 4. Update amg_sent_at di Supabase
@@ -179,5 +202,5 @@ export async function POST(req: NextRequest) {
     .update({ amg_sent_at: new Date().toISOString() })
     .eq("id", pengukuranId);
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, sentTo: results.map(r => r.prefix + noGardu) });
 }

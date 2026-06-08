@@ -35,7 +35,7 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(255,255,255,0.8)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
       tooltip: { backgroundColor: "rgba(0,0,0,0.8)", callbacks: { label: (ctx: { label: string; parsed: number; dataset: { data: number[] } }) => { const total = ctx.dataset.data.reduce((a, b) => a + b, 0); const pct = total > 0 ? ((ctx.parsed / total) * 100).toFixed(1) : 0; return `${ctx.label}: ${ctx.parsed} (${pct}%)`; } } },
       datalabels: {
         display: (ctx: { parsed: number }) => ctx.parsed > 0,
@@ -66,7 +66,7 @@ export function FasilitasBreakdown({ fasilitasCount = {}, loading = false }: Fas
     <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-green-50 rounded-lg"><Power className="w-5 h-5 text-green-600" /></div>
+          <div className="p-2 bg-green-900/20 rounded-lg"><Power className="w-5 h-5 text-green-400" /></div>
           <div>
             <h3 className="text-[#e2e8f0] text-lg font-bold">Fasilitas Padam</h3>
             <p className="text-[#94a3b8] text-xs mt-1">Breakdown by facility type</p>
@@ -115,7 +115,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
   const pieOptions = {
     responsive: true, maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 10, weight: 500 }, padding: 10, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(255,255,255,0.8)", font: { size: 10, weight: 500 }, padding: 10, usePointStyle: true } },
       datalabels: { display: (ctx: { parsed: number }) => ctx.parsed > 0, formatter: (v: number) => v > 0 ? v : "", color: "rgba(255,255,255,0.95)", font: { size: 10, weight: "bold" as const } },
     },
   };
@@ -128,12 +128,12 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
         display: (ctx: { parsed: { y: number | null } }) => (ctx.parsed?.y ?? 0) > 0,
         formatter: (v: number) => v > 0 ? v : "",
         anchor: "end" as const, align: "top" as const,
-        color: "rgba(0,0,0,0.7)", font: { size: 9, weight: "bold" as const },
+        color: "rgba(255,255,255,0.8)", font: { size: 9, weight: "bold" as const },
       },
     },
     scales: {
-      x: { ticks: { color: "rgba(0,0,0,0.5)", font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.06)" } },
-      y: { ticks: { color: "rgba(0,0,0,0.5)", font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.06)" } },
+      x: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.08)" } },
+      y: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.08)" } },
     },
   };
 
@@ -159,7 +159,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-50 rounded-lg"><Zap className="w-5 h-5 text-red-600" /></div>
+            <div className="p-2 bg-red-900/20 rounded-lg"><Zap className="w-5 h-5 text-red-400" /></div>
             <div><h3 className="text-[#e2e8f0] text-sm font-bold">Fault Indicator</h3><p className="text-[#94a3b8] text-xs mt-1">EF vs OC</p></div>
           </div>
         </div>
@@ -175,7 +175,7 @@ export function TechnicalIndicators({ indikatorCount = {}, kodeCount = {}, loadi
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow">
         <div className="px-5 pt-5 pb-3">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg"><Activity className="w-5 h-5 text-blue-600" /></div>
+            <div className="p-2 bg-blue-900/20 rounded-lg"><Activity className="w-5 h-5 text-blue-400" /></div>
             <div><h3 className="text-[#e2e8f0] text-sm font-bold">Fault Code</h3><p className="text-[#94a3b8] text-xs mt-1">Top 5 codes</p></div>
           </div>
         </div>
@@ -223,12 +223,12 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
         display: (ctx: { parsed: { x: number | null } }) => (ctx.parsed?.x ?? 0) > 0,
         formatter: (v: number) => v > 0 ? v : "",
         anchor: "end" as const, align: "right" as const,
-        color: "rgba(0,0,0,0.7)", font: { size: 10, weight: "bold" as const },
+        color: "rgba(255,255,255,0.8)", font: { size: 10, weight: "bold" as const },
       },
     },
     scales: {
-      x: { ticks: { color: "rgba(0,0,0,0.5)", font: { size: 10 } }, grid: { color: "rgba(0,0,0,0.06)" } },
-      y: { ticks: { color: "rgba(0,0,0,0.5)", font: { size: 10 } }, grid: { display: false } },
+      x: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 10 } }, grid: { color: "rgba(255,255,255,0.08)" } },
+      y: { ticks: { color: "rgba(255,255,255,0.6)", font: { size: 10 } }, grid: { display: false } },
     },
   };
 
@@ -256,7 +256,7 @@ export function GeographicBreakdown({ ulpCount = {}, userUnit = null, loading = 
             </div>
           </div>
           {userUnit && (
-            <span className="px-3 py-1 bg-green-50 text-green-700 rounded-full text-xs font-medium">Your ULP: {userUnit}</span>
+            <span className="px-3 py-1 bg-green-900/20 text-green-400 rounded-full text-xs font-medium">Your ULP: {userUnit}</span>
           )}
         </div>
       </div>

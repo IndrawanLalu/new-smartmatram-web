@@ -188,7 +188,7 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: { position: "bottom" as const, labels: { color: "rgba(0,0,0,0.7)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
+      legend: { position: "bottom" as const, labels: { color: "rgba(255,255,255,0.8)", font: { size: 11, weight: 500 }, padding: 15, usePointStyle: true } },
       tooltip: {
         backgroundColor: "rgba(0,0,0,0.8)",
         titleColor: "rgba(255,255,255,1)",
@@ -220,23 +220,23 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
   }), []);
 
   function getRelColor(score: number) {
-    if (score >= 90) return "text-green-600";
-    if (score >= 75) return "text-yellow-600";
-    return "text-red-600";
+    if (score >= 90) return "text-green-400";
+    if (score >= 75) return "text-yellow-400";
+    return "text-red-400";
   }
 
   function getRelIcon(score: number) {
-    if (score >= 90) return <Shield className="w-5 h-5 text-green-600" />;
-    if (score >= 75) return <Target className="w-5 h-5 text-yellow-600" />;
-    return <AlertCircle className="w-5 h-5 text-red-600" />;
+    if (score >= 90) return <Shield className="w-5 h-5 text-green-400" />;
+    if (score >= 75) return <Target className="w-5 h-5 text-yellow-400" />;
+    return <AlertCircle className="w-5 h-5 text-red-400" />;
   }
 
   if (error) {
     return (
-      <div className="bg-red-50 border border-red-200 rounded-xl p-8 text-center">
+      <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-8 text-center">
         <Power className="w-12 h-12 text-red-400 mx-auto mb-3" />
-        <h3 className="text-slate-700 font-semibold mb-2">Error Analisis</h3>
-        <p className="text-red-600 text-sm mb-4">{error}</p>
+        <h3 className="text-[#e2e8f0] font-semibold mb-2">Error Analisis</h3>
+        <p className="text-red-400 text-sm mb-4">{error}</p>
         <button onClick={fetchData} disabled={loading} className="inline-flex items-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm disabled:opacity-50">
           <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} /> Coba Lagi
         </button>
@@ -255,16 +255,16 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
                 <Activity className="w-6 h-6 text-[#00897B]" />
               </div>
               <div>
-                <h3 className="text-slate-800 text-lg font-semibold">Analisis Sumber Gangguan</h3>
-                <p className="text-slate-400 text-sm">
+                <h3 className="text-[#e2e8f0] text-lg font-semibold">Analisis Sumber Gangguan</h3>
+                <p className="text-[#94a3b8] text-sm">
                   Fasilitas & durasi padam{userUnit && ` — ${userUnit}`}
                   {startDate && endDate && ` (${startDate.toLocaleDateString("id-ID")} — ${endDate.toLocaleDateString("id-ID")})`}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-              {loading && <div className="w-5 h-5 border-2 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />}
-              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-600 disabled:opacity-50 transition-colors">
+              {loading && <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />}
+              <button onClick={fetchData} disabled={loading} className="p-2 rounded-full bg-[#162334] hover:bg-[#1e3552] text-[#94a3b8] disabled:opacity-50 transition-colors">
                 <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
               </button>
             </div>
@@ -277,9 +277,9 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
               { label: "Per Hari", value: loading ? "..." : analytics.gangguanPerHari.toFixed(1), color: "text-amber-600" },
               { label: "Reliabilitas", value: loading ? "..." : `${analytics.reliabilityScore.toFixed(0)}%`, color: getRelColor(analytics.reliabilityScore) },
             ].map(({ label, value, color }) => (
-              <div key={label} className="text-center p-3 rounded-lg bg-slate-50 border border-slate-200">
+              <div key={label} className="text-center p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
                 <div className={`text-xl font-bold ${color}`}>{value}</div>
-                <div className="text-xs text-slate-500">{label}</div>
+                <div className="text-xs text-[#94a3b8]">{label}</div>
               </div>
             ))}
           </div>
@@ -288,13 +288,13 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
         <div className="px-5 pb-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-3">
-              <h4 className="text-slate-600 text-sm font-medium flex items-center gap-2">
+              <h4 className="text-[#94a3b8] text-sm font-medium flex items-center gap-2">
                 <Power className="w-4 h-4" /> Fasilitas Padam
               </h4>
               <div className="h-48">
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="w-8 h-8 border-4 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
                   </div>
                 ) : (
                   <Doughnut data={facilityChartData} options={chartOptions as any} />
@@ -302,13 +302,13 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
               </div>
             </div>
             <div className="space-y-3">
-              <h4 className="text-slate-600 text-sm font-medium flex items-center gap-2">
+              <h4 className="text-[#94a3b8] text-sm font-medium flex items-center gap-2">
                 <Clock className="w-4 h-4" /> Durasi Padam
               </h4>
               <div className="h-48">
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="w-8 h-8 border-4 border-slate-200 border-t-[#00897B] rounded-full animate-spin" />
+                    <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
                   </div>
                 ) : (
                   <Doughnut data={durationChartData} options={chartOptions as any} />
@@ -318,13 +318,13 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
           </div>
 
           {!loading && lastFetch && (
-            <div className="mt-4 p-3 rounded-lg bg-slate-50 border border-slate-200">
-              <div className="flex items-center justify-between text-slate-500 text-sm">
+            <div className="mt-4 p-3 rounded-lg bg-[#0d1b2a] border border-[#1e3552]">
+              <div className="flex items-center justify-between text-[#94a3b8] text-sm">
                 <div className="flex items-center gap-2">
                   <Clock className="w-4 h-4" />
                   <span>Data diperbarui: {lastFetch.toLocaleDateString("id-ID", { day: "2-digit", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
                 </div>
-                {userUnit && <span className="text-xs bg-slate-200 text-slate-600 px-2 py-1 rounded">Unit: {userUnit}</span>}
+                {userUnit && <span className="text-xs bg-[#1e3552] text-[#94a3b8] px-2 py-1 rounded">Unit: {userUnit}</span>}
               </div>
             </div>
           )}
@@ -334,17 +334,17 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
       {/* Analytics Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
-          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
+          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-[#e2e8f0]">
             {getRelIcon(analytics.reliabilityScore)} Performa Sistem
           </div>
           <div className="space-y-3">
             {[
-              { label: "Fast Recovery Rate", value: `${analytics.fastRecoveryRate.toFixed(1)}%`, color: "text-green-600" },
-              { label: "Critical Incidents", value: analytics.criticalCount.toLocaleString(), color: "text-red-600" },
+              { label: "Fast Recovery Rate", value: `${analytics.fastRecoveryRate.toFixed(1)}%`, color: "text-green-400" },
+              { label: "Critical Incidents", value: analytics.criticalCount.toLocaleString(), color: "text-red-400" },
               { label: "Reliability Score", value: `${analytics.reliabilityScore.toFixed(1)}%`, color: getRelColor(analytics.reliabilityScore) },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex justify-between items-center">
-                <span className="text-slate-500 text-xs">{label}</span>
+                <span className="text-[#94a3b8] text-xs">{label}</span>
                 <span className={`${color} font-semibold text-sm`}>{loading ? "..." : value}</span>
               </div>
             ))}
@@ -352,17 +352,17 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
         </div>
 
         <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
-          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
+          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-[#e2e8f0]">
             <Timer className="w-4 h-4" /> Analisis Durasi
           </div>
           <div className="space-y-3">
             {[
-              { label: "Durasi Terpendek", value: formatDuration(analytics.minDurasi), color: "text-green-600" },
-              { label: "Durasi Terpanjang", value: formatDuration(analytics.maxDurasi), color: "text-red-600" },
+              { label: "Durasi Terpendek", value: formatDuration(analytics.minDurasi), color: "text-green-400" },
+              { label: "Durasi Terpanjang", value: formatDuration(analytics.maxDurasi), color: "text-red-400" },
               { label: "Total Downtime", value: formatDuration(analytics.totalDurasiDetik), color: "text-amber-600" },
             ].map(({ label, value, color }) => (
               <div key={label} className="flex justify-between items-center">
-                <span className="text-slate-500 text-xs">{label}</span>
+                <span className="text-[#94a3b8] text-xs">{label}</span>
                 <span className={`${color} font-semibold text-sm`}>{loading ? "..." : value}</span>
               </div>
             ))}
@@ -370,27 +370,27 @@ export default function DiagramSumberGangguan({ startDate, endDate }: DiagramSum
         </div>
 
         <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm hover:shadow-md transition-shadow p-5">
-          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-slate-700">
+          <div className="flex items-center gap-2 mb-3 text-sm font-medium text-[#e2e8f0]">
             <Zap className="w-4 h-4" /> Dampak Gangguan
           </div>
           <div className="space-y-3">
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-xs">Quick Recovery</span>
+              <span className="text-[#94a3b8] text-xs">Quick Recovery</span>
               <div className="flex items-center gap-1">
                 <TrendingUp className="w-3 h-3 text-green-500" />
-                <span className="text-green-600 font-semibold text-sm">{loading ? "..." : durationData[1].toLocaleString()}</span>
+                <span className="text-green-400 font-semibold text-sm">{loading ? "..." : durationData[1].toLocaleString()}</span>
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-xs">Extended Outage</span>
+              <span className="text-[#94a3b8] text-xs">Extended Outage</span>
               <div className="flex items-center gap-1">
                 <TrendingDown className="w-3 h-3 text-red-500" />
-                <span className="text-red-600 font-semibold text-sm">{loading ? "..." : durationData[0].toLocaleString()}</span>
+                <span className="text-red-400 font-semibold text-sm">{loading ? "..." : durationData[0].toLocaleString()}</span>
               </div>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-slate-500 text-xs">System Health</span>
-              <span className={`font-semibold text-sm ${analytics.reliabilityScore >= 90 ? "text-green-600" : analytics.reliabilityScore >= 75 ? "text-amber-600" : "text-red-600"}`}>
+              <span className="text-[#94a3b8] text-xs">System Health</span>
+              <span className={`font-semibold text-sm ${analytics.reliabilityScore >= 90 ? "text-green-400" : analytics.reliabilityScore >= 75 ? "text-amber-400" : "text-red-400"}`}>
                 {loading ? "..." : analytics.reliabilityScore >= 90 ? "Excellent" : analytics.reliabilityScore >= 75 ? "Good" : "Needs Attention"}
               </span>
             </div>

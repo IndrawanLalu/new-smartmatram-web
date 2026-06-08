@@ -29,7 +29,8 @@ export type InspeksiCategory =
   | "Urgent"
   | "Scheduled"
   | "Preventive"
-  | "Normal";
+  | "Normal"
+  | "LIGA";
 
 export interface CurrentUser {
   id: string;
@@ -206,6 +207,7 @@ export const CATEGORY_CONFIG: Record<
   Scheduled: { label: "Scheduled", color: "text-blue-700", bgColor: "bg-blue-100" },
   Preventive: { label: "Preventive", color: "text-purple-700", bgColor: "bg-purple-100" },
   Normal: { label: "Normal", color: "text-gray-700", bgColor: "bg-gray-100" },
+  LIGA: { label: "LIGA", color: "text-indigo-700", bgColor: "bg-indigo-100" },
 };
 
 // ── Tree Prediction ───────────────────────────────────────────────────────────
