@@ -279,13 +279,13 @@ export default function PenyulangDetailModal({ penyulang: p, user, periodLabel, 
                       formatter={(value) => <span style={{ color: "#94a3b8", fontSize: 10 }}>{value}</span>}
                     />
                     <Bar dataKey="gangguan" name="Gangguan" fill="#ef4444" fillOpacity={0.8} radius={[2, 2, 0, 0]}>
-                      <LabelList dataKey="gangguan" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? v : ""} />
+                      <LabelList dataKey="gangguan" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? String(Number(v)) : ""} />
                     </Bar>
                     <Bar dataKey="inspeksi" name="Inspeksi" fill="#34d399" fillOpacity={0.7} radius={[2, 2, 0, 0]}>
-                      <LabelList dataKey="inspeksi" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? v : ""} />
+                      <LabelList dataKey="inspeksi" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? String(Number(v)) : ""} />
                     </Bar>
                     <Bar dataKey="eksekusi" name="Eksekusi" fill="#6366f1" fillOpacity={0.8} radius={[2, 2, 0, 0]}>
-                      <LabelList dataKey="eksekusi" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? v : ""} />
+                      <LabelList dataKey="eksekusi" position="center" style={{ fill: "#fff", fontSize: 10, fontWeight: 700 }} formatter={(v: unknown) => Number(v) > 0 ? String(Number(v)) : ""} />
                     </Bar>
                     {selesaiLabel && (
                       <ReferenceLine
