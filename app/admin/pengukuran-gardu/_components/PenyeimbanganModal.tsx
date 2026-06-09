@@ -8,6 +8,7 @@ import type {
   SavePenyeimbanganInput,
   UpdatePenyeimbanganInput,
 } from "../_hooks/usePenyeimbangan";
+import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -114,6 +115,9 @@ export default function PenyeimbanganModal(props: Props) {
   const [catatan, setCatatan] = useState(
     isEdit ? (props.record.catatan ?? "") : ""
   );
+  const [jenisPemeliharaan, setJenisPemeliharaan] = useState(
+    isEdit ? (props.record.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]) : JENIS_PEMELIHARAAN_OPTIONS[0]
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -157,6 +161,7 @@ export default function PenyeimbanganModal(props: Props) {
       tglPenyeimbangan,
       petugasPenyeimbang: petugas,
       catatan,
+      jenisPemeliharaan,
     };
 
     let err: string | null;
@@ -214,9 +219,17 @@ export default function PenyeimbanganModal(props: Props) {
                 <input type="date" value={tglPenyeimbangan} onChange={(e) => setTglPenyeimbangan(e.target.value)} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs text-[#94a3b8] mb-1 block">Petugas Penyeimbang</label>
-                <input type="text" value={petugas} onChange={(e) => setPetugas(e.target.value)} placeholder="Nama petugas..." className={INPUT} />
+                <label className="text-xs text-[#94a3b8] mb-1 block">Jenis Pemeliharaan</label>
+                <select value={jenisPemeliharaan} onChange={(e) => setJenisPemeliharaan(e.target.value)} className={INPUT}>
+                  {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
+                    <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
               </div>
+            </div>
+            <div className="mb-3">
+              <label className="text-xs text-[#94a3b8] mb-1 block">Petugas Penyeimbang</label>
+              <input type="text" value={petugas} onChange={(e) => setPetugas(e.target.value)} placeholder="Nama petugas..." className={INPUT} />
             </div>
             <div>
               <label className="text-xs text-[#94a3b8] mb-1 block">Catatan</label>

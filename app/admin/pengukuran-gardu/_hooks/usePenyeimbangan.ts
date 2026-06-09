@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { JurusanData, PengukuranGardu } from "./usePengukuranGardu";
 
@@ -34,6 +34,7 @@ export interface PenyeimbanganGardu {
   tgl_penyeimbangan: string;
   petugas_penyeimbang: string | null;
   catatan: string | null;
+  jenis_pemeliharaan: string | null;
   created_at: string;
 }
 
@@ -50,6 +51,7 @@ export interface SavePenyeimbanganInput {
   tglPenyeimbangan: string;
   petugasPenyeimbang: string;
   catatan: string;
+  jenisPemeliharaan: string;
 }
 
 export interface UpdatePenyeimbanganInput {
@@ -67,6 +69,7 @@ export interface UpdatePenyeimbanganInput {
   tglPenyeimbangan: string;
   petugasPenyeimbang: string;
   catatan: string;
+  jenisPemeliharaan: string;
 }
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -78,6 +81,7 @@ export function usePenyeimbangan(ulp: string) {
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
+  const [filterJenis, setFilterJenis] = useState("");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -108,6 +112,12 @@ export function usePenyeimbangan(ulp: string) {
   }, [month, year, ulp]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // Client-side filter by jenis — data lengkap tetap tersedia untuk WO table
+  const filteredData = useMemo(
+    () => (!filterJenis ? data : data.filter((d) => d.jenis_pemeliharaan === filterJenis)),
+    [data, filterJenis]
+  );
 
   const savePenyeimbangan = useCallback(async (input: SavePenyeimbanganInput): Promise<string | null> => {
     const row = input.pengukuranRow;
@@ -150,6 +160,7 @@ export function usePenyeimbangan(ulp: string) {
           tgl_penyeimbangan:   input.tglPenyeimbangan,
           petugas_penyeimbang: input.petugasPenyeimbang || null,
           catatan:             input.catatan || null,
+          jenis_pemeliharaan:  input.jenisPemeliharaan || null,
         });
 
       if (insertErr) throw insertErr;
@@ -201,6 +212,7 @@ export function usePenyeimbangan(ulp: string) {
           tgl_penyeimbangan:   input.tglPenyeimbangan,
           petugas_penyeimbang: input.petugasPenyeimbang || null,
           catatan:             input.catatan || null,
+          jenis_pemeliharaan:  input.jenisPemeliharaan || null,
         })
         .eq("id", input.id);
 
@@ -234,5 +246,5 @@ export function usePenyeimbangan(ulp: string) {
     await fetchData();
   }, [fetchData]);
 
-  return { data, loading, error, month, setMonth, year, setYear, savePenyeimbangan, updatePenyeimbangan, deleteItem, refresh: fetchData };
+  return { data, filteredData, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, deleteItem, refresh: fetchData };
 }

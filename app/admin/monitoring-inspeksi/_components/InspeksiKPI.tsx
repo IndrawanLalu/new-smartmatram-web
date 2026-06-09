@@ -113,28 +113,18 @@ export default function InspeksiKPI({ user, filterUlp }: InspeksiKPIProps) {
           })(),
         ]);
 
-      // Sangat urgent pohon: hitung di client (perlu prediksi calc)
-      const pohonQuery = ulpFilter
-        ? supabaseBrowser.from("inspeksi_pohon").select("tgl_inspeksi, prediksi_inspektur").eq("ulp", ulpFilter).neq("status", "Selesai")
-        : supabaseBrowser.from("inspeksi_pohon").select("tgl_inspeksi, prediksi_inspektur").neq("status", "Selesai");
-
-      const { data: pohonData } = await pohonQuery;
-      let sanggatUrgent = 0;
-      if (pohonData) {
-        const { calcRemainingDays, getUrgencyLevel } = await import("@/lib/roles");
-        sanggatUrgent = pohonData.filter((p) => {
-          if (!p.tgl_inspeksi || !p.prediksi_inspektur) return false;
-          const rem = calcRemainingDays(p.tgl_inspeksi, p.prediksi_inspektur);
-          return getUrgencyLevel(rem) === "SANGAT URGENT";
-        }).length;
-      }
+      // Pohon risiko sangat tinggi yang belum selesai
+      const urgentQuery = ulpFilter
+        ? supabaseBrowser.from("inspeksi_pohon").select("id", { count: "exact", head: true }).eq("tingkat_risiko", "Sangat Tinggi").neq("status", "Selesai").eq("ulp", ulpFilter)
+        : supabaseBrowser.from("inspeksi_pohon").select("id", { count: "exact", head: true }).eq("tingkat_risiko", "Sangat Tinggi").neq("status", "Selesai");
+      const { count: sanggatUrgent } = await urgentQuery;
 
       setKpi({
         totalJaringan: jaringan.count ?? 0,
         totalPohon: pohon.count ?? 0,
         belumSelesai: typeof belumSelesai === "number" ? belumSelesai : 0,
         selesaiBulanIni: typeof selesaiBulanIni === "number" ? selesaiBulanIni : 0,
-        sanggatUrgentPohon: sanggatUrgent,
+        sanggatUrgentPohon: sanggatUrgent ?? 0,
       });
       setLoading(false);
     }
@@ -179,9 +169,9 @@ export default function InspeksiKPI({ user, filterUlp }: InspeksiKPIProps) {
         loading={loading}
       />
       <KpiCard
-        label="Pohon Sangat Urgent"
+        label="Pohon Risiko Sangat Tinggi"
         value={kpi?.sanggatUrgentPohon ?? 0}
-        sub="prediksi ≤3 hari"
+        sub="belum selesai"
         icon={<AlertTriangle size={18} className="text-red-600" />}
         iconBg="bg-red-50"
         valueColor="text-red-600"

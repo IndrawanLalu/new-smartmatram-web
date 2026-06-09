@@ -182,7 +182,7 @@ export default function GarduDetailModal({
       .sort((a, b) => {
         const byDate = b.tanggal_pengukuran.localeCompare(a.tanggal_pengukuran);
         if (byDate !== 0) return byDate;
-        return b.created_at.localeCompare(a.created_at);
+        return (b.created_at ?? "").localeCompare(a.created_at ?? "");
       }) ?? [];
 
   async function handleDelete(id: string) {
@@ -995,7 +995,7 @@ export default function GarduDetailModal({
         <KirimWAGarduModal
           data={row}
           onClose={() => setShowKirimWA(false)}
-          onWoMarked={(sentAt) => onPatchRow?.(row.id, { wo_sent_at: sentAt })}
+          onWoMarked={(sentAt, jenis) => onPatchRow?.(row.id, { wo_sent_at: sentAt, jenis_pemeliharaan: jenis })}
         />
       )}
     </>

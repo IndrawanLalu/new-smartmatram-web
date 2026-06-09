@@ -320,10 +320,13 @@ export function useInspeksiPohon(user: CurrentUser) {
 
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
 
-  const sanggatUrgentCount = useMemo(
-    () => rawData.filter((d) => d.urgency === "SANGAT URGENT").length,
-    [rawData],
-  );
+  const sanggatUrgentCount = useMemo(() => {
+    let base = rawData.filter(
+      (d) => d.tingkat_risiko === "Sangat Tinggi" && d.status !== "Selesai"
+    );
+    if (filter.ulp) base = base.filter((d) => d.ulp === filter.ulp);
+    return base.length;
+  }, [rawData, filter.ulp]);
 
   const ulpOptions = useMemo(
     () => [...new Set(rawData.map((d) => d.ulp).filter(Boolean))] as string[],

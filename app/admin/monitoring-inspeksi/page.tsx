@@ -70,6 +70,26 @@ export default function MonitoringInspeksiPage() {
   const jaringanHook = useInspeksiJaringan(user);
   const pohonHook = useInspeksiPohon(user);
 
+  // Badge jaringan urgent — kategori Emergency/Urgent, belum selesai, ikut filterUlp
+  const jaringanUrgentCount = useMemo(
+    () => jaringanHook.rawData.filter(
+      (d) => (d.category === "Emergency" || d.category === "Urgent") &&
+             d.status !== "Selesai" &&
+             (!filterUlp || d.ulp === filterUlp)
+    ).length,
+    [jaringanHook.rawData, filterUlp]
+  );
+
+  // Badge pohon urgent — ikut filterUlp global
+  const pohonUrgentCount = useMemo(
+    () => pohonHook.rawData.filter(
+      (d) => d.tingkat_risiko === "Sangat Tinggi" &&
+             d.status !== "Selesai" &&
+             (!filterUlp || d.ulp === filterUlp)
+    ).length,
+    [pohonHook.rawData, filterUlp]
+  );
+
   // Penyulang unik untuk filter peta (gabungan jaringan + pohon)
   const mapPenyulangOptions = useMemo(() => {
     const all = [
@@ -171,14 +191,14 @@ export default function MonitoringInspeksiPage() {
             >
               <Icon size={15} />
               {label}
-              {id === "jaringan" && jaringanHook.rawData.length > 0 && (
-                <span className="ml-1 bg-[#0a2a26] text-[#5eead4] text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {jaringanHook.rawData.length}
+              {id === "jaringan" && jaringanUrgentCount > 0 && (
+                <span className="ml-1 bg-red-100 text-red-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
+                  {jaringanUrgentCount} urgent
                 </span>
               )}
-              {id === "pohon" && pohonHook.sanggatUrgentCount > 0 && (
+              {id === "pohon" && pohonUrgentCount > 0 && (
                 <span className="ml-1 bg-red-100 text-red-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {pohonHook.sanggatUrgentCount} urgent
+                  {pohonUrgentCount} urgent
                 </span>
               )}
             </button>

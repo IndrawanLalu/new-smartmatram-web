@@ -7,8 +7,8 @@ import InlineStatusSelect from "./InlineStatusSelect";
 import InlineEksekutorSelect from "./InlineEksekutorSelect";
 import InlineTeamSelect from "./InlineTeamSelect";
 import InlineCategorySelect from "./InlineCategorySelect";
-import UrgencyBadge from "./UrgencyBadge";
 import InspeksiPohonDetailModal from "./_InspeksiPohonDetailModal";
+import { useMemo } from "react";
 import {
   Search,
   RefreshCw,
@@ -71,7 +71,6 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
     setPage,
     totalPages,
     totalFiltered,
-    sanggatUrgentCount,
     ulpOptions,
     penyulangOptions,
     updateStatus,
@@ -84,6 +83,16 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
     deleteInspeksi,
     refresh,
   } = useInspeksiPohon(user);
+
+  // Dihitung langsung dari rawData + filterUlp prop agar reaktif tanpa delay useEffect
+  const sanggatUrgentCount = useMemo(
+    () => rawData.filter(
+      (d) => d.tingkat_risiko === "Sangat Tinggi" &&
+             d.status !== "Selesai" &&
+             (!filterUlp || d.ulp === filterUlp)
+    ).length,
+    [rawData, filterUlp]
+  );
 
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   // Derive dari rawData agar selalu up-to-date saat foto/status diupdate
@@ -114,8 +123,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
           <AlertTriangle size={18} className="text-red-600 shrink-0" />
           <p className="text-sm text-red-700 font-medium">
             {sanggatUrgentCount} pohon dalam kondisi{" "}
-            <span className="font-bold">SANGAT URGENT</span> — prediksi ≤3 hari,
-            segera tindak lanjuti!
+            <span className="font-bold">Risiko Sangat Tinggi</span> — segera tindak lanjuti!
           </p>
         </div>
       )}
@@ -315,9 +323,6 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                   Risiko
                 </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
-                  Urgensi
-                </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
                   Status
                 </th>
                 <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
@@ -348,7 +353,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               ) : data.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showUlpFilter ? 13 : 12}
+                    colSpan={showUlpFilter ? 12 : 11}
                     className="text-center py-12 text-[#94a3b8] text-sm"
                   >
                     Tidak ada data yang sesuai filter
@@ -402,12 +407,6 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                       ) : (
                         "—"
                       )}
-                    </td>
-                    <td className="px-4 py-3">
-                      <UrgencyBadge
-                        urgency={row.urgency}
-                        remainingDays={row.remainingDays}
-                      />
                     </td>
                     <td className="px-4 py-3">
                       <InlineStatusSelect

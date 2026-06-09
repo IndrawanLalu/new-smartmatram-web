@@ -5,21 +5,17 @@ import { X, MessageCircle, Loader2, Download, Share2, CheckCircle } from "lucide
 import type { DocumentProps } from "@react-pdf/renderer";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
 interface Props {
   data: PengukuranGardu;
   onClose: () => void;
-  onWoMarked?: (sentAt: string) => void;
+  onWoMarked?: (sentAt: string, jenis: string) => void;
 }
 
 const canShare = typeof navigator !== "undefined" && !!navigator.share;
 
-const JENIS_OPTIONS = [
-  "PEMERATAAN BEBAN",
-  "OPTIMASI TRAFO",
-  "PEMELIHARAAN GARDU",
-  "MANUVER BEBAN",
-] as const;
+const JENIS_OPTIONS = JENIS_PEMELIHARAAN_OPTIONS;
 
 export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) {
   const [loading, setLoading] = useState(false);
@@ -28,21 +24,21 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
   const [jenisPemeliharaan, setJenisPemeliharaan] = useState<string>(JENIS_OPTIONS[0]);
   const [keterangan, setKeterangan] = useState("");
   const [marking, setMarking] = useState(false);
-  const [marked, setMarked] = useState(data.wo_sent_at !== null);
+  const [marked, setMarked] = useState(false);
 
   const woNo = `WO-${data.no_gardu}`;
   const fileName = `${woNo}.pdf`;
 
   const handleMarkWo = async () => {
     setMarking(true);
+    const sentAt = new Date().toISOString();
     const { error } = await supabaseBrowser
       .from("pengukuran_gardu")
-      .update({ wo_sent_at: new Date().toISOString() })
+      .update({ wo_sent_at: sentAt, jenis_pemeliharaan: jenisPemeliharaan })
       .eq("id", data.id);
     if (!error) {
-      const sentAt = new Date().toISOString();
       setMarked(true);
-      onWoMarked?.(sentAt);
+      onWoMarked?.(sentAt, jenisPemeliharaan);
     }
     setMarking(false);
   };

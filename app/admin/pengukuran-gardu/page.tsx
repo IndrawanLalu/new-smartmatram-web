@@ -42,16 +42,12 @@ import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
+import AlertDetailModal from "./_components/AlertDetailModal";
+import { useYearlyStats } from "./_hooks/useYearlyStats";
 
-const BebanBarChart = dynamic(() => import("./_components/BebanBarChart"), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[300px] flex items-center justify-center text-[#94a3b8] text-sm">
-      <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin mr-2" />
-      Memuat chart...
-    </div>
-  ),
-});
+const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
+const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
+const YearlyStatsTable   = dynamic(() => import("./_components/YearlyStatsTable"),   { ssr: false });
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -64,7 +60,7 @@ const TABS = [
   { key: "dashboard",      label: "Dashboard",            icon: LayoutDashboard },
   { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
-  { key: "penyeimbangan",  label: "Penyeimbangan Beban",  icon: Scale },
+  { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -183,9 +179,14 @@ export default function PengukuranGarduPage() {
     data, latestData, loading, error,
     filter, setFilter,
     overloadData, underloadData, highTempData, highCurrentItems, phaseOverloadItems,
-    alertGarduIds, penyulangOptions, avgBeban, bebanChartData,
+    alertGarduIds, penyulangOptions, avgBeban, bebanChartData, penyulangChartData,
     refresh, patchRow, fetchAndPatchRow, deleteRow,
   } = usePengukuranGardu(user);
+
+  type AlertModalKey = "overload" | "underload" | "highCurrent" | "phaseOverload" | "highTemp";
+  const [alertModal, setAlertModal] = useState<AlertModalKey | null>(null);
+
+  const { stats: yearlyStats, loading: yearlyLoading } = useYearlyStats(user, filter.year, filter.ulp);
 
   const now   = new Date();
   const years = useMemo(() => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i), []);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -357,193 +358,140 @@ export default function PengukuranGarduPage() {
       {/* TAB: DASHBOARD                                                       */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === "dashboard" && (
-        <div className="space-y-5">
+        <div className="space-y-4">
 
-          {/* KPI Cards */}
-          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-            <KPICard
-              label="Total Gardu" value={loading ? "—" : latestData.length}
-              sub={periodLabel} icon={Gauge}
-            />
-            <KPICard
-              label="Trafo Overload" value={loading ? "—" : overloadData.length}
-              sub={`beban ≥ ${OVERLOAD_PCT}%`} icon={TrendingUp}
-              variant={overloadData.length > 0 ? "danger" : "default"}
-            />
-            <KPICard
-              label="Trafo Underload" value={loading ? "—" : underloadData.length}
-              sub={`beban < ${UNDERLOAD_PCT}%`} icon={TrendingDown}
-              variant={underloadData.length > 0 ? "warning" : "default"}
-            />
-            <KPICard
-              label={`Jurusan >${HIGH_CURRENT_A}A`} value={loading ? "—" : highCurrentItems.length}
-              sub="jurusan arus tinggi" icon={Zap}
-              variant={highCurrentItems.length > 0 ? "danger" : "default"}
-            />
-            <KPICard
-              label="Overload 1 Fasa" value={loading ? "—" : phaseOverloadItems.length}
-              sub="arus > I-nominal" icon={AlertTriangle}
-              variant={phaseOverloadItems.filter(d => d.level === "overload").length > 0 ? "danger" : phaseOverloadItems.length > 0 ? "warning" : "default"}
-            />
-            <KPICard
-              label={`Suhu >${HIGH_TEMP_C}°C`} value={loading ? "—" : highTempData.length}
-              sub="suhu trafo tinggi" icon={Thermometer}
-              variant={highTempData.length > 0 ? "warning" : "default"}
-            />
-          </div>
-
-          {/* Distribusi Beban Chart */}
-          <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[#1e3552] flex items-center justify-between">
-              <div>
-                <h3 className="font-semibold text-[#e2e8f0]">Distribusi % Beban Trafo</h3>
-                <p className="text-xs text-[#94a3b8] mt-0.5">Top 20 gardu dengan beban tertinggi · {periodLabel}</p>
-              </div>
-              <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-red-500 inline-block" /> Overload ≥{OVERLOAD_PCT}%</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-amber-500 inline-block" /> ≥60%</span>
-                <span className="flex items-center gap-1"><span className="w-3 h-3 rounded-sm bg-[#00897B] inline-block" /> Normal</span>
+          {/* ── Compact KPI Tiles ─────────────────────────────────────────── */}
+          <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
+            {/* Total Gardu — tidak clickable */}
+            <div className="bg-[#162334] border border-[#1e3552] rounded-xl px-4 py-3 flex flex-col justify-between">
+              <p className="text-2xl font-bold text-[#e2e8f0] leading-none">
+                {loading ? "—" : latestData.length}
+              </p>
+              <div className="mt-1.5">
+                <p className="text-xs text-[#94a3b8] leading-tight">Total Gardu</p>
+                <p className="text-[10px] text-[#475569] mt-0.5">rata-rata {loading ? "—" : avgBeban}%</p>
               </div>
             </div>
-            <div className="p-5">
-              {loading ? (
-                <div className="h-[300px] flex items-center justify-center">
-                  <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+
+            {/* Alert tiles — clickable */}
+            {[
+              {
+                key: "overload" as const,
+                label: "Trafo Overload",
+                sub: `beban ≥ ${OVERLOAD_PCT}%`,
+                count: overloadData.length,
+                variant: overloadData.length > 0 ? "danger" : "ok",
+              },
+              {
+                key: "underload" as const,
+                label: "Trafo Underload",
+                sub: `beban < ${UNDERLOAD_PCT}%`,
+                count: underloadData.length,
+                variant: underloadData.length > 0 ? "warning" : "ok",
+              },
+              {
+                key: "highCurrent" as const,
+                label: `Jurusan >${HIGH_CURRENT_A}A`,
+                sub: "arus jurusan tinggi",
+                count: highCurrentItems.length,
+                variant: highCurrentItems.length > 0 ? "danger" : "ok",
+              },
+              {
+                key: "phaseOverload" as const,
+                label: "Overload 1 Fasa",
+                sub: "arus > I-nominal",
+                count: phaseOverloadItems.length,
+                variant: phaseOverloadItems.some(d => d.level === "overload") ? "danger"
+                       : phaseOverloadItems.length > 0 ? "warning" : "ok",
+              },
+              {
+                key: "highTemp" as const,
+                label: `Suhu >${HIGH_TEMP_C}°C`,
+                sub: "suhu trafo tinggi",
+                count: highTempData.length,
+                variant: highTempData.length > 0 ? "warning" : "ok",
+              },
+            ].map(({ key, label, sub, count, variant }) => {
+              const style = variant === "danger"  ? { card: "border-red-500/40",   val: "text-red-400",   dot: "bg-red-500"   }
+                          : variant === "warning" ? { card: "border-amber-500/40", val: "text-amber-400", dot: "bg-amber-500" }
+                          :                        { card: "border-[#1e3552]",      val: "text-[#e2e8f0]", dot: "bg-[#00897B]" };
+              return (
+                <button
+                  key={key}
+                  onClick={() => setAlertModal(key)}
+                  disabled={loading}
+                  className={`bg-[#162334] border rounded-xl px-4 py-3 text-left hover:bg-[#1e2d3d] transition-colors group disabled:cursor-default ${style.card}`}
+                >
+                  <div className="flex items-center justify-between mb-1.5">
+                    <p className={`text-2xl font-bold leading-none ${style.val}`}>
+                      {loading ? "—" : count}
+                    </p>
+                    <span className={`w-2 h-2 rounded-full ${style.dot} ${variant !== "ok" && count > 0 ? "animate-pulse" : ""}`} />
+                  </div>
+                  <p className="text-xs text-[#94a3b8] leading-tight">{label}</p>
+                  <p className="text-[10px] text-[#475569] mt-0.5">{sub}</p>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* ── Charts Row ────────────────────────────────────────────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+            {/* Bar chart top 20 beban — 3/5 */}
+            <div className="lg:col-span-3 bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e3552] flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-[#e2e8f0]">Top 20 — % Beban Trafo</h3>
+                  <p className="text-xs text-[#94a3b8] mt-0.5">{periodLabel} · klik bar untuk detail</p>
                 </div>
-              ) : (
-                <BebanBarChart data={bebanChartData} />
-              )}
+                <div className="flex items-center gap-3 text-[10px] text-[#94a3b8]">
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ≥80%</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> ≥60%</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#00897B] inline-block" /> Normal</span>
+                </div>
+              </div>
+              <div className="p-4">
+                {loading ? (
+                  <div className="h-72 flex items-center justify-center">
+                    <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <BebanBarChart
+                    data={bebanChartData}
+                    onBarClick={(id) => {
+                      const row = latestData.find(r => r.id === id);
+                      if (row) setSelectedRow(row);
+                    }}
+                  />
+                )}
+              </div>
+            </div>
+
+            {/* Distribusi per penyulang — 2/5 */}
+            <div className="lg:col-span-2 bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+              <div className="px-5 py-3 border-b border-[#1e3552]">
+                <h3 className="text-sm font-semibold text-[#e2e8f0]">Distribusi per Penyulang</h3>
+                <p className="text-xs text-[#94a3b8] mt-0.5">Jumlah gardu per kategori beban</p>
+              </div>
+              <div className="p-4 h-72">
+                {loading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <PenyulangDistChart data={penyulangChartData} />
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Alert Cards */}
-          {!loading && (overloadData.length > 0 || highCurrentItems.length > 0 || highTempData.length > 0 || phaseOverloadItems.length > 0) && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-              {overloadData.length > 0 && (
-                <div className="bg-[#162334] rounded-xl border border-red-500/30 overflow-hidden">
-                  <div className="px-5 py-3 bg-red-900/20 border-b border-red-500/20 flex items-center gap-2">
-                    <TrendingUp size={16} className="text-red-400" />
-                    <h3 className="font-semibold text-red-400 text-sm">Trafo Overload ({overloadData.length})</h3>
-                  </div>
-                  <div className="divide-y divide-[#1e3552] max-h-64 overflow-y-auto">
-                    {overloadData.map((d) => (
-                      <div key={d.id} className="px-5 py-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
-                          <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · {d.kva_trafo} KVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
-                        </div>
-                        <span className="text-lg font-bold text-red-400">{Math.round(d.persen_beban)}%</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {highCurrentItems.length > 0 && (
-                <div className="bg-[#162334] rounded-xl border border-red-500/30 overflow-hidden">
-                  <div className="px-5 py-3 bg-red-900/20 border-b border-red-500/20 flex items-center gap-2">
-                    <Zap size={16} className="text-red-400" />
-                    <h3 className="font-semibold text-red-400 text-sm">Jurusan Arus &gt;{HIGH_CURRENT_A}A ({highCurrentItems.length})</h3>
-                  </div>
-                  <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-red-900/20 sticky top-0">
-                        <tr>
-                          <th className="text-left px-4 py-2 text-red-400 font-semibold">Gardu</th>
-                          <th className="text-left px-4 py-2 text-red-400 font-semibold">Jur.</th>
-                          <th className="text-center px-4 py-2 text-red-400 font-semibold">R (A)</th>
-                          <th className="text-center px-4 py-2 text-red-400 font-semibold">S (A)</th>
-                          <th className="text-center px-4 py-2 text-red-400 font-semibold">T (A)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {highCurrentItems.map((item, i) => (
-                          <tr key={i} className={i % 2 === 0 ? "bg-[#162334]" : "bg-red-900/10"}>
-                            <td className="px-4 py-2 font-medium text-[#e2e8f0]">{item.no_gardu}</td>
-                            <td className="px-4 py-2 font-bold text-red-400">{item.jurusan}</td>
-                            <td className={`px-4 py-2 text-center font-mono ${item.arus_r > HIGH_CURRENT_A ? "text-red-400 font-bold" : "text-[#94a3b8]"}`}>{Math.round(item.arus_r)}</td>
-                            <td className={`px-4 py-2 text-center font-mono ${item.arus_s > HIGH_CURRENT_A ? "text-red-400 font-bold" : "text-[#94a3b8]"}`}>{Math.round(item.arus_s)}</td>
-                            <td className={`px-4 py-2 text-center font-mono ${item.arus_t > HIGH_CURRENT_A ? "text-red-400 font-bold" : "text-[#94a3b8]"}`}>{Math.round(item.arus_t)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {phaseOverloadItems.length > 0 && (
-                <div className="bg-[#162334] rounded-xl border border-amber-500/30 overflow-hidden">
-                  <div className="px-5 py-3 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-2">
-                    <AlertTriangle size={16} className="text-amber-400" />
-                    <h3 className="font-semibold text-amber-400 text-sm">Overload 1 Fasa ({phaseOverloadItems.length})</h3>
-                    <span className="text-xs text-amber-500/70 ml-auto">arus &gt; 90% I-nominal</span>
-                  </div>
-                  <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                    <table className="w-full text-xs">
-                      <thead className="bg-amber-900/20 sticky top-0">
-                        <tr>
-                          <th className="text-left px-4 py-2 text-amber-400 font-semibold">Gardu</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">KVA</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">I-Nom</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">R</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">S</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">T</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">% Nom</th>
-                          <th className="text-center px-4 py-2 text-amber-400 font-semibold">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {phaseOverloadItems.map((item, i) => {
-                          const iNom   = item.i_nominal;
-                          const cls    = (v: number) => v >= iNom ? "text-red-400 font-bold" : v >= iNom * 0.9 ? "text-amber-400 font-bold" : "text-[#94a3b8]";
-                          return (
-                            <tr key={item.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-amber-900/10"}>
-                              <td className="px-4 py-2 font-medium text-[#e2e8f0]">{item.no_gardu}</td>
-                              <td className="px-4 py-2 text-center text-[#94a3b8]">{item.kva_trafo}</td>
-                              <td className="px-4 py-2 text-center text-[#94a3b8]">{Math.round(iNom)}</td>
-                              <td className={`px-4 py-2 text-center font-mono ${cls(item.arus_r)}`}>{Math.round(item.arus_r)}</td>
-                              <td className={`px-4 py-2 text-center font-mono ${cls(item.arus_s)}`}>{Math.round(item.arus_s)}</td>
-                              <td className={`px-4 py-2 text-center font-mono ${cls(item.arus_t)}`}>{Math.round(item.arus_t)}</td>
-                              <td className={`px-4 py-2 text-center font-mono font-semibold ${item.level === "overload" ? "text-red-400" : "text-amber-400"}`}>
-                                {Math.round(item.pct_nominal)}%
-                              </td>
-                              <td className="px-4 py-2 text-center">
-                                <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${item.level === "overload" ? "bg-red-900/40 text-red-400" : "bg-amber-900/40 text-amber-400"}`}>
-                                  {item.level === "overload" ? "Overload" : "Warning"}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {highTempData.length > 0 && (
-                <div className="bg-[#162334] rounded-xl border border-amber-500/30 overflow-hidden">
-                  <div className="px-5 py-3 bg-amber-900/20 border-b border-amber-500/20 flex items-center gap-2">
-                    <Thermometer size={16} className="text-amber-400" />
-                    <h3 className="font-semibold text-amber-400 text-sm">Suhu Trafo &gt;{HIGH_TEMP_C}°C ({highTempData.length})</h3>
-                  </div>
-                  <div className="divide-y divide-[#1e3552] max-h-64 overflow-y-auto">
-                    {highTempData.map((d) => (
-                      <div key={d.id} className="px-5 py-3 flex items-center justify-between">
-                        <div>
-                          <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
-                          <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {fmtTanggal(d.tanggal_pengukuran)}</p>
-                        </div>
-                        <span className="text-lg font-bold text-amber-400">{d.suhu_trafo}°C</span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* ── Rekap Tahunan ─────────────────────────────────────────────── */}
+          <YearlyStatsTable
+            stats={yearlyStats}
+            loading={yearlyLoading}
+            currentMonth={filter.month === 0 ? -1 : filter.month}
+          />
         </div>
       )}
 
@@ -701,6 +649,7 @@ export default function PengukuranGarduPage() {
         <PenyeimbanganTab
           latestData={latestData}
           ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
+          onPatchRow={patchRow}
         />
       )}
 
@@ -754,6 +703,128 @@ export default function PengukuranGarduPage() {
       onClose={() => setEditRow(null)}
       onSaved={(id) => { setEditRow(null); setSelectedRow(null); fetchAndPatchRow(id); }}
     />
+
+    {/* ── Alert Detail Modals ─────────────────────────────────────────────── */}
+    {alertModal === "overload" && (
+      <AlertDetailModal title="Trafo Overload" count={overloadData.length}
+        colorClass="text-red-400" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-[#1e3552]">
+          {overloadData.map((d) => (
+            <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              <div>
+                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
+                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
+              </div>
+              <span className="text-xl font-bold text-red-400 shrink-0">{Math.round(d.persen_beban)}%</span>
+            </button>
+          ))}
+        </div>
+      </AlertDetailModal>
+    )}
+
+    {alertModal === "underload" && (
+      <AlertDetailModal title="Trafo Underload" count={underloadData.length}
+        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-[#1e3552]">
+          {underloadData.map((d) => (
+            <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              <div>
+                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
+                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
+              </div>
+              <span className="text-xl font-bold text-amber-400 shrink-0">{Math.round(d.persen_beban)}%</span>
+            </button>
+          ))}
+        </div>
+      </AlertDetailModal>
+    )}
+
+    {alertModal === "highCurrent" && (
+      <AlertDetailModal title={`Jurusan Arus >${HIGH_CURRENT_A}A`} count={highCurrentItems.length}
+        colorClass="text-red-400" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        <table className="w-full text-xs">
+          <thead className="bg-red-900/20 sticky top-0">
+            <tr>
+              {["Gardu","Jurusan","R (A)","S (A)","T (A)"].map(h => (
+                <th key={h} className="px-4 py-2.5 text-red-400 font-semibold text-left first:text-left text-center first:text-left">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#1e3552]">
+            {highCurrentItems.map((item, i) => (
+              <tr key={i} className={i % 2 === 0 ? "bg-[#0a1628]" : "bg-red-900/10"}>
+                <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{item.no_gardu}</td>
+                <td className="px-4 py-2.5 font-bold text-red-400 text-center">{item.jurusan}</td>
+                {[item.arus_r, item.arus_s, item.arus_t].map((v, vi) => (
+                  <td key={vi} className={`px-4 py-2.5 text-center font-mono ${v > HIGH_CURRENT_A ? "text-red-400 font-bold" : "text-[#94a3b8]"}`}>
+                    {Math.round(v)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </AlertDetailModal>
+    )}
+
+    {alertModal === "phaseOverload" && (
+      <AlertDetailModal title="Overload 1 Fasa" count={phaseOverloadItems.length}
+        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        <table className="w-full text-xs">
+          <thead className="bg-amber-900/20 sticky top-0">
+            <tr>
+              {["Gardu","KVA","I-Nom","R","S","T","% Nom","Status"].map(h => (
+                <th key={h} className="px-3 py-2.5 text-amber-400 font-semibold text-center first:text-left">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#1e3552]">
+            {phaseOverloadItems.map((item, i) => {
+              const iNom = item.i_nominal;
+              const cls  = (v: number) => v >= iNom ? "text-red-400 font-bold" : v >= iNom * 0.9 ? "text-amber-400 font-bold" : "text-[#94a3b8]";
+              return (
+                <tr key={item.id} className={i % 2 === 0 ? "bg-[#0a1628]" : "bg-amber-900/10"}>
+                  <td className="px-3 py-2.5 font-semibold text-[#e2e8f0]">{item.no_gardu}</td>
+                  <td className="px-3 py-2.5 text-center text-[#94a3b8]">{item.kva_trafo}</td>
+                  <td className="px-3 py-2.5 text-center text-[#94a3b8]">{Math.round(iNom)}</td>
+                  <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_r)}`}>{Math.round(item.arus_r)}</td>
+                  <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_s)}`}>{Math.round(item.arus_s)}</td>
+                  <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_t)}`}>{Math.round(item.arus_t)}</td>
+                  <td className={`px-3 py-2.5 text-center font-mono font-semibold ${item.level === "overload" ? "text-red-400" : "text-amber-400"}`}>
+                    {Math.round(item.pct_nominal)}%
+                  </td>
+                  <td className="px-3 py-2.5 text-center">
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${item.level === "overload" ? "bg-red-900/40 text-red-400" : "bg-amber-900/40 text-amber-400"}`}>
+                      {item.level === "overload" ? "Overload" : "Warning"}
+                    </span>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </AlertDetailModal>
+    )}
+
+    {alertModal === "highTemp" && (
+      <AlertDetailModal title={`Suhu Trafo >${HIGH_TEMP_C}°C`} count={highTempData.length}
+        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-[#1e3552]">
+          {highTempData.map((d) => (
+            <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              <div>
+                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
+                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {fmtTanggal(d.tanggal_pengukuran)}</p>
+              </div>
+              <span className="text-xl font-bold text-amber-400 shrink-0">{d.suhu_trafo}°C</span>
+            </button>
+          ))}
+        </div>
+      </AlertDetailModal>
+    )}
     </>
   );
 }

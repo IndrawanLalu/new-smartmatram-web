@@ -44,6 +44,7 @@ export interface PengukuranGardu {
   petugas_unit: string;
   created_at: string;
   wo_sent_at: string | null;
+  jenis_pemeliharaan: string | null;
   amg_sent_at: string | null;
 }
 
@@ -253,20 +254,42 @@ export function usePengukuranGardu(user: CurrentUser) {
     [latestData]
   );
 
-  // Top gardu by % beban (untuk chart)
+  // Top gardu by % beban (untuk chart) — enriched untuk tooltip & click
   const bebanChartData = useMemo(
     () =>
       [...latestData]
         .sort((a, b) => b.persen_beban - a.persen_beban)
         .slice(0, 20)
         .map((d) => ({
-          name: d.no_gardu,
-          persen: Math.round(d.persen_beban ?? 0),
-          kva: Math.round(d.beban_kva ?? 0),
+          id:        d.id,
+          name:      d.no_gardu,
+          persen:    Math.round(d.persen_beban ?? 0),
+          kva:       Math.round(d.beban_kva ?? 0),
           kapasitas: d.kva_trafo,
+          alamat:    d.alamat ?? "—",
+          arusR:     Math.round(d.total_arus_r),
+          arusS:     Math.round(d.total_arus_s),
+          arusT:     Math.round(d.total_arus_t),
+          suhu:      d.suhu_trafo ?? 0,
         })),
     [latestData]
   );
+
+  // Distribusi status beban per penyulang (untuk chart kanan dashboard)
+  const penyulangChartData = useMemo(() => {
+    const map = new Map<string, { overload: number; warning: number; normal: number }>();
+    latestData.forEach((d) => {
+      const key = d.penyulang ?? "Lainnya";
+      if (!map.has(key)) map.set(key, { overload: 0, warning: 0, normal: 0 });
+      const v = map.get(key)!;
+      if (d.persen_beban >= OVERLOAD_PCT) v.overload++;
+      else if (d.persen_beban >= 60)      v.warning++;
+      else                                v.normal++;
+    });
+    return [...map.entries()]
+      .map(([name, v]) => ({ name, ...v, total: v.overload + v.warning + v.normal }))
+      .sort((a, b) => b.overload - a.overload || b.warning - a.warning);
+  }, [latestData]);
 
   // Patch satu baris di local state — tanpa re-fetch semua data
   const patchRow = useCallback((id: string, patch: Partial<PengukuranGardu>) => {
@@ -305,6 +328,7 @@ export function usePengukuranGardu(user: CurrentUser) {
     penyulangOptions,
     avgBeban,
     bebanChartData,
+    penyulangChartData,
     refresh: fetchData,
     patchRow,
     fetchAndPatchRow,

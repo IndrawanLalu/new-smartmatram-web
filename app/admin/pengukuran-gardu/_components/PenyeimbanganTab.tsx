@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Trash2, Pencil, ChevronLeft, ChevronRight, Scale } from "lucide-react";
+import { Search, Trash2, Pencil, ChevronLeft, ChevronRight, Scale, FileCheck, AlertTriangle, TrendingUp, Download, Check, X as XIcon } from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   usePenyeimbangan,
   type PenyeimbanganGardu,
@@ -10,6 +11,8 @@ import {
 } from "../_hooks/usePenyeimbangan";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import PenyeimbanganModal from "./PenyeimbanganModal";
+import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
+import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +25,13 @@ const PAGE_SIZE = 20;
 
 const INPUT_CLASS =
   "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
+
+const JENIS_COLOR: Record<string, string> = {
+  "PEMERATAAN BEBAN":   "bg-teal-900/40 border-teal-500/40 text-teal-300",
+  "OPTIMASI TRAFO":     "bg-blue-900/40 border-blue-500/40 text-blue-300",
+  "PEMELIHARAAN GARDU": "bg-amber-900/40 border-amber-500/40 text-amber-300",
+  "MANUVER BEBAN":      "bg-purple-900/40 border-purple-500/40 text-purple-300",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -49,22 +59,26 @@ function ArusCell({ r, s, t, n }: { r: number; s: number; t: number; n: number }
 interface Props {
   latestData: PengukuranGardu[];
   ulp: string;
+  onPatchRow: (id: string, patch: Partial<PengukuranGardu>) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PenyeimbanganTab({ latestData, ulp }: Props) {
+export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props) {
   const now = new Date();
 
   // Rekap hook
   const {
-    data: rekapData,
+    data: allRekapData,      // semua rekap bulan ini (untuk cek WO table)
+    filteredData: rekapData, // jenis-filtered (untuk tabel rekap)
     loading: rekapLoading,
     error: rekapError,
     month,
     setMonth,
     year,
     setYear,
+    filterJenis,
+    setFilterJenis,
     savePenyeimbangan,
     updatePenyeimbangan,
     deleteItem,
@@ -75,6 +89,11 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
   const [editRecord, setEditRecord] = useState<PenyeimbanganGardu | null>(null);
 
+  // Inline edit jenis di tabel WO
+  const [editingJenisId, setEditingJenisId] = useState<string | null>(null);
+  const [editingJenisValue, setEditingJenisValue] = useState("");
+  const [savingJenis, setSavingJenis] = useState(false);
+
   // Rekap pagination
   const [page, setPage] = useState(1);
 
@@ -83,6 +102,17 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
+
+  // Gardu yang sudah di-WO pada bulan/tahun yang dipilih, difilter by jenis
+  const filteredWoedGardu = useMemo(() => {
+    return latestData.filter((d) => {
+      if (!d.wo_sent_at) return false;
+      const dt = new Date(d.wo_sent_at);
+      if (dt.getMonth() + 1 !== month || dt.getFullYear() !== year) return false;
+      if (filterJenis && d.jenis_pemeliharaan !== filterJenis) return false;
+      return true;
+    });
+  }, [latestData, month, year, filterJenis]);
 
   // Filter latestData by search query
   const searchResults = useMemo(() => {
@@ -101,6 +131,19 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
     [rekapData, page]
   );
   const totalPages = Math.ceil(rekapData.length / PAGE_SIZE);
+
+  async function handleSaveJenis(id: string) {
+    setSavingJenis(true);
+    const { error } = await supabaseBrowser
+      .from("pengukuran_gardu")
+      .update({ jenis_pemeliharaan: editingJenisValue })
+      .eq("id", id);
+    if (!error) {
+      onPatchRow(id, { jenis_pemeliharaan: editingJenisValue });
+      setEditingJenisId(null);
+    }
+    setSavingJenis(false);
+  }
 
   async function handleSave(input: SavePenyeimbanganInput) {
     const err = await savePenyeimbangan(input);
@@ -192,6 +235,31 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
             Rekap Penyeimbangan Beban
           </h3>
 
+          <button
+            onClick={() =>
+              downloadPenyeimbanganXlsx(
+                rekapData,
+                `Penyeimbangan_Beban_${MONTHS[month - 1]}_${year}.xlsx`
+              )
+            }
+            disabled={rekapData.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
+          >
+            <Download size={14} />
+            Download XLSX
+          </button>
+
+          <select
+            value={filterJenis}
+            onChange={(e) => { setFilterJenis(e.target.value); setPage(1); }}
+            className={INPUT_CLASS}
+          >
+            <option value="">Semua Jenis</option>
+            {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+
           <select
             value={month}
             onChange={(e) => { setMonth(Number(e.target.value)); setPage(1); }}
@@ -252,13 +320,14 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-400" colSpan={2}>
                       Sesudah
                     </th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Jenis</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Petugas</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Catatan</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                   <tr className="bg-[#0a1628] border-t border-[#1e3552]/50">
                     {/* spacer cols */}
-                    {["", "", "", "", "", ""].map((_, i) => (
+                    {["", "", "", "", "", "", ""].map((_, i) => (
                       <th key={i} className="px-3 py-1" />
                     ))}
                     {/* Sebelum sub-headers */}
@@ -321,6 +390,15 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
                           {Math.round(row.beban_pct_after)}%
                         </span>
                       </td>
+                      <td className="px-3 py-2.5 text-xs whitespace-nowrap">
+                        {row.jenis_pemeliharaan ? (
+                          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${
+                            JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]"
+                          }`}>
+                            {row.jenis_pemeliharaan}
+                          </span>
+                        ) : <span className="text-[#475569]">—</span>}
+                      </td>
                       <td className="px-3 py-2.5 text-xs text-[#94a3b8]">
                         {row.petugas_penyeimbang ?? "—"}
                       </td>
@@ -380,6 +458,159 @@ export default function PenyeimbanganTab({ latestData, ulp }: Props) {
           </>
         )}
       </div>
+
+      {/* ── Gardu yang sudah di-WO pada bulan ini ──────────────────────────── */}
+      {filteredWoedGardu.length > 0 && (
+        <div className="bg-[#162334] rounded-xl border border-teal-500/30 overflow-hidden">
+          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex items-center gap-2">
+            <FileCheck size={16} className="text-teal-400" />
+            <h3 className="text-sm font-semibold text-teal-400">
+              Gardu Sudah di-WO — {MONTHS[month - 1]} {year}
+            </h3>
+            <span className="ml-1 text-xs text-teal-500/70">({filteredWoedGardu.length} gardu)</span>
+            <button
+              onClick={() =>
+                downloadWoGarduXlsx(
+                  filteredWoedGardu,
+                  `Gardu_WO_${MONTHS[month - 1]}_${year}.xlsx`
+                )
+              }
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              <Download size={13} />
+              Download XLSX
+            </button>
+            <span className="text-xs text-[#475569]">Klik gardu untuk catat penyeimbangan</span>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-teal-900/10">
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">No. Gardu</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Penyulang</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Alamat</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">KVA</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">% Beban</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">Tgl WO</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">Tgl Ukur</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Jenis</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Status</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1e3552]">
+                {filteredWoedGardu.map((row, i) => {
+                  const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
+                  const isEditingJenis = editingJenisId === row.id;
+                  return (
+                    <tr
+                      key={row.id}
+                      className={`transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}`}
+                    >
+                      <td className="px-4 py-2.5 font-semibold text-[#e2e8f0] whitespace-nowrap">
+                        {row.no_gardu}
+                        {row.persen_beban >= 80 && (
+                          <AlertTriangle size={11} className="inline ml-1 text-red-400" />
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-center text-[#94a3b8]">{row.kva_trafo}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
+                          {Math.round(row.persen_beban)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs whitespace-nowrap">
+                        {row.wo_sent_at ? fmtTanggal(row.wo_sent_at.split("T")[0]) : "—"}
+                      </td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs whitespace-nowrap">
+                        {fmtTanggal(row.tanggal_pengukuran)}
+                      </td>
+
+                      {/* Jenis — inline editable */}
+                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
+                        {isEditingJenis ? (
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={editingJenisValue}
+                              onChange={(e) => setEditingJenisValue(e.target.value)}
+                              autoFocus
+                              className="text-xs bg-[#0d1b2a] border border-[#00897B] rounded px-2 py-1 text-[#e2e8f0] focus:outline-none"
+                            >
+                              {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
+                                <option key={o} value={o}>{o}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleSaveJenis(row.id)}
+                              disabled={savingJenis}
+                              className="w-6 h-6 flex items-center justify-center rounded bg-[#00897B] text-white hover:bg-[#00695C] disabled:opacity-50 transition-colors"
+                            >
+                              <Check size={11} />
+                            </button>
+                            <button
+                              onClick={() => setEditingJenisId(null)}
+                              className="w-6 h-6 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 transition-colors"
+                            >
+                              <XIcon size={11} />
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 group">
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+                              row.jenis_pemeliharaan
+                                ? (JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]")
+                                : "border-transparent text-[#475569]"
+                            }`}>
+                              {row.jenis_pemeliharaan ?? "—"}
+                            </span>
+                            <button
+                              onClick={() => {
+                                setEditingJenisId(row.id);
+                                setEditingJenisValue(row.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]);
+                              }}
+                              className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#5eead4] hover:bg-white/5 transition-all"
+                              title="Ubah jenis"
+                            >
+                              <Pencil size={10} />
+                            </button>
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Status */}
+                      <td className="px-4 py-2.5 text-center">
+                        {sudahSeimbang ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                            Selesai
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
+                            <TrendingUp size={10} /> Proses
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Aksi catat seimbang */}
+                      <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        {!sudahSeimbang && (
+                          <button
+                            onClick={() => setSelectedGardu(row)}
+                            className="text-xs px-2 py-1 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30 text-[#5eead4] hover:bg-[#00897B]/20 transition-colors whitespace-nowrap"
+                          >
+                            Catat Seimbang
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* New entry modal */}
       {selectedGardu && (
