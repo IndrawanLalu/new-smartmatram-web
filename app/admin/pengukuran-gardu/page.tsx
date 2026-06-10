@@ -479,7 +479,7 @@ export default function PengukuranGarduPage() {
               <span className="text-xs text-[#94a3b8]">gardu</span>
               <span className="mx-1 text-[#1e3552]">·</span>
               <span className="text-xs text-teal-400 font-medium">
-                {anomaliData.filter(d => !!d.jenis_pemeliharaan).length} sudah di-WO
+                {latestData.filter(d => !!d.jenis_pemeliharaan).length} sudah di-WO
               </span>
               <span className="text-xs text-[#94a3b8]">·</span>
               <span className="text-xs text-red-400 font-medium">

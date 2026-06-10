@@ -81,9 +81,9 @@ export function useYearlyStats(
             : ((row.persen_beban ?? 0) >= OVERLOAD_PCT || (row.suhu_trafo ?? 0) > HIGH_TEMP_C);
           if (isAnom) acc.anomali++;
 
-          // WO: pengukuran dengan jenis_pemeliharaan terisi, grouped by tanggal_pengukuran bulan
-          if (row.jenis_pemeliharaan && (!useDynamic || isAnom)) {
-            if (row.jenis_pemeliharaan in acc.woByJenis) acc.woByJenis[row.jenis_pemeliharaan]++;
+          // WO: semua pengukuran dengan jenis_pemeliharaan terisi (konsisten dengan tabel Sudah di-WO)
+          if (row.jenis_pemeliharaan && row.jenis_pemeliharaan in acc.woByJenis) {
+            acc.woByJenis[row.jenis_pemeliharaan]++;
           }
         }
 
