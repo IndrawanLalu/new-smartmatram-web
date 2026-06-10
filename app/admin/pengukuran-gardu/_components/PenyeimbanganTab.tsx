@@ -361,6 +361,9 @@ export default function PenyeimbanganTab({
                   <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">% Beban</th>
                   <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Tgl Ukur</th>
                   <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Jenis WO</th>
+                  {hasActiveCriteria && (
+                    <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Kriteria</th>
+                  )}
                   <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Status</th>
                   <th className="px-4 py-2.5" />
                 </tr>
@@ -368,6 +371,7 @@ export default function PenyeimbanganTab({
               <tbody className="divide-y divide-[#1e3552]">
                 {anomaliSudahWo.map((row, i) => {
                   const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
+                  const anomResult = hasActiveCriteria ? detectAnomali(row, settings) : null;
                   return (
                     <tr key={row.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
                       <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
@@ -383,6 +387,22 @@ export default function PenyeimbanganTab({
                       <td className="px-4 py-2">
                         <JenisCell row={row} />
                       </td>
+                      {hasActiveCriteria && (
+                        <td className="px-4 py-2.5 text-center">
+                          {anomResult?.isAnomali ? (
+                            <span
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-400 border border-red-500/30 font-semibold cursor-default"
+                              title={anomResult.reasons.join(" · ")}
+                            >
+                              Masih Anomali
+                            </span>
+                          ) : (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                              Normal
+                            </span>
+                          )}
+                        </td>
+                      )}
                       <td className="px-4 py-2.5 text-center">
                         {sudahSeimbang ? (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
