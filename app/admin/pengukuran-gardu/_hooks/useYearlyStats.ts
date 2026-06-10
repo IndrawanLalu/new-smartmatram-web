@@ -81,9 +81,14 @@ export function useYearlyStats(
             : ((row.persen_beban ?? 0) >= OVERLOAD_PCT || (row.suhu_trafo ?? 0) > HIGH_TEMP_C);
           if (isAnom) acc.anomali++;
 
-          // WO: semua pengukuran dengan jenis_pemeliharaan terisi (konsisten dengan tabel Sudah di-WO)
+          // WO: grouped by wo_sent_at (kapan jenis di-set), fallback ke tanggal_pengukuran jika null
           if (row.jenis_pemeliharaan && row.jenis_pemeliharaan in acc.woByJenis) {
-            acc.woByJenis[row.jenis_pemeliharaan]++;
+            const woDateStr = row.wo_sent_at ?? row.tanggal_pengukuran;
+            const woYear = new Date(woDateStr).getFullYear();
+            const wm     = new Date(woDateStr).getMonth() + 1;
+            if (woYear === year) {
+              monthMap.get(wm)!.woByJenis[row.jenis_pemeliharaan]++;
+            }
           }
         }
 

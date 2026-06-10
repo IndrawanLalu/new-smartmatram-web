@@ -143,12 +143,13 @@ export default function PenyeimbanganTab({
 
   async function handleSaveJenis(id: string) {
     setSavingJenis(true);
+    const woSentAt = new Date().toISOString();
     const { error } = await supabaseBrowser
       .from("pengukuran_gardu")
-      .update({ jenis_pemeliharaan: editingJenisValue })
+      .update({ jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt })
       .eq("id", id);
     if (!error) {
-      onPatchRow(id, { jenis_pemeliharaan: editingJenisValue });
+      onPatchRow(id, { jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt });
       setEditingJenisId(null);
     }
     setSavingJenis(false);
