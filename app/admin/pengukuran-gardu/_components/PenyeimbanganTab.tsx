@@ -100,6 +100,7 @@ export default function PenyeimbanganTab({
   const [editingJenisValue, setEditingJenisValue] = useState("");
   const [savingJenis, setSavingJenis]     = useState(false);
   const [page, setPage]                   = useState(1);
+  const [filterWoJenis, setFilterWoJenis] = useState("");
 
   const years = useMemo(
     () => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i),
@@ -113,10 +114,13 @@ export default function PenyeimbanganTab({
     [anomaliData]
   );
 
-  // Anomali sudah di-WO (jenis_pemeliharaan terisi)
+  // Sudah di-WO: semua latestData dengan jenis_pemeliharaan terisi, bebas dari kriteria anomali
   const anomaliSudahWo = useMemo(
-    () => anomaliData.filter((d) => !!d.jenis_pemeliharaan),
-    [anomaliData]
+    () => latestData.filter(
+      (d) => !!d.jenis_pemeliharaan &&
+             (!filterWoJenis || d.jenis_pemeliharaan === filterWoJenis)
+    ),
+    [latestData, filterWoJenis]
   );
 
   // Search gardu untuk catat penyeimbangan manual
@@ -323,15 +327,24 @@ export default function PenyeimbanganTab({
       )}
 
       {/* ── Section: Anomali Sudah di-WO ────────────────────────────────────── */}
-      {hasActiveCriteria && anomaliSudahWo.length > 0 && (
+      {anomaliSudahWo.length > 0 || filterWoJenis ? (
         <div className="bg-[#162334] rounded-xl border border-teal-500/30 overflow-hidden">
-          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex items-center gap-2">
-            <FileCheck size={16} className="text-teal-400" />
-            <h3 className="text-sm font-semibold text-teal-400">Anomali — Sudah di-WO</h3>
+          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex flex-wrap items-center gap-2">
+            <FileCheck size={16} className="text-teal-400 shrink-0" />
+            <h3 className="text-sm font-semibold text-teal-400">Gardu Sudah di-WO</h3>
             <span className="text-xs text-teal-500/70">({anomaliSudahWo.length} gardu)</span>
+            <select
+              value={filterWoJenis}
+              onChange={(e) => setFilterWoJenis(e.target.value)}
+              className="ml-2 border border-[#1e3552] rounded-lg px-2 py-1 text-xs text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B]"
+            >
+              <option value="">Semua Jenis</option>
+              {JENIS_PEMELIHARAAN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
+            </select>
             <button
               onClick={() => downloadWoGarduXlsx(anomaliSudahWo, `Gardu_WO_${new Date().toISOString().split("T")[0]}.xlsx`)}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity"
+              disabled={anomaliSudahWo.length === 0}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               <Download size={13} />
               Download XLSX
@@ -398,7 +411,7 @@ export default function PenyeimbanganTab({
             </table>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* ── Pencarian Gardu (catat manual) ──────────────────────────────────── */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-5">
