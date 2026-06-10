@@ -43,7 +43,10 @@ import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
+import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
+import { useAnomalySettings } from "./_hooks/useAnomalySettings";
+import { detectAnomali, hasActiveCriteria } from "./_utils/detectAnomali";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -186,7 +189,27 @@ export default function PengukuranGarduPage() {
   type AlertModalKey = "overload" | "underload" | "highCurrent" | "phaseOverload" | "highTemp";
   const [alertModal, setAlertModal] = useState<AlertModalKey | null>(null);
 
-  const { stats: yearlyStats, loading: yearlyLoading } = useYearlyStats(user, filter.year, filter.ulp);
+  // ULP aktif untuk settings: non-UP3 pakai unit, UP3 pakai filter atau 'ALL'
+  const activeUlp = canSeeAllUnits(user.role) ? (filter.ulp || "ALL") : (user.unit ?? "ALL");
+
+  const {
+    settings: anomalySettings,
+    loading: settingsLoading,
+    saving: settingsSaving,
+    savedAt: settingsSavedAt,
+    save: saveSettings,
+    reset: resetSettings,
+  } = useAnomalySettings(activeUlp);
+
+  const activeCriteria = hasActiveCriteria(anomalySettings);
+
+  // Gardu yang match kriteria anomali dari settings
+  const anomaliData = useMemo(
+    () => latestData.filter((d) => detectAnomali(d, anomalySettings).isAnomali),
+    [latestData, anomalySettings]
+  );
+
+  const { stats: yearlyStats, loading: yearlyLoading } = useYearlyStats(user, filter.year, filter.ulp, anomalySettings);
 
   const now   = new Date();
   const years = useMemo(() => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i), []);  // eslint-disable-line react-hooks/exhaustive-deps
@@ -329,6 +352,17 @@ export default function PengukuranGarduPage() {
         </button>
       </div>
 
+      {/* ── Kriteria Anomali ────────────────────────────────────────────────── */}
+      <AnomalySettingsPanel
+        settings={anomalySettings}
+        loading={settingsLoading}
+        saving={settingsSaving}
+        savedAt={settingsSavedAt}
+        ulpLabel={activeUlp === "ALL" ? "Semua ULP" : `ULP ${activeUlp}`}
+        onSave={saveSettings}
+        onReset={resetSettings}
+      />
+
       {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
       <div className="flex gap-1 bg-[#0d1b2a] border border-[#1e3552] rounded-xl p-1">
         {TABS.map(({ key, label, icon: Icon }) => (
@@ -434,6 +468,31 @@ export default function PengukuranGarduPage() {
               );
             })}
           </div>
+
+          {/* ── Anomali Kriteria summary bar ──────────────────────────────── */}
+          {activeCriteria && !loading && (
+            <div className="flex items-center gap-3 bg-[#0d2d2a] border border-teal-500/30 rounded-xl px-5 py-3">
+              <span className="text-sm font-semibold text-[#5eead4]">
+                Anomali berdasarkan kriteria:
+              </span>
+              <span className="text-2xl font-bold text-[#5eead4]">{anomaliData.length}</span>
+              <span className="text-xs text-[#94a3b8]">gardu</span>
+              <span className="mx-1 text-[#1e3552]">·</span>
+              <span className="text-xs text-teal-400 font-medium">
+                {anomaliData.filter(d => !!d.jenis_pemeliharaan).length} sudah di-WO
+              </span>
+              <span className="text-xs text-[#94a3b8]">·</span>
+              <span className="text-xs text-red-400 font-medium">
+                {anomaliData.filter(d => !d.jenis_pemeliharaan).length} belum di-WO
+              </span>
+              <button
+                onClick={() => setActiveTab("penyeimbangan")}
+                className="ml-auto text-xs px-3 py-1 rounded-lg border border-teal-500/40 text-teal-400 hover:bg-teal-900/30 transition-colors"
+              >
+                Tindak Lanjut →
+              </button>
+            </div>
+          )}
 
           {/* ── Charts Row ────────────────────────────────────────────────── */}
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
@@ -648,6 +707,9 @@ export default function PengukuranGarduPage() {
       {activeTab === "penyeimbangan" && (
         <PenyeimbanganTab
           latestData={latestData}
+          anomaliData={anomaliData}
+          settings={anomalySettings}
+          hasActiveCriteria={activeCriteria}
           ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
           onPatchRow={patchRow}
         />

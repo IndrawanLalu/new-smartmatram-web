@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Search, Trash2, Pencil, ChevronLeft, ChevronRight, Scale, FileCheck, AlertTriangle, TrendingUp, Download, Check, X as XIcon } from "lucide-react";
+import {
+  Search, Trash2, Pencil, ChevronLeft, ChevronRight,
+  Scale, FileCheck, AlertTriangle, TrendingUp, Download,
+  Check, X as XIcon, ClipboardX, Info,
+} from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   usePenyeimbangan,
@@ -10,6 +14,7 @@ import {
   type UpdatePenyeimbanganInput,
 } from "../_hooks/usePenyeimbangan";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
+import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import PenyeimbanganModal from "./PenyeimbanganModal";
 import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
@@ -58,19 +63,23 @@ function ArusCell({ r, s, t, n }: { r: number; s: number; t: number; n: number }
 
 interface Props {
   latestData: PengukuranGardu[];
+  anomaliData: PengukuranGardu[];       // pre-filtered: match criteria
+  settings: AnomalySettings;
+  hasActiveCriteria: boolean;
   ulp: string;
   onPatchRow: (id: string, patch: Partial<PengukuranGardu>) => void;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props) {
+export default function PenyeimbanganTab({
+  latestData, anomaliData, settings, hasActiveCriteria, ulp, onPatchRow,
+}: Props) {
   const now = new Date();
 
-  // Rekap hook
   const {
-    data: allRekapData,      // semua rekap bulan ini (untuk cek WO table)
-    filteredData: rekapData, // jenis-filtered (untuk tabel rekap)
+    data: allRekapData,
+    filteredData: rekapData,
     loading: rekapLoading,
     error: rekapError,
     month,
@@ -84,18 +93,13 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
     deleteItem,
   } = usePenyeimbangan(ulp);
 
-  // Pencarian gardu
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery]     = useState("");
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
-  const [editRecord, setEditRecord] = useState<PenyeimbanganGardu | null>(null);
-
-  // Inline edit jenis di tabel WO
-  const [editingJenisId, setEditingJenisId] = useState<string | null>(null);
+  const [editRecord, setEditRecord]       = useState<PenyeimbanganGardu | null>(null);
+  const [editingJenisId, setEditingJenisId]     = useState<string | null>(null);
   const [editingJenisValue, setEditingJenisValue] = useState("");
-  const [savingJenis, setSavingJenis] = useState(false);
-
-  // Rekap pagination
-  const [page, setPage] = useState(1);
+  const [savingJenis, setSavingJenis]     = useState(false);
+  const [page, setPage]                   = useState(1);
 
   const years = useMemo(
     () => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i),
@@ -103,18 +107,19 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
     []
   );
 
-  // Gardu yang sudah di-WO pada bulan/tahun yang dipilih, difilter by jenis
-  const filteredWoedGardu = useMemo(() => {
-    return latestData.filter((d) => {
-      if (!d.wo_sent_at) return false;
-      const dt = new Date(d.wo_sent_at);
-      if (dt.getMonth() + 1 !== month || dt.getFullYear() !== year) return false;
-      if (filterJenis && d.jenis_pemeliharaan !== filterJenis) return false;
-      return true;
-    });
-  }, [latestData, month, year, filterJenis]);
+  // Anomali belum di-WO (jenis_pemeliharaan kosong)
+  const anomaliBelumWo = useMemo(
+    () => anomaliData.filter((d) => !d.jenis_pemeliharaan),
+    [anomaliData]
+  );
 
-  // Filter latestData by search query
+  // Anomali sudah di-WO (jenis_pemeliharaan terisi)
+  const anomaliSudahWo = useMemo(
+    () => anomaliData.filter((d) => !!d.jenis_pemeliharaan),
+    [anomaliData]
+  );
+
+  // Search gardu untuk catat penyeimbangan manual
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
     const q = searchQuery.toLowerCase();
@@ -147,10 +152,7 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
 
   async function handleSave(input: SavePenyeimbanganInput) {
     const err = await savePenyeimbangan(input);
-    if (!err) {
-      setSelectedGardu(null);
-      setSearchQuery("");
-    }
+    if (!err) { setSelectedGardu(null); setSearchQuery(""); }
     return err;
   }
 
@@ -165,16 +167,245 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
     await deleteItem(id);
   }
 
+  // Inline jenis cell (dipakai di kedua tabel anomali)
+  function JenisCell({ row }: { row: PengukuranGardu }) {
+    const isEditing = editingJenisId === row.id;
+    if (isEditing) {
+      return (
+        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+          <select
+            value={editingJenisValue}
+            onChange={(e) => setEditingJenisValue(e.target.value)}
+            autoFocus
+            className="text-xs bg-[#0d1b2a] border border-[#00897B] rounded px-2 py-1 text-[#e2e8f0] focus:outline-none"
+          >
+            {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
+              <option key={o} value={o}>{o}</option>
+            ))}
+          </select>
+          <button
+            onClick={() => handleSaveJenis(row.id)}
+            disabled={savingJenis}
+            className="w-6 h-6 flex items-center justify-center rounded bg-[#00897B] text-white hover:bg-[#00695C] disabled:opacity-50"
+          >
+            {savingJenis ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check size={11} />}
+          </button>
+          <button
+            onClick={() => setEditingJenisId(null)}
+            className="w-6 h-6 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-white/5"
+          >
+            <XIcon size={11} />
+          </button>
+        </div>
+      );
+    }
+    return (
+      <div className="flex items-center gap-1 group" onClick={(e) => e.stopPropagation()}>
+        <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
+          row.jenis_pemeliharaan
+            ? (JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]")
+            : "border-dashed border-[#1e3552] text-[#475569]"
+        }`}>
+          {row.jenis_pemeliharaan ?? "— set jenis —"}
+        </span>
+        <button
+          onClick={() => {
+            setEditingJenisId(row.id);
+            setEditingJenisValue(row.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]);
+          }}
+          className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#5eead4] hover:bg-white/5 transition-all"
+          title="Set jenis WO"
+        >
+          <Pencil size={10} />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
 
-      {/* ── Pencarian Gardu ─────────────────────────────────────────────────── */}
+      {/* ── Kriteria belum diset ─────────────────────────────────────────────── */}
+      {!hasActiveCriteria && (
+        <div className="bg-[#162334] rounded-xl border border-amber-500/30 p-5 flex items-start gap-3">
+          <Info size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-semibold text-amber-300">Kriteria anomali belum diset</p>
+            <p className="text-xs text-[#94a3b8] mt-1">
+              Expand panel <span className="font-medium text-[#e2e8f0]">"Kriteria Anomali"</span> di atas
+              dan aktifkan minimal satu threshold untuk melihat daftar gardu anomali.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Section: Anomali Belum di-WO ────────────────────────────────────── */}
+      {hasActiveCriteria && (
+        <div className="bg-[#162334] rounded-xl border border-red-500/30 overflow-hidden">
+          <div className="px-5 py-3 bg-red-900/10 border-b border-red-500/20 flex items-center gap-2">
+            <AlertTriangle size={16} className="text-red-400 shrink-0" />
+            <h3 className="text-sm font-semibold text-red-400">
+              Anomali — Belum di-WO
+            </h3>
+            <span className="text-xs text-red-500/70">({anomaliBelumWo.length} gardu)</span>
+            <p className="ml-auto text-[11px] text-[#475569] hidden sm:block">
+              Klik ikon pensil untuk set jenis WO
+            </p>
+          </div>
+
+          {anomaliBelumWo.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-10 text-[#475569]">
+              <ClipboardX size={28} className="text-green-500/50" />
+              <p className="text-sm text-green-400">Semua gardu anomali sudah di-WO 🎉</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm whitespace-nowrap">
+                <thead>
+                  <tr className="bg-[#0a1628]">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">No</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">No. Gardu</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Penyulang</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Alamat</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">KVA</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Beban %</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Arus R/S/T/N</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Suhu °C</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-[#5eead4]">Alasan Anomali</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-[#5eead4]">Jenis WO</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e3552]">
+                  {anomaliBelumWo.map((row, idx) => {
+                    const { reasons } = detectAnomali(row, settings);
+                    return (
+                      <tr key={row.id} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
+                        <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{idx + 1}</td>
+                        <td className="px-3 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
+                        <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.penyulang ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[160px] truncate">{row.alamat ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
+                        <td className="px-3 py-2.5 text-center">
+                          <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
+                            {Math.round(row.persen_beban)}%
+                          </span>
+                        </td>
+                        <td className="px-3 py-2.5 text-center">
+                          <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} n={row.total_arus_n} />
+                        </td>
+                        <td className="px-3 py-2.5 text-center text-xs">
+                          <span className={row.suhu_trafo > 60 ? "text-amber-400 font-semibold" : "text-[#94a3b8]"}>
+                            {row.suhu_trafo ?? "—"}
+                          </span>
+                        </td>
+                        {/* Alasan anomali */}
+                        <td className="px-3 py-2.5 max-w-[220px]">
+                          <div className="flex flex-wrap gap-1">
+                            {reasons.map((r, i) => (
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 border border-red-500/30 text-red-300 whitespace-nowrap">
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        {/* Jenis WO inline */}
+                        <td className="px-3 py-2.5">
+                          <JenisCell row={row} />
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Section: Anomali Sudah di-WO ────────────────────────────────────── */}
+      {hasActiveCriteria && anomaliSudahWo.length > 0 && (
+        <div className="bg-[#162334] rounded-xl border border-teal-500/30 overflow-hidden">
+          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex items-center gap-2">
+            <FileCheck size={16} className="text-teal-400" />
+            <h3 className="text-sm font-semibold text-teal-400">Anomali — Sudah di-WO</h3>
+            <span className="text-xs text-teal-500/70">({anomaliSudahWo.length} gardu)</span>
+            <button
+              onClick={() => downloadWoGarduXlsx(anomaliSudahWo, `Gardu_WO_${new Date().toISOString().split("T")[0]}.xlsx`)}
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity"
+            >
+              <Download size={13} />
+              Download XLSX
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm whitespace-nowrap">
+              <thead>
+                <tr className="bg-teal-900/10">
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">No. Gardu</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Penyulang</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Alamat</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">KVA</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">% Beban</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Tgl Ukur</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Jenis WO</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Status</th>
+                  <th className="px-4 py-2.5" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#1e3552]">
+                {anomaliSudahWo.map((row, i) => {
+                  const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
+                  return (
+                    <tr key={row.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
+                      <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs">{row.penyulang ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs max-w-40 truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
+                      <td className="px-4 py-2.5 text-center">
+                        <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
+                          {Math.round(row.persen_beban)}%
+                        </span>
+                      </td>
+                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs">{fmtTanggal(row.tanggal_pengukuran)}</td>
+                      <td className="px-4 py-2">
+                        <JenisCell row={row} />
+                      </td>
+                      <td className="px-4 py-2.5 text-center">
+                        {sudahSeimbang ? (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                            Selesai
+                          </span>
+                        ) : (
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
+                            <TrendingUp size={10} /> Proses
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                        {!sudahSeimbang && (
+                          <button
+                            onClick={() => setSelectedGardu(row)}
+                            className="text-xs px-2 py-1 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30 text-[#5eead4] hover:bg-[#00897B]/20 transition-colors whitespace-nowrap"
+                          >
+                            Catat Seimbang
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ── Pencarian Gardu (catat manual) ──────────────────────────────────── */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-5">
         <h3 className="text-sm font-semibold text-[#e2e8f0] mb-3 flex items-center gap-2">
           <Scale size={16} className="text-[#00897B]" />
-          Catat Penyeimbangan Baru
+          Catat Penyeimbangan Manual
         </h3>
-
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
           <input
@@ -185,14 +416,9 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
             className="w-full pl-9 pr-4 py-2.5 border border-[#1e3552] rounded-lg text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#4a5568] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
           />
         </div>
-
-        {/* Search Results */}
         {searchQuery.trim() && searchResults.length === 0 && (
-          <p className="mt-3 text-sm text-[#94a3b8] text-center py-4">
-            Gardu tidak ditemukan
-          </p>
+          <p className="mt-3 text-sm text-[#94a3b8] text-center py-4">Gardu tidak ditemukan</p>
         )}
-
         {searchResults.length > 0 && (
           <div className="mt-3 space-y-2">
             {searchResults.map((row) => (
@@ -215,9 +441,7 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
                     </span>
                   </div>
                 </div>
-                {row.alamat && (
-                  <p className="mt-0.5 text-xs text-[#94a3b8] truncate">{row.alamat}</p>
-                )}
+                {row.alamat && <p className="mt-0.5 text-xs text-[#94a3b8] truncate">{row.alamat}</p>}
                 <p className="mt-0.5 text-xs text-[#4a5568]">
                   Pengukuran terakhir: {fmtTanggal(row.tanggal_pengukuran)}
                 </p>
@@ -229,77 +453,43 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
 
       {/* ── Rekap Penyeimbangan ─────────────────────────────────────────────── */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-        {/* Rekap Header + Filter */}
         <div className="px-5 py-4 border-b border-[#1e3552] flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-semibold text-[#e2e8f0] mr-auto">
-            Rekap Penyeimbangan Beban
-          </h3>
-
+          <h3 className="text-sm font-semibold text-[#e2e8f0] mr-auto">Rekap Penyeimbangan Beban</h3>
           <button
-            onClick={() =>
-              downloadPenyeimbanganXlsx(
-                rekapData,
-                `Penyeimbangan_Beban_${MONTHS[month - 1]}_${year}.xlsx`
-              )
-            }
+            onClick={() => downloadPenyeimbanganXlsx(rekapData, `Penyeimbangan_Beban_${MONTHS[month - 1]}_${year}.xlsx`)}
             disabled={rekapData.length === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             <Download size={14} />
             Download XLSX
           </button>
-
-          <select
-            value={filterJenis}
-            onChange={(e) => { setFilterJenis(e.target.value); setPage(1); }}
-            className={INPUT_CLASS}
-          >
+          <select value={filterJenis} onChange={(e) => { setFilterJenis(e.target.value); setPage(1); }} className={INPUT_CLASS}>
             <option value="">Semua Jenis</option>
-            {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
-              <option key={o} value={o}>{o}</option>
-            ))}
+            {JENIS_PEMELIHARAAN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
           </select>
-
-          <select
-            value={month}
-            onChange={(e) => { setMonth(Number(e.target.value)); setPage(1); }}
-            className={INPUT_CLASS}
-          >
+          <select value={month} onChange={(e) => { setMonth(Number(e.target.value)); setPage(1); }} className={INPUT_CLASS}>
             {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
           </select>
-
-          <select
-            value={year}
-            onChange={(e) => { setYear(Number(e.target.value)); setPage(1); }}
-            className={INPUT_CLASS}
-          >
+          <select value={year} onChange={(e) => { setYear(Number(e.target.value)); setPage(1); }} className={INPUT_CLASS}>
             {years.map((y) => <option key={y} value={y}>{y}</option>)}
           </select>
         </div>
 
-        {/* Error */}
         {rekapError && (
-          <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">
-            {rekapError}
-          </div>
+          <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{rekapError}</div>
         )}
-
-        {/* Loading */}
         {rekapLoading && (
           <div className="flex items-center justify-center py-12 gap-2 text-[#94a3b8] text-sm">
             <div className="w-5 h-5 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
             Memuat data...
           </div>
         )}
-
-        {/* Empty state */}
         {!rekapLoading && rekapData.length === 0 && (
           <div className="text-center py-12 text-[#94a3b8] text-sm">
             Belum ada rekap penyeimbangan pada {MONTHS[month - 1]} {year}
           </div>
         )}
 
-        {/* Table */}
         {!rekapLoading && rekapData.length > 0 && (
           <>
             <div className="overflow-x-auto">
@@ -312,115 +502,60 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Alamat</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Penyulang</th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">KVA</th>
-                    {/* Sebelum */}
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-400" colSpan={2}>
-                      Sebelum
-                    </th>
-                    {/* Sesudah */}
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-400" colSpan={2}>
-                      Sesudah
-                    </th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-400" colSpan={2}>Sebelum</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-400" colSpan={2}>Sesudah</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Jenis</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Petugas</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Catatan</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                   <tr className="bg-[#0a1628] border-t border-[#1e3552]/50">
-                    {/* spacer cols */}
-                    {["", "", "", "", "", "", ""].map((_, i) => (
-                      <th key={i} className="px-3 py-1" />
-                    ))}
-                    {/* Sebelum sub-headers */}
+                    {["", "", "", "", "", ""].map((_, i) => <th key={i} className="px-3 py-1" />)}
                     <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">R/S/T/N (A)</th>
                     <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">Beban %</th>
-                    {/* Sesudah sub-headers */}
                     <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">R/S/T/N (A)</th>
                     <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">Beban %</th>
-                    {/* spacer */}
-                    <th className="px-3 py-1" />
-                    <th className="px-3 py-1" />
-                    <th className="px-3 py-1" />
+                    <th className="px-3 py-1" /><th className="px-3 py-1" /><th className="px-3 py-1" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1e3552]">
                   {paginatedRekap.map((row, idx) => (
-                    <tr
-                      key={row.id}
-                      className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}
-                    >
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">
-                        {(page - 1) * PAGE_SIZE + idx + 1}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[#e2e8f0]">
-                        {fmtTanggal(row.tgl_penyeimbangan)}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs font-semibold text-[#e2e8f0]">
-                        {row.no_gardu}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[180px] truncate">
-                        {row.alamat ?? "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">
-                        {row.penyulang ?? "—"}
-                      </td>
-                      <td className="px-3 py-2.5 text-center text-xs text-[#94a3b8]">
-                        {row.kva_trafo}
-                      </td>
-                      {/* Sebelum */}
+                    <tr key={row.id} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
+                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#e2e8f0]">{fmtTanggal(row.tgl_penyeimbangan)}</td>
+                      <td className="px-3 py-2.5 text-xs font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[180px] truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.penyulang ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
                       <td className="px-3 py-2.5 text-center">
-                        <ArusCell
-                          r={row.arus_r_before} s={row.arus_s_before}
-                          t={row.arus_t_before} n={row.arus_n_before}
-                        />
+                        <ArusCell r={row.arus_r_before} s={row.arus_s_before} t={row.arus_t_before} n={row.arus_n_before} />
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        <span className={`text-xs font-bold ${pctCls(row.beban_pct_before)}`}>
-                          {Math.round(row.beban_pct_before)}%
-                        </span>
-                      </td>
-                      {/* Sesudah */}
-                      <td className="px-3 py-2.5 text-center">
-                        <ArusCell
-                          r={row.arus_r_after} s={row.arus_s_after}
-                          t={row.arus_t_after} n={row.arus_n_after}
-                        />
+                        <span className={`text-xs font-bold ${pctCls(row.beban_pct_before)}`}>{Math.round(row.beban_pct_before)}%</span>
                       </td>
                       <td className="px-3 py-2.5 text-center">
-                        <span className={`text-xs font-bold ${pctCls(row.beban_pct_after)}`}>
-                          {Math.round(row.beban_pct_after)}%
-                        </span>
+                        <ArusCell r={row.arus_r_after} s={row.arus_s_after} t={row.arus_t_after} n={row.arus_n_after} />
+                      </td>
+                      <td className="px-3 py-2.5 text-center">
+                        <span className={`text-xs font-bold ${pctCls(row.beban_pct_after)}`}>{Math.round(row.beban_pct_after)}%</span>
                       </td>
                       <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                         {row.jenis_pemeliharaan ? (
-                          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${
-                            JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]"
-                          }`}>
+                          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]"}`}>
                             {row.jenis_pemeliharaan}
                           </span>
                         ) : <span className="text-[#475569]">—</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">
-                        {row.petugas_penyeimbang ?? "—"}
-                      </td>
+                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.petugas_penyeimbang ?? "—"}</td>
                       <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[200px]">
-                        {row.catatan ? (
-                          <span className="truncate block" title={row.catatan}>{row.catatan}</span>
-                        ) : "—"}
+                        {row.catatan ? <span className="truncate block" title={row.catatan}>{row.catatan}</span> : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button
-                            onClick={() => setEditRecord(row)}
-                            className="text-[#00897B] hover:text-[#5eead4] transition-colors"
-                            title="Edit"
-                          >
+                          <button onClick={() => setEditRecord(row)} className="text-[#00897B] hover:text-[#5eead4] transition-colors" title="Edit">
                             <Pencil size={13} />
                           </button>
-                          <button
-                            onClick={() => handleDelete(row.id)}
-                            className="text-red-400 hover:text-red-500 transition-colors"
-                            title="Hapus"
-                          >
+                          <button onClick={() => handleDelete(row.id)} className="text-red-400 hover:text-red-500 transition-colors" title="Hapus">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -430,26 +565,16 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
-                <span className="text-xs text-[#94a3b8]">
-                  {rekapData.length} rekap · Hal {page}/{totalPages}
-                </span>
+                <span className="text-xs text-[#94a3b8]">{rekapData.length} rekap · Hal {page}/{totalPages}</span>
                 <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
+                  <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
+                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <ChevronLeft size={14} />
                   </button>
-                  <button
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-                  >
+                  <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <ChevronRight size={14} />
                   </button>
                 </div>
@@ -459,177 +584,11 @@ export default function PenyeimbanganTab({ latestData, ulp, onPatchRow }: Props)
         )}
       </div>
 
-      {/* ── Gardu yang sudah di-WO pada bulan ini ──────────────────────────── */}
-      {filteredWoedGardu.length > 0 && (
-        <div className="bg-[#162334] rounded-xl border border-teal-500/30 overflow-hidden">
-          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex items-center gap-2">
-            <FileCheck size={16} className="text-teal-400" />
-            <h3 className="text-sm font-semibold text-teal-400">
-              Gardu Sudah di-WO — {MONTHS[month - 1]} {year}
-            </h3>
-            <span className="ml-1 text-xs text-teal-500/70">({filteredWoedGardu.length} gardu)</span>
-            <button
-              onClick={() =>
-                downloadWoGarduXlsx(
-                  filteredWoedGardu,
-                  `Gardu_WO_${MONTHS[month - 1]}_${year}.xlsx`
-                )
-              }
-              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity"
-            >
-              <Download size={13} />
-              Download XLSX
-            </button>
-            <span className="text-xs text-[#475569]">Klik gardu untuk catat penyeimbangan</span>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-teal-900/10">
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">No. Gardu</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Penyulang</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Alamat</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">KVA</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">% Beban</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">Tgl WO</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold whitespace-nowrap">Tgl Ukur</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Jenis</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Status</th>
-                  <th className="px-4 py-2.5" />
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1e3552]">
-                {filteredWoedGardu.map((row, i) => {
-                  const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
-                  const isEditingJenis = editingJenisId === row.id;
-                  return (
-                    <tr
-                      key={row.id}
-                      className={`transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}`}
-                    >
-                      <td className="px-4 py-2.5 font-semibold text-[#e2e8f0] whitespace-nowrap">
-                        {row.no_gardu}
-                        {row.persen_beban >= 80 && (
-                          <AlertTriangle size={11} className="inline ml-1 text-red-400" />
-                        )}
-                      </td>
-                      <td className="px-4 py-2.5 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-center text-[#94a3b8]">{row.kva_trafo}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
-                          {Math.round(row.persen_beban)}%
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs whitespace-nowrap">
-                        {row.wo_sent_at ? fmtTanggal(row.wo_sent_at.split("T")[0]) : "—"}
-                      </td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs whitespace-nowrap">
-                        {fmtTanggal(row.tanggal_pengukuran)}
-                      </td>
-
-                      {/* Jenis — inline editable */}
-                      <td className="px-4 py-2" onClick={(e) => e.stopPropagation()}>
-                        {isEditingJenis ? (
-                          <div className="flex items-center gap-1">
-                            <select
-                              value={editingJenisValue}
-                              onChange={(e) => setEditingJenisValue(e.target.value)}
-                              autoFocus
-                              className="text-xs bg-[#0d1b2a] border border-[#00897B] rounded px-2 py-1 text-[#e2e8f0] focus:outline-none"
-                            >
-                              {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
-                                <option key={o} value={o}>{o}</option>
-                              ))}
-                            </select>
-                            <button
-                              onClick={() => handleSaveJenis(row.id)}
-                              disabled={savingJenis}
-                              className="w-6 h-6 flex items-center justify-center rounded bg-[#00897B] text-white hover:bg-[#00695C] disabled:opacity-50 transition-colors"
-                            >
-                              <Check size={11} />
-                            </button>
-                            <button
-                              onClick={() => setEditingJenisId(null)}
-                              className="w-6 h-6 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 transition-colors"
-                            >
-                              <XIcon size={11} />
-                            </button>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1 group">
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
-                              row.jenis_pemeliharaan
-                                ? (JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]")
-                                : "border-transparent text-[#475569]"
-                            }`}>
-                              {row.jenis_pemeliharaan ?? "—"}
-                            </span>
-                            <button
-                              onClick={() => {
-                                setEditingJenisId(row.id);
-                                setEditingJenisValue(row.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]);
-                              }}
-                              className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#5eead4] hover:bg-white/5 transition-all"
-                              title="Ubah jenis"
-                            >
-                              <Pencil size={10} />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Status */}
-                      <td className="px-4 py-2.5 text-center">
-                        {sudahSeimbang ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
-                            Selesai
-                          </span>
-                        ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
-                            <TrendingUp size={10} /> Proses
-                          </span>
-                        )}
-                      </td>
-
-                      {/* Aksi catat seimbang */}
-                      <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        {!sudahSeimbang && (
-                          <button
-                            onClick={() => setSelectedGardu(row)}
-                            className="text-xs px-2 py-1 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30 text-[#5eead4] hover:bg-[#00897B]/20 transition-colors whitespace-nowrap"
-                          >
-                            Catat Seimbang
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* New entry modal */}
       {selectedGardu && (
-        <PenyeimbanganModal
-          mode="new"
-          row={selectedGardu}
-          onClose={() => setSelectedGardu(null)}
-          onSave={handleSave}
-        />
+        <PenyeimbanganModal mode="new" row={selectedGardu} onClose={() => setSelectedGardu(null)} onSave={handleSave} />
       )}
-
-      {/* Edit modal */}
       {editRecord && (
-        <PenyeimbanganModal
-          mode="edit"
-          record={editRecord}
-          onClose={() => setEditRecord(null)}
-          onUpdate={handleUpdate}
-        />
+        <PenyeimbanganModal mode="edit" record={editRecord} onClose={() => setEditRecord(null)} onUpdate={handleUpdate} />
       )}
     </div>
   );
