@@ -130,7 +130,8 @@ export function useYearlyStats(
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user.role, user.unit, year, ulp, useDynamic,
       settings.max_beban_trafo_pct, settings.max_arus_jurusan_a,
-      settings.max_unbalance_pct, settings.max_suhu_trafo_c]);
+      settings.max_unbalance_pct, settings.max_suhu_trafo_c,
+      settings.min_kva_trafo, settings.max_kva_trafo]);
 
   return { stats, loading };
 }

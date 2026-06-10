@@ -5,6 +5,8 @@ export interface AnomalySettings {
   max_arus_jurusan_a:  number | null;
   max_unbalance_pct:   number | null;
   max_suhu_trafo_c:    number | null;
+  min_kva_trafo:       number | null;  // range filter — hanya evaluasi gardu dalam rentang KVA ini
+  max_kva_trafo:       number | null;
 }
 
 export const DEFAULT_SETTINGS: AnomalySettings = {
@@ -12,6 +14,8 @@ export const DEFAULT_SETTINGS: AnomalySettings = {
   max_arus_jurusan_a:  null,
   max_unbalance_pct:   null,
   max_suhu_trafo_c:    null,
+  min_kva_trafo:       null,
+  max_kva_trafo:       null,
 };
 
 export interface AnomalyResult {
@@ -33,6 +37,15 @@ export function detectAnomali(
 ): AnomalyResult {
   const reasons: string[] = [];
   const failed: string[]  = [];   // kriteria aktif yang TIDAK terpenuhi
+
+  // 0. KVA range filter — jika aktif, gardu di luar rentang KVA diabaikan (bukan anomali)
+  const kvaRangeActive = settings.min_kva_trafo !== null || settings.max_kva_trafo !== null;
+  if (kvaRangeActive) {
+    const inRange =
+      (settings.min_kva_trafo === null || row.kva_trafo >= settings.min_kva_trafo) &&
+      (settings.max_kva_trafo === null || row.kva_trafo <= settings.max_kva_trafo);
+    if (!inRange) failed.push("kva_range");
+  }
 
   // 1. Beban trafo %
   if (settings.max_beban_trafo_pct !== null) {
@@ -88,6 +101,8 @@ export function hasActiveCriteria(s: AnomalySettings): boolean {
     s.max_beban_trafo_pct !== null ||
     s.max_arus_jurusan_a  !== null ||
     s.max_unbalance_pct   !== null ||
-    s.max_suhu_trafo_c    !== null
+    s.max_suhu_trafo_c    !== null ||
+    s.min_kva_trafo       !== null ||
+    s.max_kva_trafo       !== null
   );
 }

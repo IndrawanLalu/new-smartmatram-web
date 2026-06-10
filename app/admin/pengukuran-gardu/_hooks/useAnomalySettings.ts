@@ -19,7 +19,7 @@ export function useAnomalySettings(ulp: string) {
     setLoading(true);
     const { data, error } = await supabaseBrowser
       .from("anomali_settings")
-      .select("max_beban_trafo_pct, max_arus_jurusan_a, max_unbalance_pct, max_suhu_trafo_c")
+      .select("max_beban_trafo_pct, max_arus_jurusan_a, max_unbalance_pct, max_suhu_trafo_c, min_kva_trafo, max_kva_trafo")
       .eq("ulp", ulpKey)
       .maybeSingle();
 
@@ -29,6 +29,8 @@ export function useAnomalySettings(ulp: string) {
         max_arus_jurusan_a:  data.max_arus_jurusan_a  ?? null,
         max_unbalance_pct:   data.max_unbalance_pct   ?? null,
         max_suhu_trafo_c:    data.max_suhu_trafo_c    ?? null,
+        min_kva_trafo:       data.min_kva_trafo       ?? null,
+        max_kva_trafo:       data.max_kva_trafo       ?? null,
       });
     } else {
       setSettings(DEFAULT_SETTINGS);
