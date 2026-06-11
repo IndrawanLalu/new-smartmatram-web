@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
   Gauge, AlertTriangle, Wrench, Zap, RefreshCw,
@@ -99,6 +99,11 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
 
   const [selectedGardu, setSelectedGardu] = useState<GarduLatestState | null>(null);
 
+  const kvaOptions = useMemo(
+    () => [...new Set(rawData.map((d) => d.kva_trafo))].sort((a, b) => a - b),
+    [rawData]
+  );
+
   return (
     <div className="space-y-5">
 
@@ -130,6 +135,26 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
         >
           <option value="">Semua Penyulang</option>
           {penyulangOptions.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+
+        <select
+          value={filter.kvaTrafo}
+          onChange={(e) => { setFilter({ ...filter, kvaTrafo: e.target.value }); setPage(1); }}
+          className={INPUT_CLASS}
+        >
+          <option value="">Semua KVA</option>
+          {kvaOptions.map((k) => <option key={k} value={k}>{k} kVA</option>)}
+        </select>
+
+        <select
+          value={filter.minBeban}
+          onChange={(e) => { setFilter({ ...filter, minBeban: Number(e.target.value) }); setPage(1); }}
+          className={INPUT_CLASS}
+        >
+          <option value={0}>Semua Beban</option>
+          <option value={60}>Beban ≥60%</option>
+          <option value={80}>Beban ≥80%</option>
+          <option value={100}>Beban ≥100%</option>
         </select>
 
         <label className="flex items-center gap-2 cursor-pointer select-none">

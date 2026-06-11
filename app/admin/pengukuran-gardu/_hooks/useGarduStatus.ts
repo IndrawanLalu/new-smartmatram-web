@@ -40,6 +40,8 @@ export interface GarduStatusFilter {
   search: string;
   penyulang: string;
   anomaliOnly: boolean;
+  kvaTrafo: string;   // "" = semua, atau nilai kva spesifik
+  minBeban: number;   // 0 = semua, atau minimum persen beban
 }
 
 // ── Timeline types (untuk modal) ──────────────────────────────────────────────
@@ -56,6 +58,9 @@ export interface TimelinePengukuran {
   total_arus_s: number;
   total_arus_t: number;
   total_arus_n: number;
+  total_teg_rn: number | null;
+  total_teg_sn: number | null;
+  total_teg_tn: number | null;
   perjurusan: Record<string, JurusanData> | null;
   petugas_nama: string | null;
   jenis_pemeliharaan: string | null;
@@ -91,7 +96,7 @@ export function useGarduStatus(
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<GarduStatusFilter>({
-    search: "", penyulang: "", anomaliOnly: false,
+    search: "", penyulang: "", anomaliOnly: false, kvaTrafo: "", minBeban: 0,
   });
   const [page, setPage] = useState(1);
 
@@ -133,6 +138,13 @@ export function useGarduStatus(
 
     if (filter.penyulang) {
       data = data.filter((d) => d.penyulang === filter.penyulang);
+    }
+    if (filter.kvaTrafo) {
+      const kva = Number(filter.kvaTrafo);
+      data = data.filter((d) => d.kva_trafo === kva);
+    }
+    if (filter.minBeban > 0) {
+      data = data.filter((d) => d.persen_beban >= filter.minBeban);
     }
     if (filter.anomaliOnly) {
       data = data.filter((d) => anomaliMap.get(d.no_gardu)?.isAnomali);
@@ -216,7 +228,7 @@ export function useGarduTimeline(noGardu: string | null) {
       const [pgRes, psRes] = await Promise.all([
         supabaseBrowser
           .from("pengukuran_gardu")
-          .select("id,tanggal_pengukuran,kva_trafo,persen_beban,beban_kva,suhu_trafo,total_arus_r,total_arus_s,total_arus_t,total_arus_n,perjurusan,petugas_nama,jenis_pemeliharaan,wo_sent_at")
+          .select("id,tanggal_pengukuran,kva_trafo,persen_beban,beban_kva,suhu_trafo,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,perjurusan,petugas_nama,jenis_pemeliharaan,wo_sent_at")
           .eq("no_gardu", noGardu)
           .order("tanggal_pengukuran", { ascending: false }),
 

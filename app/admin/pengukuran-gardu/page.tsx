@@ -63,10 +63,10 @@ const MONTHS = [
 
 const TABS = [
   { key: "dashboard",      label: "Dashboard",            icon: LayoutDashboard },
+  { key: "data-gardu",     label: "Data Gardu",           icon: Database },
   { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
-  { key: "data-gardu",     label: "Data Gardu",           icon: Database },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -165,6 +165,7 @@ export default function PengukuranGarduPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [amgStatus, setAmgStatus]     = useState<Record<string, "sending" | "ok" | "error">>({});
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [showTable, setShowTable]     = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 1000);
@@ -188,6 +189,11 @@ export default function PengukuranGarduPage() {
     alertGarduIds, penyulangOptions, avgBeban, bebanChartData, penyulangChartData,
     refresh, patchRow, fetchAndPatchRow, deleteRow,
   } = usePengukuranGardu(user);
+
+  // Reset tampilan tabel Realisasi saat filter berubah — paksa user klik "Tampilkan" ulang
+  useEffect(() => {
+    setShowTable(false);
+  }, [filter.month, filter.year, filter.ulp, filter.penyulang]);
 
   type AlertModalKey = "overload" | "underload" | "highCurrent" | "phaseOverload" | "highTemp";
   const [alertModal, setAlertModal] = useState<AlertModalKey | null>(null);
@@ -573,29 +579,54 @@ export default function PengukuranGarduPage() {
                 placeholder="Cari no. gardu, penyulang, alamat..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
-                className="border border-[#1e3552] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                disabled={!showTable}
+                className="border border-[#1e3552] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 disabled:opacity-40 disabled:cursor-not-allowed"
               />
             </div>
-            <p className="text-sm text-[#94a3b8] ml-auto">
-              {loading ? "Memuat..." : `${filteredData.length} gardu`}
-            </p>
-            <button
-              onClick={() =>
-                downloadXlsx(
-                  filteredData,
-                  `Pengukuran_Gardu_${filter.month === 0 ? "Semua" : `${MONTHS[filter.month - 1]}_${filter.year}`}.xlsx`
-                )
-              }
-              disabled={filteredData.length === 0}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
-            >
-              <Download size={14} />
-              Download XLSX
-            </button>
+            {showTable && (
+              <p className="text-sm text-[#94a3b8]">
+                {loading ? "Memuat..." : `${filteredData.length} gardu`}
+              </p>
+            )}
+            <div className="flex items-center gap-2 ml-auto">
+              {showTable && (
+                <button
+                  onClick={() =>
+                    downloadXlsx(
+                      filteredData,
+                      `Pengukuran_Gardu_${filter.month === 0 ? "Semua" : `${MONTHS[filter.month - 1]}_${filter.year}`}.xlsx`
+                    )
+                  }
+                  disabled={filteredData.length === 0}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
+                >
+                  <Download size={14} />
+                  Download XLSX
+                </button>
+              )}
+              {!showTable && (
+                <button
+                  onClick={() => setShowTable(true)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                >
+                  <TableProperties size={14} />
+                  Tampilkan Data
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Empty state — belum ditampilkan */}
+          {!showTable && (
+            <div className="flex flex-col items-center gap-2 py-16 text-[#475569]">
+              <TableProperties size={32} className="opacity-40" />
+              <p className="text-sm">Data pengukuran belum ditampilkan.</p>
+              <p className="text-xs text-[#475569]">Atur filter periode di atas, lalu klik <strong className="text-[#94a3b8]">Tampilkan Data</strong>.</p>
+            </div>
+          )}
+
           {/* Table */}
-          <div className="overflow-x-auto">
+          {showTable && <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-[#0a2a26]">
@@ -680,10 +711,10 @@ export default function PengukuranGarduPage() {
                 )}
               </tbody>
             </table>
-          </div>
+          </div>}
 
           {/* Pagination */}
-          {totalPages > 1 && (
+          {showTable && totalPages > 1 && (
             <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
               <p className="text-xs text-[#94a3b8]">Halaman {page} dari {totalPages} · {filteredData.length} gardu</p>
               <div className="flex items-center gap-2">

@@ -4,6 +4,7 @@ import { X, Zap, Wrench, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useGarduTimeline, type GarduLatestState, type TimelineEvent } from "../_hooks/useGarduStatus";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import { HIGH_TEMP_C, OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
+import type { JurusanData } from "../_hooks/usePengukuranGardu";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -22,10 +23,19 @@ function BebanBar({ pct }: { pct: number }) {
   const barCls = pct >= OVERLOAD_PCT ? "bg-red-500" : pct >= 60 ? "bg-amber-500" : "bg-green-500";
   return (
     <div className="flex items-center gap-2">
-      <div className="w-24 bg-[#0a1628] rounded-full h-1.5">
+      <div className="w-28 bg-[#0a1628] rounded-full h-1.5">
         <div className={`h-1.5 rounded-full ${barCls}`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
       <span className={`text-sm font-bold ${pctCls(pct)}`}>{Math.round(pct)}%</span>
+    </div>
+  );
+}
+
+function DataItem({ label, value, cls }: { label: string; value: React.ReactNode; cls?: string }) {
+  return (
+    <div>
+      <p className="text-[10px] uppercase tracking-wide text-[#475569] mb-1">{label}</p>
+      <div className={`text-sm font-mono ${cls ?? "text-[#94a3b8]"}`}>{value}</div>
     </div>
   );
 }
@@ -40,24 +50,34 @@ interface Props {
 
 // ── Event Cards ───────────────────────────────────────────────────────────────
 
-function PengukuranCard({ ev, settings }: { ev: Extract<TimelineEvent, { type: "pengukuran" }>; settings: AnomalySettings }) {
+function PengukuranCard({ ev, settings }: {
+  ev: Extract<TimelineEvent, { type: "pengukuran" }>;
+  settings: AnomalySettings;
+}) {
   const anomali = detectAnomali(ev, settings);
   const highTemp = ev.suhu_trafo > HIGH_TEMP_C;
+  const hasTeg = ev.total_teg_rn || ev.total_teg_sn || ev.total_teg_tn;
+  const perjurusanEntries = Object.entries(
+    (ev.perjurusan ?? {}) as Record<string, JurusanData>
+  ).filter(([, jur]) => jur?.arus);
 
   return (
     <div className="relative pl-8">
-      {/* Timeline dot */}
       <div className="absolute left-0 top-3 w-6 h-6 rounded-full bg-[#00897B]/20 border-2 border-[#00897B] flex items-center justify-center">
         <Zap size={11} className="text-[#5eead4]" />
       </div>
 
       <div className="bg-[#0d1b2a] rounded-xl border border-[#1e3552] p-4">
-        <div className="flex items-center justify-between mb-3">
+        {/* Card header */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs px-2 py-0.5 rounded-full bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 font-medium">
               Pengukuran
             </span>
             <span className="text-sm font-semibold text-[#e2e8f0]">{fmtDate(ev.date)}</span>
+            {ev.petugas_nama && (
+              <span className="text-xs text-[#475569]">· {ev.petugas_nama}</span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             {anomali.isAnomali && (
@@ -70,40 +90,79 @@ function PengukuranCard({ ev, settings }: { ev: Extract<TimelineEvent, { type: "
                 WO
               </span>
             )}
+            {ev.jenis_pemeliharaan && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-500/30 font-medium truncate max-w-28">
+                {ev.jenis_pemeliharaan}
+              </span>
+            )}
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-xs">
-          <div>
-            <p className="text-[#475569] mb-1">Beban</p>
+        {/* Main data grid — side by side */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Beban */}
+          <div className="col-span-2 md:col-span-1">
+            <p className="text-[10px] uppercase tracking-wide text-[#475569] mb-1.5">% Beban</p>
             <BebanBar pct={ev.persen_beban} />
+            <p className="text-xs text-[#475569] mt-1">{Math.round(ev.beban_kva)} kVA terpakai</p>
           </div>
-          <div>
-            <p className="text-[#475569] mb-1">Suhu Trafo</p>
-            <span className={`font-semibold ${highTemp ? "text-amber-400" : "text-[#94a3b8]"}`}>
-              {ev.suhu_trafo}°C {highTemp && "⚠"}
-            </span>
-          </div>
-          <div>
-            <p className="text-[#475569] mb-1">Arus R/S/T/N (A)</p>
-            <span className="font-mono text-[#94a3b8]">
-              {Math.round(ev.total_arus_r)}/{Math.round(ev.total_arus_s)}/{Math.round(ev.total_arus_t)}/{Math.round(ev.total_arus_n)}
-            </span>
-          </div>
-          {ev.jenis_pemeliharaan && (
-            <div>
-              <p className="text-[#475569] mb-1">Jenis WO</p>
-              <span className="text-[#94a3b8]">{ev.jenis_pemeliharaan}</span>
-            </div>
-          )}
-          {ev.petugas_nama && (
-            <div>
-              <p className="text-[#475569] mb-1">Petugas</p>
-              <span className="text-[#94a3b8]">{ev.petugas_nama}</span>
-            </div>
+
+          {/* Suhu */}
+          <DataItem
+            label="Suhu Trafo"
+            value={<>{ev.suhu_trafo}°C{highTemp && " ⚠"}</>}
+            cls={highTemp ? "text-amber-400 font-bold" : "text-[#94a3b8]"}
+          />
+
+          {/* Arus total */}
+          <DataItem
+            label="Arus R / S / T / N (A)"
+            value={`${Math.round(ev.total_arus_r)} / ${Math.round(ev.total_arus_s)} / ${Math.round(ev.total_arus_t)} / ${Math.round(ev.total_arus_n)}`}
+          />
+
+          {/* Tegangan */}
+          {hasTeg ? (
+            <DataItem
+              label="Tegangan R / S / T (V)"
+              value={`${ev.total_teg_rn ?? "—"} / ${ev.total_teg_sn ?? "—"} / ${ev.total_teg_tn ?? "—"}`}
+            />
+          ) : (
+            <DataItem label="Tegangan" value="Tidak diukur" cls="text-[#475569]" />
           )}
         </div>
 
+        {/* Perjurusan table */}
+        {perjurusanEntries.length > 0 && (
+          <div className="mt-4 border-t border-[#1e3552] pt-3">
+            <p className="text-[10px] uppercase tracking-wide text-[#475569] mb-2">Data Perjurusan</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="text-[#475569]">
+                    <th className="text-left pr-4 pb-1 font-medium">Jurusan</th>
+                    <th className="text-center px-3 pb-1 font-medium">R (A)</th>
+                    <th className="text-center px-3 pb-1 font-medium">S (A)</th>
+                    <th className="text-center px-3 pb-1 font-medium">T (A)</th>
+                    <th className="text-center px-3 pb-1 font-medium">N (A)</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#1e3552]/50">
+                  {perjurusanEntries.map(([nama, jur]) => (
+                    <tr key={nama}>
+                      <td className="pr-4 py-1.5 font-semibold text-[#e2e8f0]">{nama}</td>
+                      <td className="text-center px-3 py-1.5 font-mono text-[#94a3b8]">{Math.round(jur.arus?.R ?? 0)}</td>
+                      <td className="text-center px-3 py-1.5 font-mono text-[#94a3b8]">{Math.round(jur.arus?.S ?? 0)}</td>
+                      <td className="text-center px-3 py-1.5 font-mono text-[#94a3b8]">{Math.round(jur.arus?.T ?? 0)}</td>
+                      <td className="text-center px-3 py-1.5 font-mono text-[#94a3b8]">{Math.round(jur.arus?.N ?? 0)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* Anomali reasons */}
         {anomali.reasons.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">
             {anomali.reasons.map((r, i) => (
@@ -129,52 +188,61 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
       </div>
 
       <div className="bg-[#0d1b2a] rounded-xl border border-blue-500/20 p-4">
-        <div className="flex items-center justify-between mb-3">
+        {/* Card header */}
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-300 border border-blue-500/30 font-medium">
               Penyeimbangan
             </span>
             <span className="text-sm font-semibold text-[#e2e8f0]">{fmtDate(ev.date)}</span>
+            {ev.petugas_penyeimbang && (
+              <span className="text-xs text-[#475569]">· {ev.petugas_penyeimbang}</span>
+            )}
           </div>
-          {improved ? (
-            <CheckCircle2 size={14} className="text-green-400" />
-          ) : (
-            <AlertTriangle size={14} className="text-amber-400" />
-          )}
+          <div className="flex items-center gap-2">
+            {improved ? (
+              <CheckCircle2 size={14} className="text-green-400" />
+            ) : (
+              <AlertTriangle size={14} className="text-amber-400" />
+            )}
+            {ev.jenis_pemeliharaan && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-500/30 font-medium truncate max-w-28">
+                {ev.jenis_pemeliharaan}
+              </span>
+            )}
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-xs">
+        {/* Sebelum / Sesudah — side by side */}
+        <div className="grid grid-cols-2 gap-6">
           <div>
-            <p className="text-[#475569] mb-1.5">Beban Sebelum → Sesudah</p>
-            <div className="flex items-center gap-2">
-              <span className={`font-bold ${pctCls(ev.beban_pct_before)}`}>{Math.round(ev.beban_pct_before)}%</span>
-              <span className="text-[#475569]">→</span>
-              <span className={`font-bold ${pctCls(ev.beban_pct_after)}`}>{Math.round(ev.beban_pct_after)}%</span>
-              <span className={`text-[10px] font-semibold ${improved ? "text-green-400" : "text-red-400"}`}>
+            <p className="text-[10px] uppercase tracking-wide text-[#475569] mb-2">Sebelum</p>
+            <div className="space-y-2">
+              <div>
+                <BebanBar pct={ev.beban_pct_before} />
+              </div>
+              <p className="text-xs font-mono text-[#94a3b8]">
+                Arus: {Math.round(ev.arus_r_before)}/{Math.round(ev.arus_s_before)}/{Math.round(ev.arus_t_before)} A
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-[#475569] mb-2">
+              Sesudah
+              <span className={`ml-2 font-semibold ${improved ? "text-green-400" : "text-red-400"}`}>
                 ({improved ? "" : "+"}{Math.round(delta)}%)
               </span>
+            </p>
+            <div className="space-y-2">
+              <div>
+                <BebanBar pct={ev.beban_pct_after} />
+              </div>
+              <p className="text-xs font-mono text-[#94a3b8]">
+                Arus: {Math.round(ev.arus_r_after)}/{Math.round(ev.arus_s_after)}/{Math.round(ev.arus_t_after)} A
+              </p>
             </div>
           </div>
-          <div>
-            <p className="text-[#475569] mb-1.5">Arus R/S/T Sebelum → Sesudah</p>
-            <div className="space-y-0.5 font-mono text-[#94a3b8]">
-              <div>{Math.round(ev.arus_r_before)}/{Math.round(ev.arus_s_before)}/{Math.round(ev.arus_t_before)}</div>
-              <div className="text-[#475569]">↓</div>
-              <div>{Math.round(ev.arus_r_after)}/{Math.round(ev.arus_s_after)}/{Math.round(ev.arus_t_after)}</div>
-            </div>
-          </div>
-          {ev.jenis_pemeliharaan && (
-            <div>
-              <p className="text-[#475569] mb-1">Jenis Pekerjaan</p>
-              <span className="text-[#94a3b8]">{ev.jenis_pemeliharaan}</span>
-            </div>
-          )}
-          {ev.petugas_penyeimbang && (
-            <div>
-              <p className="text-[#475569] mb-1">Petugas</p>
-              <span className="text-[#94a3b8]">{ev.petugas_penyeimbang}</span>
-            </div>
-          )}
         </div>
 
         {ev.catatan && (
@@ -196,17 +264,31 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-[#0d1b2a] rounded-2xl border border-[#1e3552] w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl">
+      <div className="bg-[#0d1b2a] rounded-2xl border border-[#1e3552] w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-[#1e3552] shrink-0">
-          <div>
-            <h2 className="text-lg font-bold text-[#e2e8f0]">{gardu.no_gardu}</h2>
-            <p className="text-xs text-[#94a3b8] mt-0.5">
-              {gardu.penyulang ?? "—"} · {gardu.kva_trafo} kVA · {gardu.alamat ?? "—"}
-            </p>
+          <div className="flex items-start gap-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#e2e8f0]">{gardu.no_gardu}</h2>
+              <p className="text-xs text-[#94a3b8] mt-0.5">
+                {gardu.penyulang ?? "—"} · {gardu.kva_trafo} kVA
+              </p>
+            </div>
+            {gardu.alamat && (
+              <div className="hidden md:block border-l border-[#1e3552] pl-4">
+                <p className="text-[10px] uppercase tracking-wide text-[#475569]">Alamat</p>
+                <p className="text-xs text-[#94a3b8] mt-0.5 max-w-60">{gardu.alamat}</p>
+              </div>
+            )}
+            <div className="hidden md:block border-l border-[#1e3552] pl-4">
+              <p className="text-[10px] uppercase tracking-wide text-[#475569]">Kondisi Terkini</p>
+              <p className={`text-sm font-bold mt-0.5 ${pctCls(gardu.persen_beban)}`}>
+                {Math.round(gardu.persen_beban)}%
+              </p>
+            </div>
           </div>
-          <button onClick={onClose} className="text-[#475569] hover:text-[#e2e8f0] transition-colors">
+          <button onClick={onClose} className="text-[#475569] hover:text-[#e2e8f0] transition-colors shrink-0">
             <X size={20} />
           </button>
         </div>
@@ -226,9 +308,7 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
 
           {!loading && events.length > 0 && (
             <div className="relative space-y-4">
-              {/* Vertical line */}
               <div className="absolute left-3 top-3 bottom-3 w-px bg-[#1e3552]" />
-
               {events.map((ev) =>
                 ev.type === "pengukuran" ? (
                   <PengukuranCard key={`pg-${ev.id}`} ev={ev} settings={settings} />
@@ -250,6 +330,7 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
             <span className="w-3 h-3 rounded-full border-2 border-blue-500/60 bg-blue-900/30" />
             Penyeimbangan ({events.filter(e => e.type === "penyeimbangan").length})
           </span>
+          <span className="ml-auto">{events.length} event total</span>
         </div>
       </div>
     </div>
