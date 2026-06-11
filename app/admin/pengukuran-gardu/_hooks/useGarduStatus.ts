@@ -91,9 +91,10 @@ export function useGarduStatus(
   user: CurrentUser,
   ulp: string,
   settings: AnomalySettings = DEFAULT_SETTINGS,
+  enabled = true,
 ) {
   const [rawData, setRawData] = useState<GarduLatestState[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<GarduStatusFilter>({
     search: "", penyulang: "", anomaliOnly: false, kvaTrafo: "", minBeban: 0,
@@ -125,7 +126,7 @@ export function useGarduStatus(
     }
   }, [user.role, user.unit, ulp]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { if (enabled) fetchData(); }, [fetchData, enabled]);
 
   // Anomali detection per gardu — memoized
   const anomaliMap = useMemo(

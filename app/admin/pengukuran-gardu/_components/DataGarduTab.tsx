@@ -87,6 +87,8 @@ interface Props {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function DataGarduTab({ user, ulp, settings }: Props) {
+  const [showTable, setShowTable] = useState(false);
+
   const {
     data, allData, rawData,
     loading, error,
@@ -95,7 +97,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
     penyulangOptions,
     anomaliMap, anomaliCount, penyeimbanganCount, avgBeban,
     refresh,
-  } = useGarduStatus(user, ulp, settings);
+  } = useGarduStatus(user, ulp, settings, showTable);
 
   const [selectedGardu, setSelectedGardu] = useState<GarduLatestState | null>(null);
 
@@ -167,30 +169,51 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           <span className="text-xs text-[#e2e8f0]">Anomali saja</span>
         </label>
 
-        <button
-          onClick={refresh}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[#1e3552] text-[#94a3b8] hover:text-[#5eead4] hover:border-[#00897B]/40 transition-colors"
-        >
-          <RefreshCw size={12} /> Refresh
-        </button>
-
-        <span className="text-xs text-[#475569] ml-auto">{totalFiltered} gardu</span>
+        <div className="flex items-center gap-2 ml-auto">
+          {showTable && (
+            <button
+              onClick={refresh}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[#1e3552] text-[#94a3b8] hover:text-[#5eead4] hover:border-[#00897B]/40 transition-colors"
+            >
+              <RefreshCw size={12} /> Refresh
+            </button>
+          )}
+          {showTable
+            ? <span className="text-xs text-[#475569]">{totalFiltered} gardu</span>
+            : (
+              <button
+                onClick={() => setShowTable(true)}
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white font-semibold hover:opacity-90 transition-opacity"
+              >
+                <Gauge size={12} /> Tampilkan Data
+              </button>
+            )
+          }
+        </div>
       </div>
 
       {/* ── Table ─────────────────────────────────────────────────────────── */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-        {error && (
+        {!showTable && (
+          <div className="flex flex-col items-center gap-2 py-16 text-[#475569]">
+            <Gauge size={32} className="opacity-40" />
+            <p className="text-sm">Data gardu belum ditampilkan.</p>
+            <p className="text-xs">Atur filter di atas, lalu klik <strong className="text-[#94a3b8]">Tampilkan Data</strong>.</p>
+          </div>
+        )}
+
+        {showTable && error && (
           <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{error}</div>
         )}
 
-        {loading && (
+        {showTable && loading && (
           <div className="flex items-center justify-center py-14 gap-2 text-[#94a3b8] text-sm">
             <div className="w-5 h-5 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
             Memuat data gardu...
           </div>
         )}
 
-        {!loading && allData.length === 0 && !error && (
+        {showTable && !loading && allData.length === 0 && !error && (
           <div className="flex flex-col items-center gap-2 py-14 text-[#475569]">
             <Gauge size={28} />
             <p className="text-sm">Belum ada data gardu terpantau.</p>
@@ -198,7 +221,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           </div>
         )}
 
-        {!loading && allData.length > 0 && (
+        {showTable && !loading && allData.length > 0 && (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
