@@ -12,7 +12,7 @@ WITH all_events AS (
 
   -- Semua event pengukuran
   SELECT
-    pg.id             AS source_id,
+    pg.id::text       AS source_id,
     'pengukuran'      AS event_type,
     pg.no_gardu,
     pg.penyulang,
@@ -45,7 +45,7 @@ WITH all_events AS (
   --   nilai yang BERUBAH   → pakai nilai after dari penyeimbangan_gardu
   --   nilai yang TIDAK BERUBAH → inherit dari pengukuran asal (join via pengukuran_id)
   SELECT
-    ps.id             AS source_id,
+    ps.id::text       AS source_id,
     'penyeimbangan'   AS event_type,
     ps.no_gardu,
     ps.penyulang,
