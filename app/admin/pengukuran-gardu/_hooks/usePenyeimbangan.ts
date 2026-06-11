@@ -165,24 +165,8 @@ export function usePenyeimbangan(ulp: string) {
 
       if (insertErr) throw insertErr;
 
-      // 2. Update pengukuran_gardu dengan data baru (tanggal_pengukuran tidak berubah)
-      const { error: updateErr } = await supabaseBrowser
-        .from("pengukuran_gardu")
-        .update({
-          total_arus_r:   input.arusRAfter,
-          total_arus_s:   input.arusSAfter,
-          total_arus_t:   input.arusTAfter,
-          total_arus_n:   input.arusNAfter,
-          total_teg_rn:   input.tegRNAfter,
-          total_teg_sn:   input.tegSNAfter,
-          total_teg_tn:   input.tegTNAfter,
-          beban_kva:      bebanKvaAfter,
-          persen_beban:   bebanPctAfter,
-          perjurusan:     input.perjurusanAfter,
-        })
-        .eq("id", row.id);
-
-      if (updateErr) throw updateErr;
+      // pengukuran_gardu TIDAK di-update — data historis pengukuran harus immutable.
+      // Kondisi terkini gardu dibaca dari gardu_latest_state view (merge pengukuran + penyeimbangan).
 
       await fetchData();
       return null;

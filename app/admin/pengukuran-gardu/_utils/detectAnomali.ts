@@ -4,7 +4,7 @@ import type { JurusanData } from "../_hooks/usePengukuranGardu";
 export interface AnomalyRow {
   kva_trafo: number;
   persen_beban: number;
-  suhu_trafo: number;
+  suhu_trafo: number | null;  // null untuk event penyeimbangan (tidak ukur suhu)
   perjurusan?: Record<string, JurusanData> | null;
   total_arus_r: number;
   total_arus_s: number;
@@ -67,8 +67,8 @@ export function detectAnomali(
     }
   }
 
-  // 2. Suhu trafo
-  if (settings.max_suhu_trafo_c !== null) {
+  // 2. Suhu trafo — skip jika null (event penyeimbangan tidak ukur suhu)
+  if (settings.max_suhu_trafo_c !== null && row.suhu_trafo != null) {
     if (row.suhu_trafo > settings.max_suhu_trafo_c) {
       reasons.push(`Suhu ${row.suhu_trafo}°C (>${settings.max_suhu_trafo_c}°C)`);
     } else {
