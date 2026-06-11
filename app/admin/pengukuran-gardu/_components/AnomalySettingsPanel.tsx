@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { ChevronDown, SlidersHorizontal, Save, RotateCcw, CheckCircle2 } from "lucide-react";
 import type { AnomalySettings } from "../_utils/detectAnomali";
 
@@ -190,7 +190,13 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
           }`}
           style={active ? { background: KVA_COLOR } : undefined}
         >
-          {active ? `${minV}–${maxV} kVA` : "—"}
+          {active
+            ? minValue !== null && maxValue !== null
+              ? `${minV}–${maxV} kVA`
+              : minValue !== null
+              ? `≥${minV} kVA`
+              : `≤${maxV} kVA`
+            : "—"}
         </div>
       </div>
 
@@ -287,22 +293,11 @@ export default function AnomalySettingsPanel({
   const [draft, setDraft] = useState<AnomalySettings>(settings);
   const [dirty, setDirty] = useState(false);
 
-  const syncDraft = useCallback((s: AnomalySettings) => {
-    setDraft(s);
-    setDirty(false);
-  }, []);
-
-  // Sync draft ketika settings dari luar berubah (fetch ulang)
-  if (!dirty && (
-    draft.max_beban_trafo_pct !== settings.max_beban_trafo_pct ||
-    draft.max_arus_jurusan_a  !== settings.max_arus_jurusan_a  ||
-    draft.max_unbalance_pct   !== settings.max_unbalance_pct   ||
-    draft.max_suhu_trafo_c    !== settings.max_suhu_trafo_c    ||
-    draft.min_kva_trafo       !== settings.min_kva_trafo       ||
-    draft.max_kva_trafo       !== settings.max_kva_trafo
-  )) {
-    syncDraft(settings);
-  }
+  // Sync draft ketika settings dari luar berubah (fetch ulang) — hanya jika belum ada perubahan lokal
+  useEffect(() => {
+    if (!dirty) setDraft(settings);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.max_beban_trafo_pct, settings.max_arus_jurusan_a, settings.max_unbalance_pct, settings.max_suhu_trafo_c, settings.min_kva_trafo, settings.max_kva_trafo, dirty]);
 
   function patchDraft(key: keyof AnomalySettings, v: number | null) {
     setDraft((prev) => ({ ...prev, [key]: v }));

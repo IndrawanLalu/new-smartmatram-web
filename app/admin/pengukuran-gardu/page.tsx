@@ -46,7 +46,7 @@ import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
 import { useAnomalySettings } from "./_hooks/useAnomalySettings";
-import { detectAnomali, hasActiveCriteria } from "./_utils/detectAnomali";
+import { detectAnomali, hasActiveCriteria, hasThresholdCriteria } from "./_utils/detectAnomali";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -201,7 +201,9 @@ export default function PengukuranGarduPage() {
     reset: resetSettings,
   } = useAnomalySettings(activeUlp);
 
-  const activeCriteria = hasActiveCriteria(anomalySettings);
+  // activeCriteria: hanya true jika ada threshold aktif (bukan sekadar KVA range filter)
+  // KVA-only tidak bisa menghasilkan anomali, jadi jangan tampilkan summary bar
+  const activeCriteria = hasThresholdCriteria(anomalySettings);
 
   // Gardu yang match kriteria anomali dari settings
   const anomaliData = useMemo(

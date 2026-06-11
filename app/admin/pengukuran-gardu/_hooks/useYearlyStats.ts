@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "./usePengukuranGardu";
-import { detectAnomali, hasActiveCriteria, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
+import { detectAnomali, hasThresholdCriteria, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -31,7 +31,8 @@ export function useYearlyStats(
   const [stats, setStats] = useState<MonthStat[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const useDynamic = hasActiveCriteria(settings);
+  // useDynamic: hanya aktif jika ada threshold — KVA-only tidak menghasilkan anomali
+  const useDynamic = hasThresholdCriteria(settings);
 
   useEffect(() => {
     const startDate = `${year}-01-01`;
@@ -41,10 +42,10 @@ export function useYearlyStats(
     async function run() {
       setLoading(true);
       try {
-        // Fetch full row untuk detectAnomali (butuh perjurusan jika max_arus_jurusan aktif)
+        // Fetch kolom yang dipakai — perjurusan dibutuhkan untuk detectAnomali arus jurusan
         let pgQuery = supabaseBrowser
           .from("pengukuran_gardu")
-          .select("*")
+          .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t")
           .gte("tanggal_pengukuran", startDate)
           .lt("tanggal_pengukuran", endDate);
         if (unitFilter) pgQuery = pgQuery.eq("petugas_unit", unitFilter);

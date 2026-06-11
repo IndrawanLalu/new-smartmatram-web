@@ -1,4 +1,15 @@
-import type { PengukuranGardu, JurusanData } from "../_hooks/usePengukuranGardu";
+import type { JurusanData } from "../_hooks/usePengukuranGardu";
+
+// Kolom minimum yang dibutuhkan detectAnomali — superset PengukuranGardu tetap kompatibel
+export interface AnomalyRow {
+  kva_trafo: number;
+  persen_beban: number;
+  suhu_trafo: number;
+  perjurusan?: Record<string, JurusanData> | null;
+  total_arus_r: number;
+  total_arus_s: number;
+  total_arus_t: number;
+}
 
 export interface AnomalySettings {
   max_beban_trafo_pct: number | null;  // NULL = kriteria nonaktif
@@ -32,7 +43,7 @@ export function calcUnbalancePct(r: number, s: number, t: number): number {
 }
 
 export function detectAnomali(
-  row: PengukuranGardu,
+  row: AnomalyRow,
   settings: AnomalySettings
 ): AnomalyResult {
   const reasons: string[] = [];
@@ -95,14 +106,18 @@ export function detectAnomali(
   return { isAnomali: reasons.length > 0 && failed.length === 0, reasons };
 }
 
-// Apakah setidaknya satu kriteria aktif
-export function hasActiveCriteria(s: AnomalySettings): boolean {
+// Apakah setidaknya satu kriteria threshold aktif (untuk menentukan apakah anomali bisa terdeteksi)
+// KVA range TIDAK dihitung — ia adalah filter scope, bukan trigger anomali
+export function hasThresholdCriteria(s: AnomalySettings): boolean {
   return (
     s.max_beban_trafo_pct !== null ||
     s.max_arus_jurusan_a  !== null ||
     s.max_unbalance_pct   !== null ||
-    s.max_suhu_trafo_c    !== null ||
-    s.min_kva_trafo       !== null ||
-    s.max_kva_trafo       !== null
+    s.max_suhu_trafo_c    !== null
   );
+}
+
+// Apakah setidaknya satu kriteria aktif (threshold ATAU KVA range)
+export function hasActiveCriteria(s: AnomalySettings): boolean {
+  return hasThresholdCriteria(s) || s.min_kva_trafo !== null || s.max_kva_trafo !== null;
 }

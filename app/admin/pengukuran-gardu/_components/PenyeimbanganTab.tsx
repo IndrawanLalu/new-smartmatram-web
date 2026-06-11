@@ -123,6 +123,19 @@ export default function PenyeimbanganTab({
     [latestData, filterWoJenis]
   );
 
+  // Memoize detectAnomali results — hindari hitung ulang tiap render
+  const anomaliBelumWoMap = useMemo(
+    () => new Map(anomaliBelumWo.map((row) => [row.id, detectAnomali(row, settings)])),
+    [anomaliBelumWo, settings]
+  );
+
+  const anomaliSudahWoMap = useMemo(
+    () => hasActiveCriteria
+      ? new Map(anomaliSudahWo.map((row) => [row.id, detectAnomali(row, settings)]))
+      : new Map<string, ReturnType<typeof detectAnomali>>(),
+    [anomaliSudahWo, settings, hasActiveCriteria]
+  );
+
   // Search gardu untuk catat penyeimbangan manual
   const searchResults = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -282,7 +295,7 @@ export default function PenyeimbanganTab({
                 </thead>
                 <tbody className="divide-y divide-[#1e3552]">
                   {anomaliBelumWo.map((row, idx) => {
-                    const { reasons } = detectAnomali(row, settings);
+                    const { reasons } = anomaliBelumWoMap.get(row.id) ?? { reasons: [] };
                     return (
                       <tr key={row.id} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
                         <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{idx + 1}</td>
@@ -351,6 +364,12 @@ export default function PenyeimbanganTab({
               Download XLSX
             </button>
           </div>
+          {anomaliSudahWo.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-[#475569]">
+              <ClipboardX size={24} className="text-[#475569]/50" />
+              <p className="text-sm">Tidak ada gardu dengan jenis {filterWoJenis}</p>
+            </div>
+          ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm whitespace-nowrap">
               <thead>
@@ -372,7 +391,7 @@ export default function PenyeimbanganTab({
               <tbody className="divide-y divide-[#1e3552]">
                 {anomaliSudahWo.map((row, i) => {
                   const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
-                  const anomResult = hasActiveCriteria ? detectAnomali(row, settings) : null;
+                  const anomResult = anomaliSudahWoMap.get(row.id) ?? null;
                   return (
                     <tr key={row.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
                       <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
@@ -431,6 +450,7 @@ export default function PenyeimbanganTab({
               </tbody>
             </table>
           </div>
+          )}
         </div>
       ) : null}
 

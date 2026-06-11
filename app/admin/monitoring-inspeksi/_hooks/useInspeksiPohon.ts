@@ -89,6 +89,10 @@ export function useInspeksiPohon(user: CurrentUser) {
         .order("tgl_inspeksi", { ascending: false })
         .order("created_at", { ascending: false });
 
+      // Push date filter ke DB — hindari full table scan
+      if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
+      if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);
+
       if (!canSeeAllUnits(user.role) && user.unit) {
         query = query.eq("ulp", user.unit);
       }
@@ -126,7 +130,7 @@ export function useInspeksiPohon(user: CurrentUser) {
     } finally {
       setLoading(false);
     }
-  }, [user.role, user.unit]);
+  }, [user.role, user.unit, filter.startDate, filter.endDate]);
 
   useEffect(() => {
     fetchData();
@@ -274,12 +278,7 @@ export function useInspeksiPohon(user: CurrentUser) {
   const filteredData = useMemo(() => {
     let data = rawData;
 
-    if (filter.startDate) {
-      data = data.filter((d) => (d.tgl_inspeksi ?? "") >= filter.startDate);
-    }
-    if (filter.endDate) {
-      data = data.filter((d) => (d.tgl_inspeksi ?? "") <= filter.endDate);
-    }
+    // startDate/endDate sudah difilter di DB (lihat fetchData)
     if (filter.status) {
       data = data.filter((d) => d.status === filter.status);
     }

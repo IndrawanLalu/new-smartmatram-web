@@ -353,7 +353,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "", selectedDate?
           (() => {
             let q = supabaseBrowser
               .from("inspeksi")
-              .select("*")
+              .select("id,category,deskripsi,temuan,status,lokasi,ulp,penyulang,inspektor,nama_inspektor,eksekutor,team_name,keterangan,tgl_inspeksi,tgl_eksekusi,created_at,updated_at")
               .or(
                 `tgl_inspeksi.eq.${yStr},tgl_eksekusi.eq.${yStr},` +
                 `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`
@@ -367,7 +367,7 @@ export function useMorningBrief(user: CurrentUser, filterUlp = "", selectedDate?
           (() => {
             let q = supabaseBrowser
               .from("inspeksi_pohon")
-              .select("*")
+              .select("id,deskripsi,eksekutor,petugas,inspektor,team_name,keterangan,penyulang,lokasi,ulp,status,category,jenis_pohon,tinggi_pohon,jarak_ke_jaringan,tingkat_risiko,prediksi_inspektur,tindakan_rekomendasi,tgl_inspeksi,tgl_eksekusi,created_at,updated_at")
               .or(
                 `tgl_inspeksi.eq.${yStr},tgl_eksekusi.eq.${yStr},` +
                 `and(updated_at.gte.${wibStartUtc(yStr)},updated_at.lt.${wibStartUtc(nextDayStr)},tgl_eksekusi.is.null)`

@@ -128,14 +128,18 @@ export function useOverloadMonitor(bulan: number, tahun: number, ulp: string) {
     setLoading(true);
     setError(null);
     try {
-      // Ambil SEMUA data historis s.d. akhir bulan yang dipilih
-      // (tidak dibatasi startDate — kumulatif dari awal pencatatan)
+      // Ambil data 12 bulan ke belakang s.d. akhir bulan yang dipilih
+      // (kumulatif per minggu — cukup 12 bulan, data lebih lama tidak relevan)
       const bounds = getWeekBounds(tahun, bulan);
       const lastDayOfMonth = bounds[3].endDate; // akhir M4 = akhir bulan
+      const prevYear = bulan === 1 ? tahun - 1 : tahun;
+      const prevMonth = bulan === 1 ? 12 : bulan - 1;
+      const lowerBound = `${prevYear}-${pad(prevMonth)}-01`;
 
       let query = supabaseBrowser
         .from("pengukuran_gardu")
         .select("no_gardu,tanggal_pengukuran,persen_beban,kva_trafo,total_arus_r,total_arus_s,total_arus_t")
+        .gte("tanggal_pengukuran", lowerBound)
         .lte("tanggal_pengukuran", lastDayOfMonth)
         .order("tanggal_pengukuran", { ascending: false });
 

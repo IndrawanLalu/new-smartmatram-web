@@ -242,8 +242,9 @@ export function usePenyeimbangan(ulp: string) {
   }, [fetchData]);
 
   const deleteItem = useCallback(async (id: string) => {
-    await supabaseBrowser.from("penyeimbangan_gardu").delete().eq("id", id);
-    await fetchData();
+    const { error } = await supabaseBrowser.from("penyeimbangan_gardu").delete().eq("id", id);
+    if (error) { await fetchData(); return; }
+    setData((prev) => prev.filter((item) => item.id !== id));
   }, [fetchData]);
 
   return { data, filteredData, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, deleteItem, refresh: fetchData };

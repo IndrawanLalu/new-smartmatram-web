@@ -154,30 +154,34 @@ export function useScoreboard(bulan: number, tahun: number, ulp: string) {
 
   const duplicateToMonth = async (targetBulan: number, targetTahun: number): Promise<string | null> => {
     if (data.length === 0) return "Tidak ada LM untuk disalin.";
-    for (const lm of data) {
-      const { data: newLM, error: lmErr } = await supabaseBrowser
-        .from("lead_measures")
-        .insert({ nama: lm.nama, pic: lm.pic, ulp: lm.ulp, bulan: targetBulan, tahun: targetTahun, komitmen: "", urutan: lm.urutan })
-        .select("id")
-        .single();
-      if (lmErr) return lmErr.message;
-      if (newLM && lm.items.length > 0) {
-        const { error: itemErr } = await supabaseBrowser.from("lead_measure_items").insert(
-          lm.items.map((item) => ({
-            lead_measure_id: newLM.id,
-            nama_item: item.nama_item,
-            satuan: item.satuan,
-            komitmen: item.komitmen ?? "",
-            target_m1: item.target_m1, target_m2: item.target_m2,
-            target_m3: item.target_m3, target_m4: item.target_m4,
-            realisasi_m1: 0, realisasi_m2: 0, realisasi_m3: 0, realisasi_m4: 0,
-            urutan: item.urutan,
-          }))
-        );
-        if (itemErr) return itemErr.message;
-      }
+    try {
+      await Promise.all(data.map(async (lm) => {
+        const { data: newLM, error: lmErr } = await supabaseBrowser
+          .from("lead_measures")
+          .insert({ nama: lm.nama, pic: lm.pic, ulp: lm.ulp, bulan: targetBulan, tahun: targetTahun, komitmen: "", urutan: lm.urutan })
+          .select("id")
+          .single();
+        if (lmErr) throw lmErr;
+        if (newLM && lm.items.length > 0) {
+          const { error: itemErr } = await supabaseBrowser.from("lead_measure_items").insert(
+            lm.items.map((item) => ({
+              lead_measure_id: newLM.id,
+              nama_item: item.nama_item,
+              satuan: item.satuan,
+              komitmen: item.komitmen ?? "",
+              target_m1: item.target_m1, target_m2: item.target_m2,
+              target_m3: item.target_m3, target_m4: item.target_m4,
+              realisasi_m1: 0, realisasi_m2: 0, realisasi_m3: 0, realisasi_m4: 0,
+              urutan: item.urutan,
+            }))
+          );
+          if (itemErr) throw itemErr;
+        }
+      }));
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : "Gagal menyalin";
     }
-    return null;
   };
 
   return { data, loading, error, refresh, addLM, deleteLM, addItem, deleteItem, updateRealisasi, updateKomitmen, updateLM, updateItemMeta, updateItemKomitmen, updateTarget, duplicateToMonth };
