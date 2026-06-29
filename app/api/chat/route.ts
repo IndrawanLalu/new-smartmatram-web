@@ -128,12 +128,11 @@ const TOOLS = [
     type: "function",
     function: {
       name: "cari_standar",
-      description: "Cari isi DOKUMEN PEMBELAJARAN PLN yang sudah di-ingest (buku standar konstruksi, SPLN, materi teknik). Pakai untuk SEMUA pertanyaan soal isi/topik buku atau dokumen tsb — termasuk 'buku X tentang apa', 'isi buku ...', 'menurut buku ...', standar, konstruksi, spesifikasi, jarak aman, teori/materi kelistrikan. Mengembalikan kutipan + sumber (buku & halaman) untuk dikutip. JANGAN jawab pertanyaan seperti ini dari ingatan; selalu pakai alat ini dulu.",
+      description: "Cari isi DOKUMEN PEMBELAJARAN PLN yang sudah di-ingest (buku standar konstruksi, SPLN, materi teknik). Pakai untuk SEMUA pertanyaan soal isi/topik buku atau dokumen tsb — termasuk 'buku X tentang apa', 'isi buku ...', 'menurut buku ...', standar, konstruksi, spesifikasi, jarak aman, teori/materi kelistrikan. Mencari di SEMUA buku & mengembalikan kutipan + sumber (buku & halaman) untuk dikutip. JANGAN jawab pertanyaan seperti ini dari ingatan; selalu pakai alat ini dulu.",
       parameters: {
         type: "object",
         properties: {
-          pertanyaan: { type: "string", description: "Pertanyaan / istilah yang dicari di dokumen." },
-          buku: { type: "string", description: "Batasi ke buku tertentu (opsional, mis. 'PLN buku 2')." },
+          pertanyaan: { type: "string", description: "Pertanyaan / istilah / topik yang dicari di dokumen." },
         },
         required: ["pertanyaan"],
       },
@@ -377,15 +376,15 @@ async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang
   };
 }
 
-async function cariStandar(sb: SB, a: { pertanyaan?: string; buku?: string }) {
+async function cariStandar(sb: SB, a: { pertanyaan?: string }) {
   const q = (a.pertanyaan ?? "").trim();
   if (!q) return { error: "pertanyaan kosong" };
   const vec = await embedQuery(q);
-  if (!vec) return { error: "Pencarian dokumen tak tersedia (GEMINI_API_KEY belum diset di server)." };
+  if (!vec) return { error: "Pencarian dokumen tak tersedia (embedding gagal)." };
   const { data, error } = await sb.rpc("match_dokumen", {
     query_embedding: vec,
     match_count: 6,
-    filter_buku: a.buku ?? null,
+    filter_buku: null,
   });
   if (error) return { error: error.message };
   const hits = (data ?? []) as { buku: string; halaman: number; konten: string; similarity: number }[];
