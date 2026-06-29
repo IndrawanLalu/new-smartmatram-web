@@ -12,11 +12,18 @@ from __future__ import annotations
 import argparse
 import os
 import re
+import sys
 import time
 from pathlib import Path
 
 import requests
 from pypdf import PdfReader
+
+# Console Windows (cp1252) gagal encode karakter seperti "→". Paksa stdout UTF-8.
+try:
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:  # noqa: BLE001
+    pass
 
 from . import config  # noqa: F401 — memuat .env.local (GEMINI_API_KEY, Supabase)
 from .supabase_client import get_client
@@ -93,7 +100,7 @@ def embed_batch(texts: list[str], key: str) -> list[list[float]]:
 
 def ingest_pdf(path: Path, buku: str, page_offset: int, key: str) -> int:
     client = get_client()
-    print(f"\n📘 {buku}  ({path.name})")
+    print(f"\n[BUKU] {buku}  ({path.name})")
 
     # Hapus data lama buku ini agar idempoten.
     client.table("dokumen_chunks").delete().eq("buku", buku).execute()
@@ -143,7 +150,7 @@ def main() -> None:
     for pdf in pdfs:
         buku = args.buku if (args.buku and len(pdfs) == 1) else pdf.stem
         total += ingest_pdf(pdf, buku, args.page_offset, key)
-    print(f"\n✅ Selesai. {total} potongan dari {len(pdfs)} dokumen masuk ke dokumen_chunks.")
+    print(f"\n[SELESAI] {total} potongan dari {len(pdfs)} dokumen masuk ke dokumen_chunks.")
 
 
 if __name__ == "__main__":
