@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { fetchSheetData } from "@/lib/sheets";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
@@ -57,6 +58,7 @@ function systemPrompt(): string {
 - Setelah dapat hasil alat, rangkum jadi jawaban natural. Sebutkan angkanya. Jika data kosong, katakan apa adanya.
 - PENTING: gunakan PERSIS nama penyulang & ULP dari hasil alat. JANGAN mengarang/menebak ULP suatu penyulang — kalau hasil alat tidak menyebut ULP-nya, jangan tulis ULP-nya.
 - "risiko/prediksi/besok" → pakai alat risiko_besok. "terbanyak/sering/sudah terjadi" → top_penyulang/statistik_gangguan.
+- "gardu/beban/overload/suhu/alamat/lokasi gardu" → pakai alat data_gardu. Jika hasil punya maps_url, sertakan link Google Maps itu di jawaban.
 - ULP yang valid: AMPENAN, CAKRANEGARA, GERUNG, TANJUNG.`;
 }
 
@@ -101,6 +103,24 @@ const TOOLS = [
       parameters: { type: "object", properties: {} },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "data_gardu",
+      description: "Info & beban gardu distribusi (kondisi TERKINI). Bisa cari gardu tertentu (no_gardu), filter per ULP/penyulang, atau yang overload/suhu tinggi. Mengembalikan alamat, persen beban, suhu trafo, daya, tanggal ukur, status WO, dan link Google Maps (maps_url). Pakai utk pertanyaan soal gardu: beban, overload, suhu, alamat, lokasi/peta.",
+      parameters: {
+        type: "object",
+        properties: {
+          no_gardu: { type: "string", description: "Kode gardu spesifik, mis. AM003, MM049 (opsional)." },
+          ulp: { type: "string", description: "AMPENAN/CAKRANEGARA/GERUNG/TANJUNG (opsional)." },
+          penyulang: { type: "string", description: "Nama penyulang (opsional)." },
+          hanya_overload: { type: "boolean", description: "true = hanya gardu beban >= 80%." },
+          hanya_suhu_tinggi: { type: "boolean", description: "true = hanya gardu suhu trafo > 60 derajat C." },
+          limit: { type: "integer", description: "Maksimal baris yang ditampilkan (default 15)." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Helper ──────────────────────────────────────────────────────────────────────
@@ -135,6 +155,23 @@ function normUlp(u?: string): string | null {
   if (!u) return null;
   const up = u.trim().toUpperCase();
   return ULP_VALID.includes(up) ? up : null;
+}
+
+const OVERLOAD_PCT = 80;
+const HIGH_TEMP_C = 60;
+
+// no_gardu → URL Google Maps (kolom "TITIK GARDU" di sheet dataGarduProbis). Cached 5 menit di lib/sheets.
+async function garduMapsMap(): Promise<Map<string, string>> {
+  const map = new Map<string, string>();
+  try {
+    const rows = await fetchSheetData("dataGarduProbis", "A:Z");
+    for (const r of rows) {
+      const kode = (r["NO GARDU"] ?? "").trim().toUpperCase();
+      const titik = (r["TITIK GARDU"] ?? "").trim();
+      if (kode && /^https?:\/\//.test(titik)) map.set(kode, titik);
+    }
+  } catch { /* sheet gagal → jalan tanpa koordinat presisi */ }
+  return map;
 }
 
 // ── Eksekutor alat ──────────────────────────────────────────────────────────────
@@ -205,11 +242,56 @@ async function risikoBesok(sb: SB) {
   };
 }
 
+async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang?: string; hanya_overload?: boolean; hanya_suhu_tinggi?: boolean; limit?: number }) {
+  const ulp = normUlp(a.ulp);
+  const limit = Math.min(Math.max(a.limit ?? 15, 1), 50);
+  let q = sb.from("gardu_latest_state")
+    .select("no_gardu, alamat, penyulang, petugas_unit, persen_beban, suhu_trafo, kva_trafo, event_date, wo_sent_at", { count: "exact" });
+  if (a.no_gardu) q = q.ilike("no_gardu", a.no_gardu.trim());
+  if (ulp) q = q.eq("petugas_unit", ulp);
+  if (a.penyulang) q = q.ilike("penyulang", `%${a.penyulang.trim()}%`);
+  if (a.hanya_overload) q = q.gte("persen_beban", OVERLOAD_PCT);
+  if (a.hanya_suhu_tinggi) q = q.gt("suhu_trafo", HIGH_TEMP_C);
+  const { data, count, error } = await q.order("persen_beban", { ascending: false }).limit(limit);
+  if (error) return { error: error.message };
+
+  const rows = (data ?? []) as Record<string, unknown>[];
+  const maps = await garduMapsMap();
+  const gardu = rows.map((r) => {
+    const kode = String(r.no_gardu ?? "").toUpperCase();
+    const alamat = (r.alamat as string) ?? null;
+    const beban = r.persen_beban as number | null;
+    return {
+      no_gardu: r.no_gardu,
+      alamat,
+      penyulang: r.penyulang,
+      ulp: r.petugas_unit,
+      persen_beban: beban != null ? Math.round(beban * 10) / 10 : null,
+      suhu_trafo: r.suhu_trafo,
+      daya_kva: r.kva_trafo,
+      tanggal_ukur: r.event_date,
+      status_wo: r.wo_sent_at ? "sudah di-WO" : "belum di-WO",
+      maps_url: maps.get(kode)
+        ?? (alamat ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(alamat)}` : null),
+    };
+  });
+  return {
+    filter: {
+      no_gardu: a.no_gardu ?? null, ulp: ulp ?? "semua ULP", penyulang: a.penyulang ?? null,
+      overload: !!a.hanya_overload, suhu_tinggi: !!a.hanya_suhu_tinggi,
+    },
+    total_cocok: count ?? gardu.length,
+    ditampilkan: gardu.length,
+    gardu,
+  };
+}
+
 async function runTool(name: string, args: Record<string, unknown>, sb: SB): Promise<unknown> {
   try {
     if (name === "statistik_gangguan") return await statistikGangguan(sb, args);
     if (name === "top_penyulang") return await topPenyulang(sb, args);
     if (name === "risiko_besok") return await risikoBesok(sb);
+    if (name === "data_gardu") return await dataGardu(sb, args);
     return { error: `alat tidak dikenal: ${name}` };
   } catch (e) {
     return { error: (e as Error).message };
