@@ -69,7 +69,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "statistik_gangguan",
-      description: "Jumlah gangguan penyulang yang SUDAH TERJADI (data historis), bisa difilter tahun, bulan, dan ULP. Mengembalikan total + rincian per ULP.",
+      description: "Gangguan penyulang yang SUDAH TERJADI (data historis), filter tahun/bulan/ULP. Mengembalikan total + rincian per ULP + rincian per PENYEBAB. Bila difilter ULP + bulan, juga mengembalikan DAFTAR kejadian (penyulang, tanggal, penyebab). Pakai untuk pertanyaan 'berapa gangguan' DAN 'penyebab gangguan'.",
       parameters: {
         type: "object",
         properties: {
@@ -220,15 +220,34 @@ async function statistikGangguan(sb: SB, a: { tahun?: number; bulan?: number; ul
   const tahun = a.tahun ?? new Date().getFullYear();
   const rng = dateRange(tahun, a.bulan);
   const ulp = normUlp(a.ulp);
-  const rows = await fetchAll(sb, "ml_outage_events", "ulp, tgl_gangguan", (q) => {
+  const rows = await fetchAll(sb, "ml_outage_events", "ulp, penyulang, tgl_gangguan, penyebab, predicted_cause", (q) => {
     let x = q;
     if (rng) x = x.gte("tgl_gangguan", rng.from).lt("tgl_gangguan", rng.to);
     if (ulp) x = x.eq("ulp", ulp);
     return x;
   });
   const perUlp: Record<string, number> = {};
-  for (const r of rows) perUlp[r.ulp ?? "?"] = (perUlp[r.ulp ?? "?"] ?? 0) + 1;
-  return { periode: rng?.label ?? `tahun ${tahun}`, ulp_filter: ulp ?? "semua ULP", total: rows.length, per_ulp: perUlp };
+  const perPenyebab: Record<string, number> = {};
+  for (const r of rows) {
+    perUlp[r.ulp ?? "?"] = (perUlp[r.ulp ?? "?"] ?? 0) + 1;
+    const cause = (r.predicted_cause as string) || (r.penyebab as string) || "(belum diketahui)";
+    perPenyebab[cause] = (perPenyebab[cause] ?? 0) + 1;
+  }
+  // Daftar kejadian (penyulang + tgl + penyebab) hanya bila ULP & bulan spesifik — ringkas & akurat.
+  const detail = ulp && a.bulan
+    ? rows.slice(0, 40).map((r) => ({
+        penyulang: r.penyulang, tgl: r.tgl_gangguan,
+        penyebab: (r.penyebab as string) || (r.predicted_cause as string) || "belum diketahui",
+      }))
+    : undefined;
+  return {
+    periode: rng?.label ?? `tahun ${tahun}`,
+    ulp_filter: ulp ?? "semua ULP",
+    total: rows.length,
+    per_ulp: perUlp,
+    per_penyebab: perPenyebab,
+    ...(detail ? { detail } : {}),
+  };
 }
 
 async function topPenyulang(sb: SB, a: { tahun?: number; bulan?: number; ulp?: string; limit?: number }) {
