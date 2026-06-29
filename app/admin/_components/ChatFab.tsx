@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { MessageCircle, X, Send, Loader2, Bot, Sparkles } from "lucide-react";
+import { MessageCircle, X, Send, Loader2, Bot, Sparkles, RotateCcw } from "lucide-react";
 
 interface Msg {
   role: "user" | "assistant";
@@ -39,7 +39,7 @@ export default function ChatFab() {
     setBusy(true);
     // Watchdog: kalau tak ada data > IDLE_MS (stream macet), batalkan agar tombol tak loading selamanya.
     const ctrl = new AbortController();
-    const IDLE_MS = 45_000;
+    const IDLE_MS = 120_000; // longgar utk model lokal (Ollama CPU) yg lambat di ronde-1
     let idle: ReturnType<typeof setTimeout> | undefined;
     const arm = () => { clearTimeout(idle); idle = setTimeout(() => ctrl.abort(), IDLE_MS); };
     try {
@@ -103,6 +103,16 @@ export default function ChatFab() {
                     : `${status.model} · online`}
               </p>
             </div>
+            {messages.length > 0 && (
+              <button
+                onClick={() => { setMessages([]); setInput(""); }}
+                disabled={busy}
+                title="Mulai chat baru (bersihkan riwayat)"
+                className="p-1 hover:bg-white/20 rounded transition-colors disabled:opacity-40"
+              >
+                <RotateCcw className="w-4 h-4" />
+              </button>
+            )}
             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded transition-colors">
               <X className="w-4 h-4" />
             </button>
