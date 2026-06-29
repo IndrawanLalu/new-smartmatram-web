@@ -55,7 +55,7 @@ function checkUsage(userId: string): string | null {
 function systemPrompt(): string {
   const hari = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   return `Kamu "Asisten Smart Mataram" untuk PLN ULP Mataram/Ampenan. Hari ini: ${hari}.
-- Jawab ringkas, jelas, sopan, Bahasa Indonesia.
+- Jawab jelas & sopan, Bahasa Indonesia. Untuk pertanyaan DATA/angka: ringkas. Untuk pertanyaan DOKUMEN/standar/buku: jawab LENGKAP & terstruktur (boleh beberapa paragraf atau poin), uraikan isi kutipan, jangan satu kalimat.
 - Kamu PUNYA alat untuk mengambil data nyata. Jika user menanyakan data (jumlah gangguan, penyulang terbanyak, risiko besok), WAJIB pakai alat — jangan mengarang angka.
 - Setelah dapat hasil alat, rangkum jadi jawaban natural. Sebutkan angkanya. Jika data kosong, katakan apa adanya.
 - PENTING: gunakan PERSIS nama penyulang & ULP dari hasil alat. JANGAN mengarang/menebak ULP suatu penyulang — kalau hasil alat tidak menyebut ULP-nya, jangan tulis ULP-nya.
@@ -383,14 +383,14 @@ async function cariStandar(sb: SB, a: { pertanyaan?: string }) {
   if (!vec) return { error: "Pencarian dokumen tak tersedia (embedding gagal)." };
   const { data, error } = await sb.rpc("match_dokumen", {
     query_embedding: vec,
-    match_count: 6,
+    match_count: 10,
     filter_buku: null,
   });
   if (error) return { error: error.message };
   const hits = (data ?? []) as { buku: string; halaman: number; konten: string; similarity: number }[];
   if (hits.length === 0) return { info: "Tidak ditemukan bagian dokumen yang relevan." };
   return {
-    catatan: "Jawab HANYA berdasarkan kutipan di bawah. WAJIB sebutkan sumber (buku + halaman). Jika kutipan tak menjawab, katakan tidak ditemukan di dokumen — jangan mengarang.",
+    catatan: "Susun jawaban LENGKAP & terstruktur dari SEMUA kutipan relevan di bawah (uraikan, jangan satu kalimat). WAJIB sebutkan sumber (buku + halaman) di tiap poin penting. Hanya berdasarkan kutipan ini; jika tak menjawab, katakan tidak ditemukan — jangan mengarang.",
     kutipan: hits.map((h) => ({
       buku: h.buku, halaman: h.halaman, isi: h.konten, skor: Math.round(h.similarity * 100) / 100,
     })),
