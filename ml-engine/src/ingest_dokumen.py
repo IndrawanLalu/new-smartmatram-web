@@ -28,20 +28,16 @@ except Exception:  # noqa: BLE001
 from . import config  # noqa: F401 — memuat .env.local (GEMINI_API_KEY, Supabase)
 from .supabase_client import get_client
 
-EMBED_MODEL = "gemini-embedding-001"
-EMBED_DIM = 1536
-EMBED_URL = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBED_MODEL}:batchEmbedContents"
+# Embedding provider: "ollama" (gratis, lokal) default; "gemini" (butuh billing/kuota).
+# HARUS sama dgn yg dipakai chatbot saat query (app/api/chat/route.ts) & dimensi DB.
+EMBED_PROVIDER = os.environ.get("EMBED_PROVIDER", "ollama").lower()
+EMBED_BASE = os.environ.get("EMBED_BASE_URL", "http://127.0.0.1:11434")
+EMBED_MODEL = os.environ.get("EMBED_MODEL", "nomic-embed-text")
+EMBED_DIM = int(os.environ.get("EMBED_DIM", "768"))
 CHUNK_CHARS = 1200          # ~300-400 token per potongan
 CHUNK_OVERLAP = 200
 EMBED_BATCH = 50
 DOCS_DIR_DEFAULT = Path(__file__).resolve().parent.parent / "docs"
-
-
-def _api_key() -> str:
-    key = os.environ.get("GEMINI_API_KEY")
-    if not key:
-        raise RuntimeError("GEMINI_API_KEY tidak ditemukan (set di ../.env.local atau ml-engine/.env).")
-    return key
 
 
 def clean_text(t: str) -> str:
@@ -73,32 +69,44 @@ def chunk_page(text: str) -> list[str]:
     return out
 
 
-def embed_batch(texts: list[str], key: str) -> list[list[float]]:
-    """Embed sekumpulan teks (taskType dokumen). Retry sederhana saat 429."""
-    body = {
-        "requests": [
-            {
-                "model": f"models/{EMBED_MODEL}",
-                "content": {"parts": [{"text": t}]},
-                "taskType": "RETRIEVAL_DOCUMENT",
-                "outputDimensionality": EMBED_DIM,
-            }
-            for t in texts
-        ]
-    }
+def _embed_ollama(texts: list[str]) -> list[list[float]]:
+    # Prefix Nomic untuk dokumen → kualitas retrieval lebih baik.
+    inputs = [f"search_document: {t}" for t in texts]
     for attempt in range(5):
-        r = requests.post(f"{EMBED_URL}?key={key}", json=body, timeout=120)
+        r = requests.post(f"{EMBED_BASE}/api/embed",
+                          json={"model": EMBED_MODEL, "input": inputs}, timeout=300)
+        if r.status_code >= 500:
+            time.sleep(3 * (attempt + 1)); continue
+        r.raise_for_status()
+        return r.json()["embeddings"]
+    raise RuntimeError("Embedding Ollama gagal. Pastikan Ollama jalan & model ter-pull.")
+
+
+def _embed_gemini(texts: list[str]) -> list[list[float]]:
+    key = os.environ.get("GEMINI_API_KEY")
+    if not key:
+        raise RuntimeError("EMBED_PROVIDER=gemini tapi GEMINI_API_KEY tak ada.")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{EMBED_MODEL}:batchEmbedContents?key={key}"
+    body = {"requests": [
+        {"model": f"models/{EMBED_MODEL}", "content": {"parts": [{"text": t}]},
+         "taskType": "RETRIEVAL_DOCUMENT", "outputDimensionality": EMBED_DIM}
+        for t in texts]}
+    for attempt in range(5):
+        r = requests.post(url, json=body, timeout=120)
         if r.status_code == 429:
             wait = 20 * (attempt + 1)
             print(f"    [rate-limit] tunggu {wait}s...")
-            time.sleep(wait)
-            continue
+            time.sleep(wait); continue
         r.raise_for_status()
         return [e["values"] for e in r.json()["embeddings"]]
-    raise RuntimeError("Embedding gagal terus (429). Coba lagi nanti / aktifkan billing.")
+    raise RuntimeError("Embedding Gemini gagal terus (429).")
 
 
-def ingest_pdf(path: Path, buku: str, page_offset: int, key: str) -> int:
+def embed_batch(texts: list[str]) -> list[list[float]]:
+    return _embed_ollama(texts) if EMBED_PROVIDER == "ollama" else _embed_gemini(texts)
+
+
+def ingest_pdf(path: Path, buku: str, page_offset: int) -> int:
     client = get_client()
     print(f"\n[BUKU] {buku}  ({path.name})")
 
@@ -122,7 +130,7 @@ def ingest_pdf(path: Path, buku: str, page_offset: int, key: str) -> int:
     inserted = 0
     for i in range(0, len(rows), EMBED_BATCH):
         part = rows[i : i + EMBED_BATCH]
-        vectors = embed_batch([r["konten"] for r in part], key)
+        vectors = embed_batch([r["konten"] for r in part])
         for r, v in zip(part, vectors):
             r["embedding"] = v
         client.table("dokumen_chunks").insert(part).execute()
@@ -140,7 +148,7 @@ def main() -> None:
     ap.add_argument("--page-offset", type=int, default=0, help="Halaman cetak = halaman PDF - offset")
     args = ap.parse_args()
 
-    key = _api_key()
+    print(f"Embedding: provider={EMBED_PROVIDER} model={EMBED_MODEL} dim={EMBED_DIM}")
     docs = Path(args.dir)
     pdfs = sorted(docs.glob("*.pdf"))
     if args.only:
@@ -152,7 +160,7 @@ def main() -> None:
     total = 0
     for pdf in pdfs:
         buku = args.buku if (args.buku and len(pdfs) == 1) else pdf.stem
-        total += ingest_pdf(pdf, buku, args.page_offset, key)
+        total += ingest_pdf(pdf, buku, args.page_offset)
     print(f"\n[SELESAI] {total} potongan dari {len(pdfs)} dokumen masuk ke dokumen_chunks.")
 
 

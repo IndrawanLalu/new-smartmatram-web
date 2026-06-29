@@ -1,5 +1,5 @@
 -- RAG dokumen pembelajaran (buku/SPLN) → pgvector. Jalankan di Supabase SQL Editor.
--- Embedding: gemini-embedding-001 @ 1536 dim (cosine).
+-- Embedding 768 dim cosine (nomic-embed-text via Ollama, atau gemini-768).
 
 create extension if not exists vector;
 
@@ -9,7 +9,7 @@ create table if not exists public.dokumen_chunks (
   halaman     int,                    -- nomor halaman PDF
   bagian      int,                    -- urutan potongan dalam halaman
   konten      text not null,
-  embedding   vector(1536),
+  embedding   vector(768),
   created_at  timestamptz default now()
 );
 
@@ -20,7 +20,7 @@ create index if not exists idx_dokumen_embedding on public.dokumen_chunks
 
 -- Pencarian top-k potongan termirip. similarity 0..1 (makin besar makin mirip).
 create or replace function public.match_dokumen(
-  query_embedding vector(1536),
+  query_embedding vector(768),
   match_count int default 6,
   filter_buku text default null
 )

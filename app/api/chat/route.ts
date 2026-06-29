@@ -197,20 +197,38 @@ const HIGH_TEMP_C = 60;
 
 // Embedding query utk RAG. Selalu pakai GEMINI_API_KEY (model embedding khusus),
 // terlepas dari provider chat. Harus cocok dgn ingest: gemini-embedding-001 @ 1536.
-const EMBED_KEY = process.env.GEMINI_API_KEY ?? "";
+// Embedding query RAG — HARUS sama dgn yg dipakai saat ingest (ingest_dokumen.py)
+// & dimensi tabel dokumen_chunks. Default Ollama nomic-embed-text (gratis, lokal);
+// utk VPS set EMBED_PROVIDER=gemini + EMBED_MODEL=gemini-embedding-001.
+const EMBED_PROVIDER = process.env.EMBED_PROVIDER ?? "ollama";
+const EMBED_BASE = process.env.EMBED_BASE_URL ?? "http://127.0.0.1:11434";
+const EMBED_MODEL = process.env.EMBED_MODEL ?? "nomic-embed-text";
+const EMBED_DIM = Number(process.env.EMBED_DIM ?? 768);
+
 async function embedQuery(text: string): Promise<number[] | null> {
-  if (!EMBED_KEY) return null;
   try {
+    if (EMBED_PROVIDER === "ollama") {
+      const r = await fetch(`${EMBED_BASE}/api/embed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: EMBED_MODEL, input: `search_query: ${text}` }),
+      });
+      if (!r.ok) return null;
+      const j = (await r.json()) as { embeddings?: number[][] };
+      return j.embeddings?.[0] ?? null;
+    }
+    const key = process.env.GEMINI_API_KEY ?? "";
+    if (!key) return null;
     const r = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${EMBED_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${EMBED_MODEL}:embedContent?key=${key}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "models/gemini-embedding-001",
+          model: `models/${EMBED_MODEL}`,
           content: { parts: [{ text }] },
           taskType: "RETRIEVAL_QUERY",
-          outputDimensionality: 1536,
+          outputDimensionality: EMBED_DIM,
         }),
       },
     );
