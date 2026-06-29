@@ -136,14 +136,17 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dir", default=str(DOCS_DIR_DEFAULT), help="Folder berisi PDF (default ml-engine/docs)")
     ap.add_argument("--buku", default=None, help="Override label buku (kalau hanya 1 PDF)")
+    ap.add_argument("--only", default=None, help="Hanya proses PDF yg namanya mengandung teks ini (mis. 'buku 5')")
     ap.add_argument("--page-offset", type=int, default=0, help="Halaman cetak = halaman PDF - offset")
     args = ap.parse_args()
 
     key = _api_key()
     docs = Path(args.dir)
     pdfs = sorted(docs.glob("*.pdf"))
+    if args.only:
+        pdfs = [p for p in pdfs if args.only.lower() in p.name.lower()]
     if not pdfs:
-        print(f"Tidak ada PDF di {docs}")
+        print(f"Tidak ada PDF cocok di {docs}")
         return
 
     total = 0
