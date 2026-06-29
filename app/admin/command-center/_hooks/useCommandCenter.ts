@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { fetchSheetData } from "@/lib/sheets";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { parseIndonesianDate } from "@/app/admin/dashboard/_hooks/useGangguanData";
@@ -34,6 +34,7 @@ export interface GarduMarker {
   nama: string;
   lat: number;
   lng: number;
+  feeder: string;
 }
 
 // ── Hook ───────────────────────────────────────────────────────────────────────
@@ -45,6 +46,9 @@ export function useCommandCenter(user: CurrentUser | null) {
   const [garduList, setGarduList] = useState<GarduMarker[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const instanceId = useId();
+  const userUnitRef = useRef(user?.unit);
+  useEffect(() => { userUnitRef.current = user?.unit; }, [user?.unit]);
 
   const fetchAll = useCallback(async () => {
     try {
@@ -87,13 +91,19 @@ export function useCommandCenter(user: CurrentUser | null) {
       // 3. Gardu list dari Supabase (untuk map markers)
       const { data: garduData } = await supabaseBrowser
         .from("gardu")
-        .select("kode, nama, lat, lng")
+        .select("kode, nama, lat, lng, feeder")
         .not("lat", "is", null)
         .not("lng", "is", null);
       setGarduList(
         (garduData ?? [])
           .filter((g) => g.lat && g.lng)
-          .map((g) => ({ kode: g.kode, nama: g.nama, lat: Number(g.lat), lng: Number(g.lng) }))
+          .map((g) => ({
+            kode: g.kode,
+            nama: g.nama,
+            lat: Number(g.lat),
+            lng: Number(g.lng),
+            feeder: g.feeder ?? "",
+          }))
       );
 
       setLastRefresh(new Date());
@@ -106,9 +116,40 @@ export function useCommandCenter(user: CurrentUser | null) {
 
   useEffect(() => {
     fetchAll();
-    const interval = setInterval(fetchAll, 60_000);
-    return () => clearInterval(interval);
   }, [fetchAll]);
+
+  // ── Supabase Realtime — inspeksi feed ────────────────────────────────────────
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel(`cc-inspeksi-rt:${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inspeksi" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as unknown as InspeksiItem;
+            if (userUnitRef.current && row.ulp !== userUnitRef.current) return;
+            setInspeksiFeed((prev) => {
+              if (prev.some((r) => r.id === row.id)) return prev;
+              return [row, ...prev].slice(0, 20);
+            });
+            setLastRefresh(new Date());
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as unknown as InspeksiItem;
+            setInspeksiFeed((prev) =>
+              prev.map((r) => r.id === row.id ? { ...r, status: row.status, category: row.category } : r)
+            );
+          } else if (payload.eventType === "DELETE") {
+            const oldId = (payload.old as { id?: string }).id;
+            if (oldId) setInspeksiFeed((prev) => prev.filter((r) => r.id !== oldId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { void supabaseBrowser.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return { gangguanFeed, gangguanAll, inspeksiFeed, garduList, loading, lastRefresh, refresh: fetchAll };
 }

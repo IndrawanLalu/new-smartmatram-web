@@ -109,7 +109,7 @@ export default function AiInsightPanel({ data }: Props) {
   const timeStr = lastRun?.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="flex flex-col bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden h-[50vh] shrink-0">
+    <div className="flex flex-col bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden h-[32vh] shrink-0">
       {/* Header */}
       <div className="bg-linear-to-r from-[#1a1a2e] to-[#16213e] px-3 py-2.5 flex items-center gap-2">
         <div className="flex items-center gap-1.5">

@@ -1,10 +1,11 @@
-import { RefreshCw, Zap, AlertTriangle, ClipboardList, Building2 } from "lucide-react";
+import { RefreshCw, Zap, AlertTriangle, ClipboardList, Building2, ShieldAlert } from "lucide-react";
 
 interface Props {
   gangguanCount: number;
   overloadCount: number;
   urgentCount: number;
   garduCount: number;
+  criticalRiskCount: number;
   lastRefresh: Date | null;
   loading: boolean;
   onRefresh: () => void;
@@ -15,6 +16,7 @@ export default function StatusBar({
   overloadCount,
   urgentCount,
   garduCount,
+  criticalRiskCount,
   lastRefresh,
   loading,
   onRefresh,
@@ -64,6 +66,15 @@ export default function StatusBar({
           value={garduCount}
           color="text-[#5eead4] bg-[#0a2a26] border-teal-200"
         />
+        {criticalRiskCount > 0 && (
+          <StatChip
+            icon={<ShieldAlert size={11} />}
+            label="Penyulang kritis"
+            value={criticalRiskCount}
+            color="text-red-400 bg-red-900/30 border-red-700"
+            pulse
+          />
+        )}
       </div>
 
       {/* Refresh button */}

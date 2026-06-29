@@ -14,6 +14,9 @@ import AiInsightPanel, { type AiInsightData } from "./_components/AiInsightPanel
 import GangguanPerUlpCard from "./_components/GangguanPerUlpCard";
 import GangguanBulanIniCard from "./_components/GangguanBulanIniCard";
 import Top10PenyulangCard from "./_components/Top10PenyulangCard";
+import RiskPanel from "./_components/RiskPanel";
+import PredictiveShowcase from "./_components/PredictiveShowcase";
+import { useFeederRisk } from "./_hooks/useFeederRisk";
 
 export default function CommandCenterPage() {
   const user = useCurrentUser();
@@ -21,6 +24,7 @@ export default function CommandCenterPage() {
     useCommandCenter(user);
   const { latestData, overloadData, highTempData, highCurrentItems, avgBeban, loading: loadingGardu } =
     usePengukuranGardu(user);
+  const { riskData, dateTgl, loading: loadingRisk, criticalCount, waspCount } = useFeederRisk(user);
 
   const now = new Date();
   const currentYear = now.getFullYear();
@@ -54,6 +58,27 @@ export default function CommandCenterPage() {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
       .map(([penyulang, count]) => ({ penyulang, count }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gangguanAll]);
+
+  // Tren gangguan 30 hari terakhir (untuk hero predictive)
+  const riskTrend = useMemo(() => {
+    const DAYS = 30;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const buckets = Array.from({ length: DAYS }, (_, i) => {
+      const d = new Date(today);
+      d.setDate(d.getDate() - (DAYS - 1 - i));
+      return { label: `${d.getDate()}/${d.getMonth() + 1}`, count: 0 };
+    });
+    gangguanAll.forEach((g) => {
+      if (!g.parsedDate) return;
+      const pd = new Date(g.parsedDate);
+      pd.setHours(0, 0, 0, 0);
+      const diff = Math.round((today.getTime() - pd.getTime()) / 86_400_000);
+      if (diff >= 0 && diff < DAYS) buckets[DAYS - 1 - diff].count += 1;
+    });
+    return buckets;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gangguanAll]);
 
@@ -117,6 +142,7 @@ export default function CommandCenterPage() {
           overloadCount={overloadData.length}
           urgentCount={urgentCount}
           garduCount={latestData.length}
+          criticalRiskCount={criticalCount}
           lastRefresh={lastRefresh}
           loading={loading || loadingGardu}
           onRefresh={refresh}
@@ -134,7 +160,7 @@ export default function CommandCenterPage() {
           {/* Kolom Tengah */}
           <div className="flex flex-col gap-3 min-h-0">
             <div className="flex-1 min-h-0">
-              <GarduMapPanel garduList={garduList} latestData={latestData} />
+              <GarduMapPanel garduList={garduList} latestData={latestData} riskData={riskData} />
             </div>
             <BebanStrip latestData={latestData} avgBeban={avgBeban} />
           </div>
@@ -148,6 +174,15 @@ export default function CommandCenterPage() {
                 highCurrentItems={highCurrentItems}
               />
             </div>
+            <div className="shrink-0 h-[28vh]">
+              <RiskPanel
+                riskData={riskData}
+                dateTgl={dateTgl}
+                loading={loadingRisk}
+                criticalCount={criticalCount}
+                waspCount={waspCount}
+              />
+            </div>
             <AiInsightPanel data={aiData} />
           </div>
         </div>
@@ -155,13 +190,29 @@ export default function CommandCenterPage() {
 
       {/* ── BAGIAN BAWAH: Statistik (scroll ke bawah) ─────────────── */}
 
+      {/* Smart Predictive Engine (ML) — showcase di bawah peta */}
+      <div className="flex items-center gap-3 py-1">
+        <div className="flex-1 h-px bg-[#1e3552]" />
+        <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">
+          Smart Predictive Engine (ML)
+        </span>
+        <div className="flex-1 h-px bg-[#1e3552]" />
+      </div>
+      <PredictiveShowcase
+        user={user}
+        riskData={riskData}
+        dateTgl={dateTgl}
+        loadingRisk={loadingRisk}
+        trend={riskTrend}
+      />
+
       {/* Divider */}
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 h-px bg-[#E2E8F0]" />
+        <div className="flex-1 h-px bg-[#1e3552]" />
         <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">
           Statistik Gangguan
         </span>
-        <div className="flex-1 h-px bg-[#E2E8F0]" />
+        <div className="flex-1 h-px bg-[#1e3552]" />
       </div>
 
       {/* Row 1: Gangguan per ULP */}

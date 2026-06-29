@@ -1,0 +1,415 @@
+# PRD — Smart Predictive Maintenance (Modul ML)
+
+**Produk Induk:** SMART-Mataram
+**Fase:** V1.0 — skala penyulang, 4 ULP (AMPENAN, CAKRANEGARA, GERUNG, TANJUNG)
+**Status dokumen:** Revisi 3 — disesuaikan dengan kondisi nyata data & infrastruktur
+**Owner:** Bidang Perencanaan / UP3
+
+---
+
+## 0. Catatan Revisi
+
+PRD ini hasil penyesuaian dengan **kondisi nyata SMART-Mataram** (codebase, data, infrastruktur). Keputusan kunci yang sudah dikonfirmasi:
+
+| Keputusan | Pilihan | Alasan |
+|-----------|---------|--------|
+| Runtime ML engine | **VPS + cron** (Python microservice) | Vercel ditinggalkan; VPS sudah jalan (PM2 + nginx + WA bot). Python native, gratis, full kontrol. |
+| Cakupan V1 | **4 ULP sekaligus** | Inspeksi hanya ~6 bln & tipis untuk 1 ULP; gangguan penyulang justru banyak. 4 ULP memaksimalkan volume & variasi data — kendala utama ML. `ulp` jadi fitur model. |
+| Sumber penyulang & penyebab | **Google Sheets `gangguanPenyulang` (otoritatif)** | Data Sheets yang valid; penyulang di `padam_apkt` masih bisa tidak sesuai. |
+| Sumber pengkaya (enrichment) | **`padam_apkt`** (ENS, jml pelanggan, cause, weather) | Kaya kolom, tapi ditempel ke event Sheets via `ref_gangguan`/soft-match, bukan jadi anchor penyulang. Akan di-backfill ke 2025. |
+| Cuaca historis (training) | **Open-Meteo Archive** (kuantitatif, geo×tanggal) | Kebal masalah salah-penyulang; lebih baik dari kategori "Cerah/Hujan". |
+| Cuaca H+1 (inference) | **Open-Meteo Forecast** | Gratis, tanpa API key. |
+| Pendekatan model | **Baseline transparan → ML** (rule/frekuensi dulu, XGBoost saat data cukup) | Inspeksi tipis & sebagian histori belum lengkap. Baseline jalan hari-1, ML "naik kelas" otomatis tanpa ubah kontrak data/UI. |
+| Prediksi penyebab laten | **Objektif inti V1** (model kedua) | ~30% gangguan berpenyebab "tidak diketahui" — tugas ML menebaknya dari pola cuaca × temuan × historis. |
+
+---
+
+## 1. Ringkasan Eksekutif
+
+Modul Machine Learning terintegrasi pada SMART-Mataram untuk dua hal:
+
+1. **Memprediksi probabilitas gangguan (trip) per penyulang** untuk H+1 (24 jam ke depan), di seluruh 4 ULP, di-refresh tiap malam.
+2. **Menebak penyebab laten** dari ~30% gangguan yang tercatat "tidak diketahui/temporer", berdasarkan korelasi historis cuaca × temuan inspeksi × pola gangguan.
+
+Tidak memakai layanan AI berbayar. V1 memakai **baseline scoring transparan** (rule/frekuensi) yang dirancang **ML-ready** sehingga bisa di-upgrade ke **Traditional ML (XGBoost/RandomForest)** begitu volume data mencukupi — tanpa mengubah kontrak data atau UI.
+
+Nilai inti: tiap pagi SPV Teknik membuka SMART-Mataram dan langsung melihat penyulang **🔴 Kritis / 🟡 Waspada / 🟢 Aman** untuk hari itu, lengkap dengan **alasan**, sehingga regu Yantek/Perabasan diarahkan ke titik paling rawan **sebelum** padam.
+
+---
+
+## 2. Objektif & Non-Goals
+
+### 2.1 Objektif
+1. **Preventif** — peringatan dini probabilitas gangguan per penyulang, di-refresh tiap malam untuk H+1.
+2. **Prioritas eksekusi** — daftar target WO diurutkan berdasarkan kekritisan, bukan urutan lapor.
+3. **Resolusi penyebab (inti)** — menebak penyebab laten ~30% gangguan "tidak diketahui" agar bisa ditindaklanjuti.
+4. **Transparansi** — setiap skor & tebakan bisa dijelaskan ("kenapa merah", "kenapa diduga pohon"), bukan kotak hitam.
+
+### 2.2 Non-Goals (V1)
+- Prediksi level **tiang/koordinat presisi** — V1 hanya **agregasi penyulang**.
+- Optimasi real-time/streaming — V1 **batch harian**.
+- Deep learning / LLM berbayar.
+- Bergantung pada penyulang `padam_apkt` yang belum direkonsiliasi sebagai kebenaran.
+
+---
+
+## 3. Arsitektur & Tech Stack (Kondisi Nyata)
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│ VPS (Ubuntu 22.04 — PM2 + nginx, sudah ada)                       │
+│  ┌────────────────────┐      ┌──────────────────────────────────┐ │
+│  │ Next.js 16 (PM2)   │      │ ml-engine/  (microservice baru)  │ │
+│  │  └ UI badge risiko │      │ Python 3.11 + venv               │ │
+│  └─────────┬──────────┘      │  cron 00:00 WITA → pipeline.py   │ │
+│            │ baca            └───────────────┬──────────────────┘ │
+└────────────┼─────────────────────────────────┼───────────────────┘
+             ▼                                  ▼ UPSERT
+        ┌──────────────────────────────────────────────┐
+        │ Supabase (PostgreSQL)                          │
+        │  • daily_feeder_risk   (output: risk + cause)  │
+        │  • ml_outage_events    (gangguan terkonsolidasi)│
+        │  • penyulang_ref       (geo + metadata)        │
+        │  • weather_daily       (cache cuaca kuantitatif)│
+        │  • ml_run_log          (audit batch)           │
+        └──────────────────────────────────────────────┘
+             ▲ sumber (di-sync, bukan dibaca runtime web)
+        ┌────┴────────────────────────────────────────┐
+        │ Sheets gangguanPenyulang  (OTORITATIF penyulang/penyebab) │
+        │ Supabase padam_apkt       (enrichment via ref_gangguan)   │
+        │ Supabase inspeksi / inspeksi_pohon (temuan terbuka)       │
+        │ Open-Meteo  (Archive=histori, Forecast=H+1)               │
+        └──────────────────────────────────────────────┘
+```
+
+### 3.1 Komponen
+| Komponen | Teknologi | Lokasi |
+|----------|-----------|--------|
+| ML Engine | Python 3.11, Pandas, scikit-learn, XGBoost, `supabase-py`, `requests`, `pyyaml` | `ml-engine/` (folder baru, di luar build Next.js) |
+| Scheduler | `cron` / PM2 cron — `0 16 * * *` UTC = 00:00 WITA | VPS |
+| Cuaca | Open-Meteo Archive + Forecast (no key) | eksternal, gratis |
+| Database | Supabase PostgreSQL | cloud |
+| UI | Next.js 16 (komponen baru di halaman existing) | VPS |
+
+> **TZ:** server VPS kemungkinan UTC → `00:00 WITA = 16:00 UTC` → cron `0 16 * * *`. Verifikasi TZ server; jika sudah Asia/Makassar pakai `0 0 * * *`.
+
+### 3.2 Kenapa microservice terpisah
+Next.js (Node) tidak menjalankan Python; ML engine punya lifecycle sendiri (cron malam) ≠ web server. Folder `ml-engine/` punya `requirements.txt` + venv sendiri, **tidak** ikut `pnpm build`.
+
+---
+
+## 4. Sumber & Konsolidasi Data
+
+### 4.1 Hierarki kebenaran (penting)
+| Atribut | Sumber otoritatif | Catatan |
+|---------|-------------------|---------|
+| **Penyulang** event gangguan | **Sheets `gangguanPenyulang`** | Penyulang `padam_apkt` bisa salah sampai direkonsiliasi. |
+| **Penyebab** gangguan | **Sheets `PENYEBAB GANGGUAN`** | ~30% bernilai "tidak diketahui" → target model penyebab. |
+| Tanggal/jam/durasi | Sheets | |
+| ENS, jml pelanggan, weather kategori, cause/group_cause | `padam_apkt` (enrichment) | Ditempel ke event Sheets via `ref_gangguan` (jsonb) atau soft-match. |
+| **Cuaca kuantitatif** (angin/hujan) | **Open-Meteo** | Archive utk histori, Forecast utk H+1. Key by geo×tanggal — kebal salah-penyulang. |
+| Temuan terbuka per penyulang | `inspeksi`, `inspeksi_pohon` | Hanya ~6 bln histori — lihat §5.5. |
+
+### 4.2 Konsolidasi → `ml_outage_events`
+Job `sync_gangguan.py` (sebelum scoring), idempoten:
+1. **Ingest Sheets** → event kanonik dengan penyulang/penyebab otoritatif, `penyulang_confidence='high'`.
+2. **Ingest padam_apkt**:
+   - Jika ada `ref_gangguan` (link manual ke Sheets) → **merge** sebagai enrichment ke event Sheets terkait.
+   - Jika tidak, coba **soft-match** `(ulp, tgl, penyulang)` → merge bila cocok.
+   - Jika tetap tidak cocok → simpan sebagai event terpisah dengan `penyulang_confidence='low'` (model dapat menurunkan bobot/mengecualikan).
+3. **Dedup** key `(penyulang, tgl_gangguan, jam_padam)`; saat bentrok, pertahankan penyulang/penyebab Sheets + ambil kolom terkaya dari padam_apkt.
+4. Tandai `source ∈ {sheets, padam_apkt, merged}`.
+
+> Saat rekonsiliasi `ref_gangguan` makin lengkap (rencana user), kualitas merge otomatis naik tanpa ubah kode.
+
+### 4.3 Geo penyulang → `penyulang_ref`
+Open-Meteo butuh lat/lng. Tiap penyulang dipetakan ke 1 titik representatif (centroid kecamatan / median koordinat temuan inspeksi). Seed manual sekali untuk **4 ULP** (Tanjung di utara wajib titik sendiri — cuaca beda dari Ampenan).
+
+### 4.4 Cuaca → `weather_daily`
+- **Historis (training):** backfill Open-Meteo **Archive** per `penyulang_ref` × tanggal (angin maks, curah hujan, flag badai). Sekali backfill, lalu inkremental.
+- **H+1 (inference):** Open-Meteo **Forecast** tiap malam.
+- `padam_apkt.weather` (kategori) jadi sinyal sekunder saat event ter-link.
+
+---
+
+## 5. Feature Engineering (per penyulang × per hari)
+
+### 5.1 Fitur Riwayat Gangguan (tulang punggung — histori panjang)
+| Fitur | Definisi |
+|-------|----------|
+| `trip_30d` / `trip_90d` / `trip_365d` | Jumlah gangguan dalam jendela waktu di penyulang |
+| `trip_saat_hujan_rate` | Proporsi gangguan historis penyulang saat hujan/angin kencang |
+| `hari_sejak_trip_terakhir` | Recency gangguan terakhir |
+| `trip_musim_ini` | Gangguan pada musim/bulan yang sama tahun-tahun lalu |
+
+### 5.2 Fitur Cuaca H+1 (Open-Meteo)
+| Fitur | Definisi |
+|-------|----------|
+| `wind_max_kmh` | Prakiraan angin maksimum besok |
+| `precip_mm` | Prakiraan curah hujan |
+| `thunder_flag` | Indikasi badai petir |
+| `musim` | Kemarau / hujan (bulan) |
+
+### 5.3 Fitur Aset / Temuan (sinyal tambahan, kondisi terkini)
+| Fitur | Definisi |
+|-------|----------|
+| `temuan_jaringan_terbuka` | `inspeksi` status ≠ "Selesai" di penyulang |
+| `temuan_pohon_terbuka` | `inspeksi_pohon` status ≠ "Selesai" (ROW) |
+| `temuan_kritis_terbuka` | Subset urgensi tinggi / "Perlu Tindakan" |
+| `umur_temuan_tertua_hari` | Hari sejak temuan terbuka tertua |
+
+### 5.4 Fitur Konteks
+`ulp` (kategori), hari-dalam-minggu, hari libur (opsional).
+
+### 5.5 Catatan penting — inspeksi hanya ~6 bulan
+Fitur §5.3 adalah **kondisi terkini**, hanya tersedia ~6 bln terakhir + live. Untuk **baris training periode 2025**, fitur inspeksi akan **NULL/0**. Maka:
+- Model inti dilatih dari **cuaca × riwayat gangguan** (histori panjang).
+- Fitur inspeksi menambah sinyal terutama untuk **skor live H+1**.
+- Model & pipeline **wajib toleran fitur inspeksi NULL** (imputasi/indikator-missing), bukan error.
+
+---
+
+## 6. Model
+
+Dua model paralel, keduanya berfase **baseline transparan → ML**.
+
+### 6.1 Model A — Risiko Gangguan (skor 0–100)
+**Fase 1 (V1) — Rule-based scoring.** Skor = sigmoid(jumlah berbobot komponen ter-normalisasi):
+```
+risk = 100 * sigmoid(
+    w1*norm(temuan_pohon_terbuka) + w2*norm(temuan_kritis_terbuka)
+  + w3*norm(umur_temuan_tertua_hari)
+  + w4*norm(wind_max_kmh) + w5*norm(precip_mm)
+  + w6*trip_saat_hujan_rate*weather_severity
+  + w7*norm(trip_90d) )
+```
+Tiap komponen langsung jadi **breakdown alasan** (REQ-2.2). Bobot di `config/scoring_weights.yaml` → kalibrasi tanpa ganti kode.
+
+**Fase 2 — ML.** Target biner "trip dalam 24 jam". XGBoost/RandomForest, **temporal split** (latih masa lalu → uji masa depan). Output tetap probabilitas 0–100 → **kontrak `daily_feeder_risk` & UI tidak berubah**. Interpretasi via **feature importance/SHAP**. `model_version` menandai `rule-v1` vs `xgb-vX`.
+
+### 6.2 Model B — Prediksi Penyebab Laten (objektif inti)
+Menebak kategori penyebab untuk ~30% gangguan "tidak diketahui".
+**Fase 1 (V1) — Baseline frekuensi/Bayesian** transparan: P(penyebab | penyulang, musim, cuaca, ada temuan_pohon) dari distribusi historis 70% yang berlabel. Contoh: hujan + ada temuan pohon terbuka → "Pohon (78%)".
+**Fase 2 — Classifier multiclass** (XGBoost) pada subset berlabel → terapkan ke yang unknown. Fitur: cuaca saat kejadian, penyulang, musim, jam, temuan terbuka saat itu.
+Output disimpan sebagai `predicted_cause` + `cause_confidence` di event histori dan di `daily_feeder_risk` (penyebab dominan yang dikhawatirkan untuk H+1).
+
+### 6.3 Gate graduasi ke ML
+- ≥ 12 bulan data di `ml_outage_events` dan ≥ ~150–200 event trip berlabel, dan cuaca historis ter-backfill.
+- Backfill `padam_apkt` ke 2025 (rencana user) mempercepat tercapainya gate ini.
+
+### 6.4 Gemini (opsional, fase lanjut)
+`@google/generative-ai` sudah ada di project (free tier) — disiapkan untuk **reasoning tekstual** penyebab/rekomendasi naratif, bukan untuk skor inti. Bukan V1.
+
+---
+
+## 7. Skema Database Baru (Supabase)
+
+> DDL: `scripts/ml-predictive-schema.sql` (jalankan manual di Supabase SQL Editor).
+
+```sql
+-- 7.1 Output prediksi harian (dibaca UI)
+create table if not exists daily_feeder_risk (
+  id               uuid default gen_random_uuid() primary key,
+  tgl              date not null,                -- tanggal diprediksi (H+1)
+  ulp              text not null,
+  penyulang        text not null,
+  risk_score       numeric(5,2) not null,        -- 0..100
+  risk_level       text not null,                -- 'kritis' | 'waspada' | 'aman'
+  predicted_cause  text,                         -- penyebab dominan yg dikhawatirkan
+  cause_confidence numeric(5,2),                 -- 0..100
+  breakdown        jsonb not null default '{}',  -- {faktor: kontribusi} utk panel detail
+  model_version    text not null,                -- 'rule-v1' | 'xgb-v1' ...
+  generated_at     timestamptz default now(),
+  unique (tgl, penyulang)
+);
+create index on daily_feeder_risk (tgl);
+create index on daily_feeder_risk (ulp, risk_level);
+
+-- 7.2 Histori gangguan terkonsolidasi (sumber pelatihan)
+create table if not exists ml_outage_events (
+  id                  uuid default gen_random_uuid() primary key,
+  ulp                 text,
+  penyulang           text not null,             -- otoritatif dari Sheets
+  penyulang_confidence text default 'high',      -- 'high' | 'low' (padam_apkt blm rekonsiliasi)
+  tgl_gangguan        date not null,
+  jam_padam           time,
+  durasi_jam          numeric(10,4),
+  penyebab            text,                       -- dari Sheets; null/'tidak diketahui' = target Model B
+  predicted_cause     text,                       -- isian Model B utk yg unknown
+  cause_confidence    numeric(5,2),
+  ens                 numeric(12,4),              -- enrichment padam_apkt
+  jml_pelanggan_padam integer,                    -- enrichment padam_apkt
+  weather_cat         text,                       -- enrichment padam_apkt (kategori)
+  source              text,                       -- 'sheets' | 'padam_apkt' | 'merged'
+  raw                 jsonb,
+  created_at          timestamptz default now(),
+  unique (penyulang, tgl_gangguan, jam_padam)
+);
+
+-- 7.3 Geo & metadata penyulang
+create table if not exists penyulang_ref (
+  penyulang text primary key,
+  ulp       text,
+  kecamatan text,
+  lat       double precision,
+  lng       double precision
+);
+
+-- 7.4 Cache cuaca harian (kuantitatif, Open-Meteo)
+create table if not exists weather_daily (
+  id           uuid default gen_random_uuid() primary key,
+  penyulang    text,
+  tgl          date not null,
+  wind_max_kmh numeric(6,2),
+  precip_mm    numeric(6,2),
+  thunder      boolean,
+  kind         text default 'archive',           -- 'archive' | 'forecast'
+  unique (penyulang, tgl)
+);
+
+-- 7.5 Audit batch
+create table if not exists ml_run_log (
+  id          uuid default gen_random_uuid() primary key,
+  run_date    date not null,
+  status      text not null,                      -- 'ok' | 'error'
+  rows_scored integer,
+  duration_ms integer,
+  message     text,
+  created_at  timestamptz default now()
+);
+
+alter table daily_feeder_risk enable row level security;
+create policy "dfr select" on daily_feeder_risk for select to authenticated using (true);
+-- engine memakai SUPABASE_SERVICE_ROLE_KEY → bypass RLS untuk write
+```
+
+---
+
+## 8. Kebutuhan Fungsional
+
+### Fitur 1 — ML Batch Engine (`ml-engine/`)
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-1.1 | **Sync gangguan** — `sync_gangguan.py`: Sheets (otoritatif) + padam_apkt (enrichment via `ref_gangguan`/soft-match) → `ml_outage_events`, idempoten, dedup, flag `penyulang_confidence`. |
+| REQ-1.2 | **Cuaca** — `fetch_weather.py`: Archive (backfill histori) + Forecast H+1 per `penyulang_ref` → `weather_daily`. |
+| REQ-1.3 | **Build features** — `build_features.py`: rakit §5 per penyulang (4 ULP), toleran inspeksi NULL. |
+| REQ-1.4a | **Skor risiko** — `score_risk.py`: `risk_score` + `risk_level` + `breakdown` (rule-v1/model). |
+| REQ-1.4b | **Prediksi penyebab** — `predict_cause.py`: isi `predicted_cause`/`cause_confidence` utk gangguan unknown + penyebab dominan H+1. |
+| REQ-1.5 | **Push hasil** — `push_results.py`: UPSERT `daily_feeder_risk` (key `tgl,penyulang`), tulis `ml_run_log`. |
+| REQ-1.6 | **Idempotensi & fallback** — re-run overwrite, bukan duplikat. Gagal cuaca → skor tanpa cuaca + tanda di `breakdown`. |
+| REQ-1.7 | **Konfigurasi** — bobot & ambang di config, bukan hardcode. |
+
+### Fitur 2 — Visualisasi (Next.js)
+| ID | Kebutuhan |
+|----|-----------|
+| REQ-2.1 | **Indikator risiko** — badge 🔴/🟡/🟢 per penyulang. Ambang: Kritis > 75, Waspada 40–75, Aman < 40. |
+| REQ-2.2 | **Panel detail** — klik penyulang → breakdown dari `breakdown` jsonb ("Angin 30 km/j H+1 + 15 temuan ROW belum dieksekusi"). |
+| REQ-2.3 | **Auto-label penyebab** — gangguan "tidak diketahui" tampil tebakan ("Temporer — Prediksi Sistem: Pohon 85%"). **(V1, objektif inti)** |
+| REQ-2.4 | **Daftar prioritas eksekusi** — tabel penyulang terurut `risk_score` desc untuk regu, dengan faktor pendorong. |
+
+---
+
+## 9. Integrasi UI (Halaman Existing)
+
+| Lokasi | Penambahan |
+|--------|-----------|
+| `/admin/command-center` | Kartu "Risiko Penyulang Hari Ini" — daftar terurut risiko + badge, filter ULP (ikut `buildUnitFilter`). |
+| `/admin/monitoring-inspeksi` (Tab Peta) | Marker diberi warna risiko; popup tampilkan skor & faktor. |
+| `/admin/scoreboard` | Kolom tebakan penyebab pada rekap gangguan (REQ-2.3). |
+| Komponen baru | `RiskBadge.tsx` + `RiskDetailPanel.tsx` di `app/admin/_components/` (reusable). |
+
+Pola wajib proyek tetap: Server Component default, `useMemo` derive, konstanta module-scope, data dibaca sekali & di-pass props. UI bisa fokus validasi Ampenan dulu walau model jalan 4 ULP.
+
+---
+
+## 10. Skenario Pengguna
+
+- **SPV/Manajer Teknik** — pagi hari lihat penyulang merah akibat cuaca ekstrem → arahkan regu untuk patroli/perampalan darurat.
+- **Regu Eksekusi** — daftar prioritas terurut algoritma (paling rawan hari ini), bukan urutan lapor.
+- **UP3** — pantau lintas 4 ULP; filter unit ikut aturan role existing.
+- **Analis/Perencana** — review gangguan "tidak diketahui" yang sudah diberi tebakan penyebab → perbaikan akar masalah.
+
+---
+
+## 11. Operasional & Penjadwalan
+
+| Aspek | Ketentuan |
+|-------|-----------|
+| Jadwal | `0 16 * * *` UTC (= 00:00 WITA); sesuaikan bila TZ server Asia/Makassar. |
+| Eksekusi | crontab/PM2 → `ml-engine/run.sh` → venv → `python -m src.pipeline`. |
+| Logging | tiap run tulis `ml_run_log` + file log lokal (rotasi). |
+| Retrain (fase 2) | terjadwal terpisah (mingguan/bulanan); artifact model di-version. |
+| Env | reuse `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, Sheets API key; Open-Meteo tanpa key. |
+| Deploy | `ml-engine/` ikut repo; setup venv sekali (tambah langkah di `scripts/vps-setup.sh`). |
+
+---
+
+## 12. Metrik Keberhasilan (Berfase)
+
+| Fase | Metrik | Target |
+|------|--------|--------|
+| V1 | Pipeline mengisi `daily_feeder_risk` 4 ULP tiap malam tanpa gagal | ≥ 95% hari sukses |
+| V1 | Beban loading UI tambahan | ~0 (baca pre-computed) |
+| V1 | Recall kualitatif: gangguan nyata pada penyulang ber-status Waspada/Kritis | dipantau mingguan |
+| V1 | Cakupan tebakan penyebab atas gangguan "tidak diketahui" | 100% diberi label + confidence |
+| V1 | % event padam_apkt ter-link ke Sheets (kualitas data) | dipantau, naik seiring rekonsiliasi |
+| Fase 2 | Model A — F1 (temporal test split) | ≥ 0.75 |
+| Fase 2 | Model B — akurasi pada known-cause held-out | dilaporkan; turunkan "unknown" > 50% |
+
+> Target F1 0.75 di **Fase 2** (butuh volume historis yang sedang dilengkapi via backfill padam_apkt 2025). V1 fokus pipeline + nilai preventif + pelabelan penyebab.
+
+---
+
+## 13. Roadmap
+
+```
+Sprint 1  Skema DB + sync (Sheets otoritatif + padam_apkt enrichment) → ml_outage_events
+Sprint 2  fetch_weather (Archive backfill + Forecast) → weather_daily
+Sprint 3  build_features (4 ULP, toleran inspeksi NULL) + score_risk (rule-v1) + push
+Sprint 4  predict_cause (baseline) + REQ-2.3 + cron VPS
+Sprint 5  UI: RiskBadge + RiskDetailPanel + integrasi command-center + daftar prioritas
+─── gate data terpenuhi (dipercepat backfill padam_apkt 2025) ───
+Fase 2    XGBoost (Model A & B) temporal split, SHAP, kalibrasi
+Fase 3    Level tiang/section, reasoning naratif (opsi Gemini), penyempurnaan per-ULP
+```
+
+---
+
+## 14. Risiko & Mitigasi
+
+| Risiko | Mitigasi |
+|--------|----------|
+| Penyulang `padam_apkt` salah | Penyulang di-anchor ke Sheets; padam_apkt hanya enrichment; flag `penyulang_confidence`. |
+| Rekonsiliasi `ref_gangguan` lambat | Soft-match `(ulp,tgl,penyulang)` sebagai jembatan; kualitas merge naik otomatis saat link bertambah. |
+| Inspeksi cuma 6 bln | Diperlakukan fitur kondisi-terkini; model inti dari cuaca×gangguan; toleran NULL. |
+| Histori belum cukup utk ML | Baseline transparan dulu; ML aktif setelah gate; backfill padam_apkt 2025 mempercepat. |
+| Format Sheets berubah | Sync defensif (cek header), validasi, fallback. |
+| Penyulang tanpa geo | `penyulang_ref` seed manual; fallback centroid ULP. |
+| Open-Meteo down saat batch | Skor fallback tanpa cuaca + tanda di `breakdown`; retry. |
+| TZ server salah | Verifikasi TZ VPS; set cron UTC eksplisit. |
+| Cuaca beda antar ULP (Tanjung utara) | Titik geo per-penyulang/ULP, bukan satu titik global. |
+
+---
+
+## 15. Lampiran — Struktur Folder ML Engine
+
+```
+ml-engine/
+  requirements.txt          # pandas, scikit-learn, xgboost, supabase, requests, pyyaml
+  config/
+    scoring_weights.yaml    # bobot rule-based + ambang level
+    penyulang_seed.csv      # seed penyulang_ref 4 ULP
+  src/
+    sync_gangguan.py        # REQ-1.1
+    fetch_weather.py        # REQ-1.2
+    build_features.py       # REQ-1.3
+    score_risk.py           # REQ-1.4a
+    predict_cause.py        # REQ-1.4b
+    push_results.py         # REQ-1.5
+    pipeline.py             # orkestrasi + ml_run_log
+  models/                   # artifact model fase 2 (di-version)
+  run.sh                    # venv → python -m src.pipeline
+  README.md
+```
+
+> `ml-engine/` di repo yang sama tapi **tidak** ikut `pnpm build`. `.gitignore`: `ml-engine/.venv/`, `ml-engine/models/*.pkl`.

@@ -63,6 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/dashboard",            label: "Dashboard",            icon: LayoutDashboard },
       { href: "/admin/advanced-dashboard",   label: "Advanced Analytics",   icon: BrainCircuit },
+      { href: "/admin/cara-kerja-ml",        label: "Cara Kerja ML",        icon: BrainCircuit },
       { href: "/admin/efektifitas-inspeksi", label: "Efektivitas Inspeksi", icon: ShieldCheck },
       { href: "/admin/dashboard-penyulang",  label: "Dashboard Penyulang",  icon: BarChart3 },
     ],
@@ -86,6 +87,8 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/morning-brief",         label: "Morning Brief",        icon: FileText },
       { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target },
       { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench },
+      { href: "/admin/padam-apkt",            label: "Rekap Padam APKT",     icon: Zap },
+      { href: "/admin/detail-gangguan",       label: "Detail Gangguan APKT", icon: Zap },
       { href: "/admin/rekap-produktivitas",   label: "Rekap Produktivitas",  icon: CalendarDays },
     ],
   },

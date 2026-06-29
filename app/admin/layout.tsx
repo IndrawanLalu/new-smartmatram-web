@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { UserProvider } from "./_context/UserContext";
 import AdminSidebar from "./_components/AdminSidebar";
+import ChatFab from "./_components/ChatFab";
 
 export default async function AdminLayout({
   children,
@@ -23,6 +24,7 @@ export default async function AdminLayout({
           userUnit={user.unit}
         />
         <main className="flex-1 min-w-0 p-6 overflow-y-auto">{children}</main>
+        <ChatFab />
       </div>
     </UserProvider>
   );

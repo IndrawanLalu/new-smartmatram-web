@@ -1,4 +1,4 @@
-const SPREADSHEET_ID = "153-gxDh8XrlT1AbNWb5jws0MVc-qD9IQNxxJLRqlKJg";
+const DEFAULT_SPREADSHEET_ID = "153-gxDh8XrlT1AbNWb5jws0MVc-qD9IQNxxJLRqlKJg";
 const API_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
 
 // Module-level cache — bertahan selama browser session, TTL 5 menit
@@ -7,14 +7,15 @@ const TTL_MS = 5 * 60 * 1000;
 
 export async function fetchSheetData(
   sheetName: string,
-  range: string
+  range: string,
+  spreadsheetId: string = DEFAULT_SPREADSHEET_ID
 ): Promise<Record<string, string>[]> {
-  const key = `${sheetName}|${range}`;
+  const key = `${spreadsheetId}|${sheetName}|${range}`;
   const hit = _cache.get(key);
   if (hit && Date.now() - hit.ts < TTL_MS) return hit.data;
 
   const fullRange = `${sheetName}!${range}`;
-  const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}/values/${encodeURIComponent(fullRange)}?key=${API_KEY}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(fullRange)}?key=${API_KEY}`;
 
   const res = await fetch(url);
   if (!res.ok) throw new Error(`Sheets fetch failed: ${res.status}`);
