@@ -13,7 +13,8 @@ export default function ChatFab() {
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState<{ model: string; online: boolean; installed: boolean } | null>(null);
+  const [status, setStatus] = useState<{ model: string; models?: string[]; online: boolean; installed: boolean } | null>(null);
+  const [model, setModel] = useState("auto"); // "auto" = failover otomatis antar model
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Cek status model saat panel dibuka.
@@ -36,11 +37,18 @@ export default function ChatFab() {
     const next: Msg[] = [...messages, { role: "user", content: text }];
     setMessages([...next, { role: "assistant", content: "" }]);
     setBusy(true);
+    // Watchdog: kalau tak ada data > IDLE_MS (stream macet), batalkan agar tombol tak loading selamanya.
+    const ctrl = new AbortController();
+    const IDLE_MS = 45_000;
+    let idle: ReturnType<typeof setTimeout> | undefined;
+    const arm = () => { clearTimeout(idle); idle = setTimeout(() => ctrl.abort(), IDLE_MS); };
     try {
+      arm();
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, model: model === "auto" ? undefined : model }),
+        signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
         const e = await res.json().catch(() => ({ error: `Gagal (HTTP ${res.status})` }));
@@ -53,13 +61,18 @@ export default function ChatFab() {
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
+        arm();
         acc += dec.decode(value, { stream: true });
         setMessages((m) => upsertLast(m, acc));
       }
       if (!acc.trim()) setMessages((m) => upsertLast(m, "(tidak ada jawaban)"));
     } catch (err) {
-      setMessages((m) => upsertLast(m, `⚠️ ${(err as Error).message}`));
+      const msg = (err as Error).name === "AbortError"
+        ? "Asisten tidak merespons (timeout). Coba lagi."
+        : (err as Error).message;
+      setMessages((m) => upsertLast(m, `⚠️ ${msg}`));
     } finally {
+      clearTimeout(idle);
       setBusy(false);
     }
   }
@@ -86,16 +99,32 @@ export default function ChatFab() {
                 {!status
                   ? "memeriksa…"
                   : !status.online
-                    ? "Ollama offline"
-                    : status.installed
-                      ? `${status.model} · online`
-                      : `${status.model} · belum diunduh`}
+                    ? "asisten offline"
+                    : `${status.model} · online`}
               </p>
             </div>
             <button onClick={() => setOpen(false)} className="p-1 hover:bg-white/20 rounded transition-colors">
               <X className="w-4 h-4" />
             </button>
           </div>
+
+          {/* Pemilih model (muncul kalau ada >1 model) */}
+          {status?.models && status.models.length > 1 && (
+            <div className="px-3 py-1.5 border-b border-[#E2E8F0] bg-[#F8FAFC] flex items-center gap-2 shrink-0">
+              <span className="text-[10px] text-[#94a3b8] shrink-0">Model:</span>
+              <select
+                value={model}
+                onChange={(e) => setModel(e.target.value)}
+                disabled={busy}
+                className="text-[11px] border border-[#E2E8F0] rounded px-1.5 py-0.5 text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] disabled:opacity-60 min-w-0 flex-1"
+              >
+                <option value="auto">Auto (otomatis pindah kalau gagal)</option>
+                {status.models.map((m) => (
+                  <option key={m} value={m}>{shortModel(m)}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Messages */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3 bg-[#F4F6F8]">
@@ -152,6 +181,11 @@ export default function ChatFab() {
       </button>
     </>
   );
+}
+
+// Label pendek: buang prefix provider & suffix ":free" (mis. "meta-llama/llama-3.3-70b-instruct:free" → "llama-3.3-70b-instruct").
+function shortModel(model: string): string {
+  return model.split("/").pop()!.replace(/:free$/, "");
 }
 
 function upsertLast(msgs: Msg[], content: string): Msg[] {

@@ -5,9 +5,49 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const OLLAMA_URL = process.env.OLLAMA_URL ?? "http://127.0.0.1:11434";
-const MODEL = process.env.OLLAMA_MODEL ?? "qwen2.5:7b";
+// Provider-agnostic: endpoint apa pun yang OpenAI-compatible (Gemini, OpenRouter,
+// Groq, DeepSeek, ...). Pindah provider = cukup ubah env, tanpa sentuh kode.
+const BASE = process.env.CHAT_BASE_URL ?? "https://generativelanguage.googleapis.com/v1beta/openai";
+const API_KEY = process.env.CHAT_API_KEY ?? process.env.GEMINI_API_KEY ?? "";
+// Daftar model = rantai failover. Model pertama dipakai dulu; kalau timeout/error,
+// otomatis lanjut ke model berikutnya. CHAT_MODELS (koma) atau CHAT_MODEL (tunggal).
+const MODELS = (process.env.CHAT_MODELS ?? process.env.CHAT_MODEL ?? "gemini-2.5-flash")
+  .split(",").map((s) => s.trim()).filter(Boolean);
+const MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS ?? 2048);
+// Timeout per percobaan model. Jika tak ada respons sampai sekian → pindah model.
+const TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 15000);
 const ULP_VALID = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
+
+// Hanya model "thinking" (Gemini 2.5 / 3.x) perlu reasoning_effort utk matikan thinking.
+function isThinking(model: string): boolean {
+  return /(?:^|-)(?:2\.5|3(?:\.\d+)?)-/.test(model) || /flash-latest/.test(model);
+}
+
+// ── Batas pemakaian harian (pagar anti tagihan lari) ─────────────────────────
+// Hitung per PESAN user (bukan per panggilan API). Counter in-memory: reset tiap
+// ganti hari & saat server restart. Untuk plafon mutlak yg tahan restart, set juga
+// quota/budget di Google Cloud Console.
+const GLOBAL_DAILY_LIMIT = Number(process.env.CHAT_DAILY_LIMIT ?? 250);
+const USER_DAILY_LIMIT = Number(process.env.CHAT_USER_DAILY_LIMIT ?? 25);
+let usageDay = "";
+let usageGlobal = 0;
+const usageByUser = new Map<string, number>();
+
+// Null = boleh (sekaligus dicatat +1); string = pesan penolakan bila kena batas.
+function checkUsage(userId: string): string | null {
+  const day = new Date().toISOString().slice(0, 10);
+  if (day !== usageDay) { usageDay = day; usageGlobal = 0; usageByUser.clear(); }
+  if (usageGlobal >= GLOBAL_DAILY_LIMIT) {
+    return "Kuota harian chatbot sudah tercapai. Silakan coba lagi besok. 🙏";
+  }
+  const used = usageByUser.get(userId) ?? 0;
+  if (used >= USER_DAILY_LIMIT) {
+    return `Kamu sudah memakai ${USER_DAILY_LIMIT} pesan hari ini (batas harian). Coba lagi besok. 🙏`;
+  }
+  usageGlobal += 1;
+  usageByUser.set(userId, used + 1);
+  return null;
+}
 
 function systemPrompt(): string {
   const hari = new Date().toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -182,57 +222,105 @@ function parseArgs(a: unknown): Record<string, unknown> {
   return {};
 }
 
-async function ollamaChat(messages: unknown[], stream: boolean, withTools: boolean): Promise<Response> {
-  return fetch(`${OLLAMA_URL}/api/chat`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ model: MODEL, messages, stream, ...(withTools ? { tools: TOOLS } : {}) }),
-  });
+interface ToolCall { id: string; type?: string; function: { name: string; arguments: string } }
+interface ChatMessage { role: string; content?: string | null; tool_calls?: ToolCall[] }
+
+function chatErr(status: number, body: string): string {
+  if (status === 429) return "Semua model sedang kena rate limit. Tunggu ±1 menit lalu coba lagi.";
+  if (status === 401 || status === 403) return "API key chat tidak valid / tak berwenang.";
+  return `Model error ${status}: ${body.slice(0, 150) || "permintaan gagal"}`;
 }
 
-function textStream(res: Response): Response {
-  const reader = res.body!.getReader();
+// Satu percobaan ke satu model, dengan timeout. fetch resolve saat header tiba
+// (sebelum body) → utk stream, timeout hanya menjaga "time to first byte", bukan
+// keseluruhan stream, jadi jawaban panjang tak terpotong.
+async function chatOnce(model: string, messages: unknown[], stream: boolean, withTools: boolean): Promise<Response> {
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort(), TIMEOUT_MS);
+  try {
+    return await fetch(`${BASE}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${API_KEY}` },
+      signal: ac.signal,
+      body: JSON.stringify({
+        model,
+        messages,
+        stream,
+        max_tokens: MAX_TOKENS,
+        ...(isThinking(model) ? { reasoning_effort: "none" } : {}),
+        ...(withTools ? { tools: TOOLS, tool_choice: "auto" } : {}),
+      }),
+    });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Coba tiap model berurutan; lewati yang timeout / error (429/5xx/dll) → model berikutnya.
+async function chatFailover(
+  models: string[], messages: unknown[], stream: boolean, withTools: boolean,
+): Promise<{ res: Response; model: string } | { error: string }> {
+  let lastStatus = 0, lastBody = "";
+  for (const model of models) {
+    try {
+      const res = await chatOnce(model, messages, stream, withTools);
+      if (res.ok) return { res, model };
+      lastStatus = res.status;
+      lastBody = await res.text().catch(() => "");
+      // Termasuk 429: di OpenRouter rate-limit bersifat PER-MODEL (upstream), jadi
+      // model berikutnya bisa saja jalan → tetap lanjut failover.
+    } catch (e) {
+      lastStatus = 0;
+      lastBody = (e as Error).name === "AbortError" ? "timeout" : (e as Error).message;
+    }
+  }
+  return { error: lastStatus ? chatErr(lastStatus, lastBody) : `Semua model gagal (${lastBody}).` };
+}
+
+// Parse stream OpenAI/SSE → teks polos. Pakai start() (baca habis dalam loop) — bukan
+// pull() — karena pull() bisa menggantung setelah chunk pertama di sebagian runtime.
+function sseStream(res: Response): Response {
   const decoder = new TextDecoder();
   const encoder = new TextEncoder();
-  let buf = "";
   const stream = new ReadableStream<Uint8Array>({
-    async pull(controller) {
-      const { done, value } = await reader.read();
-      if (done) { controller.close(); return; }
-      buf += decoder.decode(value, { stream: true });
-      const lines = buf.split("\n");
-      buf = lines.pop() ?? "";
-      for (const line of lines) {
-        const s = line.trim();
-        if (!s) continue;
-        try {
-          const obj = JSON.parse(s) as { message?: { content?: string } };
-          if (obj.message?.content) controller.enqueue(encoder.encode(obj.message.content));
-        } catch { /* abaikan */ }
+    async start(controller) {
+      const reader = res.body!.getReader();
+      let buf = "";
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop() ?? "";
+          for (const line of lines) {
+            const s = line.trim();
+            if (!s.startsWith("data:")) continue;
+            const payload = s.slice(5).trim();
+            if (payload === "[DONE]") return;
+            try {
+              const obj = JSON.parse(payload) as { choices?: { delta?: { content?: string } }[] };
+              const c = obj.choices?.[0]?.delta?.content;
+              if (c) controller.enqueue(encoder.encode(c));
+            } catch { /* keep-alive / chunk parsial */ }
+          }
+        }
+      } finally {
+        try { controller.close(); } catch { /* sudah ditutup */ }
       }
     },
-    cancel() { reader.cancel().catch(() => {}); },
   });
   return new Response(stream, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
 }
 
-// GET → status: model aktif + apakah Ollama online & model sudah terunduh
+// GET → status: model aktif + apakah API key sudah dikonfigurasi.
 export async function GET() {
   const supabase = await createSupabaseServer();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  let online = false;
-  let installed = false;
-  try {
-    const res = await fetch(`${OLLAMA_URL}/api/tags`, { cache: "no-store" });
-    if (res.ok) {
-      online = true;
-      const j = (await res.json()) as { models?: { name: string }[] };
-      installed = (j.models ?? []).some((m) => m.name === MODEL);
-    }
-  } catch { /* offline */ }
-  return NextResponse.json({ model: MODEL, online, installed });
+  const configured = Boolean(API_KEY);
+  return NextResponse.json({ model: MODELS[0], models: MODELS, online: configured, installed: configured });
 }
 
 export async function POST(req: Request) {
@@ -245,48 +333,49 @@ export async function POST(req: Request) {
   if (!Array.isArray(userMsgs) || userMsgs.length === 0) {
     return NextResponse.json({ error: "messages kosong" }, { status: 400 });
   }
+  if (!API_KEY) {
+    return NextResponse.json({ error: "API key chat (CHAT_API_KEY / GEMINI_API_KEY) belum diset di server." }, { status: 503 });
+  }
+
+  // Pagar pemakaian harian: tolak (sekaligus catat) sebelum memanggil LLM apa pun.
+  const capMsg = checkUsage(user.id);
+  if (capMsg) return NextResponse.json({ error: capMsg }, { status: 429 });
+
+  // Pilihan model dari UI: jika user pilih 1 model -> mulai dari situ lalu sisanya
+  // sebagai cadangan; jika "auto"/kosong -> pakai urutan default MODELS.
+  const picked = (body as { model?: string }).model;
+  const order = picked && MODELS.includes(picked)
+    ? [picked, ...MODELS.filter((m) => m !== picked)]
+    : MODELS;
 
   const messages: unknown[] = [{ role: "system", content: systemPrompt() }, ...userMsgs];
 
-  // Ronde 1: biarkan model memutuskan pakai alat atau tidak (tanpa stream agar mudah diparse).
-  let r1: Response;
-  try {
-    r1 = await ollamaChat(messages, false, true);
-  } catch {
-    return NextResponse.json(
-      { error: `Ollama tidak terjangkau di ${OLLAMA_URL}. Pastikan Ollama berjalan & model "${MODEL}" sudah diunduh.` },
-      { status: 503 },
-    );
-  }
-  if (!r1.ok) {
-    const t = await r1.text().catch(() => "");
-    return NextResponse.json({ error: `Ollama error ${r1.status}: ${t.slice(0, 200) || "model belum siap"}` }, { status: 502 });
-  }
+  // Ronde 1 (non-stream): model putuskan pakai alat atau tidak. Failover antar model.
+  const a = await chatFailover(order, messages, false, true);
+  if ("error" in a) return NextResponse.json({ error: a.error }, { status: 502 });
 
-  const j1 = (await r1.json()) as { message?: { content?: string; tool_calls?: { function: { name: string; arguments: unknown } }[] } };
-  const toolCalls = j1.message?.tool_calls ?? [];
+  const j1 = (await a.res.json()) as { choices?: { message?: ChatMessage }[] };
+  const msg1 = j1.choices?.[0]?.message;
+  const toolCalls = msg1?.tool_calls ?? [];
 
   if (toolCalls.length === 0) {
-    // Tak perlu alat → kirim jawaban langsung sebagai teks.
-    const content = j1.message?.content ?? "(tidak ada jawaban)";
+    // Tak perlu alat -> kirim jawaban langsung sebagai teks.
+    const content = msg1?.content ?? "(tidak ada jawaban)";
     return new Response(content, { headers: { "Content-Type": "text/plain; charset=utf-8", "Cache-Control": "no-store" } });
   }
 
-  // Jalankan alat → susun pesan tool → ronde 2 (stream) untuk jawaban final.
-  messages.push({ role: "assistant", content: j1.message?.content ?? "", tool_calls: toolCalls });
+  // Jalankan alat -> susun pesan tool -> ronde 2 (stream) untuk jawaban final.
+  // Echo pesan assistant apa adanya (berisi tool_calls + id) sesuai protokol OpenAI.
+  messages.push({ ...msg1, content: msg1?.content ?? "" });
   for (const tc of toolCalls) {
     const result = await runTool(tc.function.name, parseArgs(tc.function.arguments), supabase);
-    messages.push({ role: "tool", name: tc.function.name, content: JSON.stringify(result) });
+    messages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
   }
 
-  let r2: Response;
-  try {
-    r2 = await ollamaChat(messages, true, false);
-  } catch {
-    return NextResponse.json({ error: "Ollama gagal pada tahap merangkum jawaban." }, { status: 503 });
-  }
-  if (!r2.ok || !r2.body) {
-    return NextResponse.json({ error: `Ollama error ${r2.status}` }, { status: 502 });
-  }
-  return textStream(r2);
+  // Ronde 2: utamakan model yang berhasil di ronde 1, sisanya cadangan.
+  const order2 = [a.model, ...order.filter((m) => m !== a.model)];
+  const b = await chatFailover(order2, messages, true, false);
+  if ("error" in b) return NextResponse.json({ error: b.error }, { status: 502 });
+  if (!b.res.body) return NextResponse.json({ error: "Respons stream kosong." }, { status: 502 });
+  return sseStream(b.res);
 }
