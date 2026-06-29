@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   type CurrentUser,
@@ -135,6 +135,53 @@ export function useInspeksiPohon(user: CurrentUser) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Supabase Realtime ────────────────────────────────────────────────────────
+  const instanceId = useId();
+  const filterRef = useRef(filter);
+  useEffect(() => { filterRef.current = filter; }, [filter]);
+  const userRef = useRef({ role: user.role, unit: user.unit });
+  useEffect(() => { userRef.current = { role: user.role, unit: user.unit }; }, [user.role, user.unit]);
+
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel(`inspeksi-pohon-rt:${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inspeksi_pohon" },
+        (payload) => {
+          const enrich = (raw: Omit<InspeksiPohon, "remainingDays" | "urgency">): InspeksiPohon => {
+            const remaining =
+              raw.tgl_inspeksi && raw.prediksi_inspektur
+                ? calcRemainingDays(raw.tgl_inspeksi, raw.prediksi_inspektur)
+                : 999;
+            return { ...raw, remainingDays: remaining, urgency: getUrgencyLevel(remaining) };
+          };
+
+          if (payload.eventType === "INSERT") {
+            const raw = payload.new as unknown as Omit<InspeksiPohon, "remainingDays" | "urgency">;
+            const f = filterRef.current;
+            const u = userRef.current;
+            if (f.startDate && raw.tgl_inspeksi && raw.tgl_inspeksi < f.startDate) return;
+            if (f.endDate && raw.tgl_inspeksi && raw.tgl_inspeksi > f.endDate) return;
+            if (!canSeeAllUnits(u.role) && u.unit && raw.ulp !== u.unit) return;
+            if (u.role === "PERABASAN" && raw.eksekutor !== "PERABASAN") return;
+            const row = enrich(raw);
+            setRawData((prev) => prev.some((r) => r.id === row.id) ? prev : [row, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const row = enrich(payload.new as unknown as Omit<InspeksiPohon, "remainingDays" | "urgency">);
+            setRawData((prev) => prev.map((r) => r.id === row.id ? row : r));
+          } else if (payload.eventType === "DELETE") {
+            const oldId = (payload.old as { id?: string }).id;
+            if (oldId) setRawData((prev) => prev.filter((r) => r.id !== oldId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { void supabaseBrowser.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const updateStatus = useCallback(
     async (id: string, newStatus: InspeksiStatus) => {

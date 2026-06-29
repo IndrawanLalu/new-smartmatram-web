@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   type CurrentUser,
@@ -104,6 +104,44 @@ export function useInspeksiJaringan(user: CurrentUser) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Supabase Realtime ────────────────────────────────────────────────────────
+  const instanceId = useId();
+  const filterRef = useRef(filter);
+  useEffect(() => { filterRef.current = filter; }, [filter]);
+  const userRef = useRef({ role: user.role, unit: user.unit });
+  useEffect(() => { userRef.current = { role: user.role, unit: user.unit }; }, [user.role, user.unit]);
+
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel(`inspeksi-jaringan-rt:${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "inspeksi" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as unknown as InspeksiJaringan;
+            const f = filterRef.current;
+            const u = userRef.current;
+            if (f.startDate && row.tgl_inspeksi && row.tgl_inspeksi < f.startDate) return;
+            if (f.endDate && row.tgl_inspeksi && row.tgl_inspeksi > f.endDate) return;
+            if (!canSeeAllUnits(u.role) && u.unit && row.ulp !== u.unit) return;
+            if (EKSEKUTOR_ROLES.includes(u.role) && row.eksekutor !== u.role) return;
+            setRawData((prev) => prev.some((r) => r.id === row.id) ? prev : [row, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as unknown as InspeksiJaringan;
+            setRawData((prev) => prev.map((r) => r.id === row.id ? { ...r, ...row } : r));
+          } else if (payload.eventType === "DELETE") {
+            const oldId = (payload.old as { id?: string }).id;
+            if (oldId) setRawData((prev) => prev.filter((r) => r.id !== oldId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { void supabaseBrowser.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Optimistic status update
   const updateStatus = useCallback(

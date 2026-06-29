@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 
@@ -167,6 +167,50 @@ export function usePengukuranGardu(user: CurrentUser) {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // ── Supabase Realtime ────────────────────────────────────────────────────────
+  const instanceId = useId();
+  const filterRef = useRef(filter);
+  useEffect(() => { filterRef.current = filter; }, [filter]);
+  const userRoleRef = useRef(user.role);
+  const userUnitRef = useRef(user.unit);
+  useEffect(() => { userRoleRef.current = user.role; userUnitRef.current = user.unit; }, [user.role, user.unit]);
+
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel(`pengukuran-gardu-rt:${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "pengukuran_gardu" },
+        (payload) => {
+          if (payload.eventType === "INSERT") {
+            const row = payload.new as unknown as PengukuranGardu;
+            const f = filterRef.current;
+            const role = userRoleRef.current;
+            const unit = userUnitRef.current;
+            if (f.month !== 0) {
+              const d = new Date(row.tanggal_pengukuran);
+              if (d.getMonth() + 1 !== f.month || d.getFullYear() !== f.year) return;
+            }
+            if (!canSeeAllUnits(role) && unit) {
+              if (row.petugas_unit !== unit) return;
+            } else if (f.ulp && row.petugas_unit !== f.ulp) return;
+            if (f.penyulang && row.penyulang !== f.penyulang) return;
+            setData((prev) => prev.some((r) => r.id === row.id) ? prev : [row, ...prev]);
+          } else if (payload.eventType === "UPDATE") {
+            const row = payload.new as unknown as PengukuranGardu;
+            setData((prev) => prev.map((r) => r.id === row.id ? { ...r, ...row } : r));
+          } else if (payload.eventType === "DELETE") {
+            const oldId = (payload.old as { id?: string }).id;
+            if (oldId) setData((prev) => prev.filter((r) => r.id !== oldId));
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { void supabaseBrowser.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Derived Metrics ─────────────────────────────────────────────────────────
 
