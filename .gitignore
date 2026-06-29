@@ -14,6 +14,9 @@ wa-bot/session
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/tests/.auth/
 
 # next.js
 /.next/
@@ -49,3 +52,9 @@ next-env.d.ts
 
 # local data files (yantek analytics, dll)
 /data/
+
+# ml-engine (Python microservice — venv & artifact tidak di-commit)
+ml-engine/.venv/
+ml-engine/**/__pycache__/
+ml-engine/models/*.pkl
+ml-engine/*.log
