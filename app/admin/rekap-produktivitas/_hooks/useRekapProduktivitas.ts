@@ -77,11 +77,17 @@ export function useRekapProduktivitas(user: CurrentUser) {
 
       const combined = [...(d1 ?? []), ...(d2 ?? [])] as { team_name: string; tgl_eksekusi: string }[];
       for (const item of combined) {
-        const name = item.team_name;
-        const day  = new Date(item.tgl_eksekusi).getDate();
-        const dm   = map.get(name);
-        if (!dm) continue;
-        dm[day] = (dm[day] ?? 0) + 1;
+        const day = new Date(item.tgl_eksekusi).getDate();
+        // team_name bisa berupa pasangan ("NAMA A & NAMA B") — pecah & kreditkan tiap petugas
+        const names = item.team_name
+          .split(/\s*[&,/]\s*/)
+          .map((n) => n.trim())
+          .filter(Boolean);
+        for (const name of names) {
+          const dm = map.get(name);
+          if (!dm) continue; // hanya petugas yang ada di master; sisanya data lama, diabaikan
+          dm[day] = (dm[day] ?? 0) + 1;
+        }
       }
 
       const result: PetugasRow[] = Array.from(map.entries())

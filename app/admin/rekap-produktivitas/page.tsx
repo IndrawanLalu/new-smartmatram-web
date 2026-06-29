@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { Download, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
 import {
@@ -26,10 +28,41 @@ function cellBg(count: number) {
 export default function RekapProduktivitasPage() {
   const user = useCurrentUser();
   const { filter, setFilter, rows, loading, daysInMonth } = useRekapProduktivitas(user);
+  const [pdfLoading, setPdfLoading] = useState(false);
 
   const now   = new Date();
   const years = Array.from({ length: 3 }, (_, i) => now.getFullYear() - i);
   const days  = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+
+  async function handleDownloadPdf() {
+    if (rows.length === 0) return;
+    setPdfLoading(true);
+    try {
+      const [{ pdf }, { default: RekapPdfDoc }] = await Promise.all([
+        import("@react-pdf/renderer"),
+        import("./_RekapPdf"),
+      ]);
+      const periodeLabel = `${BULAN_LABELS[filter.bulan - 1]} ${filter.tahun}`;
+      const element = (
+        <RekapPdfDoc
+          rows={rows}
+          daysInMonth={daysInMonth}
+          periodeLabel={periodeLabel}
+          eksekutor={filter.eksekutor}
+          ulpLabel={filter.ulp || "Semua ULP"}
+        />
+      );
+      const blob = await pdf(element).toBlob();
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href     = url;
+      a.download = `rekap-produktivitas-${filter.eksekutor}${filter.ulp ? `-${filter.ulp}` : ""}-${filter.tahun}-${String(filter.bulan).padStart(2, "0")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setPdfLoading(false);
+    }
+  }
 
   return (
     <div className="p-6 space-y-5 min-h-screen bg-[#0a1628]">
@@ -89,6 +122,19 @@ export default function RekapProduktivitasPage() {
         <span className="text-[#94a3b8] text-sm ml-auto">
           {loading ? "Memuat..." : `${rows.length} petugas`}
         </span>
+
+        <button
+          onClick={handleDownloadPdf}
+          disabled={pdfLoading || loading || rows.length === 0}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#00897B] hover:bg-[#00695C] disabled:opacity-50 text-white transition-colors"
+        >
+          {pdfLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Download className="w-4 h-4" />
+          )}
+          {pdfLoading ? "Membuat PDF..." : "Download PDF"}
+        </button>
       </div>
 
       {/* Table */}
