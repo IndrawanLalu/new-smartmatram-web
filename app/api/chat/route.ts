@@ -71,7 +71,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "statistik_gangguan",
-      description: "Gangguan penyulang yang SUDAH TERJADI (data historis), filter tahun/bulan/ULP. Mengembalikan total + rincian per ULP + rincian per PENYEBAB. Bila difilter ULP + bulan, juga mengembalikan DAFTAR kejadian (penyulang, tanggal, penyebab). Pakai untuk pertanyaan 'berapa gangguan' DAN 'penyebab gangguan'.",
+      description: "Gangguan penyulang yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang). Filter tahun/bulan/ULP; jika tahun tak disebut, default tahun berjalan. Mengembalikan total + rincian per ULP + per PENYEBAB. Bila difilter ULP + bulan, juga DAFTAR kejadian (penyulang, tanggal, penyebab). Pakai untuk 'berapa gangguan' DAN 'penyebab gangguan'.",
       parameters: {
         type: "object",
         properties: {
@@ -86,7 +86,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "top_penyulang",
-      description: "Daftar penyulang dengan gangguan terbanyak yang SUDAH TERJADI (data historis masa lalu) pada periode tertentu. BUKAN prediksi.",
+      description: "Daftar penyulang dengan gangguan terbanyak yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang). Default tahun = tahun berjalan jika tak disebut. BUKAN prediksi.",
       parameters: {
         type: "object",
         properties: {
@@ -144,35 +144,52 @@ const TOOLS = [
 // ── Helper ──────────────────────────────────────────────────────────────────────
 type SB = SupabaseClient;
 
-async function fetchAll(sb: SB, table: string, columns: string, filter: (q: any) => any): Promise<any[]> {
-  const PAGE = 1000;
-  const out: any[] = [];
-  for (let start = 0; ; start += PAGE) {
-    const { data, error } = await filter(sb.from(table).select(columns).range(start, start + PAGE - 1));
-    if (error) throw new Error(error.message);
-    const b = data ?? [];
-    out.push(...b);
-    if (b.length < PAGE) break;
-  }
-  return out;
-}
-
-function dateRange(tahun?: number, bulan?: number): { from: string; to: string; label: string } | null {
-  if (!tahun) return null;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  if (bulan && bulan >= 1 && bulan <= 12) {
-    const from = `${tahun}-${pad(bulan)}-01`;
-    const to = bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${pad(bulan + 1)}-01`;
-    const namaBln = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"][bulan];
-    return { from, to, label: `${namaBln} ${tahun}` };
-  }
-  return { from: `${tahun}-01-01`, to: `${tahun + 1}-01-01`, label: `tahun ${tahun}` };
-}
-
 function normUlp(u?: string): string | null {
   if (!u) return null;
   const up = u.trim().toUpperCase();
   return ULP_VALID.includes(up) ? up : null;
+}
+
+// ── Gangguan penyulang: SUMBER TUNGGAL = Google Sheet "gangguanPenyulang" ─────
+// (BUKAN ml_outage_events / padam_apkt). Default periode = tahun berjalan.
+const BULAN_ID = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+const MONTH_IDX: Record<string, number> = {
+  Januari: 0, Februari: 1, Maret: 2, April: 3, Mei: 4, Juni: 5,
+  Juli: 6, Agustus: 7, September: 8, Oktober: 9, November: 10, Desember: 11,
+};
+function parseTglID(s?: string): Date | null {
+  if (!s) return null;
+  const p = s.trim().split(" ");
+  if (p.length !== 3) return null;
+  const d = parseInt(p[0]); const m = MONTH_IDX[p[1]]; const y = parseInt(p[2]);
+  if (isNaN(d) || m === undefined || isNaN(y)) return null;
+  return new Date(y, m, d);
+}
+interface GangguanRow { ulp: string; penyulang: string; penyebab: string; date: Date }
+async function fetchGangguanSheet(): Promise<GangguanRow[]> {
+  const raw = await fetchSheetData("gangguanPenyulang", "A:S");
+  const out: GangguanRow[] = [];
+  for (const r of raw) {
+    const date = parseTglID(r.TANGGAL);
+    if (!date) continue;
+    out.push({
+      ulp: (r.ULP ?? "").trim().toUpperCase(),
+      penyulang: (r.PENYULANG_GANGGUAN ?? r["PENYULANG GANGGUAN"] ?? "").trim(),
+      penyebab: (r.PENYEBAB_GANGGUAN ?? r["PENYEBAB GANGGUAN"] ?? "").trim(),
+      date,
+    });
+  }
+  return out;
+}
+// Filter sheet sesuai tahun/bulan/ulp (default tahun = tahun berjalan).
+function filterGangguan(all: GangguanRow[], tahun: number, bulan?: number, ulp?: string | null): GangguanRow[] {
+  return all.filter((r) => {
+    if (r.date.getFullYear() !== tahun) return false;
+    if (bulan && bulan >= 1 && bulan <= 12 && r.date.getMonth() + 1 !== bulan) return false;
+    if (ulp && r.ulp !== ulp) return false;
+    return true;
+  });
 }
 
 const OVERLOAD_PCT = 80;
@@ -218,32 +235,28 @@ async function garduMapsMap(): Promise<Map<string, string>> {
 }
 
 // ── Eksekutor alat ──────────────────────────────────────────────────────────────
-async function statistikGangguan(sb: SB, a: { tahun?: number; bulan?: number; ulp?: string }) {
+async function statistikGangguan(a: { tahun?: number; bulan?: number; ulp?: string }) {
   const tahun = a.tahun ?? new Date().getFullYear();
-  const rng = dateRange(tahun, a.bulan);
   const ulp = normUlp(a.ulp);
-  const rows = await fetchAll(sb, "ml_outage_events", "ulp, penyulang, tgl_gangguan, penyebab, predicted_cause", (q) => {
-    let x = q;
-    if (rng) x = x.gte("tgl_gangguan", rng.from).lt("tgl_gangguan", rng.to);
-    if (ulp) x = x.eq("ulp", ulp);
-    return x;
-  });
+  const rows = filterGangguan(await fetchGangguanSheet(), tahun, a.bulan, ulp);
   const perUlp: Record<string, number> = {};
   const perPenyebab: Record<string, number> = {};
   for (const r of rows) {
-    perUlp[r.ulp ?? "?"] = (perUlp[r.ulp ?? "?"] ?? 0) + 1;
-    const cause = (r.predicted_cause as string) || (r.penyebab as string) || "(belum diketahui)";
+    perUlp[r.ulp || "?"] = (perUlp[r.ulp || "?"] ?? 0) + 1;
+    const cause = r.penyebab || "(tidak tercatat)";
     perPenyebab[cause] = (perPenyebab[cause] ?? 0) + 1;
   }
   // Daftar kejadian (penyulang + tgl + penyebab) hanya bila ULP & bulan spesifik — ringkas & akurat.
   const detail = ulp && a.bulan
     ? rows.slice(0, 40).map((r) => ({
-        penyulang: r.penyulang, tgl: r.tgl_gangguan,
-        penyebab: (r.penyebab as string) || (r.predicted_cause as string) || "belum diketahui",
+        penyulang: r.penyulang,
+        tgl: `${r.date.getDate()} ${BULAN_ID[r.date.getMonth() + 1]} ${r.date.getFullYear()}`,
+        penyebab: r.penyebab || "tidak tercatat",
       }))
     : undefined;
   return {
-    periode: rng?.label ?? `tahun ${tahun}`,
+    sumber: "Google Sheet gangguanPenyulang (data resmi)",
+    periode: a.bulan ? `${BULAN_ID[a.bulan]} ${tahun}` : `tahun ${tahun}`,
     ulp_filter: ulp ?? "semua ULP",
     total: rows.length,
     per_ulp: perUlp,
@@ -252,17 +265,11 @@ async function statistikGangguan(sb: SB, a: { tahun?: number; bulan?: number; ul
   };
 }
 
-async function topPenyulang(sb: SB, a: { tahun?: number; bulan?: number; ulp?: string; limit?: number }) {
+async function topPenyulang(a: { tahun?: number; bulan?: number; ulp?: string; limit?: number }) {
   const tahun = a.tahun ?? new Date().getFullYear();
-  const rng = dateRange(tahun, a.bulan);
   const ulp = normUlp(a.ulp);
   const limit = Math.min(Math.max(a.limit ?? 10, 1), 20);
-  const rows = await fetchAll(sb, "ml_outage_events", "penyulang, ulp, tgl_gangguan", (q) => {
-    let x = q;
-    if (rng) x = x.gte("tgl_gangguan", rng.from).lt("tgl_gangguan", rng.to);
-    if (ulp) x = x.eq("ulp", ulp);
-    return x;
-  });
+  const rows = filterGangguan(await fetchGangguanSheet(), tahun, a.bulan, ulp);
   const m: Record<string, number> = {};
   const ulpOf: Record<string, string> = {};
   for (const r of rows) {
@@ -274,7 +281,11 @@ async function topPenyulang(sb: SB, a: { tahun?: number; bulan?: number; ulp?: s
     .sort((x, y) => y[1] - x[1])
     .slice(0, limit)
     .map(([penyulang, jumlah]) => ({ penyulang, ulp: ulpOf[penyulang] ?? "?", jumlah }));
-  return { periode: rng?.label ?? `tahun ${tahun}`, ulp_filter: ulp ?? "semua ULP", top };
+  return {
+    sumber: "Google Sheet gangguanPenyulang (data resmi)",
+    periode: a.bulan ? `${BULAN_ID[a.bulan]} ${tahun}` : `tahun ${tahun}`,
+    ulp_filter: ulp ?? "semua ULP", top,
+  };
 }
 
 async function risikoBesok(sb: SB) {
@@ -371,8 +382,8 @@ async function cariStandar(sb: SB, a: { pertanyaan?: string; buku?: string }) {
 
 async function runTool(name: string, args: Record<string, unknown>, sb: SB): Promise<unknown> {
   try {
-    if (name === "statistik_gangguan") return await statistikGangguan(sb, args);
-    if (name === "top_penyulang") return await topPenyulang(sb, args);
+    if (name === "statistik_gangguan") return await statistikGangguan(args);
+    if (name === "top_penyulang") return await topPenyulang(args);
     if (name === "risiko_besok") return await risikoBesok(sb);
     if (name === "data_gardu") return await dataGardu(sb, args);
     if (name === "cari_standar") return await cariStandar(sb, args);
