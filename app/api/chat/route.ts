@@ -59,6 +59,7 @@ function systemPrompt(): string {
 - PENTING: gunakan PERSIS nama penyulang & ULP dari hasil alat. JANGAN mengarang/menebak ULP suatu penyulang — kalau hasil alat tidak menyebut ULP-nya, jangan tulis ULP-nya.
 - "risiko/prediksi/besok" → pakai alat risiko_besok. "terbanyak/sering/sudah terjadi" → top_penyulang/statistik_gangguan.
 - "gardu/beban/overload/suhu/alamat/lokasi gardu" → pakai alat data_gardu. Jika hasil punya maps_url, sertakan link Google Maps itu di jawaban.
+- "standar/konstruksi/SPLN/spesifikasi/teori kelistrikan" → pakai alat cari_standar, lalu jawab BERDASARKAN kutipan & SEBUTKAN sumbernya (buku + halaman). Jangan mengarang isi standar.
 - ULP yang valid: AMPENAN, CAKRANEGARA, GERUNG, TANJUNG.`;
 }
 
@@ -121,6 +122,21 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "cari_standar",
+      description: "Cari jawaban dari DOKUMEN PEMBELAJARAN PLN (buku standar konstruksi, SPLN, materi teknik) yang sudah di-ingest. Pakai utk pertanyaan soal standar/konstruksi/teori kelistrikan (mis. 'standar konstruksi gardu', 'jarak aman konduktor', 'spesifikasi tiang'). Mengembalikan kutipan + sumber (buku & halaman) untuk dikutip.",
+      parameters: {
+        type: "object",
+        properties: {
+          pertanyaan: { type: "string", description: "Pertanyaan / istilah yang dicari di dokumen." },
+          buku: { type: "string", description: "Batasi ke buku tertentu (opsional, mis. 'PLN buku 2')." },
+        },
+        required: ["pertanyaan"],
+      },
+    },
+  },
 ];
 
 // ── Helper ──────────────────────────────────────────────────────────────────────
@@ -159,6 +175,31 @@ function normUlp(u?: string): string | null {
 
 const OVERLOAD_PCT = 80;
 const HIGH_TEMP_C = 60;
+
+// Embedding query utk RAG. Selalu pakai GEMINI_API_KEY (model embedding khusus),
+// terlepas dari provider chat. Harus cocok dgn ingest: gemini-embedding-001 @ 1536.
+const EMBED_KEY = process.env.GEMINI_API_KEY ?? "";
+async function embedQuery(text: string): Promise<number[] | null> {
+  if (!EMBED_KEY) return null;
+  try {
+    const r = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-embedding-001:embedContent?key=${EMBED_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/gemini-embedding-001",
+          content: { parts: [{ text }] },
+          taskType: "RETRIEVAL_QUERY",
+          outputDimensionality: 1536,
+        }),
+      },
+    );
+    if (!r.ok) return null;
+    const j = (await r.json()) as { embedding?: { values?: number[] } };
+    return j.embedding?.values ?? null;
+  } catch { return null; }
+}
 
 // no_gardu → URL Google Maps (kolom "TITIK GARDU" di sheet dataGarduProbis). Cached 5 menit di lib/sheets.
 async function garduMapsMap(): Promise<Map<string, string>> {
@@ -286,12 +327,34 @@ async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang
   };
 }
 
+async function cariStandar(sb: SB, a: { pertanyaan?: string; buku?: string }) {
+  const q = (a.pertanyaan ?? "").trim();
+  if (!q) return { error: "pertanyaan kosong" };
+  const vec = await embedQuery(q);
+  if (!vec) return { error: "Pencarian dokumen tak tersedia (GEMINI_API_KEY belum diset di server)." };
+  const { data, error } = await sb.rpc("match_dokumen", {
+    query_embedding: vec,
+    match_count: 6,
+    filter_buku: a.buku ?? null,
+  });
+  if (error) return { error: error.message };
+  const hits = (data ?? []) as { buku: string; halaman: number; konten: string; similarity: number }[];
+  if (hits.length === 0) return { info: "Tidak ditemukan bagian dokumen yang relevan." };
+  return {
+    catatan: "Jawab HANYA berdasarkan kutipan di bawah. WAJIB sebutkan sumber (buku + halaman). Jika kutipan tak menjawab, katakan tidak ditemukan di dokumen — jangan mengarang.",
+    kutipan: hits.map((h) => ({
+      buku: h.buku, halaman: h.halaman, isi: h.konten, skor: Math.round(h.similarity * 100) / 100,
+    })),
+  };
+}
+
 async function runTool(name: string, args: Record<string, unknown>, sb: SB): Promise<unknown> {
   try {
     if (name === "statistik_gangguan") return await statistikGangguan(sb, args);
     if (name === "top_penyulang") return await topPenyulang(sb, args);
     if (name === "risiko_besok") return await risikoBesok(sb);
     if (name === "data_gardu") return await dataGardu(sb, args);
+    if (name === "cari_standar") return await cariStandar(sb, args);
     return { error: `alat tidak dikenal: ${name}` };
   } catch (e) {
     return { error: (e as Error).message };
