@@ -19,9 +19,11 @@ const MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS ?? 2048);
 const TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 15000);
 const ULP_VALID = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
-// Hanya model "thinking" (Gemini 2.5 / 3.x) perlu reasoning_effort utk matikan thinking.
+// reasoning_effort HANYA didukung model "thinking" Gemini (2.5/3.x). Provider lain
+// (Groq llama-3.3, Ollama qwen2.5, dll) menolak param ini → jangan dikirim.
 function isThinking(model: string): boolean {
-  return /(?:^|-)(?:2\.5|3(?:\.\d+)?)-/.test(model) || /flash-latest/.test(model);
+  if (!/gemini/i.test(model)) return false;
+  return /2\.5|gemini-3|flash-latest/.test(model);
 }
 
 // ── Batas pemakaian harian (pagar anti tagihan lari) ─────────────────────────
