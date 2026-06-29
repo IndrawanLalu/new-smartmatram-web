@@ -59,7 +59,7 @@ function systemPrompt(): string {
 - PENTING: gunakan PERSIS nama penyulang & ULP dari hasil alat. JANGAN mengarang/menebak ULP suatu penyulang — kalau hasil alat tidak menyebut ULP-nya, jangan tulis ULP-nya.
 - "risiko/prediksi/besok" → pakai alat risiko_besok. "terbanyak/sering/sudah terjadi" → top_penyulang/statistik_gangguan.
 - "gardu/beban/overload/suhu/alamat/lokasi gardu" → pakai alat data_gardu. Jika hasil punya maps_url, sertakan link Google Maps itu di jawaban.
-- "standar/konstruksi/SPLN/spesifikasi/teori kelistrikan" → pakai alat cari_standar, lalu jawab BERDASARKAN kutipan & SEBUTKAN sumbernya (buku + halaman). Jangan mengarang isi standar.
+- Pertanyaan soal STANDAR/KONSTRUKSI/SPLN/spesifikasi/teori kelistrikan, ATAU soal ISI/TOPIK BUKU & DOKUMEN (mis. "buku 2 tentang apa", "isi buku ...", "menurut buku ...") → WAJIB panggil alat cari_standar DULU, lalu jawab berdasarkan kutipan & sebutkan sumber (buku + halaman). Jangan jawab dari ingatanmu sendiri, jangan mengarang.
 - ULP yang valid: AMPENAN, CAKRANEGARA, GERUNG, TANJUNG.`;
 }
 
@@ -126,7 +126,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "cari_standar",
-      description: "Cari jawaban dari DOKUMEN PEMBELAJARAN PLN (buku standar konstruksi, SPLN, materi teknik) yang sudah di-ingest. Pakai utk pertanyaan soal standar/konstruksi/teori kelistrikan (mis. 'standar konstruksi gardu', 'jarak aman konduktor', 'spesifikasi tiang'). Mengembalikan kutipan + sumber (buku & halaman) untuk dikutip.",
+      description: "Cari isi DOKUMEN PEMBELAJARAN PLN yang sudah di-ingest (buku standar konstruksi, SPLN, materi teknik). Pakai untuk SEMUA pertanyaan soal isi/topik buku atau dokumen tsb — termasuk 'buku X tentang apa', 'isi buku ...', 'menurut buku ...', standar, konstruksi, spesifikasi, jarak aman, teori/materi kelistrikan. Mengembalikan kutipan + sumber (buku & halaman) untuk dikutip. JANGAN jawab pertanyaan seperti ini dari ingatan; selalu pakai alat ini dulu.",
       parameters: {
         type: "object",
         properties: {
