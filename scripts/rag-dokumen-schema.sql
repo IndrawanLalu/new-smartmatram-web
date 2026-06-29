@@ -26,6 +26,8 @@ create or replace function public.match_dokumen(
 )
 returns table (id bigint, buku text, halaman int, konten text, similarity float)
 language sql stable
+security definer            -- jalan sbg pemilik → tembus RLS (cari aman lewat fungsi ini saja)
+set search_path = public
 as $$
   select c.id, c.buku, c.halaman, c.konten,
          1 - (c.embedding <=> query_embedding) as similarity
