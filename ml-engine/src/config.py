@@ -32,6 +32,12 @@ SHEETS_API_KEY = os.environ.get(
 GANGGUAN_SHEET = "gangguanPenyulang"
 GANGGUAN_RANGE = "A:S"
 
+# ── Morning Brief webhook (opsional) ───────────────────────────────────────────
+# Bila diisi, pipeline akan memicu kirim brief WA setelah skor selesai dihitung
+# (data dijamin segar). Kosong = lewati. Route Next.js: GET + Bearer CRON_SECRET.
+BRIEF_WEBHOOK_URL = os.environ.get("BRIEF_WEBHOOK_URL")  # mis. https://<vps>/api/morning-brief/send
+CRON_SECRET = os.environ.get("CRON_SECRET")
+
 # ── Domain ────────────────────────────────────────────────────────────────────
 # Cakupan V1: 4 ULP (nama ter-normalisasi, tanpa prefix "ULP ").
 # Sheet gangguanPenyulang mencakup seluruh NTB → sync difilter ke scope ini.

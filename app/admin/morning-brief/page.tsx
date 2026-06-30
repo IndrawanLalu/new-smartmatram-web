@@ -14,6 +14,7 @@ import {
 } from "./_components/InspeksiBriefSection";
 import TelegramScheduleSettings from "./_components/TelegramScheduleSettings";
 import RealisasiProbisBriefSection from "./_components/RealisasiProbisBriefSection";
+import WaBriefPreview from "./_components/WaBriefPreview";
 
 const PRINT_STYLE = `
 @media print {
@@ -35,6 +36,8 @@ export default function MorningBriefPage() {
     const wib = new Date(Date.now() + 7 * 3600 * 1000 - 86400 * 1000);
     return wib.toISOString().slice(0, 10);
   });
+  // Batas atas date picker (hari ini WIB) — dihitung sekali agar render tetap pure.
+  const [maxDate] = useState(() => new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10));
 
   const { data, loading, error } = useMorningBrief(user, filterUlp, selectedDate);
 
@@ -51,6 +54,9 @@ export default function MorningBriefPage() {
       <div className="space-y-4">
         <BriefHeader yesterdayLabel={data?.yesterdayLabel ?? "—"} unitLabel={unitLabel} data={data} />
 
+        {/* Brief WA aktual (fusion ML + analitik) — preview & kirim manual */}
+        <WaBriefPreview canSend={isUp3 || user.role === "admin"} />
+
         {/* Telegram schedule — admin & UP3 only */}
         {(isUp3 || user.role === "admin") && (
           <TelegramScheduleSettings />
@@ -61,7 +67,7 @@ export default function MorningBriefPage() {
           <input
             type="date"
             value={selectedDate}
-            max={new Date(Date.now() + 7 * 3600 * 1000).toISOString().slice(0, 10)}
+            max={maxDate}
             onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
             className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
           />
