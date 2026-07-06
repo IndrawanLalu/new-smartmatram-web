@@ -15,8 +15,9 @@ require("dotenv").config();
 const { Client, LocalAuth, MessageMedia } = require("whatsapp-web.js");
 const qrcode  = require("qrcode-terminal");
 const express = require("express");
-const { handleCommand }      = require("./commands");
-const { startReminderCron }  = require("./reminder");
+const { handleCommand }         = require("./commands");
+const { startReminderCron }     = require("./reminder");
+const { startRealtimeListener } = require("./realtime");
 
 const PORT          = process.env.WA_BOT_PORT || 3001;
 const ALLOWED_GROUPS = new Set((process.env.WA_ALLOWED_GROUPS || "").split(",").filter(Boolean));
@@ -60,6 +61,7 @@ client.on("ready", () => {
   console.log("✅ WhatsApp Bot siap digunakan!");
   isReady = true;
   startReminderCron(client, () => isReady);
+  startRealtimeListener(client, () => isReady);
 });
 
 // ── Incoming message handler ─────────────────────────────────────────────────

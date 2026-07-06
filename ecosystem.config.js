@@ -29,6 +29,10 @@ module.exports = {
         AGENT_SECRET: "smartmataram2026",
         WA_ALLOWED_GROUPS: "120363420657048053@g.us",
         WA_ALLOWED_DMS: "6287761506513",
+        // Notif urgent REALTIME via Supabase Realtime (anti-putus, pengganti webhook).
+        // Kredensial Supabase dibaca dari .env.local — JANGAN taruh service key di sini.
+        // Cutover: set "true" DAN nonaktifkan webhook Supabase. Lihat wa-bot/REALTIME-NOTIF.md
+        WA_REALTIME_ENABLED: "false",
       },
     },
   ],
