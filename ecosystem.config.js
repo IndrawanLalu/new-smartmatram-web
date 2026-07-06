@@ -32,7 +32,8 @@ module.exports = {
         // Notif urgent REALTIME via Supabase Realtime (anti-putus, pengganti webhook).
         // Kredensial Supabase dibaca dari .env.local — JANGAN taruh service key di sini.
         // Cutover: set "true" DAN nonaktifkan webhook Supabase. Lihat wa-bot/REALTIME-NOTIF.md
-        WA_REALTIME_ENABLED: "false",
+        // AKTIF sejak Jul 2026 — webhook Supabase "wa-notify-jaringan"/"wa-notify-pohon" sudah di-DISABLE.
+        WA_REALTIME_ENABLED: "true",
       },
     },
   ],
