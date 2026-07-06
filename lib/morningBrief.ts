@@ -17,8 +17,10 @@ import {
 } from "@/lib/gangguanAnalytics";
 
 // ── Konstanta ───────────────────────────────────────────────────────────────────
-const UNIT = "AMPENAN";
-const UNIT_LABEL = "ULP Ampenan · PLN UP3 Mataram";
+function ulpLabel(ulp: string): string {
+  const t = ulp.charAt(0).toUpperCase() + ulp.slice(1).toLowerCase();
+  return `ULP ${t} · PLN UP3 Mataram`;
+}
 const OVERLOAD_PCT = 80;
 const HIGH_TEMP_C = 60;
 const WASPADA_SHOW = 4; // selain semua kritis, tampilkan top-N waspada saja (sisanya diringkas)
@@ -130,7 +132,9 @@ const SARAN: Record<string, string> = {
 };
 
 // ── Builder utama ────────────────────────────────────────────────────────────────
-export async function buildBrief(): Promise<BriefResult> {
+export async function buildBrief(ulp: string = "AMPENAN"): Promise<BriefResult> {
+  const UNIT = ulp;
+  const UNIT_LABEL = ulpLabel(ulp);
   const todayStr = witaDateStr(0);
   const tomorrowStr = witaDateStr(1);
 
@@ -301,11 +305,31 @@ export async function sendWA(groupId: string, text: string) {
   if (!res.ok) throw new Error(`Bot WhatsApp menolak (HTTP ${res.status}).`);
 }
 
-/** Resolusi grup WA tujuan (wa_settings → env). Null bila belum dikonfigurasi. */
-export async function resolveGroupId(): Promise<string | null> {
+/** Grup WA brief untuk satu ULP (default Ampenan). Fallback ke baris lama 'morning_brief'. */
+export async function resolveGroupId(ulp: string = "AMPENAN"): Promise<string | null> {
   const { data } = await supabaseAdmin
-    .from("wa_settings").select("group_id").eq("id", "morning_brief").eq("enabled", true).single();
-  return data?.group_id || process.env.WA_GROUP_MORNING_BRIEF || null;
+    .from("wa_settings").select("group_id")
+    .eq("category", "morning_brief").eq("ulp", ulp).eq("enabled", true).maybeSingle();
+  if (data?.group_id) return data.group_id;
+  // Fallback: skema lama (1 baris global id='morning_brief', ulp NULL) — sebelum migrasi split.
+  const { data: legacy } = await supabaseAdmin
+    .from("wa_settings").select("group_id").eq("id", "morning_brief").eq("enabled", true).maybeSingle();
+  return legacy?.group_id || null;
+}
+
+/** Daftar {ulp, groupId} brief per-ULP yang AKTIF — untuk fan-out kirim (spt reminder).
+ *  Baris lama global (ulp NULL) diperlakukan sebagai AMPENAN agar tak break saat transisi. */
+export async function resolveGroupTargets(): Promise<{ ulp: string; groupId: string }[]> {
+  const { data } = await supabaseAdmin
+    .from("wa_settings").select("ulp, group_id")
+    .eq("category", "morning_brief").eq("enabled", true);
+  const seen = new Set<string>();
+  const out: { ulp: string; groupId: string }[] = [];
+  for (const r of (data ?? []) as { ulp: string | null; group_id: string | null }[]) {
+    const ulp = (r.ulp ?? "AMPENAN").toUpperCase();
+    if (r.group_id && !seen.has(ulp)) { seen.add(ulp); out.push({ ulp, groupId: r.group_id }); }
+  }
+  return out;
 }
 
 /** Apakah pengiriman otomatis diaktifkan (morning_brief_settings.enabled). */

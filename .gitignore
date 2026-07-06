@@ -58,3 +58,4 @@ ml-engine/.venv/
 ml-engine/**/__pycache__/
 ml-engine/models/*.pkl
 ml-engine/*.log
+ml-engine/docs/

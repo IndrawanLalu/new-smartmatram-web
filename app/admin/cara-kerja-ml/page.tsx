@@ -149,9 +149,9 @@ export default function CaraKerjaMlPage() {
         <div className="flex items-center gap-3">
           <div className="p-2 bg-white/20 rounded-lg shrink-0"><BrainCircuit className="w-6 h-6" /></div>
           <div>
-            <h1 className="text-xl font-bold">Cara Kerja Engine ML</h1>
+            <h1 className="text-xl font-bold">SMART Learning</h1>
             <p className="text-sm text-white/80 mt-0.5">
-              Bagaimana sistem memprediksi penyulang yang berisiko gangguan — dijelaskan sederhana.
+              Mesin prediksi yang belajar dari data gangguan — memperkirakan penyulang berisiko, dijelaskan sederhana.
             </p>
           </div>
         </div>

@@ -17,6 +17,22 @@ interface Horizon {
   flagged: number;
   outages: number;
 }
+interface BtCase {
+  tgl_gangguan: string;
+  penyulang: string;
+  ulp: string;
+  terdeteksi: boolean;
+  level: string | null;
+  skor: number | null;
+  lead: number | null;
+}
+interface Detection {
+  lead_max: number;
+  detected: number;
+  missed: number;
+  total: number;
+  rate: number;
+}
 export interface BacktestData {
   eval_start: string;
   eval_end: string;
@@ -26,8 +42,20 @@ export interface BacktestData {
   horizons: Horizon[];
   avg_score_pos: number;
   avg_score_neg: number;
+  detection?: Detection;
+  cases?: BtCase[];
   model_version: string;
   note: string;
+}
+
+const LEVEL_COLOR: Record<string, string> = { kritis: "#ef4444", waspada: "#f59e0b" };
+
+function tglPendek(s: string): string {
+  return new Date(s + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
+}
+function leadText(lead: number | null): string {
+  if (lead == null) return "";
+  return lead === 0 ? "hari-H" : `${lead} hari sebelumnya`;
 }
 
 const LEVELS = [
@@ -125,19 +153,81 @@ export default function BacktestReport({ data }: { data: BacktestData | null }) 
 
       {/* Ringkasan bawah */}
       <div className="grid sm:grid-cols-3 gap-3 mt-4 text-xs">
-        <Stat label="Alarm tertangkap (recall)" value={`${hz.recall}%`} desc="dari semua gangguan, yang lebih dulu ditandai" />
+        <Stat
+          label="Gangguan diprediksi lebih dulu"
+          value={data.detection ? `${data.detection.rate}%` : `${hz.recall}%`}
+          desc={data.detection ? `${data.detection.detected} dari ${data.detection.total} gangguan, ditandai ≤${data.detection.lead_max} hari sebelumnya` : "dari semua gangguan"}
+        />
         <Stat label="Skor saat gangguan" value={`${data.avg_score_pos}`} desc={`vs ${data.avg_score_neg} saat aman — skor tinggi ↔ risiko tinggi`} />
         <Stat label="Model" value={data.model_version} desc="aturan transparan, belum dikalibrasi" />
       </div>
+
+      {/* Contoh nyata: gangguan vs prediksi */}
+      {data.detection && data.cases && data.cases.length > 0 && (
+        <div className="mt-5">
+          <div className="flex items-center justify-between gap-2 flex-wrap mb-2">
+            <h3 className="text-xs font-bold text-[#1B2631]">Contoh nyata: gangguan vs prediksi model</h3>
+            <span className="text-[11px] text-[#64748b]">
+              {data.detection.detected} dari {data.detection.total} gangguan ditandai lebih dulu ·{" "}
+              <b className="text-[#00897B]">{data.detection.rate}%</b> (≤{data.detection.lead_max} hari sebelumnya)
+            </span>
+          </div>
+          <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+            <div className="max-h-72 overflow-y-auto">
+              <table className="w-full text-[11px]">
+                <thead className="bg-[#F4F6F8] text-[#64748b] sticky top-0">
+                  <tr>
+                    <th className="text-left px-3 py-2 font-semibold whitespace-nowrap">Tgl Gangguan</th>
+                    <th className="text-left px-3 py-2 font-semibold">Penyulang</th>
+                    <th className="text-left px-3 py-2 font-semibold">Prediksi model sebelumnya</th>
+                    <th className="text-center px-3 py-2 font-semibold">Hasil</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.cases.map((c, i) => (
+                    <tr key={`${c.tgl_gangguan}-${c.penyulang}-${i}`} className={i % 2 ? "bg-[#F8FAFC]" : "bg-white"}>
+                      <td className="px-3 py-1.5 text-[#1B2631] whitespace-nowrap">{tglPendek(c.tgl_gangguan)}</td>
+                      <td className="px-3 py-1.5">
+                        <span className="font-semibold text-[#1B2631]">{c.penyulang}</span>
+                        <span className="text-[#94a3b8]"> · {c.ulp}</span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {c.terdeteksi ? (
+                          <span className="font-medium" style={{ color: LEVEL_COLOR[c.level ?? "waspada"] }}>
+                            {c.level?.toUpperCase()} (skor {Math.round(c.skor ?? 0)}) · {leadText(c.lead)}
+                          </span>
+                        ) : (
+                          <span className="text-[#94a3b8]">tidak menandai (skor aman)</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-1.5 text-center whitespace-nowrap">
+                        {c.terdeteksi ? (
+                          <span className="text-emerald-600 font-semibold">✅ tepat</span>
+                        ) : (
+                          <span className="text-[#94a3b8]">❌ terlewat</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <p className="text-[10px] text-[#94a3b8] mt-1.5">
+            “Ditandai lebih dulu” = model memberi status Kritis/Waspada dalam ≤{data.detection.lead_max} hari sebelum gangguan terjadi.
+            Menampilkan {data.cases.length} kejadian terbaru.
+          </p>
+        </div>
+      )}
 
       {/* Catatan jujur */}
       <div className="mt-4 bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
         <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
         <p className="text-[11px] text-amber-800 leading-relaxed">
           <b>Cara baca jujur:</b> daftar <b>KRITIS layak dipercaya</b> untuk didahulukan, dan <b>“Aman” beneran lebih jarang</b>{" "}
-          gangguan. Tapi recall {hz.recall}% artinya <b>sebagian gangguan mendadak</b> (di penyulang yang selama ini adem) belum
-          tertangkap — ini <b>alat prioritas, bukan jaminan menangkap semua</b>. Backtest ini sengaja tanpa data inspeksi (agar tak
-          “mengintip masa depan”), jadi model produksi bisa sedikit lebih baik.
+          gangguan.{data.detection && <> Sekitar <b>{(100 - data.detection.rate).toFixed(0)}% gangguan</b> masih terlewat</>} — biasanya
+          gangguan <b>mendadak</b> di penyulang yang selama ini adem. Jadi ini <b>alat prioritas, bukan jaminan menangkap semua</b>.
+          Backtest sengaja tanpa data inspeksi (agar tak “mengintip masa depan”), jadi model produksi bisa sedikit lebih baik.
         </p>
       </div>
     </div>

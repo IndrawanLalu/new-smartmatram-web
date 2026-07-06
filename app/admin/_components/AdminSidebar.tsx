@@ -63,7 +63,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/dashboard",            label: "Dashboard",            icon: LayoutDashboard },
       { href: "/admin/advanced-dashboard",   label: "Advanced Analytics",   icon: BrainCircuit },
-      { href: "/admin/cara-kerja-ml",        label: "Cara Kerja ML",        icon: BrainCircuit },
+      { href: "/admin/cara-kerja-ml",        label: "SMART Learning",       icon: BrainCircuit },
       { href: "/admin/efektifitas-inspeksi", label: "Efektivitas Inspeksi", icon: ShieldCheck },
       { href: "/admin/dashboard-penyulang",  label: "Dashboard Penyulang",  icon: BarChart3 },
     ],

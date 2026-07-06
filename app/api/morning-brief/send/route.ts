@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { buildBrief, sendWA, resolveGroupId, isSendEnabled } from "@/lib/morningBrief";
+import { buildBrief, sendWA, resolveGroupTargets, isSendEnabled } from "@/lib/morningBrief";
 
 export const maxDuration = 60;
 
@@ -22,14 +22,23 @@ export async function GET(request: NextRequest) {
     if (!(await isSendEnabled())) {
       return NextResponse.json({ ok: true, skipped: "disabled" });
     }
-    const groupId = await resolveGroupId();
-    if (!groupId) {
-      return NextResponse.json({ error: "Group WA morning brief belum dikonfigurasi" }, { status: 500 });
+    const targets = await resolveGroupTargets();
+    if (targets.length === 0) {
+      return NextResponse.json({ error: "Belum ada ULP morning brief yang aktif & terkonfigurasi" }, { status: 500 });
     }
 
-    const brief = await buildBrief();
-    await sendWA(groupId, brief.text);
-    return NextResponse.json({ ok: true, date: brief.date, riskTgl: brief.riskTgl, stale: brief.stale });
+    // Fan-out per ULP: tiap ULP dapat brief data-nya sendiri ke group masing-masing.
+    const sent: { ulp: string; ok: boolean; stale?: boolean; error?: string }[] = [];
+    for (const { ulp, groupId } of targets) {
+      try {
+        const brief = await buildBrief(ulp);
+        await sendWA(groupId, brief.text);
+        sent.push({ ulp, ok: true, stale: brief.stale });
+      } catch (e) {
+        sent.push({ ulp, ok: false, error: String(e) });
+      }
+    }
+    return NextResponse.json({ ok: true, sent });
   } catch (e) {
     console.error("Morning brief send error:", e);
     return NextResponse.json({ error: String(e) }, { status: 500 });

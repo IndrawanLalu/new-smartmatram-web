@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import time
 
-from . import build_features, config, fetch_weather, predict_cause, score_risk, supabase_client, sync_gangguan
+from . import backtest_risk, build_features, config, fetch_weather, predict_cause, score_risk, supabase_client, sync_gangguan
 
 
 def _trigger_brief() -> dict:
@@ -46,6 +46,7 @@ def main() -> None:
     target = build_features.default_target()
     score_stats = score_risk.run(target)  # langkah inti — biarkan error naik bila gagal
     _step("trigger_brief", _trigger_brief)  # kirim brief WA (non-fatal bila gagal)
+    _step("backtest", backtest_risk.run)    # rapor akurasi → ml_run_log (non-fatal)
     dur = int((time.time() - t0) * 1000)
     print(f"[ok] pipeline selesai dalam {dur} ms | {score_stats}")
     supabase_client.log_run("pipeline", "ok", str(score_stats), rows=score_stats.get("scored", 0), duration_ms=dur)
