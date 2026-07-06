@@ -11,6 +11,7 @@ Jalankan: python -m src.backtest_risk
 """
 from __future__ import annotations
 
+import json
 from collections import Counter, defaultdict
 from datetime import date, timedelta
 
@@ -105,30 +106,52 @@ def main():
                 score_sum_neg += s["risk_score"]; nneg += 1
         target += timedelta(days=STEP_DAYS)
 
-    # ── laporan ──────────────────────────────────────────────────────────────
-    print("=" * 64)
-    print(f"BACKTEST rule-v1  |  {EVAL_START} s/d {EVAL_END}  |  {len(feeders)} feeder")
-    print(f"Sampel (feeder-minggu): {n}")
-    print("=" * 64)
+    # ── rakit hasil terstruktur ──────────────────────────────────────────────
+    horizons = []
     for h in HORIZONS:
-        base = 100 * outages_in_window[h] / n if n else 0
-        print(f"\n── Horizon {h} hari  (base rate gangguan: {base:.1f}%) ──")
+        base = round(100 * outages_in_window[h] / n, 1) if n else 0.0
+        levels = {}
         for lv in ("aman", "waspada", "kritis"):
             t = lvl_tot[lv]
             p = lvl_pos[h][lv]
-            rate = 100 * p / t if t else 0
-            lift = rate / base if base else 0
-            print(f"  {lv:8}: {t:6} sampel | {rate:5.1f}% diikuti gangguan | lift {lift:.1f}x")
+            rate = round(100 * p / t, 1) if t else 0.0
+            levels[lv] = {"n": t, "rate": rate, "lift": round(rate / base, 1) if base else 0.0}
         tp = lvl_pos[h]["kritis"] + lvl_pos[h]["waspada"]
         flagged = lvl_tot["kritis"] + lvl_tot["waspada"]
-        fn = outages_in_window[h] - tp
-        prec = 100 * tp / flagged if flagged else 0
-        rec = 100 * tp / outages_in_window[h] if outages_in_window[h] else 0
-        print(f"  FLAG (kritis+waspada): precision {prec:.1f}% | recall {rec:.1f}% | {flagged} flag/minggu-total")
-    print("\n── Rata-rata skor (horizon 7h) ──")
-    print(f"  saat ADA gangguan  : {score_sum_pos / npos if npos else 0:.1f}")
-    print(f"  saat TIDAK gangguan: {score_sum_neg / nneg if nneg else 0:.1f}")
-    print("  (kalau ADA > TIDAK → skor punya sinyal)")
+        prec = round(100 * tp / flagged, 1) if flagged else 0.0
+        rec = round(100 * tp / outages_in_window[h], 1) if outages_in_window[h] else 0.0
+        horizons.append({
+            "h": h, "base": base, "levels": levels,
+            "precision": prec, "recall": rec, "flagged": flagged, "outages": outages_in_window[h],
+        })
+
+    result = {
+        "eval_start": EVAL_START.isoformat(),
+        "eval_end": EVAL_END.isoformat(),
+        "feeders": len(feeders),
+        "samples": n,
+        "step_days": STEP_DAYS,
+        "horizons": horizons,
+        "avg_score_pos": round(score_sum_pos / npos, 1) if npos else 0.0,
+        "avg_score_neg": round(score_sum_neg / nneg, 1) if nneg else 0.0,
+        "model_version": "rule-v1",
+        "note": "leak-free: fitur riwayat+cuaca point-in-time, inspeksi dinolkan",
+    }
+
+    # ── laporan konsol ─────────────────────────────────────────────────────────
+    print("=" * 64)
+    print(f"BACKTEST rule-v1  |  {EVAL_START} s/d {EVAL_END}  |  {len(feeders)} feeder | {n} sampel")
+    print("=" * 64)
+    for hz in horizons:
+        print(f"\n-- Horizon {hz['h']} hari  (base rate: {hz['base']}%) --")
+        for lv in ("aman", "waspada", "kritis"):
+            d = hz["levels"][lv]
+            print(f"  {lv:8}: {d['n']:6} sampel | {d['rate']:5}% diikuti gangguan | lift {d['lift']}x")
+        print(f"  FLAG: precision {hz['precision']}% | recall {hz['recall']}% | {hz['flagged']} flag")
+    print(f"\nRata-rata skor: ADA gangguan {result['avg_score_pos']} vs TIDAK {result['avg_score_neg']}")
+
+    supabase_client.log_run("backtest", "ok", json.dumps(result), rows=n)
+    print("\n[ok] hasil backtest ditulis ke ml_run_log (job=backtest)")
 
 
 if __name__ == "__main__":

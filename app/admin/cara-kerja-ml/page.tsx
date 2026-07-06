@@ -8,6 +8,7 @@ import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
 import EngineFlowAnimation from "./_components/EngineFlowAnimation";
 import RealDataPanels, { type WeatherRow, type EventRow } from "./_components/RealDataPanels";
 import ModelBStatus, { type MlbStatus, type F1Point } from "./_components/ModelBStatus";
+import BacktestReport, { type BacktestData } from "./_components/BacktestReport";
 
 interface Overview {
   events: number | null;
@@ -47,6 +48,7 @@ export default function CaraKerjaMlPage() {
   const [events, setEvents] = useState<EventRow[]>([]);
   const [mlb, setMlb] = useState<MlbStatus | null>(null);
   const [mlbTrend, setMlbTrend] = useState<F1Point[]>([]);
+  const [backtest, setBacktest] = useState<BacktestData | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -97,6 +99,16 @@ export default function CaraKerjaMlPage() {
         }
         setMlb(latest);
         setMlbTrend(pts.reverse()); // kronologis (lama → baru)
+
+        const { data: bt } = await supabaseBrowser
+          .from("ml_run_log")
+          .select("message")
+          .eq("job", "backtest")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (bt?.[0]?.message) {
+          try { setBacktest(JSON.parse(bt[0].message) as BacktestData); } catch { /* format lama, lewati */ }
+        }
       } catch { /* tabel mungkin belum ada */ }
     })();
   }, []);
@@ -165,6 +177,9 @@ export default function CaraKerjaMlPage() {
 
       {/* Status pembelajaran Model B */}
       <ModelBStatus data={mlb} trend={mlbTrend} />
+
+      {/* Bukti akurasi — backtest Model A vs gangguan nyata */}
+      <BacktestReport data={backtest} />
 
       {/* Panel data nyata */}
       <RealDataPanels riskData={riskData} weather={weather} events={events} besok={besok} />
