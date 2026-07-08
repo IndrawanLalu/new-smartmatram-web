@@ -8,6 +8,7 @@
  */
 import "server-only";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { gatewayEnabled, gatewaySend } from "@/lib/wa/gateway";
 import { fetchSheetData } from "@/lib/sheets";
 import { calcRemainingDays, getUrgencyLevel } from "@/lib/roles";
 import { normalizeFeeder } from "@/lib/feeder";
@@ -291,6 +292,12 @@ export async function buildBrief(ulp: string = "AMPENAN"): Promise<BriefResult> 
 
 // ── Pengirim WA ─────────────────────────────────────────────────────────────────
 export async function sendWA(groupId: string, text: string) {
+  // Jalur BARU: wa-gateway (Baileys)
+  if (gatewayEnabled()) {
+    await gatewaySend({ to: groupId, text });
+    return;
+  }
+  // Jalur LAMA: wa-bot (whatsapp-web.js)
   const url = `${process.env.WA_BOT_URL ?? "http://127.0.0.1:3001"}/send`;
   let res: Response;
   try {

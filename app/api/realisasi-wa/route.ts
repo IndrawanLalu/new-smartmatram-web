@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { RealisasiTimRow } from "@/app/admin/morning-brief/_hooks/useMorningBrief";
+import { gatewayEnabled, gatewaySend } from "@/lib/wa/gateway";
 
 const WA_BOT_URL = process.env.WA_BOT_URL ?? "http://127.0.0.1:3001";
 
@@ -55,6 +56,17 @@ export async function POST(req: NextRequest) {
 
   const message = buildMessage(items, dateLabel);
 
+  // Jalur BARU: wa-gateway
+  if (gatewayEnabled()) {
+    try {
+      await gatewaySend({ to: groupId, text: message });
+      return NextResponse.json({ success: true });
+    } catch (e) {
+      return NextResponse.json({ error: `Gateway error: ${(e as Error).message}` }, { status: 502 });
+    }
+  }
+
+  // Jalur LAMA: wa-bot
   try {
     const res = await fetch(`${WA_BOT_URL}/send`, {
       method: "POST",

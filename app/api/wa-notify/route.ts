@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { gatewayEnabled, gatewaySend } from "@/lib/wa/gateway";
 
 const WA_BOT_URL = process.env.WA_BOT_URL ?? "http://127.0.0.1:3001";
 
@@ -74,6 +75,22 @@ async function sendWAWithRetry(
   delayMs = 5000,
 ) {
   if (!groupId) return;
+  // Jalur BARU: wa-gateway
+  if (gatewayEnabled()) {
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        await gatewaySend({ to: groupId, text: message, mediaUrl: imageUrl });
+        console.log(`[wa-notify] Pesan terkirim via gateway (percobaan ${i + 1})`);
+        return;
+      } catch (e) {
+        console.warn(`[wa-notify] gateway gagal (${(e as Error).message}), retry ${i + 1}/${maxRetries}...`);
+      }
+      await new Promise((r) => setTimeout(r, delayMs));
+    }
+    console.error(`[wa-notify] Gagal kirim via gateway setelah ${maxRetries}x`);
+    return;
+  }
+  // Jalur LAMA: wa-bot
   for (let i = 0; i < maxRetries; i++) {
     try {
       const res = await fetch(`${WA_BOT_URL}/send`, {
