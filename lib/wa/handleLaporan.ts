@@ -21,9 +21,10 @@ function fmtTanggal(iso: string | null): string {
 
 function konfirmasi(id: number | string, d: PenormalanData): string {
   const lokasi = [d.up3 && `UP3 ${d.up3}`, d.ulp && `ULP ${d.ulp}`].filter(Boolean).join(" / ");
+  const titik = [d.keypoint, d.penyulang && `Pyl. ${d.penyulang}`].filter(Boolean).join(" · ") || "—";
   const lines = [
-    `✅ *Tersimpan* — Penormalan Gangguan #${id}`,
-    `📍 ${d.section_padam?.split(/[-/]/)[0].trim() || "—"}${lokasi ? ` (${lokasi})` : ""}`,
+    `✅ *Tersimpan* — ${d.jenis} #${id}`,
+    `📍 ${titik}${lokasi ? ` (${lokasi})` : ""}`,
     `📅 ${fmtTanggal(d.tanggal)} · Padam ${d.waktu_padam ?? "—"} → Nyala ${d.waktu_nyala ?? "—"}` +
       (d.durasi_menit != null ? ` (${d.durasi_menit} mnt)` : ""),
   ];
@@ -41,7 +42,11 @@ function konfirmasi(id: number | string, d: PenormalanData): string {
 function toSheetRow(d: PenormalanData, meta: WaMeta): Record<string, string | number | null> {
   return {
     Tanggal: fmtTanggal(d.tanggal),
+    Jenis: d.jenis,
+    Judul: d.judul,
     "Section Padam": d.section_padam,
+    Keypoint: d.keypoint,
+    Penyulang: d.penyulang,
     UP3: d.up3,
     ULP: d.ulp,
     "Trafo/GI": d.trafo_gi,
@@ -83,7 +88,7 @@ export async function handlePenormalanReport(text: string, meta: WaMeta): Promis
   if (error) {
     // 23505 = unique violation → pesan yang sama sudah pernah dicatat
     if (error.code === "23505") {
-      return `ℹ️ Laporan ini sudah tercatat sebelumnya (${data.section_padam?.split(/[-/]/)[0].trim()}, ${fmtTanggal(data.tanggal)} ${data.waktu_padam}).`;
+      return `ℹ️ Laporan ini sudah tercatat sebelumnya (${data.keypoint ?? data.section_padam}, ${fmtTanggal(data.tanggal)} ${data.waktu_padam}).`;
     }
     console.error("[handleLaporan] insert error:", error.message);
     return "⚠️ Gagal menyimpan ke database. Coba lagi atau hubungi admin.";

@@ -5,7 +5,11 @@
 create table if not exists public.gangguan_realtime (
   id                bigint generated always as identity primary key,
   tanggal           date,
-  section_padam     text,
+  jenis             text,          -- Penormalan Gangguan | Autoreclose | Pekerjaan Padam Emergency | ...
+  judul             text,          -- baris judul asli dari dispatcher
+  section_padam     text,          -- raw utuh
+  keypoint          text,          -- section sebelum " - "
+  penyulang         text,          -- section setelah " - " sampai "/"
   up3               text,
   ulp               text,
   trafo_gi          text,
@@ -29,7 +33,7 @@ create table if not exists public.gangguan_realtime (
   raw_text          text,
   created_at        timestamptz not null default now(),
   -- anti-dobel bila pesan yang sama di-forward berkali-kali
-  constraint gangguan_realtime_uniq unique (tanggal, section_padam, waktu_padam)
+  constraint gangguan_realtime_uniq unique (tanggal, section_padam, waktu_padam, jenis)
 );
 
 create index if not exists gangguan_realtime_tanggal_idx on public.gangguan_realtime (tanggal desc);

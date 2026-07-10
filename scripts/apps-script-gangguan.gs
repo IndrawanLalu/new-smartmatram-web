@@ -6,7 +6,7 @@
  * 1. Buka spreadsheet tujuan → Extensions → Apps Script.
  * 2. Tempel kode ini, ganti SECRET dengan nilai yang sama dgn env GANGGUAN_SHEET_SECRET.
  * 3. Buat sheet "GangguanRealtime" dengan HEADER di baris 1 (urutan bebas, nama harus sama):
- *      Tanggal | Section Padam | UP3 | ULP | Trafo/GI | Waktu Padam | Waktu Nyala |
+ *      Tanggal | Jenis | Judul | Section Padam | Keypoint | Penyulang | UP3 | ULP | Trafo/GI | Waktu Padam | Waktu Nyala |
  *      Durasi (menit) | Relay | Beban (kW) | Arus R | Arus S | Arus T | Arus N |
  *      Total Trip | ENS (kWh) | Penyebab | Eksekusi | Cuaca | Sumber | Pelapor
  * 4. Deploy → New deployment → Web app → Execute as: Me, Who has access: Anyone.
