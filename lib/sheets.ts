@@ -39,3 +39,26 @@ export async function fetchSheetData(
   _cache.set(key, { data, ts: Date.now() });
   return data;
 }
+
+/** Baca nilai mentah sebuah tab sebagai matrix string[][] (baris 0 = header). */
+export async function fetchSheetValues(
+  spreadsheetId: string,
+  sheetName: string,
+  range = "A1:BZ2000",
+): Promise<string[][]> {
+  const fullRange = `${sheetName}!${range}`;
+  const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(fullRange)}?key=${API_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    const j = await res.json().catch(() => null);
+    throw new Error(j?.error?.message || `Gagal baca Sheet (${res.status})`);
+  }
+  const json = await res.json();
+  return (json.values ?? []) as string[][];
+}
+
+/** Ekstrak spreadsheet ID dari URL atau kembalikan apa adanya bila sudah ID. */
+export function extractSpreadsheetId(input: string): string {
+  const m = input.match(/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  return m ? m[1] : input.trim();
+}

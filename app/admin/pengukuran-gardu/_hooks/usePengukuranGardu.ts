@@ -46,6 +46,8 @@ export interface PengukuranGardu {
   wo_sent_at: string | null;
   jenis_pemeliharaan: string | null;
   amg_sent_at: string | null;
+  amg_queued_at: string | null;
+  amg_error: string | null;
 }
 
 export interface HighCurrentItem {

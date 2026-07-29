@@ -1,19 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { X } from "lucide-react";
 import { UNITS } from "@/lib/roles";
+import { useRoles } from "@/app/admin/_hooks/useRoles";
 import type { Petugas, SavePetugasInput } from "../_hooks/usePetugas";
-
-const GROUPS = [
-  "INSPEKTOR",
-  "PERABASAN",
-  "YANGU",
-  "HARJAR",
-  "HARGAR",
-  "PDKB",
-  "K3",
-];
 
 interface Props {
   petugas?: Petugas;
@@ -24,9 +15,22 @@ interface Props {
 
 export default function PetugasFormModal({ petugas, fixedUlp, onClose, onSave }: Props) {
   const isEdit = !!petugas;
+  const { roles } = useRoles();
+
+  // Group/Tim petugas = kode role lapangan (bukan UP3/admin/manager).
+  // Nilai = code.toUpperCase() agar cocok dengan filter onboarding mobile.
+  const groupOptions = useMemo(() => {
+    const opts = roles
+      .filter((r) => !r.sees_all_units && !r.can_assign && r.platform !== "web")
+      .map((r) => ({ value: r.code.toUpperCase(), label: r.label }));
+    const cur = petugas?.group_name;
+    if (cur && !opts.some((o) => o.value === cur)) opts.unshift({ value: cur, label: cur });
+    return opts;
+  }, [roles, petugas]);
 
   const [nama, setNama] = useState(petugas?.nama ?? "");
-  const [groupName, setGroupName] = useState(petugas?.group_name ?? GROUPS[0]);
+  const [groupName, setGroupName] = useState(petugas?.group_name ?? "");
+  const effectiveGroup = groupName || groupOptions[0]?.value || "";
   const [ulp, setUlp] = useState(petugas?.ulp ?? fixedUlp ?? UNITS[0].value);
   const [phone, setPhone] = useState(petugas?.phone ?? "");
   const [email, setEmail] = useState(petugas?.email ?? "");
@@ -37,10 +41,11 @@ export default function PetugasFormModal({ petugas, fixedUlp, onClose, onSave }:
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nama.trim()) { setError("Nama harus diisi"); return; }
+    if (!effectiveGroup) { setError("Group/Tim harus dipilih"); return; }
 
     setLoading(true);
     setError(null);
-    const err = await onSave({ nama, group_name: groupName, ulp, phone, email, status });
+    const err = await onSave({ nama, group_name: effectiveGroup, ulp, phone, email, status });
     setLoading(false);
     if (err) { setError(err); return; }
     onClose();
@@ -77,8 +82,12 @@ export default function PetugasFormModal({ petugas, fixedUlp, onClose, onSave }:
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-medium text-[#5D6D7E] mb-1">Group / Tim</label>
-              <select value={groupName} onChange={(e) => setGroupName(e.target.value)} className={inputCls}>
-                {GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
+              <select value={effectiveGroup} onChange={(e) => setGroupName(e.target.value)} className={inputCls}>
+                {groupOptions.map((g) => (
+                  <option key={g.value} value={g.value}>
+                    {g.label === g.value ? g.value : `${g.label} · ${g.value}`}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

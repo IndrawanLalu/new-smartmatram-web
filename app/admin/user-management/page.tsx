@@ -7,6 +7,8 @@ import { UNITS } from "@/lib/roles";
 import { useUsers } from "./_hooks/useUsers";
 import type { UserWithRole } from "./_hooks/useUsers";
 import UserFormModal from "./_components/UserFormModal";
+import RoleManager from "./_components/RoleManager";
+import MenuAccessMatrix from "./_components/MenuAccessMatrix";
 
 const PLATFORM_LABEL: Record<string, string> = {
   all: "Web & Mobile",
@@ -32,6 +34,7 @@ export default function UserManagementPage() {
   const isUP3 = currentUser?.role === "UP3";
   const isAdmin = currentUser?.role === "admin";
 
+  const [tab, setTab] = useState<"users" | "roles">("users");
   const [filterUlp, setFilterUlp] = useState(isUP3 ? "" : (currentUser?.unit ?? ""));
   const [search, setSearch] = useState("");
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -86,6 +89,30 @@ export default function UserManagementPage() {
         </div>
       </div>
 
+      {/* Tab bar — Kelola Role hanya untuk UP3 (konfigurasi global) */}
+      {isUP3 && (
+        <div className="flex gap-1 bg-white rounded-xl border border-[#E2E8F0] p-1 w-fit">
+          {([["users", "User"], ["roles", "Role & Regu"]] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                tab === key ? "bg-[#E0F2F1] text-[#00695C]" : "text-[#5D6D7E] hover:bg-[#F4F6F8]"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {isUP3 && tab === "roles" ? (
+        <div className="space-y-6">
+          <RoleManager />
+          <MenuAccessMatrix />
+        </div>
+      ) : (
+      <>
       {/* Toolbar */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">
         <div className="flex flex-wrap items-center gap-3">
@@ -213,6 +240,8 @@ export default function UserManagementPage() {
           </div>
         )}
       </div>
+      </>
+      )}
 
       {/* Invite Modal */}
       {inviteOpen && (

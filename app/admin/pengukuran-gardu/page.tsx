@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import { downloadXlsx } from "./_utils/downloadXlsx";
 import {
   usePengukuranGardu,
@@ -268,20 +269,24 @@ export default function PengukuranGarduPage() {
     const ids = Array.from(selectedIds);
     setIsBulkSending(true);
     setAmgStatus(Object.fromEntries(ids.map((id) => [id, "sending"])));
-    for (const id of ids) {
-      try {
-        const res = await fetch("/api/kirim-amg", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pengukuranId: id }),
-        });
-        if (res.ok) { setAmgStatus((p) => ({ ...p, [id]: "ok" })); patchRow(id, { amg_sent_at: new Date().toISOString() }); }
-        else          setAmgStatus((p) => ({ ...p, [id]: "error" }));
-      } catch {
-        setAmgStatus((p) => ({ ...p, [id]: "error" }));
+    try {
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      const res = await fetch("/api/amg-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
+        body: JSON.stringify({ pengukuranIds: ids }),
+      });
+      if (res.ok) {
+        setAmgStatus(Object.fromEntries(ids.map((id) => [id, "ok"])));
+        ids.forEach((id) => patchRow(id, { amg_queued_at: new Date().toISOString(), amg_sent_at: null, amg_error: null }));
+      } else {
+        setAmgStatus(Object.fromEntries(ids.map((id) => [id, "error"])));
       }
+    } catch {
+      setAmgStatus(Object.fromEntries(ids.map((id) => [id, "error"])));
+    } finally {
+      setIsBulkSending(false);
     }
-    setIsBulkSending(false);
   }
 
   const periodLabel = filter.month === 0
@@ -770,18 +775,17 @@ export default function PengukuranGarduPage() {
         {isBulkSending ? (
           <>
             <Loader2 size={16} className="animate-spin text-blue-400 shrink-0" />
-            <span className="text-sm text-[#e2e8f0]">
-              Mengirim {Object.values(amgStatus).filter((s) => s === "ok" || s === "error").length}/{selectedIds.size}...
-            </span>
+            <span className="text-sm text-[#e2e8f0]">Memasukkan ke antrean...</span>
           </>
         ) : Object.keys(amgStatus).length > 0 ? (
           <>
-            <CheckCircle2 size={16} className="text-green-400 shrink-0" />
+            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
             <span className="text-sm text-[#e2e8f0]">
-              <span className="text-green-400 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} berhasil</span>
+              <span className="text-amber-300 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} masuk antrean</span>
               {Object.values(amgStatus).filter((s) => s === "error").length > 0 && (
                 <span className="text-red-400 font-semibold ml-2">{Object.values(amgStatus).filter((s) => s === "error").length} gagal</span>
               )}
+              <span className="text-[#94a3b8] ml-2">· agen lokal akan mengirim</span>
             </span>
             <button onClick={clearSelection} className="ml-2 p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]"><X size={14} /></button>
           </>
@@ -790,7 +794,7 @@ export default function PengukuranGarduPage() {
             <span className="text-sm font-medium text-[#e2e8f0]">{selectedIds.size} gardu dipilih</span>
             <button onClick={handleBulkAmg}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-semibold hover:opacity-90 transition-opacity">
-              <Send size={13} /> Kirim AMG
+              <Send size={13} /> Kirim ke AMG
             </button>
             <button onClick={clearSelection} className="p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]"><X size={14} /></button>
           </>

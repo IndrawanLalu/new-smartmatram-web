@@ -8,8 +8,6 @@ import { usePetugas } from "./_hooks/usePetugas";
 import type { Petugas } from "./_hooks/usePetugas";
 import PetugasFormModal from "./_components/PetugasFormModal";
 
-const GROUPS = ["", "INSPEKTOR", "PERABASAN", "YANGU", "HARJAR", "HARGAR", "PDKB", "K3"];
-
 const STATUS_CLS: Record<string, string> = {
   aktif: "bg-green-50 text-green-700",
   "non-aktif": "bg-gray-100 text-gray-500",
@@ -52,6 +50,12 @@ export default function PetugasPage() {
     );
     return rows;
   }, [data, filterGroup, search]);
+
+  // Opsi filter group diambil dari data nyata (termasuk role baru & group lama)
+  const groupList = useMemo(() => {
+    const set = new Set(data.map((p) => p.group_name).filter(Boolean));
+    return ["", ...[...set].sort()];
+  }, [data]);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -97,7 +101,7 @@ export default function PetugasPage() {
             onChange={(e) => setFilterGroup(e.target.value)}
             className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
           >
-            {GROUPS.map((g) => (
+            {groupList.map((g) => (
               <option key={g} value={g}>{g || "Semua Group"}</option>
             ))}
           </select>

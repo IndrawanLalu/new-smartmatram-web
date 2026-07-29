@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   type PengukuranGardu,
   HIGH_CURRENT_A,
@@ -134,7 +135,8 @@ export default function GarduDetailModal({
 
   if (!row) return null;
 
-  const isAmgDone = !amgReset && (amgMarked || !!row.amg_sent_at);
+  const isSent = !amgReset && !!row.amg_sent_at;
+  const isQueued = !amgReset && !isSent && (amgMarked || !!row.amg_queued_at);
 
   async function handleKirimAmg() {
     if (amgLoading) return;
@@ -142,22 +144,20 @@ export default function GarduDetailModal({
     setAmgReset(false);
     setAmgError(null);
     try {
-      const res = await fetch("/api/kirim-amg", {
+      const { data: { session } } = await supabaseBrowser.auth.getSession();
+      const res = await fetch("/api/amg-queue", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
         body: JSON.stringify({ pengukuranId: row!.id }),
       });
-      const json = await res.json() as { ok?: boolean; error?: string; sentTo?: string[] };
-      if (process.env.NODE_ENV !== "production") {
-        console.log("[kirim-amg]", { status: res.status, sentTo: json.sentTo });
-      }
+      const json = await res.json() as { ok?: boolean; error?: string };
       if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
       setAmgMarked(true);
       setAmgSuccess(true);
-      setTimeout(() => setAmgSuccess(false), 2800);
-      onPatchRow?.(row!.id, { amg_sent_at: new Date().toISOString() });
+      setTimeout(() => setAmgSuccess(false), 2200);
+      onPatchRow?.(row!.id, { amg_queued_at: new Date().toISOString(), amg_sent_at: null, amg_error: null });
     } catch (e) {
-      setAmgError(e instanceof Error ? e.message : "Gagal kirim ke AMG");
+      setAmgError(e instanceof Error ? e.message : "Gagal memasukkan ke antrean");
     } finally {
       setAmgLoading(false);
     }
@@ -200,10 +200,10 @@ export default function GarduDetailModal({
         loading={amgLoading}
         success={amgSuccess}
         icon="📡"
-        title="Proses Kirim Data ke AMG"
-        subtitle="Login & mengirim data pengukuran..."
-        successTitle="Data Berhasil Dikirim!"
-        successSubtitle="Data pengukuran tersimpan di AMG"
+        title="Memasukkan ke Antrean AMG"
+        subtitle="Menandai untuk dikirim agen lokal..."
+        successTitle="Masuk Antrean AMG"
+        successSubtitle="Agen lokal akan mengirim ke AMG"
       />
 
       {/* Backdrop */}
@@ -244,9 +244,14 @@ export default function GarduDetailModal({
                   WO DIKIRIM
                 </span>
               )}
-              {isAmgDone && (
+              {isSent && (
                 <span className="bg-blue-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   AMG ✅
+                </span>
+              )}
+              {isQueued && (
+                <span className="bg-amber-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  AMG ⏳ ANTRE
                 </span>
               )}
             </div>
@@ -255,7 +260,7 @@ export default function GarduDetailModal({
             </p>
           </div>
           <div className="flex items-center gap-2">
-            {isAmgDone ? (
+            {isSent ? (
               <div className="flex flex-col items-end gap-1">
                 <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/20 text-blue-200 text-xs font-medium cursor-default">
                   <CheckCircle2 size={13} /> Terkirim ke AMG
@@ -265,6 +270,22 @@ export default function GarduDetailModal({
                   className="text-[10px] text-[#94a3b8] hover:text-white underline leading-tight"
                 >
                   Kirim Ulang
+                </button>
+              </div>
+            ) : isQueued ? (
+              <div className="flex flex-col items-end gap-1">
+                <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-200 text-xs font-medium cursor-default">
+                  <span className="w-3 h-3 border border-amber-200/40 border-t-amber-200 rounded-full animate-spin" />
+                  Antre — agen mengirim
+                </span>
+                {row.amg_error ? (
+                  <span className="text-red-300 text-[10px] max-w-[220px] text-right leading-tight">Gagal: {row.amg_error} (akan dicoba lagi)</span>
+                ) : null}
+                <button
+                  onClick={() => { setAmgReset(true); setAmgError(null); }}
+                  className="text-[10px] text-[#94a3b8] hover:text-white underline leading-tight"
+                >
+                  Kirim ulang
                 </button>
               </div>
             ) : (
@@ -279,7 +300,7 @@ export default function GarduDetailModal({
                   ) : (
                     <CheckCircle2 size={13} />
                   )}
-                  {amgLoading ? "Mengirim ke AMG..." : "Kirim ke AMG"}
+                  {amgLoading ? "Memproses..." : "Kirim ke AMG"}
                 </button>
                 {amgError && (
                   <div className="flex flex-col items-end gap-0.5">

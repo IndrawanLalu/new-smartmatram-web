@@ -13,7 +13,9 @@ export type Role =
   | "HARGAR"
   | "PERABASAN"
   | "YANGU"
-  | "PDKB";
+  | "PDKB"
+  // Role kustom (data-driven) tetap diterima; literal di atas untuk autocomplete.
+  | (string & {});
 
 export type Unit = "AMPENAN" | "CAKRANEGARA" | "GERUNG" | "TANJUNG";
 
@@ -117,6 +119,63 @@ export const EKSEKUTOR_ROLES: Role[] = [
   "PERABASAN",
   "YANGU",
   "PDKB",
+];
+
+// ── Roles data-driven (tabel `roles`) ────────────────────────────────────────
+// Sumber kebenaran runtime = tabel `roles`. Flag menggantikan logika berbasis-nama:
+//   sees_all_units (UP3), can_assign (UP3/admin), is_eksekutor (regu WO).
+
+export interface RoleRow {
+  code: string;
+  label: string;
+  platform: "web" | "mobile" | "all";
+  needs_unit: boolean;
+  is_eksekutor: boolean;
+  sees_all_units: boolean;
+  can_assign: boolean;
+  can_verify_wo: boolean;   // verifikator WO (Koordinator/Staff Teknik)
+  can_approve_wo: boolean;  // approver WO (Supervisor)
+  is_system: boolean;
+  menus: string[];   // id menu mobile yang boleh diakses role ini (lihat MOBILE_MENUS)
+  urutan: number;
+}
+
+/** Menu mobile yang bisa di-assign ke role (id harus sama dengan menuConfig.ts di new-smart).
+ *  Work Order TIDAK di sini — WO otomatis untuk role ber-flag is_eksekutor. */
+export const MOBILE_MENUS: { id: string; label: string }[] = [
+  { id: "inspeksi",        label: "Inspeksi" },
+  { id: "petaPohon",       label: "Peta Pohon" },
+  { id: "gangguan",        label: "Gangguan Penyulang" },
+  { id: "bebanTrafo",      label: "Beban Trafo" },
+  { id: "pengukuranGardu", label: "Pengukuran Gardu" },
+  { id: "riwayatGardu",    label: "Riwayat Gardu" },
+  { id: "scanMeter",       label: "Scan Meter" },
+];
+
+const ALL_MENU_IDS = MOBILE_MENUS.map((m) => m.id);
+const FIELD_MENU_IDS = ALL_MENU_IDS.filter((id) => id !== "inspeksi");
+
+/** Kode role sistem — tak bisa dihapus, flag terkunci (perilaku struktural di kode). */
+export const SYSTEM_ROLE_CODES = [
+  "UP3", "admin", "inspektor",
+  "HARJAR", "HARGAR", "PERABASAN", "YANGU", "PDKB",
+  "manager", "K3",
+] as const;
+
+/** Fallback bila tabel `roles` belum dibuat / kosong (mirror seed di scripts/roles-schema.sql). */
+const NOWO = { can_verify_wo: false, can_approve_wo: false };
+
+export const DEFAULT_ROLE_ROWS: RoleRow[] = [
+  { code: "UP3",       label: "UP3",        platform: "web",    needs_unit: false, is_eksekutor: false, sees_all_units: true,  can_assign: true,  ...NOWO, is_system: true, menus: [],              urutan: 1 },
+  { code: "admin",     label: "Admin ULP",  platform: "all",    needs_unit: true,  is_eksekutor: false, sees_all_units: false, can_assign: true,  ...NOWO, is_system: true, menus: ALL_MENU_IDS,    urutan: 2 },
+  { code: "inspektor", label: "Inspektor",  platform: "mobile", needs_unit: true,  is_eksekutor: false, sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: ALL_MENU_IDS,    urutan: 3 },
+  { code: "HARJAR",    label: "HARJAR",     platform: "mobile", needs_unit: true,  is_eksekutor: true,  sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: [],              urutan: 4 },
+  { code: "HARGAR",    label: "HARGAR",     platform: "mobile", needs_unit: true,  is_eksekutor: true,  sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: [],              urutan: 5 },
+  { code: "PERABASAN", label: "Perabasan",  platform: "mobile", needs_unit: true,  is_eksekutor: true,  sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: FIELD_MENU_IDS,  urutan: 6 },
+  { code: "YANGU",     label: "YANGU",      platform: "mobile", needs_unit: true,  is_eksekutor: true,  sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: FIELD_MENU_IDS,  urutan: 7 },
+  { code: "PDKB",      label: "PDKB",       platform: "mobile", needs_unit: true,  is_eksekutor: true,  sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: [],              urutan: 8 },
+  { code: "manager",   label: "Manager",    platform: "web",    needs_unit: true,  is_eksekutor: false, sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: [],              urutan: 9 },
+  { code: "K3",        label: "Tim K3",     platform: "all",    needs_unit: true,  is_eksekutor: false, sees_all_units: false, can_assign: false, ...NOWO, is_system: true, menus: [],              urutan: 10 },
 ];
 
 // ── Akses & Permission Helpers ───────────────────────────────────────────────

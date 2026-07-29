@@ -10,6 +10,7 @@ import {
   BarChart3,
   Users,
   ClipboardCheck,
+  ClipboardList,
   Gauge,
   Activity,
   LogOut,
@@ -27,6 +28,7 @@ import {
   ShieldCheck,
   Table2,
   Wrench,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 import { logout } from "@/app/login/actions";
@@ -84,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Operasional",
     icon: FileText,
     items: [
+      { href: "/admin/work-order",            label: "Work Order",           icon: ClipboardList },
       { href: "/admin/morning-brief",         label: "Morning Brief",        icon: FileText },
       { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target },
       { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench },
@@ -100,6 +103,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/petugas",          label: "Manajemen Petugas", icon: Users },
       { href: "/admin/user-management",  label: "Manajemen User",    icon: UserCog },
       { href: "/admin/settings/wa",      label: "Setting WA Group",  icon: MessageSquare },
+      { href: "/admin/settings/amg",     label: "Setting AMG",       icon: Radio },
     ],
   },
   {

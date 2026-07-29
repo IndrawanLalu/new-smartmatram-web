@@ -3,20 +3,8 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 import { UNITS } from "@/lib/roles";
+import { useRoles } from "@/app/admin/_hooks/useRoles";
 import type { UserWithRole, SaveUserInput, UpdateUserInput } from "../_hooks/useUsers";
-
-const ROLES = [
-  { value: "UP3",       label: "UP3",        platform: "web" },
-  { value: "admin",     label: "Admin ULP",  platform: "all" },
-  { value: "inspektor", label: "Inspektor",  platform: "mobile" },
-  { value: "PERABASAN", label: "Perabasan",  platform: "mobile" },
-  { value: "YANGU",     label: "YANGU",      platform: "mobile" },
-  { value: "HARJAR",    label: "HARJAR",     platform: "mobile" },
-  { value: "HARGAR",    label: "HARGAR",     platform: "mobile" },
-  { value: "PDKB",      label: "PDKB",       platform: "mobile" },
-  { value: "manager",   label: "Manager",    platform: "web" },
-  { value: "K3",        label: "Tim K3",     platform: "all" },
-];
 
 const PLATFORMS = [
   { value: "all",    label: "Web & Mobile" },
@@ -30,6 +18,7 @@ type Props =
 
 export default function UserFormModal(props: Props) {
   const isEdit = props.mode === "edit";
+  const { roles } = useRoles();
 
   const [email, setEmail]         = useState("");
   const [password, setPassword]   = useState("");
@@ -42,13 +31,16 @@ export default function UserFormModal(props: Props) {
   const [saving, setSaving]     = useState(false);
   const [error, setError]       = useState<string | null>(null);
 
-  const selectedRole = ROLES.find((r) => r.value === role);
+  const selectedRole = roles.find((r) => r.code === role);
+  const needsUnit = selectedRole?.needs_unit ?? true;
 
   const handleRoleChange = (val: string) => {
     setRole(val);
-    const r = ROLES.find((r) => r.value === val);
-    if (r) setPlatform(r.platform);
-    if (val === "UP3") setUnit("");
+    const r = roles.find((x) => x.code === val);
+    if (r) {
+      setPlatform(r.platform);
+      if (!r.needs_unit) setUnit("");
+    }
   };
 
   const handleSubmit = async () => {
@@ -56,7 +48,7 @@ export default function UserFormModal(props: Props) {
     if (!isEdit && !email.trim()) { setError("Email wajib diisi"); return; }
     if (!isEdit && password.length < 6) { setError("Password minimal 6 karakter"); return; }
     if (!isEdit && password !== confirm) { setError("Konfirmasi password tidak cocok"); return; }
-    if (role !== "UP3" && !unit) { setError("ULP wajib dipilih"); return; }
+    if (needsUnit && !unit) { setError("ULP wajib dipilih"); return; }
 
     setSaving(true);
     setError(null);
@@ -142,14 +134,14 @@ export default function UserFormModal(props: Props) {
               onChange={(e) => handleRoleChange(e.target.value)}
               className="mt-1 w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
             >
-              {ROLES.map((r) => (
-                <option key={r.value} value={r.value}>{r.label}</option>
+              {roles.map((r) => (
+                <option key={r.code} value={r.code}>{r.label}</option>
               ))}
             </select>
           </div>
 
           {/* ULP */}
-          {role !== "UP3" && (
+          {needsUnit && (
             <div>
               <label className="text-xs font-semibold text-[#5D6D7E] uppercase tracking-wide">ULP</label>
               <select
