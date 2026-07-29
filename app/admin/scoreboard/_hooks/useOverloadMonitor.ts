@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import { getNominalCurrent } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -136,19 +137,15 @@ export function useOverloadMonitor(bulan: number, tahun: number, ulp: string) {
       const prevMonth = bulan === 1 ? 12 : bulan - 1;
       const lowerBound = `${prevYear}-${pad(prevMonth)}-01`;
 
-      let query = supabaseBrowser
-        .from("pengukuran_gardu")
-        .select("no_gardu,tanggal_pengukuran,persen_beban,kva_trafo,total_arus_r,total_arus_s,total_arus_t")
-        .gte("tanggal_pengukuran", lowerBound)
-        .lte("tanggal_pengukuran", lastDayOfMonth)
-        .order("tanggal_pengukuran", { ascending: false });
-
-      if (ulp) query = query.eq("petugas_unit", ulp);
-
-      const { data: rows, error: err } = await query;
-      if (err) throw err;
-
-      const all = (rows ?? []) as RawRow[];
+      const all = await fetchAllRows<RawRow>(() => {
+        let query = supabaseBrowser
+          .from("pengukuran_gardu")
+          .select("no_gardu,tanggal_pengukuran,persen_beban,kva_trafo,total_arus_r,total_arus_s,total_arus_t")
+          .gte("tanggal_pengukuran", lowerBound)
+          .lte("tanggal_pengukuran", lastDayOfMonth);
+        if (ulp) query = query.eq("petugas_unit", ulp);
+        return query.order("tanggal_pengukuran", { ascending: false }).order("id");
+      });
 
       const w1 = computeWeekStats(all, bounds[0].endDate);
       const w2 = computeWeekStats(all, bounds[1].endDate);

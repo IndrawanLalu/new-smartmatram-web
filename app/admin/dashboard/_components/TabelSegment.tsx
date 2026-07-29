@@ -6,6 +6,7 @@ import {
   TrendingUp, Target, Activity, Filter, Download,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbz_CriWnHRXCW48e5hQv_aIzOSgvX1tYSAVW-2-fVYhorSuPxGrlqiTzBr6Eao00HdT-Q/exec";
@@ -114,12 +115,11 @@ export default function TabelSegment() {
       setLoading(true);
       setError(null);
 
-      const [segmentData, { data: inspeksiData, error: supaErr }] = await Promise.all([
+      const [segmentData, inspeksiData] = await Promise.all([
         getSegmentData(),
-        supabaseBrowser.from("inspeksi").select("penyulang, status"),
+        fetchAllRows<{ penyulang: string; status: string }>(() =>
+          supabaseBrowser.from("inspeksi").select("penyulang, status").order("id")),
       ]);
-
-      if (supaErr) throw new Error(supaErr.message);
 
       const byPenyulang: Record<string, { temuan: number; pending: number; selesai: number }> = {};
       (inspeksiData ?? []).forEach((row: { penyulang: string; status: string }) => {

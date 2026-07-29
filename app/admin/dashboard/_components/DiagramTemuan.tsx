@@ -13,6 +13,7 @@ import {
   Filter, Download, Calendar, Target, Award,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ChartDataLabels);
 
@@ -36,16 +37,16 @@ export default function DiagramTemuan({ startDate, endDate }: DiagramTemuanProps
       setLoading(true);
       setError(null);
 
-      const { data, error: supaErr } = await supabaseBrowser
-        .from("inspeksi")
-        .select("temuan")
-        .gte("tgl_inspeksi", formatDate(startDate))
-        .lte("tgl_inspeksi", formatDate(endDate));
-
-      if (supaErr) throw new Error(supaErr.message);
+      const data = await fetchAllRows<{ temuan: string }>(() =>
+        supabaseBrowser
+          .from("inspeksi")
+          .select("temuan")
+          .gte("tgl_inspeksi", formatDate(startDate))
+          .lte("tgl_inspeksi", formatDate(endDate))
+          .order("id"));
 
       const counts: Record<string, number> = {};
-      (data ?? []).forEach((row: { temuan: string }) => {
+      data.forEach((row: { temuan: string }) => {
         const t = row.temuan || "Unknown";
         counts[t] = (counts[t] || 0) + 1;
       });

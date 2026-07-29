@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import {
   type CurrentUser,
   type InspeksiStatus,
@@ -71,29 +72,22 @@ export function useInspeksiJaringan(user: CurrentUser) {
     setLoading(true);
     setError(null);
     try {
-      let query = supabaseBrowser
-        .from("inspeksi")
-        .select("*")
-        .order("tgl_inspeksi", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      // Push date filter ke DB — hindari full table scan
-      if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
-      if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);
-
-      // Filter unit (UP3 lihat semua)
-      if (!canSeeAllUnits(user.role) && user.unit) {
-        query = query.eq("ulp", user.unit);
-      }
-
-      // Tim eksekutor hanya lihat task yang ditugaskan ke mereka
-      if (EKSEKUTOR_ROLES.includes(user.role)) {
-        query = query.eq("eksekutor", user.role);
-      }
-
-      const { data, error: err } = await query;
-      if (err) throw err;
-      setRawData((data as InspeksiJaringan[]) ?? []);
+      const data = await fetchAllRows<InspeksiJaringan>(() => {
+        let query = supabaseBrowser
+          .from("inspeksi")
+          .select("*")
+          .order("tgl_inspeksi", { ascending: false })
+          .order("created_at", { ascending: false });
+        // Push date filter ke DB — hindari full table scan
+        if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
+        if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);
+        // Filter unit (UP3 lihat semua)
+        if (!canSeeAllUnits(user.role) && user.unit) query = query.eq("ulp", user.unit);
+        // Tim eksekutor hanya lihat task yang ditugaskan ke mereka
+        if (EKSEKUTOR_ROLES.includes(user.role)) query = query.eq("eksekutor", user.role);
+        return query;
+      });
+      setRawData(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data");
     } finally {

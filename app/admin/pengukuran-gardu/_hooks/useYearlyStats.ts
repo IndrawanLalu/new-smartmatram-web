@@ -6,12 +6,14 @@ import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "./usePengukuranGardu";
 import { detectAnomali, hasThresholdCriteria, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface MonthStat {
   month: number;
   jumlahUkur: number;
+  amgTerkirim: number;
   jumlahAnomal: number;
   rataBeban: number;
   byJenis: Record<string, { wo: number; selesai: number }>;
@@ -42,38 +44,45 @@ export function useYearlyStats(
     async function run() {
       setLoading(true);
       try {
-        // Fetch kolom yang dipakai — perjurusan dibutuhkan untuk detectAnomali arus jurusan
-        let pgQuery = supabaseBrowser
-          .from("pengukuran_gardu")
-          .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t")
-          .gte("tanggal_pengukuran", startDate)
-          .lt("tanggal_pengukuran", endDate);
-        if (unitFilter) pgQuery = pgQuery.eq("petugas_unit", unitFilter);
-
-        let psQuery = supabaseBrowser
-          .from("penyeimbangan_gardu")
-          .select("tgl_penyeimbangan,jenis_pemeliharaan")
-          .gte("tgl_penyeimbangan", startDate)
-          .lt("tgl_penyeimbangan", endDate);
-        if (unitFilter) psQuery = psQuery.eq("ulp", unitFilter);
-
-        const [{ data: pgRows }, { data: psRows }] = await Promise.all([pgQuery, psQuery]);
+        // Fetch kolom yang dipakai — perjurusan dibutuhkan untuk detectAnomali arus jurusan.
+        // Paginate: dalam setahun sebuah ULP bisa > 1000 baris → tanpa ini rekap ke-truncate diam-diam.
+        const [pgRows, psRows] = await Promise.all([
+          fetchAllRows(() => {
+            let q = supabaseBrowser
+              .from("pengukuran_gardu")
+              .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,amg_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t")
+              .gte("tanggal_pengukuran", startDate)
+              .lt("tanggal_pengukuran", endDate);
+            if (unitFilter) q = q.eq("petugas_unit", unitFilter);
+            return q.order("id", { ascending: true });
+          }),
+          fetchAllRows(() => {
+            let q = supabaseBrowser
+              .from("penyeimbangan_gardu")
+              .select("tgl_penyeimbangan,jenis_pemeliharaan")
+              .gte("tgl_penyeimbangan", startDate)
+              .lt("tgl_penyeimbangan", endDate);
+            if (unitFilter) q = q.eq("ulp", unitFilter);
+            return q.order("tgl_penyeimbangan", { ascending: true });
+          }),
+        ]);
 
         type Acc = {
-          ukur: number; bebanSum: number; anomali: number;
+          ukur: number; amg: number; bebanSum: number; anomali: number;
           woByJenis: Record<string, number>;
           selesaiByJenis: Record<string, number>;
         };
         const emptyJenis = () => Object.fromEntries(JENIS_PEMELIHARAAN_OPTIONS.map(j => [j, 0]));
         const monthMap = new Map<number, Acc>();
         for (let m = 1; m <= 12; m++) {
-          monthMap.set(m, { ukur: 0, bebanSum: 0, anomali: 0, woByJenis: emptyJenis(), selesaiByJenis: emptyJenis() });
+          monthMap.set(m, { ukur: 0, amg: 0, bebanSum: 0, anomali: 0, woByJenis: emptyJenis(), selesaiByJenis: emptyJenis() });
         }
 
         for (const row of pgRows ?? []) {
           const m = new Date(row.tanggal_pengukuran).getMonth() + 1;
           const acc = monthMap.get(m)!;
           acc.ukur++;
+          if (row.amg_sent_at) acc.amg++;
           acc.bebanSum += row.persen_beban ?? 0;
 
           // Anomali: gunakan detectAnomali jika kriteria aktif, fallback ke hardcode
@@ -113,6 +122,7 @@ export function useYearlyStats(
           result.push({
             month: m,
             jumlahUkur:   acc.ukur,
+            amgTerkirim:  acc.amg,
             jumlahAnomal: acc.anomali,
             rataBeban:    acc.ukur > 0 ? Math.round(acc.bebanSum / acc.ukur) : 0,
             byJenis,

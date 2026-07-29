@@ -468,7 +468,20 @@ export default function FilterGarduTab({ user }: Props) {
                                 AMG
                               </span>
                             )}
-                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && !row.amg_sent_at && (
+                            {!row.amg_sent_at && row.amg_queued_at && row.amg_error && (
+                              <span
+                                title={row.amg_error}
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-900/40 text-rose-400 border border-rose-500/30 whitespace-nowrap"
+                              >
+                                AMG GAGAL
+                              </span>
+                            )}
+                            {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                                ANTRIAN
+                              </span>
+                            )}
+                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && !row.amg_sent_at && !row.amg_queued_at && (
                               <span className="text-[10px] text-[#5eead4]">Normal</span>
                             )}
                           </div>

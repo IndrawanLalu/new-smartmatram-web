@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import {
   type CurrentUser,
   type InspeksiStatus,
@@ -83,32 +84,23 @@ export function useInspeksiPohon(user: CurrentUser) {
     setLoading(true);
     setError(null);
     try {
-      let query = supabaseBrowser
-        .from("inspeksi_pohon")
-        .select("*")
-        .order("tgl_inspeksi", { ascending: false })
-        .order("created_at", { ascending: false });
-
-      // Push date filter ke DB — hindari full table scan
-      if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
-      if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);
-
-      if (!canSeeAllUnits(user.role) && user.unit) {
-        query = query.eq("ulp", user.unit);
-      }
-
-      // PERABASAN hanya lihat task milik mereka
-      if (user.role === "PERABASAN") {
-        query = query.eq("eksekutor", "PERABASAN");
-      }
-
-      const { data, error: err } = await query;
-      if (err) throw err;
+      const data = await fetchAllRows<Omit<InspeksiPohon, "remainingDays" | "urgency">>(() => {
+        let query = supabaseBrowser
+          .from("inspeksi_pohon")
+          .select("*")
+          .order("tgl_inspeksi", { ascending: false })
+          .order("created_at", { ascending: false });
+        // Push date filter ke DB — hindari full table scan
+        if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
+        if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);
+        if (!canSeeAllUnits(user.role) && user.unit) query = query.eq("ulp", user.unit);
+        // PERABASAN hanya lihat task milik mereka
+        if (user.role === "PERABASAN") query = query.eq("eksekutor", "PERABASAN");
+        return query;
+      });
 
       // Hitung prediksi sisa hari
-      const enriched: InspeksiPohon[] = (
-        (data ?? []) as Omit<InspeksiPohon, "remainingDays" | "urgency">[]
-      ).map((item) => {
+      const enriched: InspeksiPohon[] = data.map((item) => {
         const remaining =
           item.tgl_inspeksi && item.prediksi_inspektur
             ? calcRemainingDays(item.tgl_inspeksi, item.prediksi_inspektur)

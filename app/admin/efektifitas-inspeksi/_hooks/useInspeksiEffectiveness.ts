@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { fetchSheetData } from "@/lib/sheets";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import { categorizePenyebab } from "@/lib/gangguanCategories";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -154,34 +155,29 @@ export function useInspeksiEffectiveness({ startDate, endDate, selectedULP }: Op
       setLoading(true);
       setError(null);
       try {
-        let q1 = supabaseBrowser
-          .from("inspeksi")
-          .select("penyulang, ulp, status, tgl_inspeksi, tgl_eksekusi, updated_at, category")
-          .gte("tgl_inspeksi", start)
-          .lte("tgl_inspeksi", end);
-        let q2 = supabaseBrowser
-          .from("inspeksi_pohon")
-          .select("penyulang, ulp, status, tgl_inspeksi, tgl_eksekusi, updated_at, category")
-          .gte("tgl_inspeksi", start)
-          .lte("tgl_inspeksi", end);
-
-        if (selectedULP !== "ALL") {
-          q1 = q1.eq("ulp", selectedULP);
-          q2 = q2.eq("ulp", selectedULP);
-        }
-
+        const inspeksiCols = "penyulang, ulp, status, tgl_inspeksi, tgl_eksekusi, updated_at, category";
         const [keypoint, gangguan, res1, res2] = await Promise.all([
           fetchSheetData("KEYPOINT", "A:Z"),
           fetchSheetData("gangguanPenyulang", "A:Z"),
-          q1,
-          q2,
+          fetchAllRows<RawInspeksiRow>(() => {
+            let q = supabaseBrowser.from("inspeksi").select(inspeksiCols)
+              .gte("tgl_inspeksi", start).lte("tgl_inspeksi", end);
+            if (selectedULP !== "ALL") q = q.eq("ulp", selectedULP);
+            return q.order("id");
+          }),
+          fetchAllRows<RawInspeksiRow>(() => {
+            let q = supabaseBrowser.from("inspeksi_pohon").select(inspeksiCols)
+              .gte("tgl_inspeksi", start).lte("tgl_inspeksi", end);
+            if (selectedULP !== "ALL") q = q.eq("ulp", selectedULP);
+            return q.order("id");
+          }),
         ]);
 
         setKeypointRows(keypoint);
         setGangguanRows(gangguan);
         setInspeksiRows([
-          ...((res1.data ?? []) as RawInspeksiRow[]).map((r) => ({ ...r, type: "jaringan" as const })),
-          ...((res2.data ?? []) as RawInspeksiRow[]).map((r) => ({ ...r, type: "pohon"    as const })),
+          ...res1.map((r) => ({ ...r, type: "jaringan" as const })),
+          ...res2.map((r) => ({ ...r, type: "pohon"    as const })),
         ]);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));

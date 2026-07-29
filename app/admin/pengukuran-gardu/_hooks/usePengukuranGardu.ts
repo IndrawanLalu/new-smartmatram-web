@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef, useId } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
@@ -131,34 +132,33 @@ export function usePengukuranGardu(user: CurrentUser) {
     setLoading(true);
     setError(null);
     try {
-      let query = supabaseBrowser
-        .from("pengukuran_gardu")
-        .select("*")
-        .order("tanggal_pengukuran", { ascending: false })
-        .order("created_at", { ascending: false });
+      const rows = await fetchAllRows<PengukuranGardu>(() => {
+        let query = supabaseBrowser
+          .from("pengukuran_gardu")
+          .select("*")
+          .order("tanggal_pengukuran", { ascending: false })
+          .order("created_at", { ascending: false });
 
-      // month=0 → Semua Bulan, tidak filter tanggal
-      if (filter.month !== 0) {
-        const startDate = `${filter.year}-${String(filter.month).padStart(2, "0")}-01`;
-        const nextMonth = filter.month === 12 ? 1 : filter.month + 1;
-        const nextYear  = filter.month === 12 ? filter.year + 1 : filter.year;
-        const endDate   = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
-        query = query.gte("tanggal_pengukuran", startDate).lt("tanggal_pengukuran", endDate);
-      }
+        // month=0 → Semua Bulan, tidak filter tanggal
+        if (filter.month !== 0) {
+          const startDate = `${filter.year}-${String(filter.month).padStart(2, "0")}-01`;
+          const nextMonth = filter.month === 12 ? 1 : filter.month + 1;
+          const nextYear  = filter.month === 12 ? filter.year + 1 : filter.year;
+          const endDate   = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+          query = query.gte("tanggal_pengukuran", startDate).lt("tanggal_pengukuran", endDate);
+        }
 
-      if (!canSeeAllUnits(user.role) && user.unit) {
-        query = query.eq("petugas_unit", user.unit);
-      } else if (filter.ulp) {
-        query = query.eq("petugas_unit", filter.ulp);
-      }
+        if (!canSeeAllUnits(user.role) && user.unit) {
+          query = query.eq("petugas_unit", user.unit);
+        } else if (filter.ulp) {
+          query = query.eq("petugas_unit", filter.ulp);
+        }
 
-      if (filter.penyulang) {
-        query = query.eq("penyulang", filter.penyulang);
-      }
+        if (filter.penyulang) query = query.eq("penyulang", filter.penyulang);
 
-      const { data: rows, error: err } = await query;
-      if (err) throw err;
-      setData((rows as PengukuranGardu[]) ?? []);
+        return query;
+      });
+      setData(rows);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data");
     } finally {

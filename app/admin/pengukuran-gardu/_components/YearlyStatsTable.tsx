@@ -48,6 +48,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
   const totals = stats.reduce(
     (acc, s) => {
       acc.ukur     += s.jumlahUkur;
+      acc.amg      += s.amgTerkirim;
       acc.anomali  += s.jumlahAnomal;
       acc.bebanWsum += s.rataBeban * s.jumlahUkur;
       acc.bebanCount += s.jumlahUkur;
@@ -60,7 +61,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
       return acc;
     },
     {
-      ukur: 0, anomali: 0, bebanWsum: 0, bebanCount: 0,
+      ukur: 0, amg: 0, anomali: 0, bebanWsum: 0, bebanCount: 0,
       byJenis: Object.fromEntries(JENIS_PEMELIHARAAN_OPTIONS.map(j => [j, { wo: 0, selesai: 0 }])),
       totalWo: 0, totalSelesai: 0,
     }
@@ -89,7 +90,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[#e2e8f0]" style={{ minWidth: 980 }}>
+        <table className="w-full border-collapse text-[#e2e8f0]" style={{ minWidth: 1050 }}>
           <thead>
             {/* ── Row 1: Group headers ── */}
             <tr>
@@ -103,6 +104,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
               </th>
               {/* Fixed info cols — rowSpan 2 */}
               <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[56px]`} style={{ background: "#0a1628" }}>Ukur</th>
+              <th rowSpan={2} className={`${TH} text-blue-300 min-w-[64px]`} style={{ background: "#0a1628" }}>AMG</th>
               <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[68px]`} style={{ background: "#0a1628" }}>Anomali</th>
               <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[68px]`} style={{ background: "#0a1628" }}>Rata %</th>
 
@@ -167,6 +169,11 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                       : <span className="text-[#475569]">—</span>}
                   </td>
 
+                  {/* Terkirim AMG */}
+                  <td className={TD}>
+                    <Num v={s.amgTerkirim} color="text-blue-400" />
+                  </td>
+
                   {/* Anomali */}
                   <td className={TD}>
                     <Num v={s.jumlahAnomal} color="text-red-400" />
@@ -224,6 +231,11 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                 TOTAL
               </td>
               <td className={`${TD} text-[#94a3b8] font-semibold`}>{totals.ukur}</td>
+              <td className={TD}>
+                {totals.amg > 0
+                  ? <span className="text-blue-400 font-bold">{totals.amg}</span>
+                  : <span className="text-[#475569]">—</span>}
+              </td>
               <td className={TD}><span className="text-red-400 font-bold">{totals.anomali}</span></td>
               <td className={TD}>
                 <span className={

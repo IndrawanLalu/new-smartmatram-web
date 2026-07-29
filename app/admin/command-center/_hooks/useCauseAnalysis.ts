@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { CurrentUser } from "@/lib/roles";
 
 export interface CauseSlice {
@@ -24,37 +25,40 @@ export function useCauseAnalysis(user: CurrentUser | null) {
   useEffect(() => {
     async function run() {
       setLoading(true);
+      try {
+        let totalQ = supabaseBrowser
+          .from("ml_outage_events")
+          .select("id", { count: "exact", head: true });
+        if (user?.unit) totalQ = totalQ.eq("ulp", user.unit);
+        const { count: total } = await totalQ;
 
-      let totalQ = supabaseBrowser
-        .from("ml_outage_events")
-        .select("id", { count: "exact", head: true });
-      if (user?.unit) totalQ = totalQ.eq("ulp", user.unit);
-      const { count: total } = await totalQ;
+        const rows = await fetchAllRows<{ predicted_cause: string }>(() => {
+          let q = supabaseBrowser
+            .from("ml_outage_events")
+            .select("predicted_cause")
+            .not("predicted_cause", "is", null);
+          if (user?.unit) q = q.eq("ulp", user.unit);
+          return q.order("id");
+        });
 
-      let q = supabaseBrowser
-        .from("ml_outage_events")
-        .select("predicted_cause")
-        .not("predicted_cause", "is", null);
-      if (user?.unit) q = q.eq("ulp", user.unit);
-      const { data } = await q;
+        const map = new Map<string, number>();
+        rows.forEach((r) => map.set(r.predicted_cause, (map.get(r.predicted_cause) ?? 0) + 1));
 
-      const rows = (data ?? []) as { predicted_cause: string }[];
-      const map = new Map<string, number>();
-      rows.forEach((r) => map.set(r.predicted_cause, (map.get(r.predicted_cause) ?? 0) + 1));
+        const unknown = rows.length;
+        const arr: CauseSlice[] = [...map.entries()]
+          .map(([cause, count]) => ({
+            cause,
+            count,
+            pct: unknown ? Math.round((count / unknown) * 100) : 0,
+          }))
+          .sort((a, b) => b.count - a.count);
 
-      const unknown = rows.length;
-      const arr: CauseSlice[] = [...map.entries()]
-        .map(([cause, count]) => ({
-          cause,
-          count,
-          pct: unknown ? Math.round((count / unknown) * 100) : 0,
-        }))
-        .sort((a, b) => b.count - a.count);
-
-      setSlices(arr);
-      setUnknownTotal(unknown);
-      setGrandTotal(total ?? 0);
-      setLoading(false);
+        setSlices(arr);
+        setUnknownTotal(unknown);
+        setGrandTotal(total ?? 0);
+      } catch { /* tabel ML mungkin belum ada / kosong */ } finally {
+        setLoading(false);
+      }
     }
     run();
   }, [user]);
