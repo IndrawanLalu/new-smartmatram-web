@@ -40,6 +40,22 @@ export async function GET(req: NextRequest) {
 }
 
 // PATCH /api/amg-config — upsert satu ULP. Password hanya diubah bila dikirim (non-kosong).
+/**
+ * Rapikan URL AMG sebelum disimpan.
+ *
+ * Agen memakainya langsung: fetch(`${base}/index.php/...`). Tanpa skema, Node
+ * melempar `TypeError: Failed to parse URL from 10.33.1.77/...`, dan baris itu
+ * gagal berulang tanpa henti karena antrean agen tidak punya batas percobaan.
+ * Skema http:// ditambahkan bila belum ada; garis miring di ujung dibuang agar
+ * tidak menjadi `//index.php`.
+ */
+function normalizeAmgUrl(raw: string | undefined): string | null {
+  const v = (raw ?? "").trim();
+  if (!v) return null;
+  const withScheme = /^https?:\/\//i.test(v) ? v : `http://${v}`;
+  return withScheme.replace(/\/+$/, "");
+}
+
 export async function PATCH(req: NextRequest) {
   const access = await verifyAccess(req);
   if (!access) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -57,7 +73,7 @@ export async function PATCH(req: NextRequest) {
     ulp,
     username: (body.username ?? "").trim(),
     kode_prefixes: (body.kode_prefixes ?? "44150,44151").trim(),
-    amg_url: body.amg_url?.trim() || null,
+    amg_url: normalizeAmgUrl(body.amg_url),
     updated_at: new Date().toISOString(),
   };
   if (body.password && body.password.length > 0) patch.password = body.password;
