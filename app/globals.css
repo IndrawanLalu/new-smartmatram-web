@@ -12,10 +12,85 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ── Token identitas Work Order ────────────────────────────────────────────────
+   Navy = primary (header, tombol, item aktif, meter, tinta chart).
+   Teal = aksen (highlight, penanda positif, tautan).
+   Hijau & merah DIKUNCI untuk status — jangan dipakai dekorasi.
+   Ramp navy & palet chart di bawah sudah lolos validator palet
+   (chroma, pemisahan CVD deutan/tritan, kontras ≥3:1 vs surface). */
+@theme {
+  --color-navy-50: #eef2fb;
+  --color-navy-100: #dde5f7;
+  --color-navy-200: #c2d0ee;
+  --color-navy-300: #8fa8dc;
+  --color-navy-400: #5878c4;
+  --color-navy-500: #2a4a9c;
+  --color-navy-600: #1d3573;
+  --color-navy-700: #16294f;
+  --color-navy-800: #14264f;
+  --color-navy-900: #0d1830;
+
+  --color-accent: #00897b;
+  --color-accent-deep: #00695c;
+  --color-accent-tint: #e0f2f1;
+
+  --color-ink: #14213a;
+  --color-ink-soft: #5a6a85;
+  --color-ink-muted: #94a3b8;
+  --color-surface: #f2f3f5;
+  --color-line: #e4e8f0;
+
+  --color-attention: #b3701a;
+  --color-attention-tint: #fdf3e3;
+
+  --font-display: var(--font-jakarta), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --shadow-card: 0 1px 2px rgb(20 33 58 / 0.04), 0 8px 24px -8px rgb(20 33 58 / 0.10);
+  --shadow-card-hover: 0 2px 4px rgb(20 33 58 / 0.06), 0 16px 32px -12px rgb(20 33 58 / 0.16);
+  --shadow-float: 0 8px 32px -4px rgb(13 24 48 / 0.32);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Geist di-load di layout.tsx sebagai CSS var — sebelumnya tertimpa Arial. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, "Segoe UI", Arial, sans-serif;
+  font-feature-settings: "cv11", "ss01";
+}
+
+/* ── Animasi UI (dipakai toast, drawer, modal, skeleton) ──────────────────── */
+@keyframes smt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes smt-pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes smt-slide-left {
+  from { transform: translateX(100%); }
+  to   { transform: none; }
+}
+@keyframes smt-slide-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes smt-pulse {
+  50% { opacity: 0.45; }
+}
+
+.animate-fade-in   { animation: smt-fade-in 0.15s ease-out; }
+.animate-pop-in    { animation: smt-pop-in 0.2s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-slide-left { animation: smt-slide-left 0.24s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-slide-up  { animation: smt-slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1); }
+.animate-skeleton  { animation: smt-pulse 1.4s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fade-in,
+  .animate-pop-in,
+  .animate-slide-left,
+  .animate-slide-up,
+  .animate-skeleton { animation: none; }
 }
 
 /* Fix Leaflet tile seams on dark maps (plus-lighter blend mode causes white grid lines) */
@@ -24,6 +99,14 @@ body {
 }
 .leaflet-container {
   background: #0d1b2a !important;
+}
+
+/* Peta di halaman bertema terang (mis. monitoring-inspeksi) — tile OSM terang,
+   jadi latar gelap default akan berkedip saat tile dimuat. Opt-in per peta
+   supaya peta bertema gelap (peta-gardu) tidak terpengaruh. */
+.leaflet-container.leaflet-light,
+.leaflet-light .leaflet-container {
+  background: #e8ecf1 !important;
 }
 
 /* Leaflet popup — light agar kontras dengan dark map */

@@ -155,7 +155,10 @@ export default function InspeksiMap({
         rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
       />
-      <div ref={containerRef} className="h-[75vh] min-h-[520px] w-full rounded-xl overflow-hidden" />
+      <div
+        ref={containerRef}
+        className="leaflet-light h-[75vh] min-h-[520px] w-full rounded-2xl overflow-hidden border border-line"
+      />
     </>
   );
 }

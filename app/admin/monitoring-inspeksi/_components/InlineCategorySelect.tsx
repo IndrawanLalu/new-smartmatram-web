@@ -29,8 +29,8 @@ export default function InlineCategorySelect({ id, currentCategory, onUpdate }: 
       value={currentCategory ?? ""}
       onChange={handleChange}
       disabled={saving}
-      className={`text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#00897B]/30 disabled:opacity-60 ${
-        cfg ? `${cfg.bgColor} ${cfg.color}` : "bg-[#1e3552] text-[#94a3b8]"
+      className={`text-xs font-medium px-2 py-0.5 rounded-full border-0 cursor-pointer focus:outline-none focus:ring-2 focus:ring-navy-500/20 disabled:opacity-60 ${
+        cfg ? `${cfg.bgColor} ${cfg.color}` : "bg-line text-ink-soft"
       }`}
     >
       <option value="">— Kategori —</option>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { type CurrentUser } from "@/lib/roles";
+import { CARD } from "@/app/admin/_ui";
 import { type InspeksiJaringan } from "../_hooks/useInspeksiJaringan";
 import { type InspeksiPohon } from "../_hooks/useInspeksiPohon";
 
@@ -76,30 +77,30 @@ function SummaryCard({
   variant?: "default" | "success" | "warning";
 }) {
   const variantClass = {
-    default: "border-[#1e3552]",
+    default: "border-line",
     success: "border-green-200 bg-green-50",
     warning: "border-orange-200 bg-orange-50",
   }[variant];
 
   const valueClass = {
-    default: "text-[#e2e8f0]",
+    default: "text-ink",
     success: "text-green-700",
     warning: "text-orange-700",
   }[variant];
 
   return (
-    <div className={`bg-[#162334] rounded-xl border p-4 ${variantClass}`}>
-      <p className="text-xs text-[#94a3b8] mb-1">{label}</p>
+    <div className={`bg-white rounded-2xl border shadow-card p-4 ${variantClass}`}>
+      <p className="text-xs text-ink-soft mb-1">{label}</p>
       <p className={`text-3xl font-bold ${valueClass}`}>{value}</p>
-      <p className="text-xs text-[#94a3b8] mt-1">{sub}</p>
+      <p className="text-xs text-ink-soft mt-1">{sub}</p>
     </div>
   );
 }
 
 function ProgressBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-[#00897B]" : pct >= 20 ? "bg-yellow-400" : "bg-red-400";
+  const color = pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-accent" : pct >= 20 ? "bg-yellow-400" : "bg-red-400";
   return (
-    <div className="w-full bg-gray-100 rounded-full h-2">
+    <div className="w-full bg-navy-100 rounded-full h-2">
       <div
         className={`h-2 rounded-full transition-all duration-500 ${color}`}
         style={{ width: `${pct}%` }}
@@ -111,10 +112,10 @@ function ProgressBar({ pct }: { pct: number }) {
 function TeamCard({ stats }: { stats: TeamStats }) {
   if (stats.total === 0) {
     return (
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 opacity-50">
+      <div className={`${CARD} p-4 opacity-50`}>
         <div className="flex items-center justify-between mb-3">
-          <span className="font-semibold text-[#e2e8f0]">{stats.name}</span>
-          <span className="text-xs text-[#94a3b8]">Tidak ada data</span>
+          <span className="font-semibold text-ink">{stats.name}</span>
+          <span className="text-xs text-ink-soft">Tidak ada data</span>
         </div>
         <ProgressBar pct={0} />
       </div>
@@ -122,15 +123,15 @@ function TeamCard({ stats }: { stats: TeamStats }) {
   }
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
+    <div className={`${CARD} p-4`}>
       <div className="flex items-center justify-between mb-2">
-        <span className="font-semibold text-[#e2e8f0]">{stats.name}</span>
+        <span className="font-semibold text-ink">{stats.name}</span>
         <span
           className={`text-sm font-bold px-2 py-0.5 rounded-full ${
             stats.pct >= 80
               ? "bg-green-100 text-green-700"
               : stats.pct >= 50
-              ? "bg-[#0a2a26] text-[#5eead4]"
+              ? "bg-navy-50 text-accent-deep"
               : stats.pct >= 20
               ? "bg-yellow-50 text-yellow-700"
               : "bg-red-50 text-red-700"
@@ -142,30 +143,30 @@ function TeamCard({ stats }: { stats: TeamStats }) {
 
       <ProgressBar pct={stats.pct} />
 
-      <p className="text-xs text-[#94a3b8] mt-2 mb-3">
+      <p className="text-xs text-ink-soft mt-2 mb-3">
         {stats.selesai} / {stats.total} selesai
       </p>
 
       <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-green-500" />
-          <span className="text-[#94a3b8]">Selesai</span>
-          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.selesai}</span>
+          <span className="text-ink-soft">Selesai</span>
+          <span className="ml-auto font-semibold text-ink">{stats.selesai}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-yellow-400" />
-          <span className="text-[#94a3b8]">Dalam Proses</span>
-          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.dalamProses}</span>
+          <span className="text-ink-soft">Dalam Proses</span>
+          <span className="ml-auto font-semibold text-ink">{stats.dalamProses}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-blue-500" />
-          <span className="text-[#94a3b8]">Ditugaskan</span>
-          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.ditugaskan}</span>
+          <span className="text-ink-soft">Ditugaskan</span>
+          <span className="ml-auto font-semibold text-ink">{stats.ditugaskan}</span>
         </div>
         <div className="flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-red-400" />
-          <span className="text-[#94a3b8]">Temuan</span>
-          <span className="ml-auto font-semibold text-[#e2e8f0]">{stats.perluTindakan}</span>
+          <span className="text-ink-soft">Temuan</span>
+          <span className="ml-auto font-semibold text-ink">{stats.perluTindakan}</span>
         </div>
       </div>
     </div>
@@ -186,17 +187,17 @@ function TeamSection({
   const overallPct = assigned > 0 ? Math.round((totalSelesai / assigned) * 100) : 0;
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+    <div className={`${CARD} overflow-hidden`}>
       {/* Section header */}
-      <div className="px-5 py-4 border-b border-[#1e3552] flex items-center justify-between">
+      <div className="px-5 py-4 border-b border-line flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-lg">{icon}</span>
-          <h3 className="font-semibold text-[#e2e8f0]">{title}</h3>
-          <span className="text-xs text-[#94a3b8] bg-gray-100 px-2 py-0.5 rounded-full">
+          <h3 className="font-semibold text-ink">{title}</h3>
+          <span className="text-xs text-ink-soft bg-surface px-2 py-0.5 rounded-full">
             {stats.total} total
           </span>
         </div>
-        <div className="flex items-center gap-4 text-xs text-[#94a3b8]">
+        <div className="flex items-center gap-4 text-xs text-ink-soft">
           {stats.unassigned > 0 && (
             <span className="bg-orange-50 text-orange-700 px-2 py-0.5 rounded-full font-medium">
               {stats.unassigned} belum ditugaskan
@@ -204,7 +205,7 @@ function TeamSection({
           )}
           <span>
             Progress keseluruhan:{" "}
-            <span className="font-semibold text-[#e2e8f0]">{overallPct}%</span>
+            <span className="font-semibold text-ink">{overallPct}%</span>
           </span>
         </div>
       </div>
@@ -212,7 +213,7 @@ function TeamSection({
       {/* Team cards grid */}
       <div className="p-5">
         {stats.total === 0 ? (
-          <p className="text-center py-8 text-[#94a3b8] text-sm">
+          <p className="text-center py-8 text-ink-soft text-sm">
             Tidak ada data untuk periode ini
           </p>
         ) : (
@@ -277,12 +278,12 @@ export default function InspeksiDashboardTab({ user: _user, jaringanData, pohonD
   return (
     <div className="space-y-6">
       {/* Period filter */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium text-[#e2e8f0]">Periode:</span>
+      <div className={`${CARD} p-4 flex items-center gap-3 flex-wrap`}>
+        <span className="text-sm font-medium text-ink">Periode:</span>
         <select
           value={month}
           onChange={(e) => setMonth(Number(e.target.value))}
-          className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]"
+          className="border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white"
         >
           {MONTHS.map((m, i) => (
             <option key={i} value={i + 1}>{m}</option>
@@ -291,13 +292,13 @@ export default function InspeksiDashboardTab({ user: _user, jaringanData, pohonD
         <select
           value={year}
           onChange={(e) => setYear(Number(e.target.value))}
-          className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]"
+          className="border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white"
         >
           {years.map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
-        <span className="text-xs text-[#94a3b8] ml-1">
+        <span className="text-xs text-ink-soft ml-1">
           Menampilkan data inspeksi bulan {MONTHS[month - 1]} {year}
         </span>
       </div>

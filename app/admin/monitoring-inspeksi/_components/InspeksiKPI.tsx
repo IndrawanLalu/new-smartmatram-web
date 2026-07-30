@@ -1,13 +1,10 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import {
-  type CurrentUser,
-  canSeeAllUnits,
-  URGENCY_CONFIG,
-} from "@/lib/roles";
+import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { ClipboardList, TreePine, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import StatTile from "@/app/admin/_components/StatTile";
 
 interface KpiData {
   totalJaringan: number;
@@ -15,45 +12,6 @@ interface KpiData {
   belumSelesai: number; // status != 'Selesai'
   selesaiBulanIni: number;
   sanggatUrgentPohon: number;
-}
-
-function KpiCard({
-  label,
-  value,
-  sub,
-  icon,
-  iconBg,
-  valueColor = "text-[#e2e8f0]",
-  loading,
-}: {
-  label: string;
-  value: number | string;
-  sub?: string;
-  icon: React.ReactNode;
-  iconBg: string;
-  valueColor?: string;
-  loading: boolean;
-}) {
-  return (
-    <div className="bg-[#162334] rounded-xl shadow-sm border border-[#1e3552] p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <p className="text-sm text-[#94a3b8]">{label}</p>
-          {loading ? (
-            <div className="h-8 w-16 bg-gray-100 animate-pulse rounded mt-1" />
-          ) : (
-            <p className={`text-3xl font-bold mt-1 ${valueColor}`}>{value}</p>
-          )}
-          {sub && <p className="text-xs text-[#94a3b8] mt-1">{sub}</p>}
-        </div>
-        <div
-          className={`w-10 h-10 ${iconBg} rounded-lg flex items-center justify-center shrink-0`}
-        >
-          {icon}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 interface InspeksiKPIProps {
@@ -132,50 +90,56 @@ export default function InspeksiKPI({ user, filterUlp }: InspeksiKPIProps) {
     fetchKpi();
   }, [user.role, user.unit, filterUlp]);
 
+  if (loading) {
+    return (
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <div key={i} className="h-[5.5rem] rounded-2xl bg-line animate-skeleton" />
+        ))}
+      </div>
+    );
+  }
+
+  const pctSelesai = kpi && kpi.totalJaringan + kpi.totalPohon > 0
+    ? Math.round(((kpi.totalJaringan + kpi.totalPohon - kpi.belumSelesai) / (kpi.totalJaringan + kpi.totalPohon)) * 100)
+    : 0;
+
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-      <KpiCard
+    <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <StatTile
         label="Inspeksi Jaringan"
         value={kpi?.totalJaringan ?? 0}
-        sub="total keseluruhan"
-        icon={<ClipboardList size={18} className="text-[#00897B]" />}
-        iconBg="bg-[#0a2a26]"
-        loading={loading}
+        tone="navy"
+        icon={ClipboardList}
+        hint="total keseluruhan"
       />
-      <KpiCard
+      <StatTile
         label="Inspeksi Pohon"
         value={kpi?.totalPohon ?? 0}
-        sub="total keseluruhan"
-        icon={<TreePine size={18} className="text-green-600" />}
-        iconBg="bg-green-50"
-        loading={loading}
+        tone="accent"
+        icon={TreePine}
+        hint="total keseluruhan"
       />
-      <KpiCard
+      <StatTile
         label="Belum Selesai"
         value={kpi?.belumSelesai ?? 0}
-        sub="perlu tindak lanjut"
-        icon={<Clock size={18} className="text-orange-600" />}
-        iconBg="bg-orange-50"
-        valueColor="text-orange-600"
-        loading={loading}
+        tone="attention"
+        icon={Clock}
+        hint="perlu tindak lanjut"
       />
-      <KpiCard
+      <StatTile
         label="Selesai Bulan Ini"
         value={kpi?.selesaiBulanIni ?? 0}
-        sub="jaringan + pohon"
-        icon={<CheckCircle size={18} className="text-green-600" />}
-        iconBg="bg-green-50"
-        valueColor="text-green-600"
-        loading={loading}
+        tone="green"
+        icon={CheckCircle}
+        hint={`${pctSelesai}% temuan tertutup`}
       />
-      <KpiCard
-        label="Pohon Risiko Sangat Tinggi"
+      <StatTile
+        label="Pohon Risiko Tinggi"
         value={kpi?.sanggatUrgentPohon ?? 0}
-        sub="belum selesai"
-        icon={<AlertTriangle size={18} className="text-red-600" />}
-        iconBg="bg-red-50"
-        valueColor="text-red-600"
-        loading={loading}
+        tone="attention"
+        icon={AlertTriangle}
+        hint="belum selesai"
       />
     </div>
   );

@@ -40,6 +40,19 @@ export interface WoSheetSync {
   write: Record<string, string>; // { "kolom Sheet": "field wo_item", mis. { "TGL REALISASI": "tgl_realisasi" } }
 }
 
+/** Field batch yang boleh diubah setelah WO dibuat (lihat EditBatchModal). */
+export interface UpdateBatchInput {
+  judul: string;
+  bulan: number;
+  tahun: number;
+  columns: WoColumn[];
+  reguColumn: string | null;
+  verifierColumn: string | null;
+  titleColumn: string | null;
+  measureColumn: string | null;
+  measureUnit: string | null;
+}
+
 /** Batch + agregat progres, dipakai di daftar. */
 export interface WoBatchWithStats extends WoBatch {
   total: number;
@@ -75,8 +88,15 @@ export interface WoItem {
   urutan: number;
 }
 
+/** Field minimum untuk menurunkan tahap — dipenuhi oleh WoItem maupun baris dashboard. */
+export interface WoStageSource {
+  status: string;
+  verified_at: string | null;
+  approved_at: string | null;
+}
+
 /** Turunkan tahap dari field item. */
-export function woStage(item: WoItem): WoStage {
+export function woStage(item: WoStageSource): WoStage {
   if (item.approved_at) return "Disetujui";
   if (item.verified_at) return "Diverifikasi";
   if (item.status === "Selesai") return "Dikerjakan";

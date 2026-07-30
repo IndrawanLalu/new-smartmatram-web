@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { X, MapPin, Trash2, Loader2, Upload, ExternalLink, CheckCircle2, Clock, Save, AlertCircle, MessageCircle } from "lucide-react";
+import { X, MapPin, Trash2, Loader2, Upload, ExternalLink, CheckCircle2, Clock, Save, AlertCircle, MessageCircle, Zap } from "lucide-react";
+import { DISPLAY } from "@/app/admin/_ui";
 import {
   STATUS_CONFIG,
   CATEGORY_CONFIG,
@@ -36,9 +37,9 @@ interface Props {
 
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div>
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-0.5">{label}</p>
-      <p className="text-sm text-[#e2e8f0]">{value || "—"}</p>
+    <div className="bg-white px-3 py-2.5">
+      <dt className="text-[10px] font-semibold text-ink-muted uppercase tracking-wider">{label}</dt>
+      <dd className="text-sm text-ink mt-0.5 break-words">{value || "—"}</dd>
     </div>
   );
 }
@@ -50,10 +51,10 @@ function FotoThumb({ url, label }: { url: string | null; label: string }) {
   if (!url) {
     return (
       <div className="flex flex-col items-center gap-1">
-        <div className="w-20 h-16 rounded-lg bg-[#0d1b2a] border border-[#1e3552] flex items-center justify-center">
+        <div className="w-20 h-16 rounded-lg bg-white border border-line flex items-center justify-center">
           <span className="text-[10px] text-gray-600">Belum ada</span>
         </div>
-        <span className="text-[10px] text-gray-500">{label}</span>
+        <span className="text-[10px] text-ink-muted">{label}</span>
       </div>
     );
   }
@@ -66,10 +67,10 @@ function FotoThumb({ url, label }: { url: string | null; label: string }) {
           href={url}
           target="_blank"
           rel="noreferrer"
-          className="w-20 h-16 rounded-lg bg-[#0d1b2a] border border-[#1e3552] hover:border-[#00897B] flex flex-col items-center justify-center gap-1 transition-colors"
+          className="w-20 h-16 rounded-lg bg-white border border-line hover:border-navy-500 flex flex-col items-center justify-center gap-1 transition-colors"
         >
-          <ExternalLink size={13} className="text-[#00897B]" />
-          <span className="text-[9px] text-gray-500 text-center px-1">Buka foto</span>
+          <ExternalLink size={13} className="text-navy-600" />
+          <span className="text-[9px] text-ink-muted text-center px-1">Buka foto</span>
         </a>
       ) : (
         <a href={url} target="_blank" rel="noreferrer" className="block">
@@ -77,7 +78,7 @@ function FotoThumb({ url, label }: { url: string | null; label: string }) {
           <img
             src={url}
             alt={label}
-            className="w-20 h-16 object-cover rounded-lg border border-[#1e3552] hover:border-[#00897B] transition-colors"
+            className="w-20 h-16 object-cover rounded-lg border border-line hover:border-navy-500 transition-colors"
             onError={() => setImgError(true)}
           />
         </a>
@@ -86,7 +87,7 @@ function FotoThumb({ url, label }: { url: string | null; label: string }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="text-[10px] text-[#00897B] hover:text-[#5eead4] flex items-center gap-0.5 transition-colors"
+        className="text-[10px] text-navy-600 hover:text-accent-deep flex items-center gap-0.5 transition-colors"
       >
         {label} <ExternalLink size={9} />
       </a>
@@ -229,22 +230,27 @@ export default function InspeksiDetailModal({
 
   return (
     <>
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-[#0a1628] border border-[#1e3552] rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+      <div className="bg-white border border-line rounded-2xl shadow-2xl w-full max-w-3xl max-h-[92vh] flex flex-col animate-pop-in">
 
         {/* Header */}
-        <div className="flex items-start gap-3 px-5 py-4 border-b border-[#1e3552] shrink-0">
+        <div className="flex items-start gap-3 px-6 py-4 border-b border-line shrink-0">
+          <div className="w-10 h-10 rounded-xl bg-navy-50 grid place-items-center shrink-0">
+            <Zap size={18} className="text-navy-600" />
+          </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs text-gray-500 mb-0.5">{data.penyulang ?? "—"} · {data.ulp ?? "—"}</p>
-            <h2 className="text-base font-semibold text-[#e2e8f0] truncate">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-muted">
+              {data.penyulang ?? "—"} · {data.ulp ?? "—"}
+            </p>
+            <h2 className={`${DISPLAY} text-lg font-bold text-ink leading-snug`}>
               {data.temuan ?? data.deskripsi ?? "Detail Inspeksi"}
             </h2>
-            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${statusCfg?.bgColor ?? "bg-gray-700"} ${statusCfg?.color ?? "text-gray-300"}`}>
+            <div className="flex items-center gap-2 mt-2 flex-wrap">
+              <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${statusCfg?.bgColor ?? "bg-slate-100"} ${statusCfg?.color ?? "text-ink-soft"}`}>
                 {statusCfg?.label ?? data.status}
               </span>
               {catCfg && (
-                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${catCfg.bgColor} ${catCfg.color}`}>
+                <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${catCfg.bgColor} ${catCfg.color}`}>
                   {catCfg.label}
                 </span>
               )}
@@ -252,24 +258,25 @@ export default function InspeksiDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors shrink-0"
+            aria-label="Tutup"
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface transition-colors shrink-0"
           >
-            <X size={14} />
+            <X size={17} />
           </button>
         </div>
 
         {/* Body (scrollable) */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
 
-          {/* Info grid */}
-          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+          {/* Info grid — memanfaatkan lebar modal */}
+          <dl className="grid grid-cols-2 sm:grid-cols-3 gap-px rounded-xl border border-line bg-line overflow-hidden">
             <InfoRow label="Tgl Inspeksi" value={data.tgl_inspeksi} />
             <InfoRow label="Tgl Eksekusi" value={data.tgl_eksekusi} />
             <InfoRow label="Inspektor" value={data.nama_inspektor ?? data.inspektor} />
             <InfoRow label="Eksekutor" value={data.eksekutor} />
-            {data.team_name && <InfoRow label="Tim" value={data.team_name} />}
+            <InfoRow label="Tim" value={data.team_name} />
             <InfoRow label="Lokasi" value={data.lokasi} />
-          </div>
+          </dl>
 
           {/* Koordinat */}
           {koordinatUrl && (
@@ -277,7 +284,7 @@ export default function InspeksiDetailModal({
               href={koordinatUrl}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1.5 text-xs text-[#00897B] hover:text-[#5eead4] transition-colors"
+              className="flex items-center gap-1.5 text-xs text-navy-600 hover:text-accent-deep transition-colors"
             >
               <MapPin size={12} /> Lihat di Google Maps
             </a>
@@ -285,64 +292,64 @@ export default function InspeksiDetailModal({
 
           {/* Temuan */}
           <div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Temuan</p>
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-1.5">Temuan</p>
             {canEditTemuan ? (
               <div className="space-y-2">
                 <textarea
                   value={temuanDraft}
                   onChange={(e) => setTemuanDraft(e.target.value)}
                   rows={3}
-                  className="w-full border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 resize-none"
+                  className="w-full border border-line rounded-lg px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/15 resize-none"
                 />
                 <button
                   onClick={handleSaveTemuan}
                   disabled={savingTemuan || temuanDraft === (data.temuan ?? "")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 hover:bg-[#00897B]/30 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-navy-50 text-accent-deep border border-navy-300 hover:bg-navy-100 disabled:opacity-40 transition-colors"
                 >
                   {savingTemuan && <Loader2 size={11} className="animate-spin" />}
                   Simpan Temuan
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-[#e2e8f0]">{data.temuan || "—"}</p>
+              <p className="text-sm text-ink">{data.temuan || "—"}</p>
             )}
           </div>
 
           {/* Deskripsi (editable oleh admin/UP3) */}
           <div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">Deskripsi</p>
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-1.5">Deskripsi</p>
             {canEditTemuan ? (
               <div className="space-y-2">
                 <textarea
                   value={deskripsiDraft}
                   onChange={(e) => setDeskripsiDraft(e.target.value)}
                   rows={3}
-                  className="w-full border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 resize-none"
+                  className="w-full border border-line rounded-lg px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/15 resize-none"
                 />
                 <button
                   onClick={handleSaveDeskripsi}
                   disabled={savingDeskripsi || deskripsiDraft === (data.deskripsi ?? "")}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 hover:bg-[#00897B]/30 disabled:opacity-40 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-navy-50 text-accent-deep border border-navy-300 hover:bg-navy-100 disabled:opacity-40 transition-colors"
                 >
                   {savingDeskripsi && <Loader2 size={11} className="animate-spin" />}
                   Simpan Deskripsi
                 </button>
               </div>
             ) : (
-              <p className="text-sm text-[#94a3b8]">{data.deskripsi || "—"}</p>
+              <p className="text-sm text-ink-soft">{data.deskripsi || "—"}</p>
             )}
           </div>
 
           {data.keterangan && (
             <div>
-              <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Keterangan</p>
-              <p className="text-sm text-[#94a3b8]">{data.keterangan}</p>
+              <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-1">Keterangan</p>
+              <p className="text-sm text-ink-soft">{data.keterangan}</p>
             </div>
           )}
 
           {/* Foto */}
           <div>
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Foto</p>
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-2">Foto</p>
             <div className="flex gap-4 flex-wrap">
               <FotoThumb url={data.foto_sebelum_url} label="Sebelum" />
               <FotoThumb url={data.foto_lokasi_url} label="Lokasi" />
@@ -356,7 +363,7 @@ export default function InspeksiDetailModal({
                       <img
                         src={sesudahSrc}
                         alt="Sesudah"
-                        className="w-20 h-16 object-cover rounded-lg border border-[#1e3552] hover:border-[#00897B] transition-colors"
+                        className="w-20 h-16 object-cover rounded-lg border border-line hover:border-navy-500 transition-colors"
                       />
                     </a>
                     {previewUrl && !data.foto_sesudah_url && (
@@ -367,7 +374,7 @@ export default function InspeksiDetailModal({
                         href={data.foto_sesudah_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-[10px] text-[#00897B] hover:text-[#5eead4] flex items-center gap-0.5 transition-colors"
+                        className="text-[10px] text-navy-600 hover:text-accent-deep flex items-center gap-0.5 transition-colors"
                       >
                         Sesudah <ExternalLink size={9} />
                       </a>
@@ -376,17 +383,17 @@ export default function InspeksiDetailModal({
                 ) : canUploadFoto ? (
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-20 h-16 rounded-lg border-2 border-dashed border-[#1e3552] hover:border-[#00897B] flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-[#00897B] transition-colors"
+                    className="w-20 h-16 rounded-lg border-2 border-dashed border-line hover:border-navy-500 flex flex-col items-center justify-center gap-1 text-gray-600 hover:text-navy-600 transition-colors"
                   >
                     <Upload size={14} />
                     <span className="text-[9px]">Upload</span>
                   </button>
                 ) : (
-                  <div className="w-20 h-16 rounded-lg bg-[#0d1b2a] border border-[#1e3552] flex items-center justify-center">
+                  <div className="w-20 h-16 rounded-lg bg-white border border-line flex items-center justify-center">
                     <span className="text-[10px] text-gray-600">Belum ada</span>
                   </div>
                 )}
-                <span className="text-[10px] text-gray-500">Sesudah</span>
+                <span className="text-[10px] text-ink-muted">Sesudah</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -400,7 +407,7 @@ export default function InspeksiDetailModal({
         </div>
 
         {/* Footer — actions */}
-        <div className="px-5 py-3 border-t border-[#1e3552] space-y-2 shrink-0">
+        <div className="px-5 py-3 border-t border-line space-y-2 shrink-0">
           {err && (
             <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
               {err}
@@ -418,7 +425,7 @@ export default function InspeksiDetailModal({
                     setConfirmStatus(false);
                   }}
                   disabled={savingStatus}
-                  className="flex-1 border border-[#1e3552] rounded-lg px-2.5 py-1.5 text-xs text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] disabled:opacity-50"
+                  className="flex-1 border border-line rounded-lg px-2.5 py-1.5 text-xs text-ink bg-white focus:outline-none focus:border-navy-500 disabled:opacity-50"
                 >
                   {ALL_STATUS.map((s) => (
                     <option
@@ -435,31 +442,31 @@ export default function InspeksiDetailModal({
                   <button
                     onClick={() => setConfirmStatus(true)}
                     disabled={savingStatus}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 hover:bg-[#00897B]/30 disabled:opacity-40 whitespace-nowrap transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-navy-50 text-accent-deep border border-navy-300 hover:bg-navy-100 disabled:opacity-40 whitespace-nowrap transition-colors"
                   >
                     <Save size={11} />
                     Simpan
                   </button>
                 )}
-                {savingStatus && <Loader2 size={13} className="animate-spin text-[#00897B] shrink-0" />}
+                {savingStatus && <Loader2 size={13} className="animate-spin text-navy-600 shrink-0" />}
               </div>
 
               {/* Konfirmasi simpan status */}
               {confirmStatus && (
-                <div className="flex items-center gap-2 bg-[#162334] rounded-lg px-3 py-2 border border-[#1e3552]">
+                <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
                   <AlertCircle size={12} className="text-amber-400 shrink-0" />
-                  <span className="text-xs text-[#94a3b8] flex-1">
-                    Ubah status ke <span className="text-[#e2e8f0] font-medium">&ldquo;{STATUS_CONFIG[pendingStatus]?.label}&rdquo;</span>?
+                  <span className="text-xs text-ink-soft flex-1">
+                    Ubah status ke <span className="text-ink font-medium">&ldquo;{STATUS_CONFIG[pendingStatus]?.label}&rdquo;</span>?
                   </span>
                   <button
                     onClick={() => setConfirmStatus(false)}
-                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                    className="text-xs text-ink-muted hover:text-ink transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     onClick={() => handleConfirmStatus(pendingStatus)}
-                    className="text-xs text-[#5eead4] hover:text-white transition-colors font-medium"
+                    className="text-xs text-accent-deep hover:text-white transition-colors font-medium"
                   >
                     Ya, Simpan
                   </button>
@@ -476,7 +483,7 @@ export default function InspeksiDetailModal({
                   <button
                     onClick={() => handleConfirmStatus("Dalam Proses")}
                     disabled={savingStatus}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-[#1e3552] text-[#94a3b8] hover:text-[#e2e8f0] hover:border-[#00897B]/50 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs border border-line text-ink-soft hover:text-ink hover:border-navy-300 disabled:opacity-50 transition-colors"
                   >
                     {savingStatus ? <Loader2 size={11} className="animate-spin" /> : <Clock size={11} />}
                     Dalam Proses
@@ -487,36 +494,36 @@ export default function InspeksiDetailModal({
                     onClick={() => setConfirmSelesai(true)}
                     disabled={savingStatus || !hasFotoSesudah}
                     title={!hasFotoSesudah ? "Upload foto sesudah terlebih dahulu" : undefined}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 hover:bg-[#00897B]/30 disabled:opacity-40 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-navy-50 text-accent-deep border border-navy-300 hover:bg-navy-100 disabled:opacity-40 transition-colors"
                   >
                     <CheckCircle2 size={11} />
                     Selesai
                   </button>
                 )}
                 {(savingStatus || uploading) && (
-                  <Loader2 size={13} className="animate-spin text-[#00897B]" />
+                  <Loader2 size={13} className="animate-spin text-navy-600" />
                 )}
               </div>
 
               {/* Konfirmasi selesai */}
               {confirmSelesai && (
-                <div className="flex items-center gap-2 bg-[#162334] rounded-lg px-3 py-2 border border-[#1e3552]">
+                <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
                   <AlertCircle size={12} className="text-amber-400 shrink-0" />
-                  <span className="text-xs text-[#94a3b8] flex-1">
-                    Tandai sebagai <span className="text-[#5eead4] font-medium">Selesai</span>?
+                  <span className="text-xs text-ink-soft flex-1">
+                    Tandai sebagai <span className="text-accent-deep font-medium">Selesai</span>?
                     {pendingFile && !data.foto_sesudah_url && (
                       <span className="block text-[10px] text-amber-400">Foto sesudah akan diupload.</span>
                     )}
                   </span>
                   <button
                     onClick={() => setConfirmSelesai(false)}
-                    className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                    className="text-xs text-ink-muted hover:text-ink transition-colors"
                   >
                     Batal
                   </button>
                   <button
                     onClick={() => handleConfirmStatus("Selesai")}
-                    className="text-xs text-[#5eead4] hover:text-white transition-colors font-medium"
+                    className="text-xs text-accent-deep hover:text-white transition-colors font-medium"
                   >
                     Ya
                   </button>
@@ -529,7 +536,7 @@ export default function InspeksiDetailModal({
           {canDelete && (
             <button
               onClick={() => setShowKirimWA(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-[#00897B] border border-[#00897B]/30 hover:bg-[#00897B]/10 transition-colors w-full justify-center"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-navy-600 border border-navy-300 hover:bg-navy-50 transition-colors w-full justify-center"
             >
               <MessageCircle size={11} />
               Kirim WO via WhatsApp
@@ -544,7 +551,7 @@ export default function InspeksiDetailModal({
                   <span className="text-xs text-red-400 flex-1">Yakin hapus data ini?</span>
                   <button
                     onClick={() => setConfirmDelete(false)}
-                    className="px-3 py-1.5 rounded-lg text-xs border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 transition-colors"
+                    className="px-3 py-1.5 rounded-lg text-xs border border-line text-ink-soft hover:bg-surface transition-colors"
                   >
                     Batal
                   </button>

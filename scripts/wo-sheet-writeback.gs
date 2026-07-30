@@ -30,9 +30,10 @@ function doPost(e) {
     const header = values[0].map(function (h) { return String(h).trim(); });
     const colIndex = function (name) { return header.indexOf(String(name).trim()); };
 
-    // body.rows = [{ key: { NO_WO: "...", NO: "1" }, set: { "TGL REALISASI": "...", "VERIFIKATOR": "..." } }]
+    // body.rows = [{ id: "<wo_item.id>", key: { NO_WO: "...", NO: "1" }, set: { "TGL REALISASI": "...", "VERIFIKATOR": "..." } }]
     const rows = body.rows || [];
     let updated = 0;
+    const matchedIds = []; // hanya baris yang BENAR-BENAR ketemu & ditulis
 
     for (let i = 0; i < rows.length; i++) {
       const key = rows[i].key || {};
@@ -52,10 +53,11 @@ function doPost(e) {
           if (ci >= 0) sh.getRange(r + 1, ci + 1).setValue(set[col]);
         });
         updated++;
+        if (rows[i].id) matchedIds.push(rows[i].id);
         break; // kunci unik → satu baris
       }
     }
-    return json_({ ok: true, updated: updated });
+    return json_({ ok: true, updated: updated, matchedIds: matchedIds });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
   }

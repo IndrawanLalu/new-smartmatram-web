@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS, CATEGORY_CONFIG, type InspeksiCategory } from "@/lib/roles";
+import { BTN_GHOST, CARD, DISPLAY, FIELD } from "@/app/admin/_ui";
 import InspeksiKPI from "./_components/InspeksiKPI";
 import InspeksiJaringanTab from "./_components/InspeksiJaringanTab";
 import InspeksiPohonTab from "./_components/InspeksiPohonTab";
@@ -16,9 +17,9 @@ import { Zap, TreePine, Map, Layers, LayoutDashboard } from "lucide-react";
 const InspeksiMap = dynamic(() => import("./_components/InspeksiMap"), {
   ssr: false,
   loading: () => (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] flex items-center justify-center h-[75vh] min-h-[520px]">
-      <div className="flex flex-col items-center gap-3 text-[#94a3b8]">
-        <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+    <div className="bg-white rounded-xl border border-line flex items-center justify-center h-[75vh] min-h-[520px]">
+      <div className="flex flex-col items-center gap-3 text-ink-soft">
+        <div className="w-8 h-8 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
         <p className="text-sm">Memuat peta...</p>
       </div>
     </div>
@@ -28,10 +29,10 @@ const InspeksiMap = dynamic(() => import("./_components/InspeksiMap"), {
 // ── Tab Definition ────────────────────────────────────────────────────────────
 
 const TABS = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "jaringan", label: "Inspeksi Jaringan", icon: Zap },
   { id: "pohon", label: "Inspeksi Pohon", icon: TreePine },
   { id: "peta", label: "Peta", icon: Map },
-  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -50,7 +51,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 export default function MonitoringInspeksiPage() {
   const user = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<TabId>("jaringan");
+  const [activeTab, setActiveTab] = useState<TabId>("dashboard");
   const [showPohonOnMap, setShowPohonOnMap] = useState(true);
   const [showJaringanOnMap, setShowJaringanOnMap] = useState(true);
   const [filterUlp, setFilterUlp] = useState("");
@@ -129,83 +130,81 @@ export default function MonitoringInspeksiPage() {
   const unitLabel = user.unit ?? "Semua Unit";
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-ink">
       {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <header className="rounded-2xl bg-navy-600 px-6 py-5 text-white shadow-card">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-2xl font-bold">Monitoring Inspeksi</h1>
-            <p className="text-teal-100 text-sm mt-1">
+            <h1 className={`${DISPLAY} text-2xl font-extrabold`}>Monitoring Inspeksi</h1>
+            <p className="text-white/60 text-sm mt-0.5">
               {canSeeAllUnits(user.role)
                 ? "Semua ULP — PLN UP3 Mataram"
                 : `ULP ${unitLabel} · ${user.role}`}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm text-teal-100">
-            <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="font-semibold text-white">{jaringanHook.rawData.length}</span> Jaringan
-            </div>
-            <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="font-semibold text-white">{pohonHook.rawData.length}</span> Pohon
-            </div>
-            <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="font-semibold text-white">{jaringanMapData.length + pohonMapData.length}</span> Di Peta
-            </div>
+          <div className="flex items-center gap-2 text-xs">
+            {[
+              { n: jaringanHook.rawData.length, l: "Jaringan" },
+              { n: pohonHook.rawData.length, l: "Pohon" },
+              { n: jaringanMapData.length + pohonMapData.length, l: "Di Peta" },
+            ].map(({ n, l }) => (
+              <div key={l} className="rounded-xl bg-white/12 px-3 py-2 text-center">
+                <p className={`${DISPLAY} text-lg font-bold leading-none`}>{n}</p>
+                <p className="text-white/60 mt-0.5">{l}</p>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      </header>
 
       {/* KPI Cards */}
       <InspeksiKPI user={user} filterUlp={filterUlp} />
 
-      {/* Filter ULP global (UP3 only) */}
-      {canSeeAllUnits(user.role) && (
-        <div className="flex items-center gap-3">
-          <span className="text-sm text-[#94a3b8] shrink-0">Filter ULP:</span>
+      {/* Satu baris kendali: filter unit + pindah tab */}
+      <div className={`${CARD} p-3 flex flex-wrap items-center gap-2`}>
+        {canSeeAllUnits(user.role) && (
           <select
             value={filterUlp}
             onChange={(e) => setFilterUlp(e.target.value)}
-            className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+            aria-label="Filter unit layanan"
+            className={FIELD}
           >
             <option value="">Semua ULP</option>
             {UNITS.map((u) => (
               <option key={u.value} value={u.value}>{u.label}</option>
             ))}
           </select>
-        </div>
-      )}
+        )}
 
-      {/* Tab Navigation */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-        {/* Tab bar */}
-        <div className="flex border-b border-[#1e3552]">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
-                activeTab === id
-                  ? "border-[#00897B] text-[#00897B]"
-                  : "border-transparent text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-gray-50"
-              }`}
-            >
-              <Icon size={15} />
-              {label}
-              {id === "jaringan" && jaringanUrgentCount > 0 && (
-                <span className="ml-1 bg-red-100 text-red-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {jaringanUrgentCount} urgent
-                </span>
-              )}
-              {id === "pohon" && pohonUrgentCount > 0 && (
-                <span className="ml-1 bg-red-100 text-red-700 text-xs font-semibold px-1.5 py-0.5 rounded-full">
-                  {pohonUrgentCount} urgent
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="ml-auto flex flex-wrap gap-1 rounded-xl bg-surface p-1">
+          {TABS.map(({ id, label, icon: Icon }) => {
+            const urgent =
+              id === "jaringan" ? jaringanUrgentCount : id === "pohon" ? pohonUrgentCount : 0;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 h-9 px-3.5 rounded-lg text-sm font-semibold transition-colors ${
+                  activeTab === id
+                    ? "bg-white text-navy-600 shadow-sm"
+                    : "text-ink-soft hover:text-ink"
+                }`}
+              >
+                <Icon size={15} />
+                {label}
+                {urgent > 0 && (
+                  <span className="rounded-full bg-red-50 px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-red-700">
+                    {urgent}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        {/* Tab Content */}
+      {/* Tab Content */}
+      <div className={`${CARD} overflow-hidden`}>
         <div className="p-5">
           {activeTab === "jaringan" && (
             <InspeksiJaringanTab user={user} filterUlp={filterUlp} />
@@ -231,7 +230,7 @@ export default function MonitoringInspeksiPage() {
                   <select
                     value={filterMapUlp}
                     onChange={(e) => { setFilterMapUlp(e.target.value); setFilterMapPenyulang(""); }}
-                    className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                    className={FIELD}
                   >
                     <option value="">Semua ULP</option>
                     {UNITS.map((u) => (
@@ -242,7 +241,7 @@ export default function MonitoringInspeksiPage() {
                 <select
                   value={filterMapPenyulang}
                   onChange={(e) => setFilterMapPenyulang(e.target.value)}
-                  className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  className={FIELD}
                 >
                   <option value="">Semua Penyulang</option>
                   {mapPenyulangOptions.map((p) => (
@@ -252,7 +251,7 @@ export default function MonitoringInspeksiPage() {
                 <select
                   value={filterMapCategory}
                   onChange={(e) => setFilterMapCategory(e.target.value)}
-                  className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  className={FIELD}
                 >
                   <option value="">Semua Kategori</option>
                   {(Object.keys(CATEGORY_CONFIG) as InspeksiCategory[]).map((c) => (
@@ -262,7 +261,7 @@ export default function MonitoringInspeksiPage() {
                 {(filterMapUlp || filterMapPenyulang || filterMapCategory) && (
                   <button
                     onClick={() => { setFilterMapUlp(""); setFilterMapPenyulang(""); setFilterMapCategory(""); }}
-                    className="px-3 py-1.5 text-sm text-[#94a3b8] hover:text-[#e2e8f0] border border-[#1e3552] rounded-lg transition-colors"
+                    className={BTN_GHOST}
                   >
                     Reset filter
                   </button>
@@ -271,25 +270,25 @@ export default function MonitoringInspeksiPage() {
 
               {/* Layer toggles */}
               <div className="flex items-center gap-4 flex-wrap">
-                <span className="text-sm font-medium text-[#e2e8f0] flex items-center gap-1.5 shrink-0">
+                <span className="text-sm font-medium text-ink flex items-center gap-1.5 shrink-0">
                   <Layers size={14} />
                   Tampilkan:
                 </span>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e2e8f0]">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-ink">
                   <input
                     type="checkbox"
                     checked={showJaringanOnMap}
                     onChange={(e) => setShowJaringanOnMap(e.target.checked)}
-                    className="accent-[#00897B]"
+                    className="accent-navy-600"
                   />
                   ⚡ Jaringan ({jaringanMapData.length})
                 </label>
-                <label className="flex items-center gap-2 cursor-pointer text-sm text-[#e2e8f0]">
+                <label className="flex items-center gap-2 cursor-pointer text-sm text-ink">
                   <input
                     type="checkbox"
                     checked={showPohonOnMap}
                     onChange={(e) => setShowPohonOnMap(e.target.checked)}
-                    className="accent-[#00897B]"
+                    className="accent-navy-600"
                   />
                   🌳 Pohon ({pohonMapData.length})
                 </label>
@@ -297,16 +296,16 @@ export default function MonitoringInspeksiPage() {
 
               {/* Status filter */}
               <div className="flex items-center gap-3 flex-wrap">
-                <span className="text-sm font-medium text-[#e2e8f0] shrink-0">Status:</span>
+                <span className="text-sm font-medium text-ink shrink-0">Status:</span>
                 {STATUS_LIST.map((status) => (
-                  <label key={status} className="flex items-center gap-1.5 cursor-pointer text-sm text-[#e2e8f0]">
+                  <label key={status} className="flex items-center gap-1.5 cursor-pointer text-sm text-ink">
                     <input
                       type="checkbox"
                       checked={showStatuses[status]}
                       onChange={(e) =>
                         setShowStatuses((prev) => ({ ...prev, [status]: e.target.checked }))
                       }
-                      className="accent-[#00897B]"
+                      className="accent-navy-600"
                     />
                     <span
                       className="w-2 h-2 rounded-full shrink-0"

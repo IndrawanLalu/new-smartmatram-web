@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   FileSearch,
 } from "lucide-react";
+import { CARD, FIELD } from "@/app/admin/_ui";
 
 const STATUS_OPTIONS = [
   "Temuan",
@@ -30,8 +31,6 @@ const RISIKO_OPTIONS = ["Rendah", "Sedang", "Tinggi", "Sangat Tinggi"];
 const URGENCY_OPTIONS = ["SANGAT URGENT", "URGENT", "PERLU TINDAKAN", "AMAN"];
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_CONFIG) as InspeksiCategory[];
 
-const INPUT_CLASS =
-  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
 
 function exportExcel(filter: FilterPohon) {
   const params = new URLSearchParams({ jenis: "pohon" });
@@ -129,12 +128,12 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
       )}
 
       {/* Filter bar */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
+      <div className={`${CARD} p-4`}>
         <div className="flex flex-wrap gap-3">
           <div className="relative flex-1 min-w-48">
             <Search
               size={14}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft"
             />
             <input
               type="text"
@@ -144,7 +143,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                 setFilter((f) => ({ ...f, search: e.target.value }));
                 setPage(1);
               }}
-              className={`${INPUT_CLASS} pl-8 w-full`}
+              className="h-9 w-full pl-9 pr-3 rounded-full border border-line bg-surface text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:bg-white focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 transition-colors"
             />
           </div>
 
@@ -155,7 +154,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, startDate: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           />
           <input
             type="date"
@@ -164,7 +163,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, endDate: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           />
 
           {showUlpFilter && (
@@ -178,7 +177,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                 }));
                 setPage(1);
               }}
-              className={INPUT_CLASS}
+              className={FIELD}
             >
               <option value="">Semua ULP</option>
               {ulpOptions.map((u) => (
@@ -195,7 +194,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, penyulang: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           >
             <option value="">Semua Penyulang</option>
             {penyulangOptions.map((p) => (
@@ -211,7 +210,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, status: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           >
             <option value="">Semua Status</option>
             {STATUS_OPTIONS.map((s) => (
@@ -227,7 +226,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, tingkatRisiko: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           >
             <option value="">Semua Risiko</option>
             {RISIKO_OPTIONS.map((r) => (
@@ -243,7 +242,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, urgency: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           >
             <option value="">Semua Urgensi</option>
             {URGENCY_OPTIONS.map((u) => (
@@ -259,7 +258,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
               setFilter((f) => ({ ...f, category: e.target.value }));
               setPage(1);
             }}
-            className={INPUT_CLASS}
+            className={FIELD}
           >
             <option value="">Semua Kategori</option>
             {CATEGORY_OPTIONS.map((c) => (
@@ -269,14 +268,14 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
 
           <button
             onClick={refresh}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:bg-gray-50 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-ink-soft hover:bg-surface transition-colors"
           >
             <RefreshCw size={14} />
             Refresh
           </button>
           <button
             onClick={() => exportExcel(filter)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#0a2a26] text-[#5eead4] text-sm font-medium hover:bg-[#b2dfdb] transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-navy-50 text-navy-600 text-sm font-semibold hover:bg-navy-100 transition-colors"
           >
             <Download size={14} />
             Export Excel
@@ -285,53 +284,53 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
       </div>
 
       {/* Table */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e3552]">
-          <p className="text-sm text-[#94a3b8]">
+      <div className={`${CARD} overflow-hidden`}>
+        <div className="px-5 py-3 border-b border-line">
+          <p className="text-sm text-ink-soft">
             {loading ? "Memuat..." : `${totalFiltered} data ditemukan`}
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[calc(100vh-30rem)] min-h-[16rem]">
           <table className="w-full text-sm">
-            <thead>
-              <tr className="bg-[#0a2a26]">
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">
+            <thead className="sticky top-0 z-10">
+              <tr className="bg-navy-50">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold whitespace-nowrap">
                   Tgl Inspeksi
                 </th>
                 {showUlpFilter && (
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                  <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                     ULP
                   </th>
                 )}
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Penyulang
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Jenis Pohon
                 </th>
-                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-center px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Alamat
                 </th>
-                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-center px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Inspektor
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Kategori
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Risiko
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Status
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Eksekutor
                 </th>
-                <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Team
                 </th>
-                <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">
+                <th className="text-center px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">
                   Aksi
                 </th>
               </tr>
@@ -341,11 +340,11 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                 Array.from({ length: 5 }).map((_, i) => (
                   <tr
                     key={i}
-                    className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"}
+                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50/50"}
                   >
                     {Array.from({ length: 10 }).map((_, j) => (
                       <td key={j} className="px-4 py-3">
-                        <div className="h-4 bg-gray-100 animate-pulse rounded" />
+                        <div className="h-4 bg-line animate-skeleton rounded" />
                       </td>
                     ))}
                   </tr>
@@ -354,7 +353,7 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                 <tr>
                   <td
                     colSpan={showUlpFilter ? 12 : 11}
-                    className="text-center py-12 text-[#94a3b8] text-sm"
+                    className="text-center py-12 text-ink-soft text-sm"
                   >
                     Tidak ada data yang sesuai filter
                   </td>
@@ -363,31 +362,31 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                 data.map((row, i) => (
                   <tr
                     key={row.id}
-                    className={i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/30"}
+                    className={i % 2 === 0 ? "bg-white" : "bg-gray-50/30"}
                   >
-                    <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">
+                    <td className="px-4 py-3 text-ink-soft whitespace-nowrap">
                       {row.tgl_inspeksi ?? "—"}
                     </td>
                     {showUlpFilter && (
-                      <td className="px-4 py-3 text-[#94a3b8]">
+                      <td className="px-4 py-3 text-ink-soft">
                         {row.ulp ?? "—"}
                       </td>
                     )}
-                    <td className="px-4 py-3 font-medium text-[#e2e8f0]">
+                    <td className="px-4 py-3 font-medium text-ink">
                       {row.penyulang ?? "—"}
                     </td>
-                    <td className="px-4 py-3 text-[#e2e8f0]">
+                    <td className="px-4 py-3 text-ink">
                       <p>{row.jenis_pohon ?? "—"}</p>
                       {row.deskripsi && (
-                        <p className="text-xs text-[#94a3b8] truncate max-w-40">
+                        <p className="text-xs text-ink-soft truncate max-w-40">
                           {row.deskripsi}
                         </p>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center text-[#94a3b8]">
+                    <td className="px-4 py-3 text-center text-ink-soft">
                       {row.lokasi != null ? `${row.lokasi} ` : "—"}
                     </td>
-                    <td className="px-4 py-3 text-center text-[#94a3b8]">
+                    <td className="px-4 py-3 text-center text-ink-soft">
                       {row.inspektor != null ? `${row.inspektor} ` : "—"}
                     </td>
                     <td className="px-4 py-3">
@@ -432,10 +431,10 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
                     <td className="px-4 py-3 text-center">
                       <button
                         onClick={() => setSelectedRowId(row.id)}
-                        className="w-7 h-7 flex items-center justify-center mx-auto rounded-lg text-[#94a3b8] hover:text-[#5eead4] hover:bg-[#00897B]/10 transition-colors"
+                        className="inline-flex items-center gap-1.5 h-7 pl-2 pr-2.5 rounded-lg border border-line bg-white text-[11px] font-semibold text-ink-soft hover:border-navy-300 hover:bg-navy-50 hover:text-navy-600 transition-colors"
                         title="Lihat detail"
                       >
-                        <FileSearch size={15} />
+                        <FileSearch size={13} /> Detail
                       </button>
                     </td>
                   </tr>
@@ -446,22 +445,22 @@ export default function InspeksiPohonTab({ user, filterUlp }: Props) {
         </div>
 
         {totalPages > 1 && (
-          <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
-            <p className="text-xs text-[#94a3b8]">
+          <div className="px-5 py-3 border-t border-line flex items-center justify-between">
+            <p className="text-xs text-ink-soft">
               Halaman {page} dari {totalPages}
             </p>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-surface disabled:opacity-40 transition-colors"
               >
                 <ChevronLeft size={14} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-gray-50 disabled:opacity-40 transition-colors"
+                className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-surface disabled:opacity-40 transition-colors"
               >
                 <ChevronRight size={14} />
               </button>

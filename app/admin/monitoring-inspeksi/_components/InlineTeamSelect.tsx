@@ -18,7 +18,7 @@ export default function InlineTeamSelect({ id, currentTeam, onUpdate }: Props) {
 
   if (!canAssignEksekutor(user.role)) {
     return (
-      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${currentTeam ? "bg-purple-50 text-purple-700" : "text-[#94a3b8]"}`}>
+      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${currentTeam ? "bg-purple-50 text-purple-700" : "text-ink-soft"}`}>
         {currentTeam ?? "—"}
       </span>
     );
@@ -37,7 +37,7 @@ export default function InlineTeamSelect({ id, currentTeam, onUpdate }: Props) {
       value={currentTeam ?? ""}
       onChange={handleChange}
       disabled={saving}
-      className="text-xs px-2 py-1 rounded-lg border border-[#1e3552] text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 bg-[#0d1b2a] cursor-pointer disabled:opacity-60 min-w-28"
+      className="text-xs px-2 py-1 rounded-lg border border-line text-ink focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/15 bg-white cursor-pointer disabled:opacity-60 min-w-28"
     >
       <option value="">— Belum ditugaskan</option>
       {TEAM_OPTIONS.map((opt) => (

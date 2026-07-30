@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
+import { useToast } from "@/app/admin/_components/Toast";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import type { WoBatch, WoBatchWithStats, WoColumn, WoSheetSync } from "../_types";
 
@@ -42,56 +44,73 @@ export function useWorkOrderBatches(
   tahun: number,
   ulpFilter: string | null,
 ) {
+  const toast = useToast();
   const [batches, setBatches] = useState<WoBatchWithStats[]>([]);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     setLoading(true);
-    let q = supabaseBrowser
-      .from("wo_batch")
-      .select("*")
-      .eq("bulan", bulan)
-      .eq("tahun", tahun)
-      .order("created_at", { ascending: false });
+    try {
+      let q = supabaseBrowser
+        .from("wo_batch")
+        .select("*")
+        .eq("bulan", bulan)
+        .eq("tahun", tahun)
+        .order("created_at", { ascending: false });
 
-    if (!canSeeAllUnits(user.role)) {
-      if (user.unit) q = q.eq("ulp", user.unit);
-    } else if (ulpFilter) {
-      q = q.eq("ulp", ulpFilter);
-    }
-
-    const { data } = await q;
-    const list = (data ?? []) as WoBatch[];
-
-    // Agregat progres per batch dalam satu query
-    const statByBatch = new Map<string, { total: number; selesai: number }>();
-    if (list.length) {
-      const { data: items } = await supabaseBrowser
-        .from("wo_item")
-        .select("batch_id, status")
-        .in("batch_id", list.map((b) => b.id));
-      for (const it of items ?? []) {
-        const s = statByBatch.get(it.batch_id) ?? { total: 0, selesai: 0 };
-        s.total += 1;
-        if (it.status === "Selesai") s.selesai += 1;
-        statByBatch.set(it.batch_id, s);
+      if (!canSeeAllUnits(user.role)) {
+        if (user.unit) q = q.eq("ulp", user.unit);
+      } else if (ulpFilter) {
+        q = q.eq("ulp", ulpFilter);
       }
-    }
 
-    setBatches(
-      list.map((b) => ({
-        ...b,
-        total: statByBatch.get(b.id)?.total ?? 0,
-        selesai: statByBatch.get(b.id)?.selesai ?? 0,
-      })),
-    );
-    setLoading(false);
-  }, [user, bulan, tahun, ulpFilter]);
+      const { data, error } = await q;
+      if (error) throw new Error(error.message);
+      const list = (data ?? []) as WoBatch[];
+
+      // Agregat progres per batch — paginasi penuh, jangan sampai terpotong 1000 baris.
+      const statByBatch = new Map<string, { total: number; selesai: number }>();
+      if (list.length) {
+        const ids = list.map((b) => b.id);
+        const rows = await fetchAllRows<{ batch_id: string; status: string }>(() =>
+          supabaseBrowser
+            .from("wo_item")
+            .select("batch_id, status")
+            .in("batch_id", ids)
+            .order("id", { ascending: true }),
+        );
+        for (const it of rows) {
+          const s = statByBatch.get(it.batch_id) ?? { total: 0, selesai: 0 };
+          s.total += 1;
+          if (it.status === "Selesai") s.selesai += 1;
+          statByBatch.set(it.batch_id, s);
+        }
+      }
+
+      setBatches(
+        list.map((b) => ({
+          ...b,
+          total: statByBatch.get(b.id)?.total ?? 0,
+          selesai: statByBatch.get(b.id)?.selesai ?? 0,
+        })),
+      );
+    } catch (e) {
+      toast.error(`Gagal memuat daftar WO: ${e instanceof Error ? e.message : e}`);
+      setBatches([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [user, bulan, tahun, ulpFilter, toast]);
 
   useEffect(() => {
     void load();
   }, [load]);
 
+  /**
+   * Buat batch + semua barisnya. Import tidak atomik di PostgREST, jadi bila ada
+   * chunk yang gagal, batch yang terlanjur dibuat dihapus (cascade) supaya tidak
+   * meninggalkan WO separuh jadi.
+   */
   const createBatch = useCallback(
     async (input: CreateBatchInput): Promise<string> => {
       const batchId = crypto.randomUUID();
@@ -124,9 +143,15 @@ export function useWorkOrderBatches(
         status: "Belum",
         urutan: i,
       }));
-      for (const part of chunk(items, CHUNK)) {
-        const { error: itemErr } = await supabaseBrowser.from("wo_item").insert(part);
-        if (itemErr) throw itemErr;
+
+      try {
+        for (const part of chunk(items, CHUNK)) {
+          const { error: itemErr } = await supabaseBrowser.from("wo_item").insert(part);
+          if (itemErr) throw itemErr;
+        }
+      } catch (e) {
+        await supabaseBrowser.from("wo_batch").delete().eq("id", batchId);
+        throw e;
       }
 
       await load();
@@ -135,10 +160,20 @@ export function useWorkOrderBatches(
     [user, load],
   );
 
-  const deleteBatch = useCallback(async (id: string) => {
-    setBatches((prev) => prev.filter((b) => b.id !== id));
-    await supabaseBrowser.from("wo_batch").delete().eq("id", id);
-  }, []);
+  const deleteBatch = useCallback(
+    async (id: string) => {
+      const removed = batches.find((b) => b.id === id);
+      setBatches((prev) => prev.filter((b) => b.id !== id));
+      const { error } = await supabaseBrowser.from("wo_batch").delete().eq("id", id);
+      if (error) {
+        if (removed) setBatches((prev) => [removed, ...prev]);
+        toast.error(`Gagal menghapus WO: ${error.message}`);
+        return;
+      }
+      toast.success(`WO "${removed?.judul ?? ""}" dihapus.`);
+    },
+    [batches, toast],
+  );
 
   return { batches, loading, reload: load, createBatch, deleteBatch };
 }

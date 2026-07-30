@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { X, ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowRight, ArrowLeft, Loader2 } from "lucide-react";
+import ModalShell from "@/app/admin/_components/ModalShell";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { useRoles } from "@/app/admin/_hooks/useRoles";
 import { parseClipboardTable } from "@/lib/parseClipboardTable";
@@ -218,146 +219,16 @@ export default function CreateBatchModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E2E8F0]">
-          <div>
-            <h2 className="font-bold text-[#1B2631]">Buat Work Order</h2>
-            <p className="text-xs text-[#5D6D7E]">Langkah {step} dari 2 — {step === 1 ? "info & tempel data" : "konfigurasi kolom & regu"}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={20} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-          {step === 1 ? (
-            <>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-xs font-medium text-[#5D6D7E]">Judul WO</label>
-                  <input
-                    value={judul}
-                    onChange={(e) => setJudul(e.target.value)}
-                    placeholder="mis. Pemeliharaan Jaringan Juli 2026"
-                    className="mt-1 w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-[#5D6D7E]">Bulan</label>
-                  <select
-                    value={bulan}
-                    onChange={(e) => setBulan(Number(e.target.value))}
-                    className="mt-1 w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B]"
-                  >
-                    {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label className="text-xs font-medium text-[#5D6D7E]">Tahun</label>
-                  <select
-                    value={tahun}
-                    onChange={(e) => setTahun(Number(e.target.value))}
-                    className="mt-1 w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B]"
-                  >
-                    {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
-                  </select>
-                </div>
-                {isUP3 && (
-                  <div className="col-span-2">
-                    <label className="text-xs font-medium text-[#5D6D7E]">ULP</label>
-                    <select
-                      value={ulp}
-                      onChange={(e) => setUlp(e.target.value)}
-                      className="mt-1 w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B]"
-                    >
-                      {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
-                    </select>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-[#5D6D7E]">
-                  Tempel data dari Excel/Sheet (termasuk baris header)
-                </label>
-                <textarea
-                  value={raw}
-                  onChange={(e) => { setRaw(e.target.value); setError(null); }}
-                  placeholder={"No\tUraian Pekerjaan\tPenyulang\tRegu\n1\tGanti isolator\tGunung Sari\tHARJAR\n2\tRabas pohon\tAmpenan\tPERABASAN"}
-                  className="mt-1 w-full h-40 rounded-lg p-3 text-xs font-mono bg-[#0d1b2a] text-[#e2e8f0] border border-[#1e3552] focus:outline-none focus:border-[#00897B] resize-none placeholder:text-[#475569]"
-                />
-              </div>
-
-              {/* Atau impor dari Google Sheet (aktifkan tulis-balik) */}
-              <div className="rounded-lg border border-dashed border-[#B2DFDB] bg-[#E0F2F1]/40 p-3">
-                <p className="text-xs font-semibold text-[#00695C] mb-2">Atau impor langsung dari Google Sheet</p>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    value={sheetUrl}
-                    onChange={(e) => setSheetUrl(e.target.value)}
-                    placeholder="Tempel URL / ID spreadsheet"
-                    className="flex-1 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#00897B]"
-                  />
-                  <input
-                    value={sheetTabInput}
-                    onChange={(e) => setSheetTabInput(e.target.value)}
-                    placeholder="Nama tab (mis. WO_INS_JTM_T1)"
-                    className="w-full sm:w-56 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#00897B]"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleImportSheet}
-                    disabled={importing || !sheetUrl.trim() || !sheetTabInput.trim()}
-                    className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm bg-[#00897B] text-white rounded-lg font-medium disabled:opacity-40 shrink-0"
-                  >
-                    {importing && <Loader2 size={14} className="animate-spin" />} Tarik
-                  </button>
-                </div>
-                <p className="text-[11px] text-[#5D6D7E] mt-1.5">
-                  Kalau ada kolom <b>NO_WO</b>, <b>NO</b>, <b>TGL REALISASI</b>, <b>VERIFIKATOR</b> → tulis-balik otomatis aktif.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="text-sm text-[#00695C] bg-[#E0F2F1] rounded-lg px-3 py-2">
-                {dataRows.length} baris terbaca · {columns.length} kolom
-              </p>
-              <ColumnMapper
-                columns={columns}
-                setColumns={setColumns}
-                reguColKey={reguColKey}
-                setReguColKey={setReguColKey}
-                titleColKey={titleColKey}
-                setTitleColKey={setTitleColKey}
-                measureColKey={measureColKey}
-                setMeasureColKey={setMeasureColKey}
-                measureUnit={measureUnit}
-                setMeasureUnit={setMeasureUnit}
-                verifierColKey={verifierColKey}
-                setVerifierColKey={setVerifierColKey}
-                eksekutorRoles={eksekutorRoles}
-                distinctRegu={distinctRegu}
-                reguMap={reguMap}
-                onReguMapChange={(v, role) => setReguOverride((p) => ({ ...p, [v]: role }))}
-              />
-            </>
-          )}
-
-          {error && (
-            <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</div>
-          )}
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-[#E2E8F0]">
+    <ModalShell
+      title="Buat Work Order"
+      subtitle={`Langkah ${step} dari 2 — ${step === 1 ? "info & tempel data" : "konfigurasi kolom & regu"}`}
+      onClose={onClose}
+      footer={
+        <>
           {step === 2 ? (
             <button
               onClick={() => setStep(1)}
-              className="flex items-center gap-1.5 text-sm text-[#5D6D7E] hover:text-[#1B2631]"
+              className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink"
             >
               <ArrowLeft size={15} /> Kembali
             </button>
@@ -367,7 +238,7 @@ export default function CreateBatchModal({
             <button
               onClick={handleBaca}
               disabled={!raw.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-linear-to-r from-[#004D40] to-[#00897B] text-white disabled:opacity-40"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-navy-600 hover:bg-navy-500 text-white disabled:opacity-40"
             >
               Baca Tabel <ArrowRight size={15} />
             </button>
@@ -375,14 +246,132 @@ export default function CreateBatchModal({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-linear-to-r from-[#004D40] to-[#00897B] text-white disabled:opacity-40"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-navy-600 hover:bg-navy-500 text-white disabled:opacity-40"
             >
               {saving && <Loader2 size={15} className="animate-spin" />}
               Simpan WO
             </button>
           )}
-        </div>
-      </div>
-    </div>
+        </>
+      }
+    >
+      {step === 1 ? (
+        <>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="text-xs font-medium text-ink-soft">Judul WO</label>
+              <input
+                value={judul}
+                onChange={(e) => setJudul(e.target.value)}
+                placeholder="mis. Pemeliharaan Jaringan Juli 2026"
+                className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-soft">Bulan</label>
+              <select
+                value={bulan}
+                onChange={(e) => setBulan(Number(e.target.value))}
+                className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-500"
+              >
+                {MONTHS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-ink-soft">Tahun</label>
+              <select
+                value={tahun}
+                onChange={(e) => setTahun(Number(e.target.value))}
+                className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-500"
+              >
+                {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
+              </select>
+            </div>
+            {isUP3 && (
+              <div className="col-span-2">
+                <label className="text-xs font-medium text-ink-soft">ULP</label>
+                <select
+                  value={ulp}
+                  onChange={(e) => setUlp(e.target.value)}
+                  className="mt-1 w-full border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-navy-500"
+                >
+                  {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-ink-soft">
+              Tempel data dari Excel/Sheet (termasuk baris header)
+            </label>
+            <textarea
+              value={raw}
+              onChange={(e) => { setRaw(e.target.value); setError(null); }}
+              placeholder={"No\tUraian Pekerjaan\tPenyulang\tRegu\n1\tGanti isolator\tGunung Sari\tHARJAR\n2\tRabas pohon\tAmpenan\tPERABASAN"}
+              className="mt-1 w-full h-40 rounded-lg p-3 text-xs font-mono bg-[#0d1b2a] text-[#e2e8f0] border border-[#1e3552] focus:outline-none focus:border-navy-500 resize-none placeholder:text-[#475569]"
+            />
+          </div>
+
+          {/* Atau impor dari Google Sheet (aktifkan tulis-balik) */}
+          <div className="rounded-lg border border-dashed border-navy-200 bg-accent-tint/40 p-3">
+            <p className="text-xs font-semibold text-accent-deep mb-2">Atau impor langsung dari Google Sheet</p>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <input
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                placeholder="Tempel URL / ID spreadsheet"
+                className="flex-1 border border-line rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-navy-500"
+              />
+              <input
+                value={sheetTabInput}
+                onChange={(e) => setSheetTabInput(e.target.value)}
+                placeholder="Nama tab (mis. WO_INS_JTM_T1)"
+                className="w-full sm:w-56 border border-line rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-navy-500"
+              />
+              <button
+                type="button"
+                onClick={handleImportSheet}
+                disabled={importing || !sheetUrl.trim() || !sheetTabInput.trim()}
+                className="flex items-center justify-center gap-1.5 px-4 py-2 text-sm bg-navy-600 hover:bg-navy-500 text-white rounded-lg font-medium disabled:opacity-40 shrink-0"
+              >
+                {importing && <Loader2 size={14} className="animate-spin" />} Tarik
+              </button>
+            </div>
+            <p className="text-[11px] text-ink-soft mt-1.5">
+              Kalau ada kolom <b>NO_WO</b>, <b>NO</b>, <b>TGL REALISASI</b>, <b>VERIFIKATOR</b> → tulis-balik otomatis aktif.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <p className="text-sm text-accent-deep bg-accent-tint rounded-lg px-3 py-2">
+            {dataRows.length} baris terbaca · {columns.length} kolom
+          </p>
+          <ColumnMapper
+            columns={columns}
+            setColumns={setColumns}
+            reguColKey={reguColKey}
+            setReguColKey={setReguColKey}
+            titleColKey={titleColKey}
+            setTitleColKey={setTitleColKey}
+            measureColKey={measureColKey}
+            setMeasureColKey={setMeasureColKey}
+            measureUnit={measureUnit}
+            setMeasureUnit={setMeasureUnit}
+            verifierColKey={verifierColKey}
+            setVerifierColKey={setVerifierColKey}
+            eksekutorRoles={eksekutorRoles}
+            distinctRegu={distinctRegu}
+            reguMap={reguMap}
+            onReguMapChange={(v, role) => setReguOverride((p) => ({ ...p, [v]: role }))}
+          />
+        </>
+      )}
+
+      {error && (
+        <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{error}</div>
+      )}
+    </ModalShell>
   );
 }

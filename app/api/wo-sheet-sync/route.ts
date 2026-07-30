@@ -62,12 +62,12 @@ export async function POST(req: NextRequest) {
         const raw = (it as Record<string, unknown>)[field];
         set[sheetCol] = field === "tgl_realisasi" ? fmtSheetDate(raw as string) : (raw as string) ?? "";
       }
-      return { key: it.sheet_key, set };
+      return { id: it.id, key: it.sheet_key, set };
     });
 
   if (rows.length === 0) return NextResponse.json({ ok: true, updated: 0 });
 
-  let result: { ok?: boolean; updated?: number; error?: string };
+  let result: { ok?: boolean; updated?: number; matchedIds?: string[]; error?: string };
   try {
     const res = await fetch(WEBHOOK_URL, {
       method: "POST",
@@ -81,14 +81,24 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok) return NextResponse.json({ error: result.error ?? "Sheet menolak" }, { status: 502 });
 
-  // Tandai terkirim
+  // Tandai terkirim — HANYA baris yang benar-benar ketemu di Sheet.
+  // (Skrip lama belum mengirim matchedIds; fallback ke semua baris terkirim.)
+  const matchedIds = Array.isArray(result.matchedIds) ? result.matchedIds : rows.map((r) => r.id);
   const now = new Date().toISOString();
-  await supabaseAdmin
-    .from("wo_item")
-    .update({ sheet_synced_at: now })
-    .eq("batch_id", batchId)
-    .eq("status", "Selesai")
-    .not("sheet_key", "is", null);
 
-  return NextResponse.json({ ok: true, updated: result.updated ?? rows.length, syncedAt: now });
+  if (matchedIds.length > 0) {
+    for (let i = 0; i < matchedIds.length; i += 200) {
+      await supabaseAdmin
+        .from("wo_item")
+        .update({ sheet_synced_at: now })
+        .in("id", matchedIds.slice(i, i + 200));
+    }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    updated: result.updated ?? matchedIds.length,
+    skipped: rows.length - matchedIds.length,
+    syncedAt: now,
+  });
 }
