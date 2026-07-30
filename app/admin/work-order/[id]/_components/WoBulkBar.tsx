@@ -137,7 +137,7 @@ export default function WoBulkBar({
         {canManage && (
           <button
             onClick={onDelete}
-            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-red-500/15 text-red-300 hover:bg-red-500/25 transition-colors whitespace-nowrap"
+            className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-medium bg-red-500/15 text-red-700 hover:bg-red-500/25 transition-colors whitespace-nowrap"
           >
             <Trash2 size={13} /> Hapus
           </button>

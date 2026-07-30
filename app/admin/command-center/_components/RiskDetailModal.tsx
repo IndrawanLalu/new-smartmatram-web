@@ -2,9 +2,9 @@ import { X, ShieldAlert } from "lucide-react";
 import type { FeederRisk } from "../_hooks/useFeederRisk";
 
 const LEVEL_COLOR = {
-  kritis: "text-red-400",
-  waspada: "text-amber-400",
-  aman: "text-emerald-400",
+  kritis: "text-red-700",
+  waspada: "text-amber-700",
+  aman: "text-emerald-700",
 };
 const LEVEL_LABEL = { kritis: "🔴 Kritis", waspada: "🟡 Waspada", aman: "🟢 Aman" };
 
@@ -117,7 +117,7 @@ export default function RiskDetailModal({ risk, onClose }: Props) {
 
           {/* Catatan */}
           {breakdown?.catatan && (
-            <div className="text-[10px] text-amber-400 bg-amber-900/20 rounded px-2 py-1.5">
+            <div className="text-[10px] text-amber-700 bg-amber-50 rounded px-2 py-1.5">
               ⚠ {breakdown.catatan}
             </div>
           )}

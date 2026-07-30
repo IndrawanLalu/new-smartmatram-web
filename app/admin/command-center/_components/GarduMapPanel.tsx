@@ -78,12 +78,12 @@ export default function GarduMapPanel({ garduList, latestData, riskData }: Props
         </div>
 
         {mode === "beban" && !showAll && alertCount > 0 && (
-          <span className="animate-pulse font-mono text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">
+          <span className="animate-pulse font-mono text-[10px] bg-red-500/20 text-red-700 px-1.5 py-0.5 rounded">
             {alertCount} alert
           </span>
         )}
         {mode === "risiko" && (riskGarduCount.kritis > 0 || riskGarduCount.waspada > 0) && (
-          <span className="font-mono text-[10px] bg-amber-500/15 text-amber-400 px-1.5 py-0.5 rounded">
+          <span className="font-mono text-[10px] bg-amber-500/15 text-amber-700 px-1.5 py-0.5 rounded">
             {riskGarduCount.kritis + riskGarduCount.waspada} gardu berisiko
           </span>
         )}
@@ -132,14 +132,14 @@ export default function GarduMapPanel({ garduList, latestData, riskData }: Props
         {/* Empty state overlay */}
         {mode === "beban" && !showAll && alertCount === 0 && latestData.length > 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-[400]">
-            <div className="bg-emerald-900/80 border border-emerald-700 text-emerald-300 text-xs font-medium px-4 py-2 rounded-full backdrop-blur-sm">
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium px-4 py-2 rounded-full backdrop-blur-sm">
               ✓ Semua gardu dalam kondisi normal
             </div>
           </div>
         )}
         {mode === "risiko" && riskGarduCount.kritis === 0 && riskGarduCount.waspada === 0 && riskData.length > 0 && (
           <div className="absolute top-2 left-1/2 -translate-x-1/2 pointer-events-none z-[400]">
-            <div className="bg-emerald-900/80 border border-emerald-700 text-emerald-300 text-[11px] font-medium px-3 py-1 rounded-full backdrop-blur-sm">
+            <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-medium px-3 py-1 rounded-full backdrop-blur-sm">
               ✓ Semua feeder bergardu aman besok
             </div>
           </div>

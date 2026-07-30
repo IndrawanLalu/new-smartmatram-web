@@ -6,7 +6,7 @@ interface Props {
   title: string;
   count: number;
   colorClass: string; // e.g. "text-red-600"
-  borderClass: string; // e.g. "border-red-500/30"
+  borderClass: string; // e.g. "border-red-200"
   onClose: () => void;
   children: React.ReactNode;
 }

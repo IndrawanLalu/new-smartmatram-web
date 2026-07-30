@@ -317,7 +317,7 @@ export default function FilterGarduTab({ user }: Props) {
 
       {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-600 text-sm">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
           Gagal mengambil data: {error}
         </div>
       )}
@@ -439,22 +439,22 @@ export default function FilterGarduTab({ user }: Props) {
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {isOverload && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-600 border border-red-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 whitespace-nowrap">
                                 OVERLOAD
                               </span>
                             )}
                             {isHighTemp && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-600 border border-amber-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap">
                                 SUHU ↑
                               </span>
                             )}
                             {isHighCurrent && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-600 border border-red-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-600 border border-red-200 whitespace-nowrap">
                                 HI-A
                               </span>
                             )}
                             {!isHighCurrent && isPhaseOl && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-900/40 text-orange-400 border border-orange-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-50 text-orange-700 border border-orange-200 whitespace-nowrap">
                                 FASE-OL
                               </span>
                             )}
@@ -464,20 +464,20 @@ export default function FilterGarduTab({ user }: Props) {
                               </span>
                             )}
                             {row.amg_sent_at && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-900/40 text-blue-400 border border-blue-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">
                                 AMG
                               </span>
                             )}
                             {!row.amg_sent_at && row.amg_queued_at && row.amg_error && (
                               <span
                                 title={row.amg_error}
-                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-rose-900/40 text-rose-400 border border-rose-500/30 whitespace-nowrap"
+                                className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap"
                               >
                                 AMG GAGAL
                               </span>
                             )}
                             {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-600 border border-amber-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap">
                                 ANTRIAN
                               </span>
                             )}

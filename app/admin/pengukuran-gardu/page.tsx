@@ -93,10 +93,10 @@ function KPICard({
 }) {
   const styles = {
     default: { card: "border-line",        icon: "bg-navy-50 text-accent-deep",  value: "text-ink" },
-    danger:  { card: "border-red-500/40",        icon: "bg-red-900/30 text-red-600",   value: "text-red-600" },
-    warning: { card: "border-amber-500/40",      icon: "bg-amber-900/30 text-amber-600", value: "text-amber-600" },
-    success: { card: "border-green-500/40",      icon: "bg-green-900/30 text-green-400", value: "text-green-400" },
-    info:    { card: "border-blue-500/40",       icon: "bg-blue-900/30 text-blue-400",  value: "text-blue-400" },
+    danger:  { card: "border-red-200",        icon: "bg-red-50 text-red-600",   value: "text-red-600" },
+    warning: { card: "border-amber-200",      icon: "bg-amber-50 text-amber-600", value: "text-amber-600" },
+    success: { card: "border-green-200",      icon: "bg-green-50 text-green-700", value: "text-green-700" },
+    info:    { card: "border-blue-200",       icon: "bg-blue-50 text-blue-700",  value: "text-blue-700" },
   }[variant];
 
   return (
@@ -115,9 +115,9 @@ function KPICard({
 
 function BebanBadge({ pct }: { pct: number }) {
   const cfg =
-    pct >= OVERLOAD_PCT   ? { cls: "bg-red-900/40 text-red-600",    bar: "bg-red-500" } :
-    pct >= 60             ? { cls: "bg-amber-900/40 text-amber-600", bar: "bg-amber-500" } :
-    pct >= UNDERLOAD_PCT  ? { cls: "bg-green-900/40 text-green-400", bar: "bg-green-500" } :
+    pct >= OVERLOAD_PCT   ? { cls: "bg-red-50 text-red-600",    bar: "bg-red-500" } :
+    pct >= 60             ? { cls: "bg-amber-50 text-amber-600", bar: "bg-amber-500" } :
+    pct >= UNDERLOAD_PCT  ? { cls: "bg-green-50 text-green-700", bar: "bg-green-500" } :
                             { cls: "bg-slate-100 text-ink-soft",       bar: "bg-ink-muted" };
   return (
     <div className="flex items-center gap-1.5">
@@ -316,7 +316,7 @@ export default function PengukuranGarduPage() {
             </div>
             <div className="bg-white/10 rounded-lg px-3 py-1.5">
               Rata-rata:{" "}
-              <span className={`font-semibold ${avgBeban >= OVERLOAD_PCT ? "text-red-300" : "text-white"}`}>
+              <span className={`font-semibold ${avgBeban >= OVERLOAD_PCT ? "text-red-700" : "text-white"}`}>
                 {avgBeban}%
               </span>
             </div>
@@ -400,7 +400,7 @@ export default function PengukuranGarduPage() {
 
       {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-600 text-sm">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
           Gagal memuat data: {error}
         </div>
       )}
@@ -463,8 +463,8 @@ export default function PengukuranGarduPage() {
                 variant: highTempData.length > 0 ? "warning" : "ok",
               },
             ].map(({ key, label, sub, count, variant }) => {
-              const style = variant === "danger"  ? { card: "border-red-500/40",   val: "text-red-600",   dot: "bg-red-500"   }
-                          : variant === "warning" ? { card: "border-amber-500/40", val: "text-amber-600", dot: "bg-amber-500" }
+              const style = variant === "danger"  ? { card: "border-red-200",   val: "text-red-600",   dot: "bg-red-500"   }
+                          : variant === "warning" ? { card: "border-amber-200", val: "text-amber-600", dot: "bg-amber-500" }
                           :                        { card: "border-line",      val: "text-ink", dot: "bg-emerald-600" };
               return (
                 <button
@@ -682,8 +682,8 @@ export default function PengukuranGarduPage() {
                       >
                         <td className="px-3 py-3 w-8" onClick={(e) => toggleSelect(e, row.id)}>
                           <div className="flex items-center justify-center cursor-pointer text-accent-deep">
-                            {amgStatus[row.id] === "sending" ? <Loader2 size={14} className="animate-spin text-blue-400" /> :
-                             amgStatus[row.id] === "ok"      ? <CheckCircle2 size={14} className="text-green-400" /> :
+                            {amgStatus[row.id] === "sending" ? <Loader2 size={14} className="animate-spin text-blue-700" /> :
+                             amgStatus[row.id] === "ok"      ? <CheckCircle2 size={14} className="text-green-700" /> :
                              amgStatus[row.id] === "error"   ? <XCircle size={14} className="text-red-600" /> :
                              selectedIds.has(row.id)         ? <CheckSquare2 size={14} /> : <Square size={14} className="text-line" />}
                           </div>
@@ -695,7 +695,22 @@ export default function PengukuranGarduPage() {
                             <span className="ml-1.5 text-[10px] bg-navy-50 text-navy-600 border border-navy-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">WO</span>
                           )}
                           {row.amg_sent_at && (
-                            <span className="ml-1 text-[10px] bg-blue-900/40 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full font-semibold align-middle">AMG</span>
+                            <span className="ml-1 text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
+                              AMG
+                            </span>
+                          )}
+                          {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
+                            <span className="ml-1 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
+                              ANTRIAN
+                            </span>
+                          )}
+                          {!row.amg_sent_at && row.amg_queued_at && row.amg_error && (
+                            <span
+                              title={row.amg_error}
+                              className="ml-1 text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
+                            >
+                              AMG GAGAL
+                            </span>
                           )}
                         </td>
                         <td className="px-4 py-3 text-ink-soft">{row.penyulang ?? "—"}</td>
@@ -775,14 +790,14 @@ export default function PengukuranGarduPage() {
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-line rounded-2xl shadow-2xl px-5 py-3">
         {isBulkSending ? (
           <>
-            <Loader2 size={16} className="animate-spin text-blue-400 shrink-0" />
+            <Loader2 size={16} className="animate-spin text-blue-700 shrink-0" />
             <span className="text-sm text-ink">Memasukkan ke antrean...</span>
           </>
         ) : Object.keys(amgStatus).length > 0 ? (
           <>
             <CheckCircle2 size={16} className="text-amber-600 shrink-0" />
             <span className="text-sm text-ink">
-              <span className="text-amber-300 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} masuk antrean</span>
+              <span className="text-amber-700 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} masuk antrean</span>
               {Object.values(amgStatus).filter((s) => s === "error").length > 0 && (
                 <span className="text-red-600 font-semibold ml-2">{Object.values(amgStatus).filter((s) => s === "error").length} gagal</span>
               )}
@@ -821,7 +836,7 @@ export default function PengukuranGarduPage() {
     {/* ── Alert Detail Modals ─────────────────────────────────────────────── */}
     {alertModal === "overload" && (
       <AlertDetailModal title="Trafo Overload" count={overloadData.length}
-        colorClass="text-red-600" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-red-600" borderClass="border-red-200" onClose={() => setAlertModal(null)}>
         <div className="divide-y divide-line">
           {overloadData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
@@ -839,7 +854,7 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "underload" && (
       <AlertDetailModal title="Trafo Underload" count={underloadData.length}
-        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-amber-600" borderClass="border-amber-200" onClose={() => setAlertModal(null)}>
         <div className="divide-y divide-line">
           {underloadData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
@@ -857,9 +872,9 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "highCurrent" && (
       <AlertDetailModal title={`Jurusan Arus >${HIGH_CURRENT_A}A`} count={highCurrentItems.length}
-        colorClass="text-red-600" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-red-600" borderClass="border-red-200" onClose={() => setAlertModal(null)}>
         <table className="w-full text-xs">
-          <thead className="bg-red-900/20 sticky top-0">
+          <thead className="bg-red-50 sticky top-0">
             <tr>
               {["Gardu","Jurusan","R (A)","S (A)","T (A)"].map(h => (
                 <th key={h} className="px-4 py-2.5 text-red-600 font-semibold text-left first:text-left text-center first:text-left">{h}</th>
@@ -868,7 +883,7 @@ export default function PengukuranGarduPage() {
           </thead>
           <tbody className="divide-y divide-line">
             {highCurrentItems.map((item, i) => (
-              <tr key={i} className={i % 2 === 0 ? "bg-surface" : "bg-red-900/10"}>
+              <tr key={i} className={i % 2 === 0 ? "bg-surface" : "bg-red-50/60"}>
                 <td className="px-4 py-2.5 font-semibold text-ink">{item.no_gardu}</td>
                 <td className="px-4 py-2.5 font-bold text-red-600 text-center">{item.jurusan}</td>
                 {[item.arus_r, item.arus_s, item.arus_t].map((v, vi) => (
@@ -885,9 +900,9 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "phaseOverload" && (
       <AlertDetailModal title="Overload 1 Fasa" count={phaseOverloadItems.length}
-        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-amber-600" borderClass="border-amber-200" onClose={() => setAlertModal(null)}>
         <table className="w-full text-xs">
-          <thead className="bg-amber-900/20 sticky top-0">
+          <thead className="bg-amber-50 sticky top-0">
             <tr>
               {["Gardu","KVA","I-Nom","R","S","T","% Nom","Status"].map(h => (
                 <th key={h} className="px-3 py-2.5 text-amber-600 font-semibold text-center first:text-left">{h}</th>
@@ -899,7 +914,7 @@ export default function PengukuranGarduPage() {
               const iNom = item.i_nominal;
               const cls  = (v: number) => v >= iNom ? "text-red-600 font-bold" : v >= iNom * 0.9 ? "text-amber-600 font-bold" : "text-ink-soft";
               return (
-                <tr key={item.id} className={i % 2 === 0 ? "bg-surface" : "bg-amber-900/10"}>
+                <tr key={item.id} className={i % 2 === 0 ? "bg-surface" : "bg-amber-50/60"}>
                   <td className="px-3 py-2.5 font-semibold text-ink">{item.no_gardu}</td>
                   <td className="px-3 py-2.5 text-center text-ink-soft">{item.kva_trafo}</td>
                   <td className="px-3 py-2.5 text-center text-ink-soft">{Math.round(iNom)}</td>
@@ -910,7 +925,7 @@ export default function PengukuranGarduPage() {
                     {Math.round(item.pct_nominal)}%
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <span className={`px-2 py-0.5 rounded-full font-semibold ${item.level === "overload" ? "bg-red-900/40 text-red-600" : "bg-amber-900/40 text-amber-600"}`}>
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${item.level === "overload" ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"}`}>
                       {item.level === "overload" ? "Overload" : "Warning"}
                     </span>
                   </td>
@@ -924,7 +939,7 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "highTemp" && (
       <AlertDetailModal title={`Suhu Trafo >${HIGH_TEMP_C}°C`} count={highTempData.length}
-        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-amber-600" borderClass="border-amber-200" onClose={() => setAlertModal(null)}>
         <div className="divide-y divide-line">
           {highTempData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}

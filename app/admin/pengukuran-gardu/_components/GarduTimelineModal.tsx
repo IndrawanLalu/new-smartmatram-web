@@ -16,7 +16,7 @@ function fmtDate(s: string) {
 function pctCls(pct: number) {
   if (pct >= OVERLOAD_PCT) return "text-red-600 font-bold";
   if (pct >= 60)           return "text-amber-600 font-semibold";
-  return "text-green-400 font-semibold";
+  return "text-green-700 font-semibold";
 }
 
 function BebanBar({ pct }: { pct: number }) {
@@ -81,7 +81,7 @@ function PengukuranCard({ ev, settings }: {
           </div>
           <div className="flex items-center gap-2">
             {anomali.isAnomali && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-600 border border-red-500/30 font-semibold">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 font-semibold">
                 Anomali
               </span>
             )}
@@ -91,7 +91,7 @@ function PengukuranCard({ ev, settings }: {
               </span>
             )}
             {ev.jenis_pemeliharaan && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-500/30 font-medium truncate max-w-28">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-medium truncate max-w-28">
                 {ev.jenis_pemeliharaan}
               </span>
             )}
@@ -166,7 +166,7 @@ function PengukuranCard({ ev, settings }: {
         {anomali.reasons.length > 0 && (
           <div className="mt-3 flex flex-wrap gap-1">
             {anomali.reasons.map((r, i) => (
-              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 border border-red-500/30 text-red-300">
+              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-700">
                 {r}
               </span>
             ))}
@@ -183,15 +183,15 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
 
   return (
     <div className="relative pl-8">
-      <div className="absolute left-0 top-3 w-6 h-6 rounded-full bg-blue-900/30 border-2 border-blue-500/60 flex items-center justify-center">
-        <Wrench size={11} className="text-blue-400" />
+      <div className="absolute left-0 top-3 w-6 h-6 rounded-full bg-blue-50 border-2 border-blue-200 flex items-center justify-center">
+        <Wrench size={11} className="text-blue-700" />
       </div>
 
-      <div className="bg-white rounded-xl border border-blue-500/20 p-4">
+      <div className="bg-white rounded-xl border border-blue-200 p-4">
         {/* Card header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-900/30 text-blue-300 border border-blue-500/30 font-medium">
+            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium">
               Penyeimbangan
             </span>
             <span className="text-sm font-semibold text-ink">{fmtDate(ev.date)}</span>
@@ -201,12 +201,12 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
           </div>
           <div className="flex items-center gap-2">
             {improved ? (
-              <CheckCircle2 size={14} className="text-green-400" />
+              <CheckCircle2 size={14} className="text-green-700" />
             ) : (
               <AlertTriangle size={14} className="text-amber-600" />
             )}
             {ev.jenis_pemeliharaan && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-900/40 text-purple-300 border border-purple-500/30 font-medium truncate max-w-28">
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 font-medium truncate max-w-28">
                 {ev.jenis_pemeliharaan}
               </span>
             )}
@@ -230,7 +230,7 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
           <div>
             <p className="text-[10px] uppercase tracking-wide text-ink-muted mb-2">
               Sesudah
-              <span className={`ml-2 font-semibold ${improved ? "text-green-400" : "text-red-600"}`}>
+              <span className={`ml-2 font-semibold ${improved ? "text-green-700" : "text-red-600"}`}>
                 ({improved ? "" : "+"}{Math.round(delta)}%)
               </span>
             </p>
@@ -327,7 +327,7 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
             Pengukuran ({events.filter(e => e.type === "pengukuran").length})
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-3 h-3 rounded-full border-2 border-blue-500/60 bg-blue-900/30" />
+            <span className="w-3 h-3 rounded-full border-2 border-blue-200 bg-blue-50" />
             Penyeimbangan ({events.filter(e => e.type === "penyeimbangan").length})
           </span>
           <span className="ml-auto">{events.length} event total</span>

@@ -71,7 +71,7 @@ export default function StatusBar({
             icon={<ShieldAlert size={11} />}
             label="Penyulang kritis"
             value={criticalRiskCount}
-            color="text-red-400 bg-red-900/30 border-red-700"
+            color="text-red-700 bg-red-50 border-red-700"
             pulse
           />
         )}

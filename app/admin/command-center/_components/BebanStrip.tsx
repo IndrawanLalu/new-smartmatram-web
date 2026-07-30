@@ -33,7 +33,7 @@ export default function BebanStrip({ latestData, avgBeban }: Props) {
         <div className="ml-auto flex items-center gap-3">
           <span className="text-white/70 text-xs">
             Rata-rata{" "}
-            <span className={`font-mono font-bold ${avgBeban >= 80 ? "text-red-300" : avgBeban >= 60 ? "text-amber-300" : "text-emerald-300"}`}>
+            <span className={`font-mono font-bold ${avgBeban >= 80 ? "text-red-700" : avgBeban >= 60 ? "text-amber-700" : "text-emerald-700"}`}>
               {avgBeban.toFixed(1)}%
             </span>
           </span>

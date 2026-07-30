@@ -25,10 +25,10 @@ const ALL_STATUS: InspeksiStatus[] = [
 ];
 
 const RISIKO_COLOR: Record<string, string> = {
-  Rendah: "bg-green-900/40 text-green-400",
-  Sedang: "bg-yellow-900/40 text-yellow-400",
-  Tinggi: "bg-orange-900/40 text-orange-400",
-  "Sangat Tinggi": "bg-red-900/40 text-red-400",
+  Rendah: "bg-green-50 text-green-700",
+  Sedang: "bg-yellow-50 text-yellow-700",
+  Tinggi: "bg-orange-50 text-orange-700",
+  "Sangat Tinggi": "bg-red-50 text-red-700",
 };
 
 interface Props {
@@ -426,7 +426,7 @@ export default function InspeksiPohonDetailModal({
                       />
                     </a>
                     {previewUrl && !data.foto_sesudah_url && (
-                      <span className="text-[10px] text-amber-400">Belum diupload</span>
+                      <span className="text-[10px] text-amber-700">Belum diupload</span>
                     )}
                     {data.foto_sesudah_url && (
                       <a
@@ -468,7 +468,7 @@ export default function InspeksiPohonDetailModal({
         {/* Footer — actions */}
         <div className="px-5 py-3 border-t border-line space-y-2 shrink-0">
           {err && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-700 bg-red-500/10 border border-red-200 rounded-lg px-3 py-2">
               {err}
             </p>
           )}
@@ -514,7 +514,7 @@ export default function InspeksiPohonDetailModal({
 
               {confirmStatus && (
                 <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
-                  <AlertCircle size={12} className="text-amber-400 shrink-0" />
+                  <AlertCircle size={12} className="text-amber-700 shrink-0" />
                   <span className="text-xs text-ink-soft flex-1">
                     Ubah status ke{" "}
                     <span className="text-ink font-medium">
@@ -575,11 +575,11 @@ export default function InspeksiPohonDetailModal({
 
               {confirmSelesai && (
                 <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
-                  <AlertCircle size={12} className="text-amber-400 shrink-0" />
+                  <AlertCircle size={12} className="text-amber-700 shrink-0" />
                   <span className="text-xs text-ink-soft flex-1">
                     Tandai sebagai <span className="text-accent-deep font-medium">Selesai</span>?
                     {pendingFile && !data.foto_sesudah_url && (
-                      <span className="block text-[10px] text-amber-400">
+                      <span className="block text-[10px] text-amber-700">
                         Foto sesudah akan diupload.
                       </span>
                     )}
@@ -617,7 +617,7 @@ export default function InspeksiPohonDetailModal({
             <div className="flex items-center gap-2">
               {confirmDelete ? (
                 <>
-                  <span className="text-xs text-red-400 flex-1">Yakin hapus data ini?</span>
+                  <span className="text-xs text-red-700 flex-1">Yakin hapus data ini?</span>
                   <button
                     onClick={() => setConfirmDelete(false)}
                     className="px-3 py-1.5 rounded-lg text-xs border border-line text-ink-soft hover:bg-surface transition-colors"
@@ -627,7 +627,7 @@ export default function InspeksiPohonDetailModal({
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-red-500/20 text-red-700 border border-red-200 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
                   >
                     {deleting ? (
                       <Loader2 size={11} className="animate-spin" />
@@ -640,7 +640,7 @@ export default function InspeksiPohonDetailModal({
               ) : (
                 <button
                   onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500/60 hover:text-red-700 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={11} />
                   Hapus

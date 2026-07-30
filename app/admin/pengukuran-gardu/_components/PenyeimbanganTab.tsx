@@ -33,9 +33,9 @@ const INPUT_CLASS =
 
 const JENIS_COLOR: Record<string, string> = {
   "PEMERATAAN BEBAN":   "bg-navy-50 border-navy-200 text-navy-600",
-  "OPTIMASI TRAFO":     "bg-blue-900/40 border-blue-500/40 text-blue-300",
-  "PEMELIHARAAN GARDU": "bg-amber-900/40 border-amber-500/40 text-amber-300",
-  "MANUVER BEBAN":      "bg-purple-900/40 border-purple-500/40 text-purple-300",
+  "OPTIMASI TRAFO":     "bg-blue-50 border-blue-200 text-blue-700",
+  "PEMELIHARAAN GARDU": "bg-amber-50 border-amber-200 text-amber-700",
+  "MANUVER BEBAN":      "bg-purple-50 border-purple-200 text-purple-700",
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -43,7 +43,7 @@ const JENIS_COLOR: Record<string, string> = {
 function pctCls(pct: number) {
   if (pct >= 80) return "text-red-600 font-bold";
   if (pct >= 60) return "text-amber-600 font-semibold";
-  return "text-green-400 font-semibold";
+  return "text-green-700 font-semibold";
 }
 
 function fmtTanggal(s: string): string {
@@ -245,10 +245,10 @@ export default function PenyeimbanganTab({
 
       {/* ── Kriteria belum diset ─────────────────────────────────────────────── */}
       {!hasActiveCriteria && (
-        <div className="bg-white rounded-xl border border-amber-500/30 p-5 flex items-start gap-3">
+        <div className="bg-white rounded-xl border border-amber-200 p-5 flex items-start gap-3">
           <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-semibold text-amber-300">Kriteria anomali belum diset</p>
+            <p className="text-sm font-semibold text-amber-700">Kriteria anomali belum diset</p>
             <p className="text-xs text-ink-soft mt-1">
               Expand panel <span className="font-medium text-ink">&ldquo;Kriteria Anomali&rdquo;</span> di atas
               dan aktifkan minimal satu threshold untuk melihat daftar gardu anomali.
@@ -259,8 +259,8 @@ export default function PenyeimbanganTab({
 
       {/* ── Section: Anomali Belum di-WO ────────────────────────────────────── */}
       {hasActiveCriteria && (
-        <div className="bg-white rounded-xl border border-red-500/30 overflow-hidden">
-          <div className="px-5 py-3 bg-red-900/10 border-b border-red-500/20 flex items-center gap-2">
+        <div className="bg-white rounded-xl border border-red-200 overflow-hidden">
+          <div className="px-5 py-3 bg-red-50/60 border-b border-red-200 flex items-center gap-2">
             <AlertTriangle size={16} className="text-red-600 shrink-0" />
             <h3 className="text-sm font-semibold text-red-600">
               Anomali — Belum di-WO
@@ -274,7 +274,7 @@ export default function PenyeimbanganTab({
           {anomaliBelumWo.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-10 text-ink-muted">
               <ClipboardX size={28} className="text-green-500/50" />
-              <p className="text-sm text-green-400">Semua gardu anomali sudah di-WO 🎉</p>
+              <p className="text-sm text-green-700">Semua gardu anomali sudah di-WO 🎉</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -320,7 +320,7 @@ export default function PenyeimbanganTab({
                         <td className="px-3 py-2.5 max-w-[220px]">
                           <div className="flex flex-wrap gap-1">
                             {reasons.map((r, i) => (
-                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 border border-red-500/30 text-red-300 whitespace-nowrap">
+                              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-red-50 border border-red-200 text-red-700 whitespace-nowrap">
                                 {r}
                               </span>
                             ))}
@@ -411,13 +411,13 @@ export default function PenyeimbanganTab({
                         <td className="px-4 py-2.5 text-center">
                           {anomResult?.isAnomali ? (
                             <span
-                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-600 border border-red-500/30 font-semibold cursor-default"
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 font-semibold cursor-default"
                               title={anomResult.reasons.join(" · ")}
                             >
                               Masih Anomali
                             </span>
                           ) : (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-semibold">
                               Normal
                             </span>
                           )}
@@ -425,11 +425,11 @@ export default function PenyeimbanganTab({
                       )}
                       <td className="px-4 py-2.5 text-center">
                         {sudahSeimbang ? (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-semibold">
                             Selesai
                           </span>
                         ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-600 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-50 text-amber-600 border border-amber-200 font-semibold flex items-center gap-1 w-fit mx-auto">
                             <TrendingUp size={10} /> Proses
                           </span>
                         )}
@@ -530,7 +530,7 @@ export default function PenyeimbanganTab({
         </div>
 
         {rekapError && (
-          <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{rekapError}</div>
+          <div className="m-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{rekapError}</div>
         )}
         {rekapLoading && (
           <div className="flex items-center justify-center py-12 gap-2 text-ink-soft text-sm">
@@ -557,7 +557,7 @@ export default function PenyeimbanganTab({
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-600" colSpan={2}>Sebelum</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-400" colSpan={2}>Sesudah</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-700" colSpan={2}>Sesudah</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Jenis</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Petugas</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Catatan</th>

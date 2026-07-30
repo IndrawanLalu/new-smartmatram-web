@@ -27,7 +27,7 @@ function fmtDate(s: string) {
 
 function BebanBar({ pct }: { pct: number }) {
   const barCls = pct >= OVERLOAD_PCT ? "bg-red-500" : pct >= 60 ? "bg-amber-500" : "bg-green-500";
-  const txtCls = pct >= OVERLOAD_PCT ? "text-red-600" : pct >= 60 ? "text-amber-600" : "text-green-400";
+  const txtCls = pct >= OVERLOAD_PCT ? "text-red-600" : pct >= 60 ? "text-amber-600" : "text-green-700";
   return (
     <div className="flex items-center gap-1.5">
       <div className="w-16 bg-surface rounded-full h-1.5">
@@ -44,7 +44,7 @@ function SourceBadge({ type }: { type: GarduLatestState["event_type"] }) {
       <Zap size={9} /> Ukur
     </span>
   ) : (
-    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-900/30 text-blue-300 border border-blue-500/30 font-medium whitespace-nowrap">
+    <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 font-medium whitespace-nowrap">
       <Wrench size={9} /> Seimbang
     </span>
   );
@@ -58,9 +58,9 @@ function KPICard({
 }) {
   const s = {
     default: { card: "border-line",       icon: "bg-navy-50 text-accent-deep",      val: "text-ink" },
-    danger:  { card: "border-red-500/40",       icon: "bg-red-900/30 text-red-600",        val: "text-red-600" },
-    warning: { card: "border-amber-500/40",     icon: "bg-amber-900/30 text-amber-600",    val: "text-amber-600" },
-    info:    { card: "border-blue-500/40",      icon: "bg-blue-900/30 text-blue-400",      val: "text-blue-400" },
+    danger:  { card: "border-red-200",       icon: "bg-red-50 text-red-600",        val: "text-red-600" },
+    warning: { card: "border-amber-200",     icon: "bg-amber-50 text-amber-600",    val: "text-amber-600" },
+    info:    { card: "border-blue-200",      icon: "bg-blue-50 text-blue-700",      val: "text-blue-700" },
   }[variant];
   return (
     <div className={`bg-white rounded-xl border p-4 flex items-center gap-3 ${s.card}`}>
@@ -203,7 +203,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
         )}
 
         {showTable && error && (
-          <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{error}</div>
+          <div className="m-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{error}</div>
         )}
 
         {showTable && loading && (
@@ -277,12 +277,12 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
                           {anomali?.isAnomali ? (
                             <span
                               title={anomali.reasons.join(" · ")}
-                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-600 border border-red-500/30 font-semibold cursor-help"
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-200 font-semibold cursor-help"
                             >
                               Anomali
                             </span>
                           ) : (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-900/40 text-green-400 border border-green-500/30 font-semibold">
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-semibold">
                               Normal
                             </span>
                           )}

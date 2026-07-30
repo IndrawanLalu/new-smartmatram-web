@@ -279,7 +279,7 @@ export default function GarduDetailModal({
                   Antre — agen mengirim
                 </span>
                 {row.amg_error ? (
-                  <span className="text-red-300 text-[10px] max-w-[220px] text-right leading-tight">Gagal: {row.amg_error} (akan dicoba lagi)</span>
+                  <span className="text-red-700 text-[10px] max-w-[220px] text-right leading-tight">Gagal: {row.amg_error} (akan dicoba lagi)</span>
                 ) : null}
                 <button
                   onClick={() => { setAmgReset(true); setAmgError(null); }}
@@ -304,7 +304,7 @@ export default function GarduDetailModal({
                 </button>
                 {amgError && (
                   <div className="flex flex-col items-end gap-0.5">
-                    <span className="text-red-300 text-[10px] max-w-[200px] text-right leading-tight">{amgError}</span>
+                    <span className="text-red-700 text-[10px] max-w-[200px] text-right leading-tight">{amgError}</span>
                     <button
                       onClick={handleKirimAmg}
                       className="text-[10px] text-accent-deep hover:text-white underline leading-tight"
@@ -725,7 +725,7 @@ export default function GarduDetailModal({
                               </span>
                             )}
                             {h.amg_sent_at && (
-                              <span className="text-[10px] bg-blue-700/40 text-blue-300 border border-blue-600/40 px-1.5 py-0.5 rounded-full font-semibold">
+                              <span className="text-[10px] bg-blue-700/40 text-blue-700 border border-blue-600/40 px-1.5 py-0.5 rounded-full font-semibold">
                                 AMG
                               </span>
                             )}
@@ -774,7 +774,7 @@ export default function GarduDetailModal({
                               ) : (
                                 <button
                                   onClick={() => setDeletingId(h.id)}
-                                  className="flex items-center gap-1 text-[10px] text-red-600 hover:text-red-300 font-semibold transition-colors border border-red-500/30 rounded px-1.5 py-0.5"
+                                  className="flex items-center gap-1 text-[10px] text-red-600 hover:text-red-700 font-semibold transition-colors border border-red-200 rounded px-1.5 py-0.5"
                                 >
                                   <Trash2 size={9} /> Hapus
                                 </button>

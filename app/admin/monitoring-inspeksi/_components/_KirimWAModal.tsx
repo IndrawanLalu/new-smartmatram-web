@@ -127,7 +127,7 @@ export default function KirimWAModal({ type, data, onClose }: Props) {
           )}
 
           {err && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-700 bg-red-500/10 border border-red-200 rounded-lg px-3 py-2">
               {err}
             </p>
           )}

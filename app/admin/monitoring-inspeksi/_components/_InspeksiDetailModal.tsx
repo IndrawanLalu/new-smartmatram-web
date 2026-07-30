@@ -367,7 +367,7 @@ export default function InspeksiDetailModal({
                       />
                     </a>
                     {previewUrl && !data.foto_sesudah_url && (
-                      <span className="text-[10px] text-amber-400">Belum diupload</span>
+                      <span className="text-[10px] text-amber-700">Belum diupload</span>
                     )}
                     {data.foto_sesudah_url && (
                       <a
@@ -409,7 +409,7 @@ export default function InspeksiDetailModal({
         {/* Footer — actions */}
         <div className="px-5 py-3 border-t border-line space-y-2 shrink-0">
           {err && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-700 bg-red-500/10 border border-red-200 rounded-lg px-3 py-2">
               {err}
             </p>
           )}
@@ -454,7 +454,7 @@ export default function InspeksiDetailModal({
               {/* Konfirmasi simpan status */}
               {confirmStatus && (
                 <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
-                  <AlertCircle size={12} className="text-amber-400 shrink-0" />
+                  <AlertCircle size={12} className="text-amber-700 shrink-0" />
                   <span className="text-xs text-ink-soft flex-1">
                     Ubah status ke <span className="text-ink font-medium">&ldquo;{STATUS_CONFIG[pendingStatus]?.label}&rdquo;</span>?
                   </span>
@@ -508,11 +508,11 @@ export default function InspeksiDetailModal({
               {/* Konfirmasi selesai */}
               {confirmSelesai && (
                 <div className="flex items-center gap-2 bg-white rounded-lg px-3 py-2 border border-line">
-                  <AlertCircle size={12} className="text-amber-400 shrink-0" />
+                  <AlertCircle size={12} className="text-amber-700 shrink-0" />
                   <span className="text-xs text-ink-soft flex-1">
                     Tandai sebagai <span className="text-accent-deep font-medium">Selesai</span>?
                     {pendingFile && !data.foto_sesudah_url && (
-                      <span className="block text-[10px] text-amber-400">Foto sesudah akan diupload.</span>
+                      <span className="block text-[10px] text-amber-700">Foto sesudah akan diupload.</span>
                     )}
                   </span>
                   <button
@@ -548,7 +548,7 @@ export default function InspeksiDetailModal({
             <div className="flex items-center gap-2">
               {confirmDelete ? (
                 <>
-                  <span className="text-xs text-red-400 flex-1">Yakin hapus data ini?</span>
+                  <span className="text-xs text-red-700 flex-1">Yakin hapus data ini?</span>
                   <button
                     onClick={() => setConfirmDelete(false)}
                     className="px-3 py-1.5 rounded-lg text-xs border border-line text-ink-soft hover:bg-surface transition-colors"
@@ -558,7 +558,7 @@ export default function InspeksiDetailModal({
                   <button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs bg-red-500/20 text-red-700 border border-red-200 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
                   >
                     {deleting ? <Loader2 size={11} className="animate-spin" /> : <Trash2 size={11} />}
                     Ya, Hapus
@@ -567,7 +567,7 @@ export default function InspeksiDetailModal({
               ) : (
                 <button
                   onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500/60 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs text-red-500/60 hover:text-red-700 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={11} />
                   Hapus

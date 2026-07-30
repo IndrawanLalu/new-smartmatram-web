@@ -46,12 +46,12 @@ export default function LoadingOverlay({
       )}
 
       {!loading && success && (
-        <div className="flex flex-col items-center gap-6 px-14 py-12 rounded-3xl bg-[#0d1b2a]/90 border border-green-500/40 shadow-2xl animate-in fade-in zoom-in duration-300">
-          <div className="w-32 h-32 rounded-full bg-green-500/10 border-2 border-green-500/40 flex items-center justify-center text-6xl">
+        <div className="flex flex-col items-center gap-6 px-14 py-12 rounded-3xl bg-[#0d1b2a]/90 border border-green-200 shadow-2xl animate-in fade-in zoom-in duration-300">
+          <div className="w-32 h-32 rounded-full bg-green-500/10 border-2 border-green-200 flex items-center justify-center text-6xl">
             ✅
           </div>
           <div className="text-center space-y-2">
-            <p className="text-green-400 font-bold text-xl tracking-wide">{successTitle}</p>
+            <p className="text-green-700 font-bold text-xl tracking-wide">{successTitle}</p>
             <p className="text-[#94a3b8] text-sm">{successSubtitle}</p>
           </div>
         </div>

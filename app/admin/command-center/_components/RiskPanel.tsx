@@ -9,24 +9,24 @@ import RiskDetailModal from "./RiskDetailModal";
 const LEVEL_STYLE = {
   kritis: {
     border: "border-l-red-500",
-    bg: "bg-red-900/20",
-    score: "text-red-400",
+    bg: "bg-red-50",
+    score: "text-red-700",
     bar: "bg-red-500",
     dot: "bg-red-500",
     ping: "bg-red-400",
   },
   waspada: {
     border: "border-l-amber-500",
-    bg: "bg-amber-900/10",
-    score: "text-amber-400",
+    bg: "bg-amber-50/60",
+    score: "text-amber-700",
     bar: "bg-amber-400",
     dot: "bg-amber-500",
     ping: "bg-amber-400",
   },
   aman: {
     border: "border-l-emerald-700",
-    bg: "bg-emerald-900/5",
-    score: "text-emerald-400",
+    bg: "bg-emerald-50",
+    score: "text-emerald-700",
     bar: "bg-emerald-500",
     dot: "bg-emerald-500",
     ping: "bg-emerald-400",
@@ -52,7 +52,7 @@ export default function RiskPanel({ riskData, dateTgl, loading, criticalCount, w
         <div
           className={`bg-navy-700 px-3 py-2.5 shrink-0 flex items-center gap-2 ${hasCritical ? "animate-pulse" : ""}`}
         >
-          <ShieldAlert size={13} className={hasCritical ? "text-red-400" : "text-accent-deep"} />
+          <ShieldAlert size={13} className={hasCritical ? "text-red-700" : "text-accent-deep"} />
           <span className="text-white text-xs font-bold tracking-wider uppercase">Prediksi Risiko H+1</span>
           {dateTgl && (
             <span className="text-accent-deep/60 text-[9px] font-mono">

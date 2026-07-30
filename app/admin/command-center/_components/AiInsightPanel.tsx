@@ -114,9 +114,9 @@ export default function AiInsightPanel({ data }: Props) {
       {/* Header */}
       <div className="bg-navy-700 px-3 py-2.5 flex items-center gap-2">
         <div className="flex items-center gap-1.5">
-          <Sparkles size={12} className="text-violet-400" />
+          <Sparkles size={12} className="text-violet-700" />
           <span className="text-white text-xs font-bold tracking-wider uppercase">AI Analisis</span>
-          <span className="text-violet-400/70 text-[10px] font-mono">· Gemini</span>
+          <span className="text-violet-700/70 text-[10px] font-mono">· Gemini</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
           {lastRun && (

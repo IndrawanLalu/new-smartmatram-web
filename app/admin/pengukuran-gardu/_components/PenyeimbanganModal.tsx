@@ -42,7 +42,7 @@ const NUM_SM = "border border-line rounded px-1.5 py-1 text-xs text-center font-
 function pctColor(pct: number) {
   if (pct >= 80) return "text-red-600 font-bold";
   if (pct >= 60) return "text-amber-600 font-semibold";
-  return "text-green-400 font-semibold";
+  return "text-green-700 font-semibold";
 }
 
 function ArusRow({ label, r, s, t, n }: { label: string; r: number; s: number; t: number; n: number }) {
@@ -207,7 +207,7 @@ export default function PenyeimbanganModal(props: Props) {
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {error && (
-            <div className="bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{error}</div>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{error}</div>
           )}
 
           {/* Info Penyeimbangan */}
@@ -275,7 +275,7 @@ export default function PenyeimbanganModal(props: Props) {
 
               {/* After — editable */}
               <div className="bg-navy-50 rounded-xl border border-navy-300 p-3">
-                <p className="text-[10px] text-green-400 uppercase font-bold mb-2 tracking-wider">Sesudah</p>
+                <p className="text-[10px] text-green-700 uppercase font-bold mb-2 tracking-wider">Sesudah</p>
                 <div className="overflow-hidden rounded-lg border border-line">
                   <table className="w-full text-xs">
                     <thead>
