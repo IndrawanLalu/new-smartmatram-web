@@ -12,9 +12,16 @@ export async function POST(req: NextRequest) {
   const ids = body.pengukuranIds ?? (body.pengukuranId ? [body.pengukuranId] : []);
   if (ids.length === 0) return NextResponse.json({ error: "pengukuranId(s) wajib" }, { status: 400 });
 
+  // amg_attempts direset agar baris yang sudah mentok 3 kali bisa dicoba lagi
+  // setelah penyebabnya dibereskan (mis. URL AMG diperbaiki).
   const { error } = await supabaseAdmin
     .from("pengukuran_gardu")
-    .update({ amg_queued_at: new Date().toISOString(), amg_sent_at: null, amg_error: null })
+    .update({
+      amg_queued_at: new Date().toISOString(),
+      amg_sent_at: null,
+      amg_error: null,
+      amg_attempts: 0,
+    })
     .in("id", ids);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

@@ -473,7 +473,7 @@ export default function FilterGarduTab({ user }: Props) {
                                 title={row.amg_error}
                                 className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap"
                               >
-                                AMG GAGAL
+                                AMG GAGAL{(row.amg_attempts ?? 0) >= 3 ? " 3×" : ""}
                               </span>
                             )}
                             {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (

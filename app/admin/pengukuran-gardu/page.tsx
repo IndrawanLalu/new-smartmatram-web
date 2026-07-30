@@ -709,7 +709,7 @@ export default function PengukuranGarduPage() {
                               title={row.amg_error}
                               className="ml-1 text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
                             >
-                              AMG GAGAL
+                              AMG GAGAL{(row.amg_attempts ?? 0) >= 3 ? " 3×" : ""}
                             </span>
                           )}
                         </td>

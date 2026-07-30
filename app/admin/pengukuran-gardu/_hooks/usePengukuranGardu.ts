@@ -49,6 +49,7 @@ export interface PengukuranGardu {
   amg_sent_at: string | null;
   amg_queued_at: string | null;
   amg_error: string | null;
+  amg_attempts: number | null;
 }
 
 export interface HighCurrentItem {
