@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { CARD } from "@/app/admin/_ui";
 import { Calendar } from "lucide-react";
 import type { GangguanItem } from "../_hooks/useCommandCenter";
 
@@ -49,8 +50,8 @@ export default function GangguanBulanIniCard({ items }: Props) {
   const totalThisMonth = stats.reduce((sum, s) => sum + s.thisMonth, 0);
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm overflow-hidden">
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-2.5 flex items-center justify-between">
+    <div className={`${CARD}`}>
+      <div className="bg-navy-700 px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Calendar size={13} className="text-white/70" />
           <span className="text-white font-semibold text-xs">
@@ -64,10 +65,10 @@ export default function GangguanBulanIniCard({ items }: Props) {
         {stats.map(({ ulp, thisMonth, lastMonth, delta }) => (
           <div key={ulp}>
             <div className="flex items-center justify-between mb-1">
-              <span className="text-[11px] font-medium text-[#e2e8f0]">{ulp}</span>
+              <span className="text-[11px] font-medium text-ink">{ulp}</span>
               <div className="flex items-center gap-2 text-[11px]">
-                <span className="font-mono font-semibold text-[#e2e8f0]">{thisMonth}</span>
-                <span className="text-[#9CA3AF]">vs {lastMonth}</span>
+                <span className="font-mono font-semibold text-ink">{thisMonth}</span>
+                <span className="text-ink-soft">vs {lastMonth}</span>
                 {delta !== 0 && (
                   <span className={`font-medium ${delta > 0 ? "text-red-500" : "text-emerald-600"}`}>
                     {delta > 0 ? `↑ +${delta}` : `↓ ${delta}`}
@@ -75,18 +76,18 @@ export default function GangguanBulanIniCard({ items }: Props) {
                 )}
               </div>
             </div>
-            <div className="h-1.5 bg-[#0d1b2a] rounded-full overflow-hidden">
+            <div className="h-1.5 bg-surface rounded-full overflow-hidden">
               <div
-                className="h-full rounded-full bg-[#00897B] transition-all duration-500"
+                className="h-full rounded-full bg-accent transition-all duration-500"
                 style={{ width: `${(thisMonth / maxCount) * 100}%` }}
               />
             </div>
           </div>
         ))}
         {stats.length === 0 && (
-          <p className="text-center text-xs text-[#9CA3AF] py-3">Tidak ada data bulan ini</p>
+          <p className="text-center text-xs text-ink-soft py-3">Tidak ada data bulan ini</p>
         )}
-        <p className="text-[10px] text-[#9CA3AF] text-right">
+        <p className="text-[10px] text-ink-soft text-right">
           vs {MONTH_NAMES[lastMonthIdx]}
         </p>
       </div>

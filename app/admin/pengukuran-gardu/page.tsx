@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { DISPLAY } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { supabaseBrowser } from "@/lib/supabase-browser";
@@ -73,7 +74,7 @@ const TABS = [
 type TabKey = typeof TABS[number]["key"];
 
 const INPUT_CLASS =
-  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
+  "border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white";
 
 const PAGE_SIZE = 20;
 
@@ -91,22 +92,22 @@ function KPICard({
   icon: React.ElementType; variant?: "default" | "danger" | "warning" | "success" | "info";
 }) {
   const styles = {
-    default: { card: "border-[#1e3552]",        icon: "bg-[#0a2a26] text-[#5eead4]",  value: "text-[#e2e8f0]" },
-    danger:  { card: "border-red-500/40",        icon: "bg-red-900/30 text-red-400",   value: "text-red-400" },
-    warning: { card: "border-amber-500/40",      icon: "bg-amber-900/30 text-amber-400", value: "text-amber-400" },
+    default: { card: "border-line",        icon: "bg-navy-50 text-accent-deep",  value: "text-ink" },
+    danger:  { card: "border-red-500/40",        icon: "bg-red-900/30 text-red-600",   value: "text-red-600" },
+    warning: { card: "border-amber-500/40",      icon: "bg-amber-900/30 text-amber-600", value: "text-amber-600" },
     success: { card: "border-green-500/40",      icon: "bg-green-900/30 text-green-400", value: "text-green-400" },
     info:    { card: "border-blue-500/40",       icon: "bg-blue-900/30 text-blue-400",  value: "text-blue-400" },
   }[variant];
 
   return (
-    <div className={`bg-[#162334] rounded-xl border p-4 flex items-center gap-4 ${styles.card}`}>
+    <div className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${styles.card}`}>
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${styles.icon}`}>
         <Icon size={18} />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-[#94a3b8] truncate">{label}</p>
+        <p className="text-xs text-ink-soft truncate">{label}</p>
         <p className={`text-2xl font-bold leading-tight ${styles.value}`}>{value}</p>
-        <p className="text-xs text-[#94a3b8]">{sub}</p>
+        <p className="text-xs text-ink-soft">{sub}</p>
       </div>
     </div>
   );
@@ -114,13 +115,13 @@ function KPICard({
 
 function BebanBadge({ pct }: { pct: number }) {
   const cfg =
-    pct >= OVERLOAD_PCT   ? { cls: "bg-red-900/40 text-red-400",    bar: "bg-red-500" } :
-    pct >= 60             ? { cls: "bg-amber-900/40 text-amber-400", bar: "bg-amber-500" } :
+    pct >= OVERLOAD_PCT   ? { cls: "bg-red-900/40 text-red-600",    bar: "bg-red-500" } :
+    pct >= 60             ? { cls: "bg-amber-900/40 text-amber-600", bar: "bg-amber-500" } :
     pct >= UNDERLOAD_PCT  ? { cls: "bg-green-900/40 text-green-400", bar: "bg-green-500" } :
-                            { cls: "bg-gray-800 text-gray-400",       bar: "bg-gray-500" };
+                            { cls: "bg-slate-100 text-ink-soft",       bar: "bg-ink-muted" };
   return (
     <div className="flex items-center gap-1.5">
-      <div className="w-20 bg-[#0a1628] rounded-full h-1.5">
+      <div className="w-20 bg-surface rounded-full h-1.5">
         <div className={`h-1.5 rounded-full ${cfg.bar}`} style={{ width: `${Math.min(pct, 100)}%` }} />
       </div>
       <span className={`text-xs font-semibold px-1.5 py-0.5 rounded-full ${cfg.cls}`}>
@@ -134,21 +135,21 @@ function ArusCell({ r, s, t, kva }: { r: number; s: number; t: number; kva?: num
   const iNom = kva ? getNominalCurrent(kva) : null;
   const phaseCls = (v: number) => {
     if (v > HIGH_CURRENT_A)           return "text-red-500 font-bold";
-    if (iNom && v >= iNom)            return "text-red-400 font-semibold";
-    if (iNom && v >= iNom * 0.9)      return "text-amber-400 font-semibold";
-    return "text-[#94a3b8]";
+    if (iNom && v >= iNom)            return "text-red-600 font-semibold";
+    if (iNom && v >= iNom * 0.9)      return "text-amber-600 font-semibold";
+    return "text-ink-soft";
   };
   const hasHighAbs   = Math.max(r, s, t) > HIGH_CURRENT_A;
   const hasPhaseAlert = iNom ? Math.max(r, s, t) >= iNom * 0.9 : false;
   return (
     <div className="text-xs font-mono flex items-center justify-center gap-0.5">
       <span title="R" className={phaseCls(r)}>{Math.round(r)}</span>
-      <span className="text-[#1e3552]">/</span>
+      <span className="text-line">/</span>
       <span title="S" className={phaseCls(s)}>{Math.round(s)}</span>
-      <span className="text-[#1e3552]">/</span>
+      <span className="text-line">/</span>
       <span title="T" className={phaseCls(t)}>{Math.round(t)}</span>
       {hasHighAbs && <AlertTriangle size={10} className="ml-1 text-red-500 shrink-0" />}
-      {!hasHighAbs && hasPhaseAlert && <AlertTriangle size={10} className="ml-1 text-amber-400 shrink-0" />}
+      {!hasHighAbs && hasPhaseAlert && <AlertTriangle size={10} className="ml-1 text-amber-600 shrink-0" />}
     </div>
   );
 }
@@ -295,18 +296,18 @@ export default function PengukuranGarduPage() {
 
   return (
     <>
-    <div className="space-y-5">
+    <div className="space-y-4 text-ink">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
+      <header className="rounded-2xl bg-navy-600 px-6 py-5 text-white shadow-card">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
-            <h1 className="text-2xl font-bold">Pengukuran Gardu</h1>
-            <p className="text-teal-100 text-sm mt-1">
+            <h1 className={`${DISPLAY} text-2xl font-extrabold`}>Pengukuran Gardu</h1>
+            <p className="text-white/60 text-sm mt-1">
               {canSeeAllUnits(user.role) ? "Semua ULP — PLN UP3 Mataram" : `ULP ${user.unit} · ${user.role}`}
             </p>
           </div>
-          <div className="flex items-center gap-3 text-sm text-teal-100">
+          <div className="flex items-center gap-3 text-sm text-white/60">
             <div className="bg-white/10 rounded-lg px-3 py-1.5">
               <span className="font-semibold text-white">{latestData.length}</span> Gardu
               {data.length > latestData.length && (
@@ -321,11 +322,11 @@ export default function PengukuranGarduPage() {
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
       {/* ── Filter Bar — shared semua tab ───────────────────────────────────── */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-[#94a3b8]">Periode:</span>
+      <div className="bg-white rounded-xl border border-line p-4 flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium text-ink-soft">Periode:</span>
         <select
           value={filter.month}
           onChange={(e) => { setFilter((f) => ({ ...f, month: Number(e.target.value) })); setPage(1); }}
@@ -361,7 +362,7 @@ export default function PengukuranGarduPage() {
         </select>
         <button
           onClick={() => refresh()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-[#1e3552] transition-colors ml-auto"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-ink-soft hover:text-ink hover:bg-line transition-colors ml-auto"
         >
           <RefreshCw size={14} />
           Refresh
@@ -380,15 +381,15 @@ export default function PengukuranGarduPage() {
       />
 
       {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 bg-[#0d1b2a] border border-[#1e3552] rounded-xl p-1">
+      <div className="flex gap-1 rounded-xl border border-line bg-white p-1 shadow-card">
         {TABS.map(({ key, label, icon: Icon }) => (
           <button
             key={key}
             onClick={() => setActiveTab(key)}
             className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
               activeTab === key
-                ? "bg-[#00897B] text-white shadow-sm"
-                : "text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-[#1e3552]"
+                ? "bg-navy-600 text-white shadow-sm"
+                : "text-ink-soft hover:text-ink hover:bg-surface"
             }`}
           >
             <Icon size={15} className="shrink-0" />
@@ -399,7 +400,7 @@ export default function PengukuranGarduPage() {
 
       {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-600 text-sm">
           Gagal memuat data: {error}
         </div>
       )}
@@ -413,13 +414,13 @@ export default function PengukuranGarduPage() {
           {/* ── Compact KPI Tiles ─────────────────────────────────────────── */}
           <div className="grid grid-cols-3 lg:grid-cols-6 gap-2">
             {/* Total Gardu — tidak clickable */}
-            <div className="bg-[#162334] border border-[#1e3552] rounded-xl px-4 py-3 flex flex-col justify-between">
-              <p className="text-2xl font-bold text-[#e2e8f0] leading-none">
+            <div className="bg-white border border-line rounded-xl px-4 py-3 flex flex-col justify-between">
+              <p className="text-2xl font-bold text-ink leading-none">
                 {loading ? "—" : latestData.length}
               </p>
               <div className="mt-1.5">
-                <p className="text-xs text-[#94a3b8] leading-tight">Total Gardu</p>
-                <p className="text-[10px] text-[#475569] mt-0.5">rata-rata {loading ? "—" : avgBeban}%</p>
+                <p className="text-xs text-ink-soft leading-tight">Total Gardu</p>
+                <p className="text-[10px] text-ink-muted mt-0.5">rata-rata {loading ? "—" : avgBeban}%</p>
               </div>
             </div>
 
@@ -462,15 +463,15 @@ export default function PengukuranGarduPage() {
                 variant: highTempData.length > 0 ? "warning" : "ok",
               },
             ].map(({ key, label, sub, count, variant }) => {
-              const style = variant === "danger"  ? { card: "border-red-500/40",   val: "text-red-400",   dot: "bg-red-500"   }
-                          : variant === "warning" ? { card: "border-amber-500/40", val: "text-amber-400", dot: "bg-amber-500" }
-                          :                        { card: "border-[#1e3552]",      val: "text-[#e2e8f0]", dot: "bg-[#00897B]" };
+              const style = variant === "danger"  ? { card: "border-red-500/40",   val: "text-red-600",   dot: "bg-red-500"   }
+                          : variant === "warning" ? { card: "border-amber-500/40", val: "text-amber-600", dot: "bg-amber-500" }
+                          :                        { card: "border-line",      val: "text-ink", dot: "bg-emerald-600" };
               return (
                 <button
                   key={key}
                   onClick={() => setAlertModal(key)}
                   disabled={loading}
-                  className={`bg-[#162334] border rounded-xl px-4 py-3 text-left hover:bg-[#1e2d3d] transition-colors group disabled:cursor-default ${style.card}`}
+                  className={`bg-white border rounded-xl px-4 py-3 text-left hover:bg-surface transition-colors group disabled:cursor-default ${style.card}`}
                 >
                   <div className="flex items-center justify-between mb-1.5">
                     <p className={`text-2xl font-bold leading-none ${style.val}`}>
@@ -478,8 +479,8 @@ export default function PengukuranGarduPage() {
                     </p>
                     <span className={`w-2 h-2 rounded-full ${style.dot} ${variant !== "ok" && count > 0 ? "animate-pulse" : ""}`} />
                   </div>
-                  <p className="text-xs text-[#94a3b8] leading-tight">{label}</p>
-                  <p className="text-[10px] text-[#475569] mt-0.5">{sub}</p>
+                  <p className="text-xs text-ink-soft leading-tight">{label}</p>
+                  <p className="text-[10px] text-ink-muted mt-0.5">{sub}</p>
                 </button>
               );
             })}
@@ -487,23 +488,23 @@ export default function PengukuranGarduPage() {
 
           {/* ── Anomali Kriteria summary bar ──────────────────────────────── */}
           {activeCriteria && !loading && (
-            <div className="flex items-center gap-3 bg-[#0d2d2a] border border-teal-500/30 rounded-xl px-5 py-3">
-              <span className="text-sm font-semibold text-[#5eead4]">
+            <div className="flex items-center gap-3 bg-accent-tint border border-accent/25 rounded-xl px-5 py-3">
+              <span className="text-sm font-semibold text-accent-deep">
                 Anomali berdasarkan kriteria:
               </span>
-              <span className="text-2xl font-bold text-[#5eead4]">{anomaliData.length}</span>
-              <span className="text-xs text-[#94a3b8]">gardu</span>
-              <span className="mx-1 text-[#1e3552]">·</span>
-              <span className="text-xs text-teal-400 font-medium">
+              <span className="text-2xl font-bold text-accent-deep">{anomaliData.length}</span>
+              <span className="text-xs text-ink-soft">gardu</span>
+              <span className="mx-1 text-line">·</span>
+              <span className="text-xs text-emerald-600 font-medium">
                 {latestData.filter(d => !!d.jenis_pemeliharaan).length} sudah di-WO
               </span>
-              <span className="text-xs text-[#94a3b8]">·</span>
-              <span className="text-xs text-red-400 font-medium">
+              <span className="text-xs text-ink-soft">·</span>
+              <span className="text-xs text-red-600 font-medium">
                 {anomaliData.filter(d => !d.jenis_pemeliharaan).length} belum di-WO
               </span>
               <button
                 onClick={() => setActiveTab("penyeimbangan")}
-                className="ml-auto text-xs px-3 py-1 rounded-lg border border-teal-500/40 text-teal-400 hover:bg-teal-900/30 transition-colors"
+                className="ml-auto text-xs px-3 py-1 rounded-lg border border-navy-300 text-navy-600 hover:bg-navy-50 transition-colors"
               >
                 Tindak Lanjut →
               </button>
@@ -514,22 +515,22 @@ export default function PengukuranGarduPage() {
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
 
             {/* Bar chart top 20 beban — 3/5 */}
-            <div className="lg:col-span-3 bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-              <div className="px-5 py-3 border-b border-[#1e3552] flex items-center justify-between">
+            <div className="lg:col-span-3 bg-white rounded-xl border border-line overflow-hidden">
+              <div className="px-5 py-3 border-b border-line flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-[#e2e8f0]">Top 20 — % Beban Trafo</h3>
-                  <p className="text-xs text-[#94a3b8] mt-0.5">{periodLabel} · klik bar untuk detail</p>
+                  <h3 className="text-sm font-semibold text-ink">Top 20 — % Beban Trafo</h3>
+                  <p className="text-xs text-ink-soft mt-0.5">{periodLabel} · klik bar untuk detail</p>
                 </div>
-                <div className="flex items-center gap-3 text-[10px] text-[#94a3b8]">
+                <div className="flex items-center gap-3 text-[10px] text-ink-soft">
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ≥80%</span>
                   <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> ≥60%</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-[#00897B] inline-block" /> Normal</span>
+                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-600 inline-block" /> Normal</span>
                 </div>
               </div>
               <div className="p-4">
                 {loading ? (
                   <div className="h-72 flex items-center justify-center">
-                    <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
                   </div>
                 ) : (
                   <BebanBarChart
@@ -544,15 +545,15 @@ export default function PengukuranGarduPage() {
             </div>
 
             {/* Distribusi per penyulang — 2/5 */}
-            <div className="lg:col-span-2 bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-              <div className="px-5 py-3 border-b border-[#1e3552]">
-                <h3 className="text-sm font-semibold text-[#e2e8f0]">Distribusi per Penyulang</h3>
-                <p className="text-xs text-[#94a3b8] mt-0.5">Jumlah gardu per kategori beban</p>
+            <div className="lg:col-span-2 bg-white rounded-xl border border-line overflow-hidden">
+              <div className="px-5 py-3 border-b border-line">
+                <h3 className="text-sm font-semibold text-ink">Distribusi per Penyulang</h3>
+                <p className="text-xs text-ink-soft mt-0.5">Jumlah gardu per kategori beban</p>
               </div>
               <div className="p-4 h-72">
                 {loading ? (
                   <div className="h-full flex items-center justify-center">
-                    <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+                    <div className="w-6 h-6 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
                   </div>
                 ) : (
                   <PenyulangDistChart data={penyulangChartData} />
@@ -574,22 +575,22 @@ export default function PengukuranGarduPage() {
       {/* TAB: REALISASI PENGUKURAN                                           */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === "realisasi" && (
-        <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+        <div className="bg-white rounded-xl border border-line overflow-hidden">
           {/* Toolbar */}
-          <div className="px-5 py-4 border-b border-[#1e3552] flex items-center gap-3">
+          <div className="px-5 py-4 border-b border-line flex items-center gap-3">
             <div className="relative flex-1 max-w-72">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
               <input
                 type="text"
                 placeholder="Cari no. gardu, penyulang, alamat..."
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 disabled={!showTable}
-                className="border border-[#1e3552] rounded-lg pl-8 pr-3 py-1.5 text-sm w-full text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="border border-line rounded-lg pl-8 pr-3 py-1.5 text-sm w-full text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 disabled:opacity-40 disabled:cursor-not-allowed"
               />
             </div>
             {showTable && (
-              <p className="text-sm text-[#94a3b8]">
+              <p className="text-sm text-ink-soft">
                 {loading ? "Memuat..." : `${filteredData.length} gardu`}
               </p>
             )}
@@ -603,7 +604,7 @@ export default function PengukuranGarduPage() {
                     )
                   }
                   disabled={filteredData.length === 0}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-600 text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
                 >
                   <Download size={14} />
                   Download XLSX
@@ -612,7 +613,7 @@ export default function PengukuranGarduPage() {
               {!showTable && (
                 <button
                   onClick={() => setShowTable(true)}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm font-semibold hover:opacity-90 transition-opacity"
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-navy-600 text-white text-sm font-semibold hover:opacity-90 transition-opacity"
                 >
                   <TableProperties size={14} />
                   Tampilkan Data
@@ -623,10 +624,10 @@ export default function PengukuranGarduPage() {
 
           {/* Empty state — belum ditampilkan */}
           {!showTable && (
-            <div className="flex flex-col items-center gap-2 py-16 text-[#475569]">
+            <div className="flex flex-col items-center gap-2 py-16 text-ink-muted">
               <TableProperties size={32} className="opacity-40" />
               <p className="text-sm">Data pengukuran belum ditampilkan.</p>
-              <p className="text-xs text-[#475569]">Atur filter periode di atas, lalu klik <strong className="text-[#94a3b8]">Tampilkan Data</strong>.</p>
+              <p className="text-xs text-ink-muted">Atur filter periode di atas, lalu klik <strong className="text-ink-soft">Tampilkan Data</strong>.</p>
             </div>
           )}
 
@@ -634,22 +635,22 @@ export default function PengukuranGarduPage() {
           {showTable && <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[#0a2a26]">
+                <tr className="bg-navy-50">
                   <th className="px-3 py-3 w-8" onClick={toggleSelectAll}>
-                    <div className="flex items-center justify-center cursor-pointer text-[#5eead4]">
+                    <div className="flex items-center justify-center cursor-pointer text-accent-deep">
                       {allPageSelected ? <CheckSquare2 size={15} /> : <Square size={15} />}
                     </div>
                   </th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">No. Gardu</th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Penyulang</th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Alamat</th>
-                  <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">KVA</th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold min-w-32">% Beban</th>
-                  <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Beban KVA</th>
-                  <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
-                  <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Suhu (°C)</th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Tgl Ukur</th>
-                  <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Petugas</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">No. Gardu</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Penyulang</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Alamat</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">KVA</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32">% Beban</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Beban KVA</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Suhu (°C)</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Tgl Ukur</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Petugas</th>
                 </tr>
               </thead>
               <tbody>
@@ -658,14 +659,14 @@ export default function PengukuranGarduPage() {
                     <tr key={i}>
                       {Array.from({ length: 11 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
-                          <div className="h-4 bg-[#1e3552] animate-pulse rounded" />
+                          <div className="h-4 bg-line animate-pulse rounded" />
                         </td>
                       ))}
                     </tr>
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="text-center py-12 text-[#94a3b8] text-sm">
+                    <td colSpan={11} className="text-center py-12 text-ink-soft text-sm">
                       Tidak ada data pengukuran untuk periode ini
                     </td>
                   </tr>
@@ -677,39 +678,39 @@ export default function PengukuranGarduPage() {
                       <tr
                         key={row.id}
                         onClick={() => setSelectedRow(row)}
-                        className={`cursor-pointer hover:bg-[#00897B]/10 transition-colors ${i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"} ${hasAlert ? "border-l-2 border-l-red-400" : ""} ${selectedIds.has(row.id) ? "bg-[#00897B]/10" : ""}`}
+                        className={`cursor-pointer hover:bg-navy-50 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-white"} ${hasAlert ? "border-l-2 border-l-red-400" : ""} ${selectedIds.has(row.id) ? "bg-navy-50" : ""}`}
                       >
                         <td className="px-3 py-3 w-8" onClick={(e) => toggleSelect(e, row.id)}>
-                          <div className="flex items-center justify-center cursor-pointer text-[#5eead4]">
+                          <div className="flex items-center justify-center cursor-pointer text-accent-deep">
                             {amgStatus[row.id] === "sending" ? <Loader2 size={14} className="animate-spin text-blue-400" /> :
                              amgStatus[row.id] === "ok"      ? <CheckCircle2 size={14} className="text-green-400" /> :
-                             amgStatus[row.id] === "error"   ? <XCircle size={14} className="text-red-400" /> :
-                             selectedIds.has(row.id)         ? <CheckSquare2 size={14} /> : <Square size={14} className="text-[#1e3552]" />}
+                             amgStatus[row.id] === "error"   ? <XCircle size={14} className="text-red-600" /> :
+                             selectedIds.has(row.id)         ? <CheckSquare2 size={14} /> : <Square size={14} className="text-line" />}
                           </div>
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
-                          <span className="font-semibold text-[#e2e8f0]">{row.no_gardu}</span>
+                          <span className="font-semibold text-ink">{row.no_gardu}</span>
                           {hasAlert && <AlertTriangle size={12} className="inline ml-1 text-red-500" />}
                           {row.wo_sent_at && (
-                            <span className="ml-1.5 text-[10px] bg-teal-900/40 text-teal-400 border border-teal-500/30 px-1.5 py-0.5 rounded-full font-semibold align-middle">WO</span>
+                            <span className="ml-1.5 text-[10px] bg-navy-50 text-navy-600 border border-navy-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">WO</span>
                           )}
                           {row.amg_sent_at && (
                             <span className="ml-1 text-[10px] bg-blue-900/40 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full font-semibold align-middle">AMG</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
-                        <td className="px-4 py-3 text-[#94a3b8] max-w-40 truncate">{row.alamat ?? "—"}</td>
-                        <td className="px-4 py-3 text-center text-[#e2e8f0] font-medium">{row.kva_trafo}</td>
+                        <td className="px-4 py-3 text-ink-soft">{row.penyulang ?? "—"}</td>
+                        <td className="px-4 py-3 text-ink-soft max-w-40 truncate">{row.alamat ?? "—"}</td>
+                        <td className="px-4 py-3 text-center text-ink font-medium">{row.kva_trafo}</td>
                         <td className="px-4 py-3"><BebanBadge pct={row.persen_beban} /></td>
-                        <td className="px-4 py-3 text-center text-[#94a3b8]">{Math.round(row.beban_kva)}</td>
+                        <td className="px-4 py-3 text-center text-ink-soft">{Math.round(row.beban_kva)}</td>
                         <td className="px-4 py-3 text-center">
                           <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} kva={row.kva_trafo} />
                         </td>
-                        <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-400" : "text-[#94a3b8]"}`}>
+                        <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-600" : "text-ink-soft"}`}>
                           {row.suhu_trafo}{isHighTemp && " 🌡"}
                         </td>
-                        <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap">{fmtTanggal(row.tanggal_pengukuran)}</td>
-                        <td className="px-4 py-3 text-[#94a3b8] truncate max-w-32">{row.petugas_nama ?? "—"}</td>
+                        <td className="px-4 py-3 text-ink-soft whitespace-nowrap">{fmtTanggal(row.tanggal_pengukuran)}</td>
+                        <td className="px-4 py-3 text-ink-soft truncate max-w-32">{row.petugas_nama ?? "—"}</td>
                       </tr>
                     );
                   })
@@ -720,15 +721,15 @@ export default function PengukuranGarduPage() {
 
           {/* Pagination */}
           {showTable && totalPages > 1 && (
-            <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
-              <p className="text-xs text-[#94a3b8]">Halaman {page} dari {totalPages} · {filteredData.length} gardu</p>
+            <div className="px-5 py-3 border-t border-line flex items-center justify-between">
+              <p className="text-xs text-ink-soft">Halaman {page} dari {totalPages} · {filteredData.length} gardu</p>
               <div className="flex items-center gap-2">
                 <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-[#1e3552] disabled:opacity-40 transition-colors">
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-line disabled:opacity-40 transition-colors">
                   <ChevronLeft size={14} />
                 </button>
                 <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-[#1e3552] disabled:opacity-40 transition-colors">
+                  className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-line disabled:opacity-40 transition-colors">
                   <ChevronRight size={14} />
                 </button>
               </div>
@@ -771,32 +772,32 @@ export default function PengukuranGarduPage() {
 
     {/* ── Floating Bulk AMG Toolbar ──────────────────────────────────────── */}
     {selectedIds.size > 0 && (
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-[#0d1b2a] border border-[#1e3552] rounded-2xl shadow-2xl px-5 py-3">
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 bg-white border border-line rounded-2xl shadow-2xl px-5 py-3">
         {isBulkSending ? (
           <>
             <Loader2 size={16} className="animate-spin text-blue-400 shrink-0" />
-            <span className="text-sm text-[#e2e8f0]">Memasukkan ke antrean...</span>
+            <span className="text-sm text-ink">Memasukkan ke antrean...</span>
           </>
         ) : Object.keys(amgStatus).length > 0 ? (
           <>
-            <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
-            <span className="text-sm text-[#e2e8f0]">
+            <CheckCircle2 size={16} className="text-amber-600 shrink-0" />
+            <span className="text-sm text-ink">
               <span className="text-amber-300 font-semibold">{Object.values(amgStatus).filter((s) => s === "ok").length} masuk antrean</span>
               {Object.values(amgStatus).filter((s) => s === "error").length > 0 && (
-                <span className="text-red-400 font-semibold ml-2">{Object.values(amgStatus).filter((s) => s === "error").length} gagal</span>
+                <span className="text-red-600 font-semibold ml-2">{Object.values(amgStatus).filter((s) => s === "error").length} gagal</span>
               )}
-              <span className="text-[#94a3b8] ml-2">· agen lokal akan mengirim</span>
+              <span className="text-ink-soft ml-2">· agen lokal akan mengirim</span>
             </span>
-            <button onClick={clearSelection} className="ml-2 p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]"><X size={14} /></button>
+            <button onClick={clearSelection} className="ml-2 p-1 rounded-lg hover:bg-line text-ink-soft"><X size={14} /></button>
           </>
         ) : (
           <>
-            <span className="text-sm font-medium text-[#e2e8f0]">{selectedIds.size} gardu dipilih</span>
+            <span className="text-sm font-medium text-ink">{selectedIds.size} gardu dipilih</span>
             <button onClick={handleBulkAmg}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-semibold hover:opacity-90 transition-opacity">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-600 text-white text-xs font-semibold hover:opacity-90 transition-opacity">
               <Send size={13} /> Kirim ke AMG
             </button>
-            <button onClick={clearSelection} className="p-1 rounded-lg hover:bg-[#1e3552] text-[#94a3b8]"><X size={14} /></button>
+            <button onClick={clearSelection} className="p-1 rounded-lg hover:bg-line text-ink-soft"><X size={14} /></button>
           </>
         )}
       </div>
@@ -820,16 +821,16 @@ export default function PengukuranGarduPage() {
     {/* ── Alert Detail Modals ─────────────────────────────────────────────── */}
     {alertModal === "overload" && (
       <AlertDetailModal title="Trafo Overload" count={overloadData.length}
-        colorClass="text-red-400" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
-        <div className="divide-y divide-[#1e3552]">
+        colorClass="text-red-600" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-line">
           {overloadData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
-              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-white transition-colors text-left">
               <div>
-                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
-                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
+                <p className="text-sm font-semibold text-ink">{d.no_gardu}</p>
+                <p className="text-xs text-ink-soft">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
               </div>
-              <span className="text-xl font-bold text-red-400 shrink-0">{Math.round(d.persen_beban)}%</span>
+              <span className="text-xl font-bold text-red-600 shrink-0">{Math.round(d.persen_beban)}%</span>
             </button>
           ))}
         </div>
@@ -838,16 +839,16 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "underload" && (
       <AlertDetailModal title="Trafo Underload" count={underloadData.length}
-        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
-        <div className="divide-y divide-[#1e3552]">
+        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-line">
           {underloadData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
-              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-white transition-colors text-left">
               <div>
-                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
-                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
+                <p className="text-sm font-semibold text-ink">{d.no_gardu}</p>
+                <p className="text-xs text-ink-soft">{d.penyulang ?? "—"} · {d.kva_trafo} kVA · {fmtTanggal(d.tanggal_pengukuran)}</p>
               </div>
-              <span className="text-xl font-bold text-amber-400 shrink-0">{Math.round(d.persen_beban)}%</span>
+              <span className="text-xl font-bold text-amber-600 shrink-0">{Math.round(d.persen_beban)}%</span>
             </button>
           ))}
         </div>
@@ -856,22 +857,22 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "highCurrent" && (
       <AlertDetailModal title={`Jurusan Arus >${HIGH_CURRENT_A}A`} count={highCurrentItems.length}
-        colorClass="text-red-400" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-red-600" borderClass="border-red-500/30" onClose={() => setAlertModal(null)}>
         <table className="w-full text-xs">
           <thead className="bg-red-900/20 sticky top-0">
             <tr>
               {["Gardu","Jurusan","R (A)","S (A)","T (A)"].map(h => (
-                <th key={h} className="px-4 py-2.5 text-red-400 font-semibold text-left first:text-left text-center first:text-left">{h}</th>
+                <th key={h} className="px-4 py-2.5 text-red-600 font-semibold text-left first:text-left text-center first:text-left">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1e3552]">
+          <tbody className="divide-y divide-line">
             {highCurrentItems.map((item, i) => (
-              <tr key={i} className={i % 2 === 0 ? "bg-[#0a1628]" : "bg-red-900/10"}>
-                <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{item.no_gardu}</td>
-                <td className="px-4 py-2.5 font-bold text-red-400 text-center">{item.jurusan}</td>
+              <tr key={i} className={i % 2 === 0 ? "bg-surface" : "bg-red-900/10"}>
+                <td className="px-4 py-2.5 font-semibold text-ink">{item.no_gardu}</td>
+                <td className="px-4 py-2.5 font-bold text-red-600 text-center">{item.jurusan}</td>
                 {[item.arus_r, item.arus_s, item.arus_t].map((v, vi) => (
-                  <td key={vi} className={`px-4 py-2.5 text-center font-mono ${v > HIGH_CURRENT_A ? "text-red-400 font-bold" : "text-[#94a3b8]"}`}>
+                  <td key={vi} className={`px-4 py-2.5 text-center font-mono ${v > HIGH_CURRENT_A ? "text-red-600 font-bold" : "text-ink-soft"}`}>
                     {Math.round(v)}
                   </td>
                 ))}
@@ -884,32 +885,32 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "phaseOverload" && (
       <AlertDetailModal title="Overload 1 Fasa" count={phaseOverloadItems.length}
-        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
         <table className="w-full text-xs">
           <thead className="bg-amber-900/20 sticky top-0">
             <tr>
               {["Gardu","KVA","I-Nom","R","S","T","% Nom","Status"].map(h => (
-                <th key={h} className="px-3 py-2.5 text-amber-400 font-semibold text-center first:text-left">{h}</th>
+                <th key={h} className="px-3 py-2.5 text-amber-600 font-semibold text-center first:text-left">{h}</th>
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-[#1e3552]">
+          <tbody className="divide-y divide-line">
             {phaseOverloadItems.map((item, i) => {
               const iNom = item.i_nominal;
-              const cls  = (v: number) => v >= iNom ? "text-red-400 font-bold" : v >= iNom * 0.9 ? "text-amber-400 font-bold" : "text-[#94a3b8]";
+              const cls  = (v: number) => v >= iNom ? "text-red-600 font-bold" : v >= iNom * 0.9 ? "text-amber-600 font-bold" : "text-ink-soft";
               return (
-                <tr key={item.id} className={i % 2 === 0 ? "bg-[#0a1628]" : "bg-amber-900/10"}>
-                  <td className="px-3 py-2.5 font-semibold text-[#e2e8f0]">{item.no_gardu}</td>
-                  <td className="px-3 py-2.5 text-center text-[#94a3b8]">{item.kva_trafo}</td>
-                  <td className="px-3 py-2.5 text-center text-[#94a3b8]">{Math.round(iNom)}</td>
+                <tr key={item.id} className={i % 2 === 0 ? "bg-surface" : "bg-amber-900/10"}>
+                  <td className="px-3 py-2.5 font-semibold text-ink">{item.no_gardu}</td>
+                  <td className="px-3 py-2.5 text-center text-ink-soft">{item.kva_trafo}</td>
+                  <td className="px-3 py-2.5 text-center text-ink-soft">{Math.round(iNom)}</td>
                   <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_r)}`}>{Math.round(item.arus_r)}</td>
                   <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_s)}`}>{Math.round(item.arus_s)}</td>
                   <td className={`px-3 py-2.5 text-center font-mono ${cls(item.arus_t)}`}>{Math.round(item.arus_t)}</td>
-                  <td className={`px-3 py-2.5 text-center font-mono font-semibold ${item.level === "overload" ? "text-red-400" : "text-amber-400"}`}>
+                  <td className={`px-3 py-2.5 text-center font-mono font-semibold ${item.level === "overload" ? "text-red-600" : "text-amber-600"}`}>
                     {Math.round(item.pct_nominal)}%
                   </td>
                   <td className="px-3 py-2.5 text-center">
-                    <span className={`px-2 py-0.5 rounded-full font-semibold ${item.level === "overload" ? "bg-red-900/40 text-red-400" : "bg-amber-900/40 text-amber-400"}`}>
+                    <span className={`px-2 py-0.5 rounded-full font-semibold ${item.level === "overload" ? "bg-red-900/40 text-red-600" : "bg-amber-900/40 text-amber-600"}`}>
                       {item.level === "overload" ? "Overload" : "Warning"}
                     </span>
                   </td>
@@ -923,16 +924,16 @@ export default function PengukuranGarduPage() {
 
     {alertModal === "highTemp" && (
       <AlertDetailModal title={`Suhu Trafo >${HIGH_TEMP_C}°C`} count={highTempData.length}
-        colorClass="text-amber-400" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
-        <div className="divide-y divide-[#1e3552]">
+        colorClass="text-amber-600" borderClass="border-amber-500/30" onClose={() => setAlertModal(null)}>
+        <div className="divide-y divide-line">
           {highTempData.map((d) => (
             <button key={d.id} onClick={() => { setSelectedRow(d); setAlertModal(null); }}
-              className="w-full px-5 py-3 flex items-center justify-between hover:bg-[#162334] transition-colors text-left">
+              className="w-full px-5 py-3 flex items-center justify-between hover:bg-white transition-colors text-left">
               <div>
-                <p className="text-sm font-semibold text-[#e2e8f0]">{d.no_gardu}</p>
-                <p className="text-xs text-[#94a3b8]">{d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {fmtTanggal(d.tanggal_pengukuran)}</p>
+                <p className="text-sm font-semibold text-ink">{d.no_gardu}</p>
+                <p className="text-xs text-ink-soft">{d.penyulang ?? "—"} · Beban {Math.round(d.persen_beban)}% · {fmtTanggal(d.tanggal_pengukuran)}</p>
               </div>
-              <span className="text-xl font-bold text-amber-400 shrink-0">{d.suhu_trafo}°C</span>
+              <span className="text-xl font-bold text-amber-600 shrink-0">{d.suhu_trafo}°C</span>
             </button>
           ))}
         </div>

@@ -20,7 +20,7 @@ import { useFeederRisk } from "./_hooks/useFeederRisk";
 
 export default function CommandCenterPage() {
   const user = useCurrentUser();
-  const { gangguanFeed, gangguanAll, inspeksiFeed, garduList, loading, lastRefresh, refresh } =
+  const { gangguanAll, inspeksiFeed, garduList, loading, lastRefresh, refresh } =
     useCommandCenter(user);
   const { latestData, overloadData, highTempData, highCurrentItems, avgBeban, loading: loadingGardu } =
     usePengukuranGardu(user);
@@ -133,7 +133,7 @@ export default function CommandCenterPage() {
   );
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3 text-ink">
 
       {/* ── BAGIAN ATAS: Layar Penuh (above the fold) ─────────────── */}
       <div className="h-[calc(100vh-48px)] flex flex-col gap-3">
@@ -192,11 +192,11 @@ export default function CommandCenterPage() {
 
       {/* Smart Predictive Engine (ML) — showcase di bawah peta */}
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 h-px bg-[#1e3552]" />
-        <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">
+        <div className="flex-1 h-px bg-line" />
+        <span className="text-[11px] font-semibold text-ink-soft uppercase tracking-widest">
           Smart Predictive Engine (ML)
         </span>
-        <div className="flex-1 h-px bg-[#1e3552]" />
+        <div className="flex-1 h-px bg-line" />
       </div>
       <PredictiveShowcase
         user={user}
@@ -208,11 +208,11 @@ export default function CommandCenterPage() {
 
       {/* Divider */}
       <div className="flex items-center gap-3 py-1">
-        <div className="flex-1 h-px bg-[#1e3552]" />
-        <span className="text-[11px] font-semibold text-[#94a3b8] uppercase tracking-widest">
+        <div className="flex-1 h-px bg-line" />
+        <span className="text-[11px] font-semibold text-ink-soft uppercase tracking-widest">
           Statistik Gangguan
         </span>
-        <div className="flex-1 h-px bg-[#1e3552]" />
+        <div className="flex-1 h-px bg-line" />
       </div>
 
       {/* Row 1: Gangguan per ULP */}

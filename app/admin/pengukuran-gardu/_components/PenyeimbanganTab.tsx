@@ -29,10 +29,10 @@ const MONTHS = [
 const PAGE_SIZE = 20;
 
 const INPUT_CLASS =
-  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#162334]";
+  "border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white";
 
 const JENIS_COLOR: Record<string, string> = {
-  "PEMERATAAN BEBAN":   "bg-teal-900/40 border-teal-500/40 text-teal-300",
+  "PEMERATAAN BEBAN":   "bg-navy-50 border-navy-200 text-navy-600",
   "OPTIMASI TRAFO":     "bg-blue-900/40 border-blue-500/40 text-blue-300",
   "PEMELIHARAAN GARDU": "bg-amber-900/40 border-amber-500/40 text-amber-300",
   "MANUVER BEBAN":      "bg-purple-900/40 border-purple-500/40 text-purple-300",
@@ -41,8 +41,8 @@ const JENIS_COLOR: Record<string, string> = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function pctCls(pct: number) {
-  if (pct >= 80) return "text-red-400 font-bold";
-  if (pct >= 60) return "text-amber-400 font-semibold";
+  if (pct >= 80) return "text-red-600 font-bold";
+  if (pct >= 60) return "text-amber-600 font-semibold";
   return "text-green-400 font-semibold";
 }
 
@@ -53,7 +53,7 @@ function fmtTanggal(s: string): string {
 
 function ArusCell({ r, s, t, n }: { r: number; s: number; t: number; n: number }) {
   return (
-    <span className="text-xs font-mono text-[#94a3b8]">
+    <span className="text-xs font-mono text-ink-soft">
       {Math.round(r)}/{Math.round(s)}/{Math.round(t)}/{Math.round(n)}
     </span>
   );
@@ -195,7 +195,7 @@ export default function PenyeimbanganTab({
             value={editingJenisValue}
             onChange={(e) => setEditingJenisValue(e.target.value)}
             autoFocus
-            className="text-xs bg-[#0d1b2a] border border-[#00897B] rounded px-2 py-1 text-[#e2e8f0] focus:outline-none"
+            className="text-xs bg-white border border-navy-500 rounded px-2 py-1 text-ink focus:outline-none"
           >
             {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
               <option key={o} value={o}>{o}</option>
@@ -204,13 +204,13 @@ export default function PenyeimbanganTab({
           <button
             onClick={() => handleSaveJenis(row.id)}
             disabled={savingJenis}
-            className="w-6 h-6 flex items-center justify-center rounded bg-[#00897B] text-white hover:bg-[#00695C] disabled:opacity-50"
+            className="w-6 h-6 flex items-center justify-center rounded bg-navy-600 text-white hover:bg-navy-500 disabled:opacity-50"
           >
             {savingJenis ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Check size={11} />}
           </button>
           <button
             onClick={() => setEditingJenisId(null)}
-            className="w-6 h-6 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-white/5"
+            className="w-6 h-6 flex items-center justify-center rounded border border-line text-ink-soft hover:bg-surface"
           >
             <XIcon size={11} />
           </button>
@@ -221,8 +221,8 @@ export default function PenyeimbanganTab({
       <div className="flex items-center gap-1 group" onClick={(e) => e.stopPropagation()}>
         <span className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${
           row.jenis_pemeliharaan
-            ? (JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]")
-            : "border-dashed border-[#1e3552] text-[#475569]"
+            ? (JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-line border-line text-ink-soft")
+            : "border-dashed border-line text-ink-muted"
         }`}>
           {row.jenis_pemeliharaan ?? "— set jenis —"}
         </span>
@@ -231,7 +231,7 @@ export default function PenyeimbanganTab({
             setEditingJenisId(row.id);
             setEditingJenisValue(row.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]);
           }}
-          className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-[#94a3b8] hover:text-[#5eead4] hover:bg-white/5 transition-all"
+          className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-ink-soft hover:text-accent-deep hover:bg-surface transition-all"
           title="Set jenis WO"
         >
           <Pencil size={10} />
@@ -245,12 +245,12 @@ export default function PenyeimbanganTab({
 
       {/* ── Kriteria belum diset ─────────────────────────────────────────────── */}
       {!hasActiveCriteria && (
-        <div className="bg-[#162334] rounded-xl border border-amber-500/30 p-5 flex items-start gap-3">
-          <Info size={18} className="text-amber-400 shrink-0 mt-0.5" />
+        <div className="bg-white rounded-xl border border-amber-500/30 p-5 flex items-start gap-3">
+          <Info size={18} className="text-amber-600 shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-semibold text-amber-300">Kriteria anomali belum diset</p>
-            <p className="text-xs text-[#94a3b8] mt-1">
-              Expand panel <span className="font-medium text-[#e2e8f0]">"Kriteria Anomali"</span> di atas
+            <p className="text-xs text-ink-soft mt-1">
+              Expand panel <span className="font-medium text-ink">&ldquo;Kriteria Anomali&rdquo;</span> di atas
               dan aktifkan minimal satu threshold untuk melihat daftar gardu anomali.
             </p>
           </div>
@@ -259,20 +259,20 @@ export default function PenyeimbanganTab({
 
       {/* ── Section: Anomali Belum di-WO ────────────────────────────────────── */}
       {hasActiveCriteria && (
-        <div className="bg-[#162334] rounded-xl border border-red-500/30 overflow-hidden">
+        <div className="bg-white rounded-xl border border-red-500/30 overflow-hidden">
           <div className="px-5 py-3 bg-red-900/10 border-b border-red-500/20 flex items-center gap-2">
-            <AlertTriangle size={16} className="text-red-400 shrink-0" />
-            <h3 className="text-sm font-semibold text-red-400">
+            <AlertTriangle size={16} className="text-red-600 shrink-0" />
+            <h3 className="text-sm font-semibold text-red-600">
               Anomali — Belum di-WO
             </h3>
             <span className="text-xs text-red-500/70">({anomaliBelumWo.length} gardu)</span>
-            <p className="ml-auto text-[11px] text-[#475569] hidden sm:block">
+            <p className="ml-auto text-[11px] text-ink-muted hidden sm:block">
               Klik ikon pensil untuk set jenis WO
             </p>
           </div>
 
           {anomaliBelumWo.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-[#475569]">
+            <div className="flex flex-col items-center gap-2 py-10 text-ink-muted">
               <ClipboardX size={28} className="text-green-500/50" />
               <p className="text-sm text-green-400">Semua gardu anomali sudah di-WO 🎉</p>
             </div>
@@ -280,29 +280,29 @@ export default function PenyeimbanganTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#0a1628]">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">No</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">No. Gardu</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Penyulang</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Alamat</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">KVA</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Beban %</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Arus R/S/T/N</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">Suhu °C</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-[#5eead4]">Alasan Anomali</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-[#5eead4]">Jenis WO</th>
+                  <tr className="bg-surface">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No. Gardu</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Alamat</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Beban %</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Arus R/S/T/N</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Suhu °C</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep">Alasan Anomali</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep">Jenis WO</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1e3552]">
+                <tbody className="divide-y divide-line">
                   {anomaliBelumWo.map((row, idx) => {
                     const { reasons } = anomaliBelumWoMap.get(row.id) ?? { reasons: [] };
                     return (
-                      <tr key={row.id} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
-                        <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{idx + 1}</td>
-                        <td className="px-3 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
-                        <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.penyulang ?? "—"}</td>
-                        <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[160px] truncate">{row.alamat ?? "—"}</td>
-                        <td className="px-3 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
+                      <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-white"}>
+                        <td className="px-3 py-2.5 text-xs text-ink-soft">{idx + 1}</td>
+                        <td className="px-3 py-2.5 font-semibold text-ink">{row.no_gardu}</td>
+                        <td className="px-3 py-2.5 text-xs text-ink-soft">{row.penyulang ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-xs text-ink-soft max-w-[160px] truncate">{row.alamat ?? "—"}</td>
+                        <td className="px-3 py-2.5 text-center text-xs text-ink-soft">{row.kva_trafo}</td>
                         <td className="px-3 py-2.5 text-center">
                           <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
                             {Math.round(row.persen_beban)}%
@@ -312,7 +312,7 @@ export default function PenyeimbanganTab({
                           <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} n={row.total_arus_n} />
                         </td>
                         <td className="px-3 py-2.5 text-center text-xs">
-                          <span className={row.suhu_trafo > 60 ? "text-amber-400 font-semibold" : "text-[#94a3b8]"}>
+                          <span className={row.suhu_trafo > 60 ? "text-amber-600 font-semibold" : "text-ink-soft"}>
                             {row.suhu_trafo ?? "—"}
                           </span>
                         </td>
@@ -342,15 +342,15 @@ export default function PenyeimbanganTab({
 
       {/* ── Section: Anomali Sudah di-WO ────────────────────────────────────── */}
       {anomaliSudahWo.length > 0 || filterWoJenis ? (
-        <div className="bg-[#162334] rounded-xl border border-teal-500/30 overflow-hidden">
-          <div className="px-5 py-3 bg-teal-900/20 border-b border-teal-500/20 flex flex-wrap items-center gap-2">
-            <FileCheck size={16} className="text-teal-400 shrink-0" />
-            <h3 className="text-sm font-semibold text-teal-400">Gardu Sudah di-WO</h3>
-            <span className="text-xs text-teal-500/70">({anomaliSudahWo.length} gardu)</span>
+        <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
+          <div className="px-5 py-3 bg-navy-50 border-b border-navy-200 flex flex-wrap items-center gap-2">
+            <FileCheck size={16} className="text-emerald-600 shrink-0" />
+            <h3 className="text-sm font-semibold text-emerald-600">Gardu Sudah di-WO</h3>
+            <span className="text-xs text-ink-muted">({anomaliSudahWo.length} gardu)</span>
             <select
               value={filterWoJenis}
               onChange={(e) => setFilterWoJenis(e.target.value)}
-              className="ml-2 border border-[#1e3552] rounded-lg px-2 py-1 text-xs text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B]"
+              className="ml-2 border border-line rounded-lg px-2 py-1 text-xs text-ink bg-white focus:outline-none focus:border-navy-500"
             >
               <option value="">Semua Jenis</option>
               {JENIS_PEMELIHARAAN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -358,52 +358,52 @@ export default function PenyeimbanganTab({
             <button
               onClick={() => downloadWoGarduXlsx(anomaliSudahWo, `Gardu_WO_${new Date().toISOString().split("T")[0]}.xlsx`)}
               disabled={anomaliSudahWo.length === 0}
-              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
+              className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg bg-navy-600 text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
             >
               <Download size={13} />
               Download XLSX
             </button>
           </div>
           {anomaliSudahWo.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-[#475569]">
-              <ClipboardX size={24} className="text-[#475569]/50" />
+            <div className="flex flex-col items-center gap-2 py-8 text-ink-muted">
+              <ClipboardX size={24} className="text-ink-muted/50" />
               <p className="text-sm">Tidak ada gardu dengan jenis {filterWoJenis}</p>
             </div>
           ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm whitespace-nowrap">
               <thead>
-                <tr className="bg-teal-900/10">
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">No. Gardu</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Penyulang</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Alamat</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">KVA</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">% Beban</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Tgl Ukur</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-teal-400 font-semibold">Jenis WO</th>
+                <tr className="bg-navy-50">
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">No. Gardu</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Penyulang</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Alamat</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">KVA</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">% Beban</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Tgl Ukur</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Jenis WO</th>
                   {hasActiveCriteria && (
-                    <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Kriteria</th>
+                    <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">Kriteria</th>
                   )}
-                  <th className="text-center px-4 py-2.5 text-xs text-teal-400 font-semibold">Status</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">Status</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
-              <tbody className="divide-y divide-[#1e3552]">
+              <tbody className="divide-y divide-line">
                 {anomaliSudahWo.map((row, i) => {
                   const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
                   const anomResult = anomaliSudahWoMap.get(row.id) ?? null;
                   return (
-                    <tr key={row.id} className={i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
-                      <td className="px-4 py-2.5 font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs">{row.penyulang ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs max-w-40 truncate">{row.alamat ?? "—"}</td>
-                      <td className="px-4 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
+                    <tr key={row.id} className={i % 2 === 0 ? "bg-white" : "bg-white"}>
+                      <td className="px-4 py-2.5 font-semibold text-ink">{row.no_gardu}</td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs">{row.penyulang ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs max-w-40 truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-4 py-2.5 text-center text-xs text-ink-soft">{row.kva_trafo}</td>
                       <td className="px-4 py-2.5 text-center">
                         <span className={`text-xs font-bold ${pctCls(row.persen_beban)}`}>
                           {Math.round(row.persen_beban)}%
                         </span>
                       </td>
-                      <td className="px-4 py-2.5 text-[#94a3b8] text-xs">{fmtTanggal(row.tanggal_pengukuran)}</td>
+                      <td className="px-4 py-2.5 text-ink-soft text-xs">{fmtTanggal(row.tanggal_pengukuran)}</td>
                       <td className="px-4 py-2">
                         <JenisCell row={row} />
                       </td>
@@ -411,7 +411,7 @@ export default function PenyeimbanganTab({
                         <td className="px-4 py-2.5 text-center">
                           {anomResult?.isAnomali ? (
                             <span
-                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-400 border border-red-500/30 font-semibold cursor-default"
+                              className="text-[10px] px-1.5 py-0.5 rounded-full bg-red-900/40 text-red-600 border border-red-500/30 font-semibold cursor-default"
                               title={anomResult.reasons.join(" · ")}
                             >
                               Masih Anomali
@@ -429,7 +429,7 @@ export default function PenyeimbanganTab({
                             Selesai
                           </span>
                         ) : (
-                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-400 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 text-amber-600 border border-amber-500/30 font-semibold flex items-center gap-1 w-fit mx-auto">
                             <TrendingUp size={10} /> Proses
                           </span>
                         )}
@@ -438,7 +438,7 @@ export default function PenyeimbanganTab({
                         {!sudahSeimbang && (
                           <button
                             onClick={() => setSelectedGardu(row)}
-                            className="text-xs px-2 py-1 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30 text-[#5eead4] hover:bg-[#00897B]/20 transition-colors whitespace-nowrap"
+                            className="text-xs px-2 py-1 rounded-lg bg-navy-50 border border-navy-300 text-accent-deep hover:bg-navy-50 transition-colors whitespace-nowrap"
                           >
                             Catat Seimbang
                           </button>
@@ -455,23 +455,23 @@ export default function PenyeimbanganTab({
       ) : null}
 
       {/* ── Pencarian Gardu (catat manual) ──────────────────────────────────── */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-5">
-        <h3 className="text-sm font-semibold text-[#e2e8f0] mb-3 flex items-center gap-2">
-          <Scale size={16} className="text-[#00897B]" />
+      <div className="bg-white rounded-xl border border-line p-5">
+        <h3 className="text-sm font-semibold text-ink mb-3 flex items-center gap-2">
+          <Scale size={16} className="text-navy-600" />
           Catat Penyeimbangan Manual
         </h3>
         <div className="relative">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#94a3b8]" />
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari gardu berdasarkan no. gardu, penyulang, atau alamat..."
-            className="w-full pl-9 pr-4 py-2.5 border border-[#1e3552] rounded-lg text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#4a5568] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+            className="w-full pl-9 pr-4 py-2.5 border border-line rounded-lg text-sm text-ink bg-white placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15"
           />
         </div>
         {searchQuery.trim() && searchResults.length === 0 && (
-          <p className="mt-3 text-sm text-[#94a3b8] text-center py-4">Gardu tidak ditemukan</p>
+          <p className="mt-3 text-sm text-ink-soft text-center py-4">Gardu tidak ditemukan</p>
         )}
         {searchResults.length > 0 && (
           <div className="mt-3 space-y-2">
@@ -479,24 +479,24 @@ export default function PenyeimbanganTab({
               <button
                 key={row.id}
                 onClick={() => setSelectedGardu(row)}
-                className="w-full text-left bg-[#0d1b2a] border border-[#1e3552] hover:border-[#00897B]/50 rounded-lg px-4 py-3 transition-colors group"
+                className="w-full text-left bg-white border border-line hover:border-navy-500/50 rounded-lg px-4 py-3 transition-colors group"
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-sm font-semibold text-[#e2e8f0] group-hover:text-[#5eead4] transition-colors">
+                    <span className="text-sm font-semibold text-ink group-hover:text-accent-deep transition-colors">
                       {row.no_gardu}
                     </span>
-                    <span className="ml-2 text-xs text-[#94a3b8]">{row.penyulang}</span>
+                    <span className="ml-2 text-xs text-ink-soft">{row.penyulang}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className="text-xs text-[#94a3b8]">{row.kva_trafo} kVA</span>
+                    <span className="text-xs text-ink-soft">{row.kva_trafo} kVA</span>
                     <span className={`text-sm font-bold ${pctCls(row.persen_beban)}`}>
                       {Math.round(row.persen_beban)}%
                     </span>
                   </div>
                 </div>
-                {row.alamat && <p className="mt-0.5 text-xs text-[#94a3b8] truncate">{row.alamat}</p>}
-                <p className="mt-0.5 text-xs text-[#4a5568]">
+                {row.alamat && <p className="mt-0.5 text-xs text-ink-soft truncate">{row.alamat}</p>}
+                <p className="mt-0.5 text-xs text-ink-muted">
                   Pengukuran terakhir: {fmtTanggal(row.tanggal_pengukuran)}
                 </p>
               </button>
@@ -506,13 +506,13 @@ export default function PenyeimbanganTab({
       </div>
 
       {/* ── Rekap Penyeimbangan ─────────────────────────────────────────────── */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
-        <div className="px-5 py-4 border-b border-[#1e3552] flex flex-wrap items-center gap-3">
-          <h3 className="text-sm font-semibold text-[#e2e8f0] mr-auto">Rekap Penyeimbangan Beban</h3>
+      <div className="bg-white rounded-xl border border-line overflow-hidden">
+        <div className="px-5 py-4 border-b border-line flex flex-wrap items-center gap-3">
+          <h3 className="text-sm font-semibold text-ink mr-auto">Rekap Penyeimbangan Beban</h3>
           <button
             onClick={() => downloadPenyeimbanganXlsx(rekapData, `Penyeimbangan_Beban_${MONTHS[month - 1]}_${year}.xlsx`)}
             disabled={rekapData.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-navy-600 text-white text-sm hover:opacity-90 transition-opacity disabled:opacity-40"
           >
             <Download size={14} />
             Download XLSX
@@ -533,13 +533,13 @@ export default function PenyeimbanganTab({
           <div className="m-4 bg-red-900/30 border border-red-500/40 rounded-lg p-3 text-red-300 text-sm">{rekapError}</div>
         )}
         {rekapLoading && (
-          <div className="flex items-center justify-center py-12 gap-2 text-[#94a3b8] text-sm">
-            <div className="w-5 h-5 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-12 gap-2 text-ink-soft text-sm">
+            <div className="w-5 h-5 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
             Memuat data...
           </div>
         )}
         {!rekapLoading && rekapData.length === 0 && (
-          <div className="text-center py-12 text-[#94a3b8] text-sm">
+          <div className="text-center py-12 text-ink-soft text-sm">
             Belum ada rekap penyeimbangan pada {MONTHS[month - 1]} {year}
           </div>
         )}
@@ -549,38 +549,38 @@ export default function PenyeimbanganTab({
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#0a1628]">
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">No</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Tgl Seimbang</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Gardu</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Alamat</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Penyulang</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-[#5eead4]">KVA</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-400" colSpan={2}>Sebelum</th>
+                  <tr className="bg-surface">
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Tgl Seimbang</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Gardu</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Alamat</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-600" colSpan={2}>Sebelum</th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-400" colSpan={2}>Sesudah</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Jenis</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Petugas</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-[#5eead4]">Catatan</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Jenis</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Petugas</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Catatan</th>
                     <th className="px-3 py-2.5" />
                   </tr>
-                  <tr className="bg-[#0a1628] border-t border-[#1e3552]/50">
+                  <tr className="bg-surface border-t border-line/50">
                     {["", "", "", "", "", ""].map((_, i) => <th key={i} className="px-3 py-1" />)}
-                    <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">R/S/T/N (A)</th>
-                    <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">Beban %</th>
-                    <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">R/S/T/N (A)</th>
-                    <th className="px-3 py-1 text-center text-[10px] text-[#94a3b8]">Beban %</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">R/S/T/N (A)</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">Beban %</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">R/S/T/N (A)</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">Beban %</th>
                     <th className="px-3 py-1" /><th className="px-3 py-1" /><th className="px-3 py-1" />
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#1e3552]">
+                <tbody className="divide-y divide-line">
                   {paginatedRekap.map((row, idx) => (
-                    <tr key={row.id} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{(page - 1) * PAGE_SIZE + idx + 1}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#e2e8f0]">{fmtTanggal(row.tgl_penyeimbangan)}</td>
-                      <td className="px-3 py-2.5 text-xs font-semibold text-[#e2e8f0]">{row.no_gardu}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[180px] truncate">{row.alamat ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.penyulang ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-center text-xs text-[#94a3b8]">{row.kva_trafo}</td>
+                    <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-white"}>
+                      <td className="px-3 py-2.5 text-xs text-ink-soft">{(page - 1) * PAGE_SIZE + idx + 1}</td>
+                      <td className="px-3 py-2.5 text-xs text-ink">{fmtTanggal(row.tgl_penyeimbangan)}</td>
+                      <td className="px-3 py-2.5 text-xs font-semibold text-ink">{row.no_gardu}</td>
+                      <td className="px-3 py-2.5 text-xs text-ink-soft max-w-[180px] truncate">{row.alamat ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-xs text-ink-soft">{row.penyulang ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-center text-xs text-ink-soft">{row.kva_trafo}</td>
                       <td className="px-3 py-2.5 text-center">
                         <ArusCell r={row.arus_r_before} s={row.arus_s_before} t={row.arus_t_before} n={row.arus_n_before} />
                       </td>
@@ -595,21 +595,21 @@ export default function PenyeimbanganTab({
                       </td>
                       <td className="px-3 py-2.5 text-xs whitespace-nowrap">
                         {row.jenis_pemeliharaan ? (
-                          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-[#1e3552] border-[#2d4a6b] text-[#94a3b8]"}`}>
+                          <span className={`px-1.5 py-0.5 rounded border text-[10px] font-medium ${JENIS_COLOR[row.jenis_pemeliharaan] ?? "bg-line border-line text-ink-soft"}`}>
                             {row.jenis_pemeliharaan}
                           </span>
-                        ) : <span className="text-[#475569]">—</span>}
+                        ) : <span className="text-ink-muted">—</span>}
                       </td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8]">{row.petugas_penyeimbang ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-xs text-[#94a3b8] max-w-[200px]">
+                      <td className="px-3 py-2.5 text-xs text-ink-soft">{row.petugas_penyeimbang ?? "—"}</td>
+                      <td className="px-3 py-2.5 text-xs text-ink-soft max-w-[200px]">
                         {row.catatan ? <span className="truncate block" title={row.catatan}>{row.catatan}</span> : "—"}
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          <button onClick={() => setEditRecord(row)} className="text-[#00897B] hover:text-[#5eead4] transition-colors" title="Edit">
+                          <button onClick={() => setEditRecord(row)} className="text-navy-600 hover:text-accent-deep transition-colors" title="Edit">
                             <Pencil size={13} />
                           </button>
-                          <button onClick={() => handleDelete(row.id)} className="text-red-400 hover:text-red-500 transition-colors" title="Hapus">
+                          <button onClick={() => handleDelete(row.id)} className="text-red-600 hover:text-red-500 transition-colors" title="Hapus">
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -620,15 +620,15 @@ export default function PenyeimbanganTab({
               </table>
             </div>
             {totalPages > 1 && (
-              <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
-                <span className="text-xs text-[#94a3b8]">{rekapData.length} rekap · Hal {page}/{totalPages}</span>
+              <div className="px-5 py-3 border-t border-line flex items-center justify-between">
+                <span className="text-xs text-ink-soft">{rekapData.length} rekap · Hal {page}/{totalPages}</span>
                 <div className="flex items-center gap-1">
                   <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <ChevronLeft size={14} />
                   </button>
                   <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                    className="w-7 h-7 flex items-center justify-center rounded border border-[#1e3552] text-[#94a3b8] hover:bg-[#0d1b2a] disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
+                    className="w-7 h-7 flex items-center justify-center rounded border border-line text-ink-soft hover:bg-white disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
                     <ChevronRight size={14} />
                   </button>
                 </div>

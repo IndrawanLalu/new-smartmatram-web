@@ -1,4 +1,5 @@
 import { AlertTriangle, Thermometer, Zap } from "lucide-react";
+import { CARD } from "@/app/admin/_ui";
 import type { PengukuranGardu, HighCurrentItem } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 
 interface Props {
@@ -11,9 +12,9 @@ export default function AlertPanel({ overloadData, highTempData, highCurrentItem
   const hasAnyAlert = overloadData.length + highTempData.length + highCurrentItems.length > 0;
 
   return (
-    <div className="flex flex-col h-full bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+    <div className={`flex flex-col h-full ${CARD}`}>
       {/* Header — berkedip saat ada alert */}
-      <div className={`bg-linear-to-r from-[#7F1D1D] to-[#B91C1C] px-3 py-2.5 shrink-0 flex items-center gap-2 ${hasAnyAlert ? "animate-pulse" : ""}`}>
+      <div className={`bg-linear-to-r from-red-900 to-red-700 px-3 py-2.5 shrink-0 flex items-center gap-2 ${hasAnyAlert ? "animate-pulse" : ""}`}>
         <AlertTriangle size={13} className="text-red-200" />
         <span className="text-white text-xs font-bold tracking-wider uppercase">Alert Gardu</span>
         {hasAnyAlert && (
@@ -30,7 +31,7 @@ export default function AlertPanel({ overloadData, highTempData, highCurrentItem
             <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
               <span className="text-emerald-500 text-lg">✓</span>
             </div>
-            <span className="text-xs text-[#94a3b8]">Semua gardu dalam kondisi normal</span>
+            <span className="text-xs text-ink-soft">Semua gardu dalam kondisi normal</span>
           </div>
         )}
 
@@ -54,9 +55,9 @@ export default function AlertPanel({ overloadData, highTempData, highCurrentItem
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
                       </span>
-                      <span className="text-xs font-semibold text-[#e2e8f0] truncate">{g.no_gardu}</span>
+                      <span className="text-xs font-semibold text-ink truncate">{g.no_gardu}</span>
                     </div>
-                    <div className="text-[10px] text-[#94a3b8] truncate pl-3.5">{g.penyulang ?? "—"}</div>
+                    <div className="text-[10px] text-ink-soft truncate pl-3.5">{g.penyulang ?? "—"}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs font-mono font-bold text-red-600">{g.persen_beban.toFixed(0)}%</div>
@@ -86,9 +87,9 @@ export default function AlertPanel({ overloadData, highTempData, highCurrentItem
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
                         <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500" />
                       </span>
-                      <span className="text-xs font-semibold text-[#e2e8f0] truncate">{g.no_gardu}</span>
+                      <span className="text-xs font-semibold text-ink truncate">{g.no_gardu}</span>
                     </div>
-                    <div className="text-[10px] text-[#94a3b8] truncate pl-3.5">{g.penyulang ?? "—"}</div>
+                    <div className="text-[10px] text-ink-soft truncate pl-3.5">{g.penyulang ?? "—"}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs font-mono font-bold text-orange-600">{g.suhu_trafo}°C</div>
@@ -113,8 +114,8 @@ export default function AlertPanel({ overloadData, highTempData, highCurrentItem
               .map((item, i) => (
                 <DangerRow key={i} color="amber">
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold text-[#e2e8f0] truncate">{item.no_gardu}</div>
-                    <div className="text-[10px] text-[#94a3b8]">Jur. {item.jurusan} · R:{item.arus_r} S:{item.arus_s} T:{item.arus_t}</div>
+                    <div className="text-xs font-semibold text-ink truncate">{item.no_gardu}</div>
+                    <div className="text-[10px] text-ink-soft">Jur. {item.jurusan} · R:{item.arus_r} S:{item.arus_s} T:{item.arus_t}</div>
                   </div>
                   <div className="text-right shrink-0">
                     <div className="text-xs font-mono font-bold text-amber-600">{item.max_arus.toFixed(0)} A</div>
@@ -188,7 +189,7 @@ function ProgressBar({
   pulse?: boolean;
 }) {
   return (
-    <div className="w-20 h-1.5 bg-gray-100 rounded-full overflow-hidden mt-0.5">
+    <div className="w-20 h-1.5 bg-line rounded-full overflow-hidden mt-0.5">
       <div
         className={`h-full rounded-full transition-all ${color} ${pulse ? "animate-pulse" : ""}`}
         style={{ width: `${Math.min(pct, 100)}%` }}

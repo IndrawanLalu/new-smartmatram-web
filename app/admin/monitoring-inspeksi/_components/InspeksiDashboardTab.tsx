@@ -98,7 +98,7 @@ function SummaryCard({
 }
 
 function ProgressBar({ pct }: { pct: number }) {
-  const color = pct >= 80 ? "bg-green-500" : pct >= 50 ? "bg-accent" : pct >= 20 ? "bg-yellow-400" : "bg-red-400";
+  const color = pct >= 80 ? "bg-emerald-600" : pct >= 50 ? "bg-navy-500" : pct >= 20 ? "bg-amber-500" : "bg-red-500";
   return (
     <div className="w-full bg-navy-100 rounded-full h-2">
       <div

@@ -159,12 +159,12 @@ export default function MapInner({ garduList, latestData, showAll, mode, feederR
     <MapContainer
       center={center}
       zoom={12}
-      className="h-full w-full rounded-b-xl"
+      className="leaflet-light h-full w-full rounded-b-2xl"
       zoomControl={true}
     >
       {/* Dark tile layer — CartoDB Dark Matter */}
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
 
@@ -179,11 +179,11 @@ export default function MapInner({ garduList, latestData, showAll, mode, feederR
             <Popup>
               <div className="text-xs min-w-[140px]">
                 <div className="font-bold text-slate-800 text-sm mb-1">{gardu.nama}</div>
-                <div className="text-gray-500 font-mono mb-2">{gardu.kode}</div>
+                <div className="text-ink-muted font-mono mb-2">{gardu.kode}</div>
                 {ukur ? (
                   <div className="space-y-1">
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Beban</span>
+                      <span className="text-ink-muted">Beban</span>
                       <span className={`font-mono font-bold ${
                         ukur.persen_beban >= 80 ? "text-red-600" : ukur.persen_beban >= 60 ? "text-amber-600" : "text-emerald-600"
                       }`}>
@@ -191,22 +191,22 @@ export default function MapInner({ garduList, latestData, showAll, mode, feederR
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">KVA</span>
+                      <span className="text-ink-muted">KVA</span>
                       <span className="font-mono">{ukur.beban_kva.toFixed(1)} / {ukur.kva_trafo}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Suhu</span>
+                      <span className="text-ink-muted">Suhu</span>
                       <span className={`font-mono font-bold ${ukur.suhu_trafo > 60 ? "text-red-600" : ""}`}>
                         {ukur.suhu_trafo}°C
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-500">Diukur</span>
+                      <span className="text-ink-muted">Diukur</span>
                       <span className="font-mono text-[10px]">{ukur.tanggal_pengukuran}</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="text-gray-400 italic">Belum ada pengukuran</div>
+                  <div className="text-ink-soft italic">Belum ada pengukuran</div>
                 )}
               </div>
             </Popup>
@@ -247,9 +247,9 @@ function RiskGardu({
       : [-8.584, 116.116];
 
   return (
-    <MapContainer center={center} zoom={12} className="h-full w-full rounded-b-xl" zoomControl={true}>
+    <MapContainer center={center} zoom={12} className="leaflet-light h-full w-full rounded-b-2xl" zoomControl={true}>
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
       />
       {items.map(({ g, risk, tier }) => {
@@ -259,28 +259,28 @@ function RiskGardu({
             <Popup>
               <div className="text-xs min-w-[160px]">
                 <div className="font-bold text-slate-800 text-sm mb-0.5">{g.nama}</div>
-                <div className="text-gray-500 font-mono mb-1.5">{g.kode}</div>
+                <div className="text-ink-muted font-mono mb-1.5">{g.kode}</div>
                 {risk ? (
                   <>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-500">Feeder</span>
+                      <span className="text-ink-muted">Feeder</span>
                       <span className="font-semibold text-slate-700">{risk.penyulang}</span>
                     </div>
                     <div className="flex justify-between mb-1">
-                      <span className="text-gray-500">Risiko H+1</span>
+                      <span className="text-ink-muted">Risiko H+1</span>
                       <span className="font-mono font-bold" style={{ color }}>
                         {risk.score.toFixed(0)} · {risk.level.toUpperCase()}
                       </span>
                     </div>
                     {risk.predicted_cause && (
                       <div className="flex justify-between">
-                        <span className="text-gray-500">Dugaan</span>
+                        <span className="text-ink-muted">Dugaan</span>
                         <span className="font-semibold text-slate-700">{risk.predicted_cause}</span>
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="text-gray-400 italic">
+                  <div className="text-ink-soft italic">
                     Feeder {g.feeder || "—"} belum punya prediksi
                   </div>
                 )}

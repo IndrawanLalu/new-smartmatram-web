@@ -34,9 +34,13 @@
   --color-accent-deep: #00695c;
   --color-accent-tint: #e0f2f1;
 
-  --color-ink: #14213a;
-  --color-ink-soft: #5a6a85;
-  --color-ink-muted: #94a3b8;
+  /* Tinta digelapkan sedikit (2026-07-30): banyak teks tabel berasal dari
+     `#94a3b8` tema gelap — di sana itu teks utama, di latar terang jadi abu
+     tengah. Menggelapkan token lebih baik daripada menaikkan ratusan kelas
+     satu per satu, karena hierarkinya tetap terjaga. */
+  --color-ink: #0f1a2e;
+  --color-ink-soft: #44546f;
+  --color-ink-muted: #8494ab;
   --color-surface: #f2f3f5;
   --color-line: #e4e8f0;
 

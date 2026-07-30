@@ -1,3 +1,5 @@
+import { CHART_SERIES, CHART_OTHER } from "./chartColors";
+
 /**
  * Klasifikasi penyebab gangguan → 5 kelas + palet warna.
  * Cermin dari ml-engine/src/cause_labels.py (jaga keduanya tetap sinkron).
@@ -15,13 +17,20 @@ export const CAUSE_CLASSES = [
 
 export type CauseClass = (typeof CAUSE_CLASSES)[number];
 
+/**
+ * Warna kelas penyebab — diambil dari CHART_SERIES agar lolos uji palet di
+ * permukaan terang. Susunan lama gagal dua hal: sky/emerald/amber
+ * di luar ambang kontras, dan brown↔amber terlalu dekat (ΔE 11,4 — sulit
+ * dibedakan bahkan dengan penglihatan warna normal).
+ * "Lain-lain" sengaja abu: bukan identitas, jadi tidak diberi hue.
+ */
 export const CAUSE_COLORS: Record<CauseClass, string> = {
-  "Cuaca (angin/hujan/petir)": "#0ea5e9", // sky
-  "Pohon / ROW": "#10b981", // emerald
-  "Aset / Peralatan": "#f59e0b", // amber
-  "Binatang / Hewan": "#b45309", // brown
-  "Manusia / Eksternal": "#d946ef", // fuchsia
-  "Lain-lain": "#64748b", // slate
+  "Cuaca (angin/hujan/petir)": CHART_SERIES[0], // biru
+  "Pohon / ROW": CHART_SERIES[1],               // teal
+  "Aset / Peralatan": CHART_SERIES[2],          // amber
+  "Binatang / Hewan": CHART_SERIES[3],          // pink
+  "Manusia / Eksternal": CHART_SERIES[4],       // violet
+  "Lain-lain": CHART_OTHER,
 };
 
 // Diperiksa berurutan; kelas pertama yang cocok dipakai.

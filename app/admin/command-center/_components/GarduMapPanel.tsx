@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { STATUS_COLOR } from "@/lib/chartColors";
 import dynamic from "next/dynamic";
 import { Map as MapIcon, CheckSquare, Square } from "lucide-react";
 import type { GarduMarker } from "../_hooks/useCommandCenter";
@@ -12,10 +13,10 @@ import { normalizeFeeder } from "@/lib/feeder";
 const MapInner = dynamic(() => import("./_MapInner"), {
   ssr: false,
   loading: () => (
-    <div className="flex-1 flex items-center justify-center bg-[#0d1b2a] rounded-b-xl">
+    <div className="flex-1 flex items-center justify-center bg-surface rounded-b-2xl">
       <div className="text-center">
-        <div className="w-8 h-8 border-4 border-gray-700 border-t-[#00897B] rounded-full animate-spin mx-auto mb-2" />
-        <p className="text-xs text-gray-500">Memuat peta...</p>
+        <div className="w-8 h-8 border-4 border-line border-t-navy-600 rounded-full animate-spin mx-auto mb-2" />
+        <p className="text-xs text-ink-muted">Memuat peta...</p>
       </div>
     </div>
   ),
@@ -64,14 +65,14 @@ export default function GarduMapPanel({ garduList, latestData, riskData }: Props
   }, [garduList, feederRisk]);
 
   return (
-    <div className="flex flex-col h-full bg-[#0d1b2a] rounded-xl border border-gray-800 overflow-hidden">
+    <div className="flex flex-col h-full bg-surface rounded-2xl border border-line shadow-card overflow-hidden">
       {/* Header */}
-      <div className="px-3 py-2 shrink-0 flex items-center gap-2 border-b border-gray-800">
-        <MapIcon size={13} className="text-[#00897B]" />
-        <span className="text-gray-300 text-xs font-bold tracking-wider uppercase">Peta Gardu</span>
+      <div className="px-3 py-2 shrink-0 flex items-center gap-2 border-b border-line">
+        <MapIcon size={13} className="text-accent" />
+        <span className="text-ink text-xs font-bold tracking-wider uppercase">Peta Gardu</span>
 
         {/* Toggle mode */}
-        <div className="flex items-center rounded-md bg-[#162334] border border-gray-800 p-0.5">
+        <div className="flex items-center rounded-md bg-white border border-line p-0.5">
           <ModeButton active={mode === "beban"} onClick={() => setMode("beban")}>Beban</ModeButton>
           <ModeButton active={mode === "risiko"} onClick={() => setMode("risiko")}>Risiko H+1</ModeButton>
         </div>
@@ -90,26 +91,26 @@ export default function GarduMapPanel({ garduList, latestData, riskData }: Props
         <div className="ml-auto flex items-center gap-3">
           {mode === "beban" && showAll && (
             <div className="flex items-center gap-2.5">
-              <LegendDot color="#EF4444" label="Overload" />
-              <LegendDot color="#F59E0B" label="Warning" />
-              <LegendDot color="#10B981" label="Normal" />
-              <LegendDot color="#4B5563" label="No data" />
+              <LegendDot color={STATUS_COLOR.kritis} label="Overload" />
+              <LegendDot color={STATUS_COLOR.waspada} label="Warning" />
+              <LegendDot color={STATUS_COLOR.aman} label="Normal" />
+              <LegendDot color={STATUS_COLOR.kosong} label="No data" />
             </div>
           )}
           {mode === "risiko" && (
             <div className="flex items-center gap-2.5">
-              <LegendDot color="#EF4444" label="Kritis" />
-              <LegendDot color="#F59E0B" label="Waspada" />
-              <LegendDot color="#10B981" label="Aman" />
+              <LegendDot color={STATUS_COLOR.kritis} label="Kritis" />
+              <LegendDot color={STATUS_COLOR.waspada} label="Waspada" />
+              <LegendDot color={STATUS_COLOR.aman} label="Aman" />
             </div>
           )}
           {mode === "beban" && (
             <button
               onClick={() => setShowAll((v) => !v)}
-              className="flex items-center gap-1 text-[10px] text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center gap-1 text-[10px] text-ink-soft hover:text-ink transition-colors"
             >
               {showAll ? (
-                <CheckSquare size={12} className="text-[#00897B]" />
+                <CheckSquare size={12} className="text-accent" />
               ) : (
                 <Square size={12} />
               )}
@@ -153,7 +154,7 @@ function ModeButton({ active, onClick, children }: { active: boolean; onClick: (
     <button
       onClick={onClick}
       className={`px-2 py-0.5 text-[10px] font-semibold rounded transition-colors ${
-        active ? "bg-[#00897B] text-white" : "text-gray-400 hover:text-gray-200"
+        active ? "bg-accent text-white" : "text-ink-soft hover:text-ink"
       }`}
     >
       {children}
@@ -165,7 +166,7 @@ function LegendDot({ color, label }: { color: string; label: string }) {
   return (
     <div className="flex items-center gap-1">
       <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-      <span className="text-[10px] text-gray-500 hidden xl:inline">{label}</span>
+      <span className="text-[10px] text-ink-muted hidden xl:inline">{label}</span>
     </div>
   );
 }

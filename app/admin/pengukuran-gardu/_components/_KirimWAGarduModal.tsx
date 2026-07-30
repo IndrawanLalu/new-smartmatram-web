@@ -89,15 +89,15 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
 
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-      <div className="bg-[#0a1628] border border-[#1e3552] rounded-xl shadow-2xl w-full max-w-sm">
+      <div className="bg-surface border border-line rounded-xl shadow-2xl w-full max-w-sm">
 
         {/* Header */}
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#1e3552]">
-          <MessageCircle size={15} className="text-[#00897B] shrink-0" />
-          <h3 className="text-sm font-semibold text-[#e2e8f0] flex-1">Kirim WO via WhatsApp</h3>
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-line">
+          <MessageCircle size={15} className="text-navy-600 shrink-0" />
+          <h3 className="text-sm font-semibold text-ink flex-1">Kirim WO via WhatsApp</h3>
           <button
             onClick={onClose}
-            className="w-6 h-6 flex items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+            className="w-6 h-6 flex items-center justify-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface transition-colors"
           >
             <X size={13} />
           </button>
@@ -106,17 +106,17 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
         {/* Body */}
         <div className="px-4 py-4 space-y-3">
           {/* WO info */}
-          <div className="bg-[#162334] border border-[#1e3552] rounded-lg px-3 py-2.5">
-            <p className="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Work Order</p>
+          <div className="bg-white border border-line rounded-lg px-3 py-2.5">
+            <p className="text-[10px] text-ink-muted uppercase tracking-wider mb-1">Work Order</p>
             <div className="flex items-center gap-2">
-              <p className="text-sm font-medium text-[#e2e8f0]">{woNo}</p>
+              <p className="text-sm font-medium text-ink">{woNo}</p>
               {data.wo_sent_at && (
-                <span className="text-[10px] bg-[#00897B]/20 border border-[#00897B]/40 text-[#5eead4] px-1.5 py-0.5 rounded-full font-semibold">
+                <span className="text-[10px] bg-navy-50 border border-navy-300 text-accent-deep px-1.5 py-0.5 rounded-full font-semibold">
                   WO {new Date(data.wo_sent_at).toLocaleDateString("id-ID")}
                 </span>
               )}
             </div>
-            <p className="text-xs text-[#94a3b8] mt-0.5">
+            <p className="text-xs text-ink-soft mt-0.5">
               {data.penyulang ?? "—"} · {data.petugas_unit}
             </p>
           </div>
@@ -125,13 +125,13 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
           {!done && (
             <div className="space-y-2">
               <div>
-                <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] text-ink-muted uppercase tracking-wider block mb-1">
                   Jenis Pemeliharaan
                 </label>
                 <select
                   value={jenisPemeliharaan}
                   onChange={e => setJenisPemeliharaan(e.target.value)}
-                  className="w-full bg-[#162334] border border-[#1e3552] rounded-lg px-3 py-2 text-xs text-[#e2e8f0] focus:outline-none focus:border-[#00897B]"
+                  className="w-full bg-white border border-line rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-navy-500"
                 >
                   {JENIS_OPTIONS.map(o => (
                     <option key={o} value={o}>{o}</option>
@@ -139,7 +139,7 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
                 </select>
               </div>
               <div>
-                <label className="text-[10px] text-gray-500 uppercase tracking-wider block mb-1">
+                <label className="text-[10px] text-ink-muted uppercase tracking-wider block mb-1">
                   Keterangan (opsional)
                 </label>
                 <textarea
@@ -147,7 +147,7 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
                   onChange={e => setKeterangan(e.target.value)}
                   rows={2}
                   placeholder="Misal: Jurusan B terlalu berat, pindah ke Jurusan C"
-                  className="w-full bg-[#162334] border border-[#1e3552] rounded-lg px-3 py-2 text-xs text-[#e2e8f0] placeholder-gray-600 focus:outline-none focus:border-[#00897B] resize-none"
+                  className="w-full bg-white border border-line rounded-lg px-3 py-2 text-xs text-ink placeholder-gray-600 focus:outline-none focus:border-navy-500 resize-none"
                 />
               </div>
             </div>
@@ -155,19 +155,19 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
 
           {/* Info cara kerja */}
           {!done && (
-            <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2.5 space-y-1.5">
+            <div className="bg-white border border-line rounded-lg px-3 py-2.5 space-y-1.5">
               {canShare ? (
                 <div className="flex items-start gap-2">
-                  <Share2 size={11} className="text-[#00897B] mt-0.5 shrink-0" />
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
-                    PDF akan dibuat, lalu muncul <span className="text-[#e2e8f0]">share sheet</span> — pilih WhatsApp dan kontak tujuan.
+                  <Share2 size={11} className="text-navy-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-ink-soft leading-relaxed">
+                    PDF akan dibuat, lalu muncul <span className="text-ink">share sheet</span> — pilih WhatsApp dan kontak tujuan.
                   </p>
                 </div>
               ) : (
                 <div className="flex items-start gap-2">
-                  <Download size={11} className="text-[#00897B] mt-0.5 shrink-0" />
-                  <p className="text-xs text-[#94a3b8] leading-relaxed">
-                    PDF akan <span className="text-[#e2e8f0]">terdownload</span> — buka WhatsApp Web, lalu attach file tersebut secara manual.
+                  <Download size={11} className="text-navy-600 mt-0.5 shrink-0" />
+                  <p className="text-xs text-ink-soft leading-relaxed">
+                    PDF akan <span className="text-ink">terdownload</span> — buka WhatsApp Web, lalu attach file tersebut secara manual.
                   </p>
                 </div>
               )}
@@ -177,8 +177,8 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
           {/* Done state */}
           {done && (
             <div className="space-y-2">
-              <div className="bg-[#00897B]/10 border border-[#00897B]/30 rounded-lg px-3 py-2.5">
-                <p className="text-xs text-[#5eead4]">
+              <div className="bg-navy-50 border border-navy-300 rounded-lg px-3 py-2.5">
+                <p className="text-xs text-accent-deep">
                   {canShare ? "WO berhasil dibagikan." : `PDF "${fileName}" berhasil didownload.`}
                 </p>
               </div>
@@ -186,32 +186,32 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
                 <button
                   onClick={handleMarkWo}
                   disabled={marking}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs border border-[#00897B] text-[#5eead4] hover:bg-[#00897B]/10 disabled:opacity-50 transition-colors"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs border border-navy-500 text-accent-deep hover:bg-navy-50 disabled:opacity-50 transition-colors"
                 >
                   {marking ? <Loader2 size={11} className="animate-spin" /> : <CheckCircle size={11} />}
                   {marking ? "Menyimpan..." : "Tandai Sudah di-WO"}
                 </button>
               ) : (
-                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#00897B]/10 border border-[#00897B]/30">
-                  <CheckCircle size={11} className="text-[#5eead4]" />
-                  <span className="text-xs text-[#5eead4]">Pengukuran ini sudah ditandai WO</span>
+                <div className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-navy-50 border border-navy-300">
+                  <CheckCircle size={11} className="text-accent-deep" />
+                  <span className="text-xs text-accent-deep">Pengukuran ini sudah ditandai WO</span>
                 </div>
               )}
             </div>
           )}
 
           {err && (
-            <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
+            <p className="text-xs text-red-600 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2">
               {err}
             </p>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-[#1e3552] flex items-center gap-2">
+        <div className="px-4 py-3 border-t border-line flex items-center gap-2">
           <button
             onClick={onClose}
-            className="flex-1 px-3 py-2 rounded-lg text-xs border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 transition-colors"
+            className="flex-1 px-3 py-2 rounded-lg text-xs border border-line text-ink-soft hover:bg-surface transition-colors"
           >
             {done ? "Tutup" : "Batal"}
           </button>
@@ -219,7 +219,7 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
             <button
               onClick={handleGenerate}
               disabled={loading}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs bg-[#00897B] text-white hover:bg-[#00695C] disabled:opacity-50 transition-colors font-medium"
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs bg-navy-600 text-white hover:bg-navy-500 disabled:opacity-50 transition-colors font-medium"
             >
               {loading ? (
                 <>

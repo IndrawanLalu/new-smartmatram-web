@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import { CHART_SERIES } from "@/lib/chartColors";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 import type { MonthStat } from "../_hooks/useYearlyStats";
 
@@ -11,28 +12,30 @@ const MONTHS = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-// Per-jenis group: header color, sub-header color, WO cell accent
+// Warna kelompok jenis pemeliharaan = pemakaian KATEGORIKAL, jadi diambil dari
+// CHART_SERIES (sudah lolos validator palet di permukaan terang). Latar sel pakai
+// tint tipis dari warna yang sama supaya kolom tetap terkelompok tanpa berteriak.
 const JENIS_STYLE = [
-  { headBg: "#0d2d2a", headText: "#5eead4", subBg: "#0a2422" },  // teal   — PEMERATAAN BEBAN
-  { headBg: "#1a2a3d", headText: "#93c5fd", subBg: "#162438" },  // blue   — OPTIMASI TRAFO
-  { headBg: "#2a1f35", headText: "#d8b4fe", subBg: "#231830" },  // purple — PEMELIHARAAN GARDU
-  { headBg: "#2d2210", headText: "#fcd34d", subBg: "#261d0d" },  // amber  — MANUVER BEBAN
+  { color: CHART_SERIES[1], headBg: "#0D948814", subBg: "#0D94880A" }, // teal   — PEMERATAAN BEBAN
+  { color: CHART_SERIES[0], headBg: "#2563EB14", subBg: "#2563EB0A" }, // biru   — OPTIMASI TRAFO
+  { color: CHART_SERIES[4], headBg: "#7C3AED14", subBg: "#7C3AED0A" }, // violet — PEMELIHARAAN GARDU
+  { color: CHART_SERIES[2], headBg: "#EA580C14", subBg: "#EA580C0A" }, // oranye — MANUVER BEBAN
 ] as const;
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
 function PctBadge({ pct, wo }: { pct: number; wo: number }) {
-  if (wo === 0) return <span className="text-[#475569] text-xs">—</span>;
+  if (wo === 0) return <span className="text-ink-muted text-xs">—</span>;
   const cls =
-    pct >= 80 ? "bg-green-900/40 text-green-400" :
-    pct >= 50 ? "bg-amber-900/40 text-amber-400" :
-                "bg-red-900/40 text-red-400";
+    pct >= 80 ? "bg-emerald-50 text-emerald-700" :
+    pct >= 50 ? "bg-amber-50 text-amber-700" :
+                "bg-red-50 text-red-700";
   return <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${cls}`}>{pct}%</span>;
 }
 
 function Num({ v, color }: { v: number; color?: string }) {
-  if (v === 0) return <span className="text-[#475569]">—</span>;
-  return <span className={`font-semibold ${color ?? "text-[#e2e8f0]"}`}>{v}</span>;
+  if (v === 0) return <span className="text-ink-muted">—</span>;
+  return <span className={`font-semibold ${color ?? "text-ink"}`}>{v}</span>;
 }
 
 // ── Main Component ────────────────────────────────────────────────────────────
@@ -70,43 +73,43 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
   const totalPct  = totals.totalWo > 0 ? Math.round((totals.totalSelesai / totals.totalWo) * 100) : 0;
 
   // Shared cell classes
-  const TH = "px-3 py-2 text-center text-[11px] font-semibold border-b border-r border-[#1e3552] whitespace-nowrap";
-  const TD = "px-3 py-2.5 text-center text-xs border-b border-r border-[#1e3552]";
+  const TH = "px-3 py-2 text-center text-[11px] font-semibold border-b border-r border-line whitespace-nowrap";
+  const TD = "px-3 py-2.5 text-center text-xs border-b border-r border-line";
 
   return (
-    <div className="bg-[#0d1b2a] rounded-xl border border-[#1e3552] overflow-hidden">
+    <div className="bg-white rounded-xl border border-line overflow-hidden">
       {/* Section header */}
-      <div className="px-5 py-3.5 border-b border-[#1e3552] flex items-center justify-between">
+      <div className="px-5 py-3.5 border-b border-line flex items-center justify-between">
         <div>
-          <h3 className="text-sm font-semibold text-[#e2e8f0]">Rekap Tahunan</h3>
-          <p className="text-xs text-[#94a3b8] mt-0.5">Pengukuran & Tindak Lanjut Anomali per Bulan</p>
+          <h3 className="text-sm font-semibold text-ink">Rekap Tahunan</h3>
+          <p className="text-xs text-ink-soft mt-0.5">Pengukuran & Tindak Lanjut Anomali per Bulan</p>
         </div>
         {loading && (
-          <div className="flex items-center gap-2 text-xs text-[#94a3b8]">
-            <div className="w-3.5 h-3.5 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="flex items-center gap-2 text-xs text-ink-soft">
+            <div className="w-3.5 h-3.5 border-2 border-line border-t-navy-600 rounded-full animate-spin" />
             Memuat...
           </div>
         )}
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-[#e2e8f0]" style={{ minWidth: 1050 }}>
+        <table className="w-full border-collapse text-ink" style={{ minWidth: 1050 }}>
           <thead>
             {/* ── Row 1: Group headers ── */}
             <tr>
               {/* Bulan — rowSpan 2 */}
               <th
                 rowSpan={2}
-                className={`${TH} sticky left-0 z-10 text-teal-300 min-w-[110px] border-r-2`}
-                style={{ background: "#0a2a26" }}
+                className={`${TH} sticky left-0 z-10 text-navy-600 min-w-[110px] border-r-2`}
+                style={{ background: "#EEF2FB" }}
               >
                 BULAN
               </th>
               {/* Fixed info cols — rowSpan 2 */}
-              <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[56px]`} style={{ background: "#0a1628" }}>Ukur</th>
-              <th rowSpan={2} className={`${TH} text-blue-300 min-w-[64px]`} style={{ background: "#0a1628" }}>AMG</th>
-              <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[68px]`} style={{ background: "#0a1628" }}>Anomali</th>
-              <th rowSpan={2} className={`${TH} text-[#94a3b8] min-w-[68px]`} style={{ background: "#0a1628" }}>Rata %</th>
+              <th rowSpan={2} className={`${TH} text-ink-soft min-w-[56px]`} style={{ background: "#EEF2FB" }}>Ukur</th>
+              <th rowSpan={2} className={`${TH} text-navy-600 min-w-[64px]`} style={{ background: "#EEF2FB" }}>AMG</th>
+              <th rowSpan={2} className={`${TH} text-ink-soft min-w-[68px]`} style={{ background: "#EEF2FB" }}>Anomali</th>
+              <th rowSpan={2} className={`${TH} text-ink-soft min-w-[68px]`} style={{ background: "#EEF2FB" }}>Rata %</th>
 
               {/* Jenis group headers — colSpan 2 each */}
               {JENIS_PEMELIHARAAN_OPTIONS.map((j, i) => (
@@ -114,14 +117,14 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                   key={j}
                   colSpan={2}
                   className={`${TH}`}
-                  style={{ background: JENIS_STYLE[i].headBg, color: JENIS_STYLE[i].headText }}
+                  style={{ background: JENIS_STYLE[i].headBg, color: JENIS_STYLE[i].color }}
                 >
                   {j}
                 </th>
               ))}
 
               {/* Total — colSpan 2 */}
-              <th colSpan={2} className={`${TH} text-[#94a3b8] min-w-[110px]`} style={{ background: "#0a1628" }}>
+              <th colSpan={2} className={`${TH} text-ink-soft min-w-[110px]`} style={{ background: "#EEF2FB" }}>
                 TOTAL
               </th>
             </tr>
@@ -130,20 +133,20 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
             <tr>
               {JENIS_PEMELIHARAAN_OPTIONS.map((j, i) => (
                 <React.Fragment key={j}>
-                  <th className={`${TH} font-normal text-[#94a3b8] min-w-[52px]`} style={{ background: JENIS_STYLE[i].subBg }}>WO</th>
-                  <th className={`${TH} font-normal text-[#94a3b8] min-w-[64px]`} style={{ background: JENIS_STYLE[i].subBg }}>Selesai</th>
+                  <th className={`${TH} font-normal text-ink-soft min-w-[52px]`} style={{ background: JENIS_STYLE[i].subBg }}>WO</th>
+                  <th className={`${TH} font-normal text-ink-soft min-w-[64px]`} style={{ background: JENIS_STYLE[i].subBg }}>Selesai</th>
                 </React.Fragment>
               ))}
-              <th className={`${TH} font-normal text-[#94a3b8] min-w-[52px]`} style={{ background: "#0a1628" }}>WO</th>
-              <th className={`${TH} font-normal text-[#94a3b8] min-w-[64px]`} style={{ background: "#0a1628" }}>% Selesai</th>
+              <th className={`${TH} font-normal text-ink-soft min-w-[52px]`} style={{ background: "#EEF2FB" }}>WO</th>
+              <th className={`${TH} font-normal text-ink-soft min-w-[64px]`} style={{ background: "#EEF2FB" }}>% Selesai</th>
             </tr>
           </thead>
 
           <tbody>
             {stats.map((s, idx) => {
               const isActive = s.month === currentMonth;
-              const rowBg    = isActive ? "#0d2d2a" : idx % 2 === 0 ? "#0a1628" : "#0d1b2a";
-              const stickyBg = isActive ? "#0d2d2a" : idx % 2 === 0 ? "#0a1628" : "#0d1b2a";
+              const rowBg    = isActive ? "#EEF2FB" : idx % 2 === 0 ? "#FFFFFF" : "#F8FAFB";
+              const stickyBg = isActive ? "#EEF2FB" : idx % 2 === 0 ? "#FFFFFF" : "#F8FAFB";
 
               return (
                 <tr key={s.month} style={{ background: rowBg }}
@@ -152,12 +155,12 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                   {/* Bulan — sticky */}
                   <td
                     className={`${TD} sticky left-0 z-10 font-semibold text-left pl-4 border-r-2`}
-                    style={{ background: stickyBg, color: isActive ? "#5eead4" : "#e2e8f0" }}
+                    style={{ background: stickyBg, color: isActive ? "#1D3573" : "#0F1A2E" }}
                   >
                     <span className="flex items-center gap-1.5">
                       {MONTHS[s.month - 1]}
                       {isActive && (
-                        <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse shrink-0" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse shrink-0" />
                       )}
                     </span>
                   </td>
@@ -165,31 +168,31 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                   {/* Ukur */}
                   <td className={TD}>
                     {s.jumlahUkur > 0
-                      ? <span className="text-[#94a3b8]">{s.jumlahUkur}</span>
-                      : <span className="text-[#475569]">—</span>}
+                      ? <span className="text-ink-soft">{s.jumlahUkur}</span>
+                      : <span className="text-ink-muted">—</span>}
                   </td>
 
                   {/* Terkirim AMG */}
                   <td className={TD}>
-                    <Num v={s.amgTerkirim} color="text-blue-400" />
+                    <Num v={s.amgTerkirim} color="text-navy-600" />
                   </td>
 
                   {/* Anomali */}
                   <td className={TD}>
-                    <Num v={s.jumlahAnomal} color="text-red-400" />
+                    <Num v={s.jumlahAnomal} color="text-red-600" />
                   </td>
 
                   {/* Rata % beban */}
                   <td className={TD}>
                     {s.jumlahUkur > 0 ? (
                       <span className={
-                        s.rataBeban >= 80 ? "text-red-400 font-semibold" :
-                        s.rataBeban >= 60 ? "text-amber-400 font-semibold" :
-                        "text-green-400"
+                        s.rataBeban >= 80 ? "text-red-600 font-semibold" :
+                        s.rataBeban >= 60 ? "text-amber-600 font-semibold" :
+                        "text-emerald-600"
                       }>
                         {s.rataBeban}%
                       </span>
-                    ) : <span className="text-[#475569]">—</span>}
+                    ) : <span className="text-ink-muted">—</span>}
                   </td>
 
                   {/* Per jenis: WO & Selesai */}
@@ -198,10 +201,10 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                     return (
                       <React.Fragment key={j}>
                         <td className={TD} style={{ background: `${JENIS_STYLE[i].subBg}66` }}>
-                          <Num v={jd.wo} color={JENIS_STYLE[i].headText} />
+                          <Num v={jd.wo} color={JENIS_STYLE[i].color} />
                         </td>
                         <td className={TD} style={{ background: `${JENIS_STYLE[i].subBg}66` }}>
-                          <Num v={jd.selesai} color="text-green-400" />
+                          <Num v={jd.selesai} color="text-emerald-600" />
                         </td>
                       </React.Fragment>
                     );
@@ -209,7 +212,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
 
                   {/* Total WO */}
                   <td className={TD}>
-                    <Num v={s.totalWo} color="text-[#e2e8f0]" />
+                    <Num v={s.totalWo} color="text-ink" />
                   </td>
 
                   {/* % Selesai badge */}
@@ -223,25 +226,25 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
 
           {/* ── Footer TOTAL ── */}
           <tfoot>
-            <tr style={{ background: "#0a2a26" }} className="border-t-2 border-teal-800">
+            <tr className="bg-navy-50 border-t-2 border-navy-200">
               <td
-                className={`${TD} sticky left-0 z-10 font-bold text-left pl-4 text-teal-300 border-r-2`}
-                style={{ background: "#0a2a26" }}
+                className={`${TD} sticky left-0 z-10 font-bold text-left pl-4 text-navy-600 border-r-2`}
+                style={{ background: "#EEF2FB" }}
               >
                 TOTAL
               </td>
-              <td className={`${TD} text-[#94a3b8] font-semibold`}>{totals.ukur}</td>
+              <td className={`${TD} text-ink-soft font-semibold`}>{totals.ukur}</td>
               <td className={TD}>
                 {totals.amg > 0
-                  ? <span className="text-blue-400 font-bold">{totals.amg}</span>
-                  : <span className="text-[#475569]">—</span>}
+                  ? <span className="text-navy-600 font-bold">{totals.amg}</span>
+                  : <span className="text-ink-muted">—</span>}
               </td>
-              <td className={TD}><span className="text-red-400 font-bold">{totals.anomali}</span></td>
+              <td className={TD}><span className="text-red-600 font-bold">{totals.anomali}</span></td>
               <td className={TD}>
                 <span className={
-                  totalRata >= 80 ? "text-red-400 font-bold" :
-                  totalRata >= 60 ? "text-amber-400 font-bold" :
-                  "text-green-400 font-bold"
+                  totalRata >= 80 ? "text-red-600 font-bold" :
+                  totalRata >= 60 ? "text-amber-600 font-bold" :
+                  "text-emerald-600 font-bold"
                 }>
                   {totalRata > 0 ? `${totalRata}%` : "—"}
                 </span>
@@ -250,16 +253,16 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                 const jd = totals.byJenis[j];
                 return (
                   <React.Fragment key={j}>
-                    <td className={`${TD} font-bold`} style={{ color: JENIS_STYLE[i].headText, background: `${JENIS_STYLE[i].subBg}aa` }}>
-                      {jd.wo > 0 ? jd.wo : <span className="text-[#475569]">—</span>}
+                    <td className={`${TD} font-bold`} style={{ color: JENIS_STYLE[i].color, background: `${JENIS_STYLE[i].subBg}aa` }}>
+                      {jd.wo > 0 ? jd.wo : <span className="text-ink-muted">—</span>}
                     </td>
-                    <td className={`${TD} font-bold text-green-400`} style={{ background: `${JENIS_STYLE[i].subBg}aa` }}>
-                      {jd.selesai > 0 ? jd.selesai : <span className="text-[#475569]">—</span>}
+                    <td className={`${TD} font-bold text-emerald-600`} style={{ background: `${JENIS_STYLE[i].subBg}aa` }}>
+                      {jd.selesai > 0 ? jd.selesai : <span className="text-ink-muted">—</span>}
                     </td>
                   </React.Fragment>
                 );
               })}
-              <td className={`${TD} font-bold text-[#e2e8f0]`}>{totals.totalWo > 0 ? totals.totalWo : "—"}</td>
+              <td className={`${TD} font-bold text-ink`}>{totals.totalWo > 0 ? totals.totalWo : "—"}</td>
               <td className={TD}><PctBadge pct={totalPct} wo={totals.totalWo} /></td>
             </tr>
           </tfoot>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { CARD } from "@/app/admin/_ui";
 import { ShieldAlert } from "lucide-react";
 import type { FeederRisk } from "../_hooks/useFeederRisk";
 import RiskDetailModal from "./RiskDetailModal";
@@ -46,15 +47,15 @@ export default function RiskPanel({ riskData, dateTgl, loading, criticalCount, w
 
   return (
     <>
-      <div className="flex flex-col h-full bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden">
+      <div className={`flex flex-col h-full ${CARD}`}>
         {/* Header */}
         <div
-          className={`bg-linear-to-r from-[#0d1f38] to-[#0a2a3a] px-3 py-2.5 shrink-0 flex items-center gap-2 ${hasCritical ? "animate-pulse" : ""}`}
+          className={`bg-navy-700 px-3 py-2.5 shrink-0 flex items-center gap-2 ${hasCritical ? "animate-pulse" : ""}`}
         >
-          <ShieldAlert size={13} className={hasCritical ? "text-red-400" : "text-[#5eead4]"} />
+          <ShieldAlert size={13} className={hasCritical ? "text-red-400" : "text-accent-deep"} />
           <span className="text-white text-xs font-bold tracking-wider uppercase">Prediksi Risiko H+1</span>
           {dateTgl && (
-            <span className="text-[#5eead4]/60 text-[9px] font-mono">
+            <span className="text-accent-deep/60 text-[9px] font-mono">
               {new Date(dateTgl + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
             </span>
           )}
@@ -78,14 +79,14 @@ export default function RiskPanel({ riskData, dateTgl, loading, criticalCount, w
         <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {loading && (
             <div className="flex items-center justify-center h-14">
-              <div className="w-4 h-4 border-2 border-[#1e3552] border-t-[#5eead4] rounded-full animate-spin" />
+              <div className="w-4 h-4 border-2 border-line border-t-navy-600 rounded-full animate-spin" />
             </div>
           )}
 
           {!loading && riskData.length === 0 && (
             <div className="flex flex-col items-center justify-center h-14 gap-1 px-2 text-center">
-              <span className="text-[11px] text-[#94a3b8]">Tidak ada data prediksi hari ini</span>
-              <span className="text-[10px] text-[#475569]">Pipeline ML belum berjalan</span>
+              <span className="text-[11px] text-ink-soft">Tidak ada data prediksi hari ini</span>
+              <span className="text-[10px] text-ink-muted">Pipeline ML belum berjalan</span>
             </div>
           )}
 
@@ -107,11 +108,11 @@ export default function RiskPanel({ riskData, dateTgl, loading, criticalCount, w
 
                 {/* Name + cause */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-xs font-semibold text-[#e2e8f0] truncate leading-tight">
+                  <div className="text-xs font-semibold text-ink truncate leading-tight">
                     {r.penyulang}
                   </div>
                   {r.predicted_cause && (
-                    <div className="text-[9px] text-[#64748b] truncate leading-tight">{r.predicted_cause}</div>
+                    <div className="text-[9px] text-ink-muted truncate leading-tight">{r.predicted_cause}</div>
                   )}
                 </div>
 
@@ -120,7 +121,7 @@ export default function RiskPanel({ riskData, dateTgl, loading, criticalCount, w
                   <div className={`text-[10px] font-mono font-bold leading-tight ${s.score}`}>
                     {r.risk_score.toFixed(0)}
                   </div>
-                  <div className="w-10 h-1 bg-[#1e3552] rounded-full overflow-hidden mt-0.5">
+                  <div className="w-10 h-1 bg-line rounded-full overflow-hidden mt-0.5">
                     <div
                       className={`h-full rounded-full ${s.bar}`}
                       style={{ width: `${r.risk_score}%` }}

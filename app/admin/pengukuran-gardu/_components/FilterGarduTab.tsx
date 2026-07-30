@@ -18,8 +18,8 @@ import { useCurrentUser } from "@/app/admin/_context/UserContext";
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const INPUT_CLS =
-  "w-full border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-[#0d1b2a]";
-const LABEL_CLS = "block text-[10px] text-[#94a3b8] uppercase tracking-wider mb-1";
+  "w-full border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white";
+const LABEL_CLS = "block text-[10px] text-ink-soft uppercase tracking-wider mb-1";
 const KVA_OPTIONS = [25, 50, 100, 160, 200, 250, 315, 400, 630, 1000];
 const PAGE_SIZE = 20;
 
@@ -88,8 +88,8 @@ export default function FilterGarduTab({ user }: Props) {
   const chip = (active: boolean) =>
     `px-2.5 py-1 rounded-full text-xs border transition-colors ${
       active
-        ? "bg-[#00897B] border-[#00897B] text-white"
-        : "border-[#1e3552] text-[#94a3b8] hover:border-[#00897B]/50 hover:text-[#e2e8f0]"
+        ? "bg-navy-600 border-navy-600 text-white"
+        : "border-line text-ink-soft hover:border-navy-500/50 hover:text-ink"
     }`;
 
   return (
@@ -98,8 +98,8 @@ export default function FilterGarduTab({ user }: Props) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
         {/* Card 1: Identitas & Waktu */}
-        <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-[#5eead4] uppercase tracking-wider flex items-center gap-1.5">
+        <div className="bg-white border border-line rounded-xl p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-accent-deep uppercase tracking-wider flex items-center gap-1.5">
             <SlidersHorizontal size={12} /> Identitas & Waktu
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -152,8 +152,8 @@ export default function FilterGarduTab({ user }: Props) {
         </div>
 
         {/* Card 2: Beban & Kapasitas */}
-        <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-[#5eead4] uppercase tracking-wider">
+        <div className="bg-white border border-line rounded-xl p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-accent-deep uppercase tracking-wider">
             Beban & Kapasitas Trafo
           </h3>
           {/* Quick chips */}
@@ -200,8 +200,8 @@ export default function FilterGarduTab({ user }: Props) {
         </div>
 
         {/* Card 3: Suhu & Kondisi Cepat */}
-        <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-[#5eead4] uppercase tracking-wider">
+        <div className="bg-white border border-line rounded-xl p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-accent-deep uppercase tracking-wider">
             Suhu & Kondisi Cepat
           </h3>
           <div className="grid grid-cols-2 gap-3">
@@ -222,16 +222,16 @@ export default function FilterGarduTab({ user }: Props) {
               />
             </div>
           </div>
-          <div className="border-t border-[#1e3552] pt-3 space-y-2.5">
-            <p className="text-[10px] text-[#94a3b8] uppercase tracking-wider">Filter Cepat</p>
+          <div className="border-t border-line pt-3 space-y-2.5">
+            <p className="text-[10px] text-ink-soft uppercase tracking-wider">Filter Cepat</p>
             {FLAG_OPTIONS.map(({ key, label }) => (
               <label key={key} className="flex items-center gap-2.5 cursor-pointer group">
                 <input
                   type="checkbox" checked={filter[key]}
                   onChange={(e) => setFilter((f) => ({ ...f, [key]: e.target.checked }))}
-                  className="w-4 h-4 rounded accent-[#00897B] shrink-0"
+                  className="w-4 h-4 rounded accent-navy-600 shrink-0"
                 />
-                <span className="text-xs text-[#94a3b8] group-hover:text-[#e2e8f0] transition-colors">
+                <span className="text-xs text-ink-soft group-hover:text-ink transition-colors">
                   {label}
                 </span>
               </label>
@@ -240,8 +240,8 @@ export default function FilterGarduTab({ user }: Props) {
         </div>
 
         {/* Card 4: Arus & Tegangan */}
-        <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
-          <h3 className="text-xs font-semibold text-[#5eead4] uppercase tracking-wider">
+        <div className="bg-white border border-line rounded-xl p-4 space-y-3">
+          <h3 className="text-xs font-semibold text-accent-deep uppercase tracking-wider">
             Arus & Tegangan
           </h3>
           <div>
@@ -251,7 +251,7 @@ export default function FilterGarduTab({ user }: Props) {
               onChange={(e) => setFilter((f) => ({ ...f, arusMaxFaseMin: e.target.value }))}
               placeholder={`${HIGH_CURRENT_A} (threshold default)`} className={INPUT_CLS}
             />
-            <p className="text-[10px] text-[#94a3b8] mt-1">
+            <p className="text-[10px] text-ink-soft mt-1">
               Gardu dengan setidaknya 1 fasa ≥ nilai ini
             </p>
           </div>
@@ -274,7 +274,7 @@ export default function FilterGarduTab({ user }: Props) {
               </div>
             ))}
           </div>
-          <div className="border-t border-[#1e3552] pt-3 grid grid-cols-2 gap-3">
+          <div className="border-t border-line pt-3 grid grid-cols-2 gap-3">
             <div>
               <label className={LABEL_CLS}>Tegangan ≤ (V) — Undervoltage</label>
               <input
@@ -282,7 +282,7 @@ export default function FilterGarduTab({ user }: Props) {
                 onChange={(e) => setFilter((f) => ({ ...f, tegUnderMax: e.target.value }))}
                 placeholder="210" className={INPUT_CLS}
               />
-              <p className="text-[10px] text-[#94a3b8] mt-1">Cari gardu tegangan rendah</p>
+              <p className="text-[10px] text-ink-soft mt-1">Cari gardu tegangan rendah</p>
             </div>
             <div>
               <label className={LABEL_CLS}>Tegangan ≥ (V) — Overvoltage</label>
@@ -291,7 +291,7 @@ export default function FilterGarduTab({ user }: Props) {
                 onChange={(e) => setFilter((f) => ({ ...f, tegOverMin: e.target.value }))}
                 placeholder="240" className={INPUT_CLS}
               />
-              <p className="text-[10px] text-[#94a3b8] mt-1">Cari gardu tegangan tinggi</p>
+              <p className="text-[10px] text-ink-soft mt-1">Cari gardu tegangan tinggi</p>
             </div>
           </div>
         </div>
@@ -301,14 +301,14 @@ export default function FilterGarduTab({ user }: Props) {
       <div className="flex items-center justify-end gap-3">
         <button
           onClick={handleReset}
-          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-[#1e3552] text-sm text-[#94a3b8] hover:bg-white/5 transition-colors"
+          className="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-line text-sm text-ink-soft hover:bg-surface transition-colors"
         >
           <RefreshCw size={13} /> Reset Filter
         </button>
         <button
           onClick={handleSearch}
           disabled={loading}
-          className="flex items-center gap-2 px-6 py-2 rounded-lg bg-[#00897B] text-white text-sm font-medium hover:bg-[#00695C] disabled:opacity-50 transition-colors"
+          className="flex items-center gap-2 px-6 py-2 rounded-lg bg-navy-600 text-white text-sm font-medium hover:bg-navy-500 disabled:opacity-50 transition-colors"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Search size={14} />}
           {loading ? "Mencari..." : "Cari"}
@@ -317,35 +317,35 @@ export default function FilterGarduTab({ user }: Props) {
 
       {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (
-        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm">
+        <div className="bg-red-900/20 border border-red-500/30 rounded-xl p-4 text-red-600 text-sm">
           Gagal mengambil data: {error}
         </div>
       )}
 
       {/* ── Results Table ───────────────────────────────────────────────────── */}
-      <div className="bg-[#162334] border border-[#1e3552] rounded-xl overflow-hidden">
-        <div className="px-5 py-3 border-b border-[#1e3552] flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[#e2e8f0]">
+      <div className="bg-white border border-line rounded-xl overflow-hidden">
+        <div className="px-5 py-3 border-b border-line flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-ink">
             {searched
               ? `Hasil Filter — ${results.length} gardu ditemukan`
               : "Hasil Pencarian"}
           </h3>
           {searched && results.length > 0 && (
-            <p className="text-xs text-[#94a3b8]">Klik baris untuk detail</p>
+            <p className="text-xs text-ink-soft">Klik baris untuk detail</p>
           )}
         </div>
 
         {!searched ? (
-          <div className="py-16 text-center text-[#94a3b8] text-sm">
+          <div className="py-16 text-center text-ink-soft text-sm">
             Atur filter di atas, lalu klik{" "}
-            <span className="text-[#00897B] font-medium">Cari</span>
+            <span className="text-navy-600 font-medium">Cari</span>
           </div>
         ) : loading ? (
           <div className="py-16 flex justify-center">
-            <div className="w-6 h-6 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+            <div className="w-6 h-6 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
           </div>
         ) : results.length === 0 ? (
-          <div className="py-16 text-center text-[#94a3b8] text-sm">
+          <div className="py-16 text-center text-ink-soft text-sm">
             Tidak ada gardu yang cocok dengan filter yang dipilih
           </div>
         ) : (
@@ -353,17 +353,17 @@ export default function FilterGarduTab({ user }: Props) {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-[#0a2a26]">
-                    <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">No. Gardu</th>
-                    <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Penyulang</th>
-                    <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">KVA</th>
-                    <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold min-w-32">Beban %</th>
-                    <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
-                    <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Arus Max (A)</th>
-                    <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold">Suhu (°C)</th>
-                    <th className="text-center px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Teg R/S/T (V)</th>
-                    <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold whitespace-nowrap">Tgl Ukur</th>
-                    <th className="text-left px-4 py-3 text-xs text-[#5eead4] font-semibold">Status</th>
+                  <tr className="bg-navy-50">
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">No. Gardu</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Penyulang</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">KVA</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32">Beban %</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus Max (A)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Suhu (°C)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Teg R/S/T (V)</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Tgl Ukur</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Status</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -376,36 +376,36 @@ export default function FilterGarduTab({ user }: Props) {
                     const isPhaseOl = maxArus >= iNom;
 
                     const arusCls = (v: number) => {
-                      if (v > HIGH_CURRENT_A) return "text-red-400 font-bold";
-                      if (v >= iNom) return "text-red-400 font-semibold";
-                      if (v >= iNom * 0.9) return "text-amber-400 font-semibold";
-                      return "text-[#94a3b8]";
+                      if (v > HIGH_CURRENT_A) return "text-red-600 font-bold";
+                      if (v >= iNom) return "text-red-600 font-semibold";
+                      if (v >= iNom * 0.9) return "text-amber-600 font-semibold";
+                      return "text-ink-soft";
                     };
 
                     return (
                       <tr
                         key={row.id}
                         onClick={() => setSelectedRow(row)}
-                        className={`cursor-pointer hover:bg-teal-900/20 transition-colors ${
-                          i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"
+                        className={`cursor-pointer hover:bg-navy-50 transition-colors ${
+                          i % 2 === 0 ? "bg-white" : "bg-white"
                         }`}
                       >
-                        <td className="px-4 py-3 font-semibold text-[#e2e8f0] whitespace-nowrap">
+                        <td className="px-4 py-3 font-semibold text-ink whitespace-nowrap">
                           {row.no_gardu}
                         </td>
-                        <td className="px-4 py-3 text-[#94a3b8]">{row.penyulang ?? "—"}</td>
-                        <td className="px-4 py-3 text-center text-[#e2e8f0] font-medium">
+                        <td className="px-4 py-3 text-ink-soft">{row.penyulang ?? "—"}</td>
+                        <td className="px-4 py-3 text-center text-ink font-medium">
                           {row.kva_trafo}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1.5">
-                            <div className="w-14 bg-[#0a1628] rounded-full h-1.5 shrink-0">
+                            <div className="w-14 bg-surface rounded-full h-1.5 shrink-0">
                               <div
-                                className={`h-1.5 rounded-full ${isOverload ? "bg-red-500" : row.persen_beban >= 60 ? "bg-amber-500" : "bg-[#00897B]"}`}
+                                className={`h-1.5 rounded-full ${isOverload ? "bg-red-500" : row.persen_beban >= 60 ? "bg-amber-500" : "bg-emerald-600"}`}
                                 style={{ width: `${Math.min(row.persen_beban, 100)}%` }}
                               />
                             </div>
-                            <span className={`text-xs font-semibold ${isOverload ? "text-red-400" : row.persen_beban >= 60 ? "text-amber-400" : "text-[#5eead4]"}`}>
+                            <span className={`text-xs font-semibold ${isOverload ? "text-red-600" : row.persen_beban >= 60 ? "text-amber-600" : "text-accent-deep"}`}>
                               {Math.round(row.persen_beban)}%
                             </span>
                           </div>
@@ -413,43 +413,43 @@ export default function FilterGarduTab({ user }: Props) {
                         <td className="px-4 py-3 text-center">
                           <span className="font-mono text-xs flex items-center justify-center gap-0.5">
                             <span className={arusCls(row.total_arus_r)}>{Math.round(row.total_arus_r)}</span>
-                            <span className="text-[#1e3552]">/</span>
+                            <span className="text-line">/</span>
                             <span className={arusCls(row.total_arus_s)}>{Math.round(row.total_arus_s)}</span>
-                            <span className="text-[#1e3552]">/</span>
+                            <span className="text-line">/</span>
                             <span className={arusCls(row.total_arus_t)}>{Math.round(row.total_arus_t)}</span>
                           </span>
                         </td>
-                        <td className={`px-4 py-3 text-center font-mono font-medium text-xs ${isHighCurrent ? "text-red-400" : isPhaseOl ? "text-amber-400" : "text-[#94a3b8]"}`}>
+                        <td className={`px-4 py-3 text-center font-mono font-medium text-xs ${isHighCurrent ? "text-red-600" : isPhaseOl ? "text-amber-600" : "text-ink-soft"}`}>
                           {Math.round(maxArus)}
                           {(isHighCurrent || isPhaseOl) && (
                             <AlertTriangle size={10} className="inline ml-1" />
                           )}
                         </td>
-                        <td className={`px-4 py-3 text-center font-mono text-xs ${isHighTemp ? "text-amber-400 font-medium" : "text-[#94a3b8]"}`}>
+                        <td className={`px-4 py-3 text-center font-mono text-xs ${isHighTemp ? "text-amber-600 font-medium" : "text-ink-soft"}`}>
                           {row.suhu_trafo}°C
                         </td>
-                        <td className="px-4 py-3 text-center font-mono text-xs text-[#94a3b8]">
+                        <td className="px-4 py-3 text-center font-mono text-xs text-ink-soft">
                           {Math.round(row.total_teg_rn)}/
                           {Math.round(row.total_teg_sn)}/
                           {Math.round(row.total_teg_tn)}
                         </td>
-                        <td className="px-4 py-3 text-[#94a3b8] whitespace-nowrap text-xs">
+                        <td className="px-4 py-3 text-ink-soft whitespace-nowrap text-xs">
                           {fmtTanggal(row.tanggal_pengukuran)}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex flex-wrap gap-1">
                             {isOverload && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-400 border border-red-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-600 border border-red-500/30 whitespace-nowrap">
                                 OVERLOAD
                               </span>
                             )}
                             {isHighTemp && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-600 border border-amber-500/30 whitespace-nowrap">
                                 SUHU ↑
                               </span>
                             )}
                             {isHighCurrent && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-400 border border-red-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-900/40 text-red-600 border border-red-500/30 whitespace-nowrap">
                                 HI-A
                               </span>
                             )}
@@ -459,7 +459,7 @@ export default function FilterGarduTab({ user }: Props) {
                               </span>
                             )}
                             {row.wo_sent_at && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-900/40 text-teal-400 border border-teal-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-navy-50 text-navy-600 border border-navy-200 whitespace-nowrap">
                                 WO
                               </span>
                             )}
@@ -477,12 +477,12 @@ export default function FilterGarduTab({ user }: Props) {
                               </span>
                             )}
                             {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-400 border border-amber-500/30 whitespace-nowrap">
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-900/40 text-amber-600 border border-amber-500/30 whitespace-nowrap">
                                 ANTRIAN
                               </span>
                             )}
                             {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && !row.amg_sent_at && !row.amg_queued_at && (
-                              <span className="text-[10px] text-[#5eead4]">Normal</span>
+                              <span className="text-[10px] text-accent-deep">Normal</span>
                             )}
                           </div>
                         </td>
@@ -494,22 +494,22 @@ export default function FilterGarduTab({ user }: Props) {
             </div>
 
             {totalPages > 1 && (
-              <div className="px-5 py-3 border-t border-[#1e3552] flex items-center justify-between">
-                <p className="text-xs text-[#94a3b8]">
+              <div className="px-5 py-3 border-t border-line flex items-center justify-between">
+                <p className="text-xs text-ink-soft">
                   Halaman {page} dari {totalPages} ({results.length} gardu)
                 </p>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
                     disabled={page === 1}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 disabled:opacity-40 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-surface disabled:opacity-40 transition-colors"
                   >
                     <ChevronLeft size={14} />
                   </button>
                   <button
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                     disabled={page === totalPages}
-                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-[#1e3552] text-[#94a3b8] hover:bg-white/5 disabled:opacity-40 transition-colors"
+                    className="w-8 h-8 flex items-center justify-center rounded-lg border border-line text-ink-soft hover:bg-surface disabled:opacity-40 transition-colors"
                   >
                     <ChevronRight size={14} />
                   </button>

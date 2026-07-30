@@ -1,6 +1,8 @@
 "use client";
 
 import { CalendarDays } from "lucide-react";
+import { SURFACE } from "@/lib/chartColors";
+import { CARD } from "@/app/admin/_ui";
 import { useCauseSeasonality } from "../_hooks/useCauseSeasonality";
 import { CAUSE_COLORS } from "@/lib/causeClass";
 import type { CurrentUser } from "@/lib/roles";
@@ -23,8 +25,8 @@ export default function CauseHeatmap({ user }: Props) {
   const { rows, maxCell, grandTotal, loading } = useCauseSeasonality(user);
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm overflow-hidden">
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-2.5 flex items-center gap-2">
+    <div className={`${CARD}`}>
+      <div className="bg-navy-700 px-4 py-2.5 flex items-center gap-2">
         <CalendarDays size={14} className="text-white/80" />
         <div className="flex flex-col leading-tight">
           <span className="text-white font-semibold text-xs">Pola Musiman Penyebab Gangguan</span>
@@ -37,10 +39,10 @@ export default function CauseHeatmap({ user }: Props) {
       <div className="p-4">
         {loading ? (
           <div className="flex items-center justify-center h-28">
-            <div className="w-5 h-5 border-2 border-[#1e3552] border-t-[#5eead4] rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-line border-t-navy-600 rounded-full animate-spin" />
           </div>
         ) : grandTotal === 0 ? (
-          <div className="flex items-center justify-center h-28 text-[12px] text-[#94a3b8]">
+          <div className="flex items-center justify-center h-28 text-[12px] text-ink-soft">
             Belum ada data event
           </div>
         ) : (
@@ -50,11 +52,11 @@ export default function CauseHeatmap({ user }: Props) {
                 <tr>
                   <th className="w-28" />
                   {MONTHS.map((m, i) => (
-                    <th key={i} className="text-[10px] font-mono text-[#64748b] font-normal text-center w-7">
+                    <th key={i} className="text-[10px] font-mono text-ink-muted font-normal text-center w-7">
                       {m}
                     </th>
                   ))}
-                  <th className="text-[10px] text-[#64748b] font-normal text-right pl-2 w-12">Total</th>
+                  <th className="text-[10px] text-ink-muted font-normal text-right pl-2 w-12">Total</th>
                 </tr>
               </thead>
               <tbody>
@@ -62,7 +64,7 @@ export default function CauseHeatmap({ user }: Props) {
                   const color = CAUSE_COLORS[row.cause];
                   return (
                     <tr key={row.cause}>
-                      <td className="text-[11px] text-[#cbd5e1] pr-2 whitespace-nowrap">
+                      <td className="text-[11px] text-ink pr-2 whitespace-nowrap">
                         <span className="inline-flex items-center gap-1.5">
                           <span className="h-2 w-2 rounded-sm shrink-0" style={{ backgroundColor: color }} />
                           {row.cause.replace(" (angin/hujan/petir)", "")}
@@ -75,8 +77,8 @@ export default function CauseHeatmap({ user }: Props) {
                             <div
                               className="h-7 rounded flex items-center justify-center text-[9px] font-mono"
                               style={{
-                                backgroundColor: v === 0 ? "#0d1b2a" : rgba(color, intensity),
-                                color: intensity > 0.55 ? "#0a1628" : "#94a3b8",
+                                backgroundColor: v === 0 ? SURFACE.page : rgba(color, intensity),
+                                color: intensity > 0.55 ? SURFACE.card : SURFACE.inkSoft,
                               }}
                               title={`${row.cause} · bulan ${i + 1}: ${v}`}
                             >
@@ -85,7 +87,7 @@ export default function CauseHeatmap({ user }: Props) {
                           </td>
                         );
                       })}
-                      <td className="text-[11px] font-mono font-bold text-[#e2e8f0] text-right pl-2">
+                      <td className="text-[11px] font-mono font-bold text-ink text-right pl-2">
                         {row.total}
                       </td>
                     </tr>

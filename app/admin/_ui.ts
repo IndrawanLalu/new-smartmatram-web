@@ -35,3 +35,8 @@ export const CHIP_ON = "bg-navy-600 border-navy-600 text-white";
 /** Label bagian kecil huruf besar. */
 export const EYEBROW =
   "text-[11px] font-semibold uppercase tracking-wide text-ink-muted";
+
+/** Bilah judul panel — navy seragam supaya identitas panel datang dari
+ *  ikon & teksnya, bukan dari warna latar yang berbeda-beda. */
+export const PANEL_HEAD =
+  "bg-navy-600 px-4 py-2.5 flex items-center gap-2 shrink-0";

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { CARD } from "@/app/admin/_ui";
 import { Sparkles, RefreshCw, Bot } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -29,7 +30,7 @@ function renderText(text: string) {
   return text.split("\n").map((line, i) => {
     if (line.startsWith("RINGKASAN") || line.startsWith("PRIORITAS") || line.startsWith("INSIGHT")) {
       return (
-        <div key={i} className="text-[10px] font-bold text-[#5eead4] uppercase tracking-wider mt-2 mb-0.5 first:mt-0">
+        <div key={i} className="text-[10px] font-bold text-accent-deep uppercase tracking-wider mt-2 mb-0.5 first:mt-0">
           {line}
         </div>
       );
@@ -43,7 +44,7 @@ function renderText(text: string) {
       );
     }
     if (line.trim() === "") return <div key={i} className="h-1" />;
-    return <div key={i} className="text-[11px] text-[#e2e8f0] leading-relaxed">{line}</div>;
+    return <div key={i} className="text-[11px] text-ink leading-relaxed">{line}</div>;
   });
 }
 
@@ -109,9 +110,9 @@ export default function AiInsightPanel({ data }: Props) {
   const timeStr = lastRun?.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
 
   return (
-    <div className="flex flex-col bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden h-[32vh] shrink-0">
+    <div className={`flex flex-col ${CARD} h-[32vh] shrink-0`}>
       {/* Header */}
-      <div className="bg-linear-to-r from-[#1a1a2e] to-[#16213e] px-3 py-2.5 flex items-center gap-2">
+      <div className="bg-navy-700 px-3 py-2.5 flex items-center gap-2">
         <div className="flex items-center gap-1.5">
           <Sparkles size={12} className="text-violet-400" />
           <span className="text-white text-xs font-bold tracking-wider uppercase">AI Analisis</span>
@@ -140,8 +141,8 @@ export default function AiInsightPanel({ data }: Props) {
       <div className="flex-1 overflow-y-auto px-3 py-2.5">
         {state === "idle" && (
           <div className="flex flex-col items-center justify-center h-16 gap-2">
-            <Bot size={20} className="text-[#E2E8F0]" />
-            <p className="text-[11px] text-[#94a3b8] text-center">
+            <Bot size={20} className="text-ink" />
+            <p className="text-[11px] text-ink-soft text-center">
               Klik <span className="font-semibold text-violet-600">Analisis Sekarang</span> untuk insight AI
             </p>
           </div>
@@ -154,7 +155,7 @@ export default function AiInsightPanel({ data }: Props) {
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:150ms]" />
               <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-bounce [animation-delay:300ms]" />
             </div>
-            <span className="text-[11px] text-[#94a3b8]">Gemini sedang menganalisis...</span>
+            <span className="text-[11px] text-ink-soft">Gemini sedang menganalisis...</span>
           </div>
         )}
 
@@ -171,7 +172,7 @@ export default function AiInsightPanel({ data }: Props) {
         {state === "error" && (
           <div className="flex flex-col gap-1 py-2">
             <p className="text-xs text-red-600 font-medium">Gagal menghubungi Gemini</p>
-            <p className="text-[10px] text-[#94a3b8]">{error}</p>
+            <p className="text-[10px] text-ink-soft">{error}</p>
             <button
               onClick={runAnalysis}
               className="text-[10px] text-violet-600 hover:underline text-left mt-1"

@@ -33,24 +33,24 @@ type Props =
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const INPUT = "border border-[#1e3552] rounded-lg px-2.5 py-1.5 text-sm text-[#e2e8f0] bg-[#0d1b2a] focus:outline-none focus:border-[#00897B] focus:ring-1 focus:ring-[#00897B]/20 w-full";
+const INPUT = "border border-line rounded-lg px-2.5 py-1.5 text-sm text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/15 w-full";
 const NUM   = `${INPUT} text-center font-mono`;
-const NUM_SM = "border border-[#1e3552] rounded px-1.5 py-1 text-xs text-center font-mono w-20 bg-[#0d1b2a] text-[#e2e8f0] focus:outline-none focus:border-[#00897B]";
+const NUM_SM = "border border-line rounded px-1.5 py-1 text-xs text-center font-mono w-20 bg-white text-ink focus:outline-none focus:border-navy-500";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function pctColor(pct: number) {
-  if (pct >= 80) return "text-red-400 font-bold";
-  if (pct >= 60) return "text-amber-400 font-semibold";
+  if (pct >= 80) return "text-red-600 font-bold";
+  if (pct >= 60) return "text-amber-600 font-semibold";
   return "text-green-400 font-semibold";
 }
 
 function ArusRow({ label, r, s, t, n }: { label: string; r: number; s: number; t: number; n: number }) {
   return (
-    <tr className="border-t border-[#1e3552]">
-      <td className="px-3 py-1.5 text-xs text-[#94a3b8]">{label}</td>
+    <tr className="border-t border-line">
+      <td className="px-3 py-1.5 text-xs text-ink-soft">{label}</td>
       {[r, s, t, n].map((v, i) => (
-        <td key={i} className="px-2 py-1.5 text-center font-mono text-xs text-[#e2e8f0]">{Math.round(v)}</td>
+        <td key={i} className="px-2 py-1.5 text-center font-mono text-xs text-ink">{Math.round(v)}</td>
       ))}
     </tr>
   );
@@ -188,15 +188,15 @@ export default function PenyeimbanganModal(props: Props) {
   return (
     <>
       <div className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm" onClick={props.onClose} />
-      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-[#162334] z-[70] shadow-2xl flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-full max-w-4xl bg-white z-[70] shadow-2xl flex flex-col overflow-hidden">
 
         {/* Header */}
-        <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-5 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-navy-600 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
             <h2 className="text-white font-bold text-lg">
               {isEdit ? "Edit Penyeimbangan Beban" : "Penyeimbangan Beban Gardu"}
             </h2>
-            <p className="text-teal-100 text-sm mt-0.5">
+            <p className="text-white/60 text-sm mt-0.5">
               {noGardu} · {penyulang} · {kvaTrafo} kVA
             </p>
           </div>
@@ -212,14 +212,14 @@ export default function PenyeimbanganModal(props: Props) {
 
           {/* Info Penyeimbangan */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Info Penyeimbangan</h3>
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-3">Info Penyeimbangan</h3>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <div>
-                <label className="text-xs text-[#94a3b8] mb-1 block">Tanggal Penyeimbangan *</label>
+                <label className="text-xs text-ink-soft mb-1 block">Tanggal Penyeimbangan *</label>
                 <input type="date" value={tglPenyeimbangan} onChange={(e) => setTglPenyeimbangan(e.target.value)} className={INPUT} />
               </div>
               <div>
-                <label className="text-xs text-[#94a3b8] mb-1 block">Jenis Pemeliharaan</label>
+                <label className="text-xs text-ink-soft mb-1 block">Jenis Pemeliharaan</label>
                 <select value={jenisPemeliharaan} onChange={(e) => setJenisPemeliharaan(e.target.value)} className={INPUT}>
                   {JENIS_PEMELIHARAAN_OPTIONS.map((o) => (
                     <option key={o} value={o}>{o}</option>
@@ -228,11 +228,11 @@ export default function PenyeimbanganModal(props: Props) {
               </div>
             </div>
             <div className="mb-3">
-              <label className="text-xs text-[#94a3b8] mb-1 block">Petugas Penyeimbang</label>
+              <label className="text-xs text-ink-soft mb-1 block">Petugas Penyeimbang</label>
               <input type="text" value={petugas} onChange={(e) => setPetugas(e.target.value)} placeholder="Nama petugas..." className={INPUT} />
             </div>
             <div>
-              <label className="text-xs text-[#94a3b8] mb-1 block">Catatan</label>
+              <label className="text-xs text-ink-soft mb-1 block">Catatan</label>
               <textarea
                 value={catatan}
                 onChange={(e) => setCatatan(e.target.value)}
@@ -245,18 +245,18 @@ export default function PenyeimbanganModal(props: Props) {
 
           {/* Perbandingan Beban Total */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">Beban Total — Sebelum vs Sesudah</h3>
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-3">Beban Total — Sebelum vs Sesudah</h3>
             <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
 
               {/* Before — read-only */}
-              <div className="bg-[#0d1b2a] rounded-xl border border-[#1e3552] p-3">
-                <p className="text-[10px] text-red-400 uppercase font-bold mb-2 tracking-wider">Sebelum</p>
-                <div className="overflow-hidden rounded-lg border border-[#1e3552]">
+              <div className="bg-white rounded-xl border border-line p-3">
+                <p className="text-[10px] text-red-600 uppercase font-bold mb-2 tracking-wider">Sebelum</p>
+                <div className="overflow-hidden rounded-lg border border-line">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-[#0a2a26]">
+                      <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
-                          <th key={h} className="px-2 py-1 text-[#5eead4] font-semibold text-center">{h}</th>
+                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -271,23 +271,23 @@ export default function PenyeimbanganModal(props: Props) {
               </div>
 
               {/* Arrow */}
-              <ArrowRight size={28} className="text-[#00897B] shrink-0" />
+              <ArrowRight size={28} className="text-navy-600 shrink-0" />
 
               {/* After — editable */}
-              <div className="bg-[#0a2a26] rounded-xl border border-[#00897B]/40 p-3">
+              <div className="bg-navy-50 rounded-xl border border-navy-300 p-3">
                 <p className="text-[10px] text-green-400 uppercase font-bold mb-2 tracking-wider">Sesudah</p>
-                <div className="overflow-hidden rounded-lg border border-[#1e3552]">
+                <div className="overflow-hidden rounded-lg border border-line">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-[#0a2a26]">
+                      <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
-                          <th key={h} className="px-2 py-1 text-[#5eead4] font-semibold text-center">{h}</th>
+                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      <tr className="border-t border-[#1e3552]">
-                        <td className="px-3 py-1 text-xs text-[#94a3b8] whitespace-nowrap">Arus (A)</td>
+                      <tr className="border-t border-line">
+                        <td className="px-3 py-1 text-xs text-ink-soft whitespace-nowrap">Arus (A)</td>
                         {([
                           [arusR, setArusR], [arusS, setArusS],
                           [arusT, setArusT], [arusN, setArusN],
@@ -314,14 +314,14 @@ export default function PenyeimbanganModal(props: Props) {
 
           {/* Tegangan */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-3">
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-3">
               Tegangan Gardu (V)
-              {isEdit && <span className="ml-2 text-[10px] font-normal text-[#4a5568] normal-case">— untuk hitung ulang % beban</span>}
+              {isEdit && <span className="ml-2 text-[10px] font-normal text-ink-muted normal-case">— untuk hitung ulang % beban</span>}
             </h3>
             <div className="grid grid-cols-3 gap-3">
               {([["R-N", tegRN, setTegRN], ["S-N", tegSN, setTegSN], ["T-N", tegTN, setTegTN]] as const).map(([label, val, setter]) => (
                 <div key={label}>
-                  <label className="text-xs text-[#94a3b8] mb-1 block">{label}</label>
+                  <label className="text-xs text-ink-soft mb-1 block">{label}</label>
                   <input type="number" step="0.1" value={val}
                     onChange={(e) => setter(Number(e.target.value))}
                     className={NUM}
@@ -334,19 +334,19 @@ export default function PenyeimbanganModal(props: Props) {
           {/* Per Jurusan */}
           <section>
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider">Per Jurusan — Sesudah</h3>
-              <button onClick={addJurusan} className="flex items-center gap-1 text-xs text-[#00897B] hover:text-[#004D40] font-medium">
+              <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider">Per Jurusan — Sesudah</h3>
+              <button onClick={addJurusan} className="flex items-center gap-1 text-xs text-navy-600 hover:text-navy-700 font-medium">
                 <Plus size={12} /> Tambah Jurusan
               </button>
             </div>
 
-            <div className="border border-[#1e3552] rounded-xl overflow-x-auto">
+            <div className="border border-line rounded-xl overflow-x-auto">
               <table className="w-full text-xs whitespace-nowrap">
                 <thead>
-                  <tr className="bg-[#0a2a26]">
-                    <th className="text-left px-3 py-2 text-[#5eead4] font-semibold">Jur.</th>
+                  <tr className="bg-navy-50">
+                    <th className="text-left px-3 py-2 text-accent-deep font-semibold">Jur.</th>
                     {["Arus R (A)", "Arus S (A)", "Arus T (A)", "Arus N (A)"].map((h) => (
-                      <th key={h} className="text-center px-2 py-2 text-[#5eead4] font-semibold">{h}</th>
+                      <th key={h} className="text-center px-2 py-2 text-accent-deep font-semibold">{h}</th>
                     ))}
                     <th className="px-2 py-2" />
                   </tr>
@@ -354,14 +354,14 @@ export default function PenyeimbanganModal(props: Props) {
                 <tbody>
                   {jurusanRows.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="text-center py-4 text-[#94a3b8]">Belum ada jurusan</td>
+                      <td colSpan={6} className="text-center py-4 text-ink-soft">Belum ada jurusan</td>
                     </tr>
                   ) : jurusanRows.map((j, idx) => (
-                    <tr key={idx} className={idx % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
+                    <tr key={idx} className={idx % 2 === 0 ? "bg-white" : "bg-white"}>
                       <td className="px-2 py-1.5">
                         <input type="text" value={j.key}
                           onChange={(e) => setJurusanRows((prev) => prev.map((x, i) => i === idx ? { ...x, key: e.target.value.toUpperCase() } : x))}
-                          className="border border-[#1e3552] rounded px-2 py-1 text-xs w-12 text-center font-bold focus:outline-none focus:border-[#00897B] bg-[#0d1b2a] text-[#e2e8f0]"
+                          className="border border-line rounded px-2 py-1 text-xs w-12 text-center font-bold focus:outline-none focus:border-navy-500 bg-white text-ink"
                           placeholder="A"
                         />
                       </td>
@@ -374,7 +374,7 @@ export default function PenyeimbanganModal(props: Props) {
                         </td>
                       ))}
                       <td className="px-2 py-1.5 text-center">
-                        <button onClick={() => removeJurusan(idx)} className="text-red-400 hover:text-red-600 transition-colors">
+                        <button onClick={() => removeJurusan(idx)} className="text-red-600 hover:text-red-600 transition-colors">
                           <Trash2 size={13} />
                         </button>
                       </td>
@@ -386,25 +386,25 @@ export default function PenyeimbanganModal(props: Props) {
 
             {/* Tabel sebelum (read-only) */}
             {Object.keys(beforePerjurusan).length > 0 && (
-              <div className="mt-3 border border-[#1e3552]/50 rounded-xl overflow-x-auto opacity-60">
-                <p className="px-3 py-1.5 text-[10px] text-red-400 font-semibold uppercase tracking-wider bg-[#0a1628]">
+              <div className="mt-3 border border-line/50 rounded-xl overflow-x-auto opacity-60">
+                <p className="px-3 py-1.5 text-[10px] text-red-600 font-semibold uppercase tracking-wider bg-surface">
                   Data Sebelum (Read-only)
                 </p>
                 <table className="w-full text-xs whitespace-nowrap">
                   <thead>
-                    <tr className="bg-[#0a2a26]">
-                      <th className="text-left px-3 py-1.5 text-[#5eead4]">Jur.</th>
+                    <tr className="bg-navy-50">
+                      <th className="text-left px-3 py-1.5 text-accent-deep">Jur.</th>
                       {["R (A)", "S (A)", "T (A)", "N (A)"].map((h) => (
-                        <th key={h} className="text-center px-2 py-1.5 text-[#5eead4]">{h}</th>
+                        <th key={h} className="text-center px-2 py-1.5 text-accent-deep">{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(beforePerjurusan).sort(([a],[b]) => a.localeCompare(b)).map(([key, jd], i) => (
-                      <tr key={key} className={i % 2 === 0 ? "bg-[#162334]" : "bg-[#0d1b2a]"}>
-                        <td className="px-3 py-1 font-bold text-[#e2e8f0]">{key}</td>
+                      <tr key={key} className={i % 2 === 0 ? "bg-white" : "bg-white"}>
+                        <td className="px-3 py-1 font-bold text-ink">{key}</td>
                         {[jd?.arus?.R ?? 0, jd?.arus?.S ?? 0, jd?.arus?.T ?? 0, jd?.arus?.N ?? 0].map((v, vi) => (
-                          <td key={vi} className="px-2 py-1 text-center font-mono text-[#94a3b8]">{Math.round(v)}</td>
+                          <td key={vi} className="px-2 py-1 text-center font-mono text-ink-soft">{Math.round(v)}</td>
                         ))}
                       </tr>
                     ))}
@@ -416,12 +416,12 @@ export default function PenyeimbanganModal(props: Props) {
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-4 border-t border-[#1e3552] flex items-center justify-end gap-3 shrink-0 bg-[#162334]">
-          <button onClick={props.onClose} className="px-4 py-2 text-sm text-[#94a3b8] border border-[#1e3552] rounded-lg hover:bg-[#0d1b2a] transition-colors">
+        <div className="px-5 py-4 border-t border-line flex items-center justify-end gap-3 shrink-0 bg-white">
+          <button onClick={props.onClose} className="px-4 py-2 text-sm text-ink-soft border border-line rounded-lg hover:bg-white transition-colors">
             Batal
           </button>
           <button onClick={handleSave} disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-lg hover:opacity-90 disabled:opacity-60 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 text-sm bg-navy-600 text-white rounded-lg hover:opacity-90 disabled:opacity-60 transition-opacity"
           >
             <Save size={14} />
             {saving ? "Menyimpan..." : isEdit ? "Simpan Perubahan" : "Simpan Penyeimbangan"}

@@ -84,7 +84,7 @@ function SliderRow({
 
   return (
     <div className={`rounded-xl border p-4 transition-all ${
-      active ? "border-[#1e3552] bg-[#0d1b2a]" : "border-[#1e3552]/40 bg-[#0a1220] opacity-60"
+      active ? "border-line bg-white" : "border-line/40 bg-surface opacity-60"
     }`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2.5">
@@ -92,7 +92,7 @@ function SliderRow({
             type="button"
             onClick={() => onChange(active ? null : sliderV)}
             className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-              active ? "bg-[#00897B]" : "bg-[#1e3552]"
+              active ? "bg-navy-600" : "bg-line"
             }`}
           >
             <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
@@ -100,13 +100,13 @@ function SliderRow({
             }`} />
           </button>
           <div>
-            <p className="text-sm font-semibold text-[#e2e8f0]">{label}</p>
-            <p className="text-[11px] text-[#475569]">{description}</p>
+            <p className="text-sm font-semibold text-ink">{label}</p>
+            <p className="text-[11px] text-ink-muted">{description}</p>
           </div>
         </div>
         <div
           className={`min-w-16 text-center text-sm font-bold px-3 py-1 rounded-full border transition-all ${
-            active ? "border-transparent text-[#0a1628]" : "border-[#1e3552] text-[#475569]"
+            active ? "border-transparent text-ink" : "border-line text-ink-muted"
           }`}
           style={active ? { background: color } : undefined}
         >
@@ -128,7 +128,7 @@ function SliderRow({
           className="absolute -top-1 w-4 h-4 rounded-full shadow-lg border-2 border-white transition-all"
           style={{ left: `calc(${pct}% - 8px)`, background: color }}
         />
-        <div className="flex justify-between mt-3 text-[10px] text-[#475569]">
+        <div className="flex justify-between mt-3 text-[10px] text-ink-muted">
           <span>{min}{unit}</span>
           <span>{max}{unit}</span>
         </div>
@@ -163,7 +163,7 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
 
   return (
     <div className={`rounded-xl border p-4 transition-all md:col-span-2 ${
-      active ? "border-[#1e3552] bg-[#0d1b2a]" : "border-[#1e3552]/40 bg-[#0a1220] opacity-60"
+      active ? "border-line bg-white" : "border-line/40 bg-surface opacity-60"
     }`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-3">
@@ -172,7 +172,7 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
             type="button"
             onClick={handleToggle}
             className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${
-              active ? "bg-[#00897B]" : "bg-[#1e3552]"
+              active ? "bg-navy-600" : "bg-line"
             }`}
           >
             <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
@@ -180,13 +180,13 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
             }`} />
           </button>
           <div>
-            <p className="text-sm font-semibold text-[#e2e8f0]">KVA Trafo Range</p>
-            <p className="text-[11px] text-[#475569]">Filter — hanya evaluasi gardu dalam rentang kapasitas trafo ini</p>
+            <p className="text-sm font-semibold text-ink">KVA Trafo Range</p>
+            <p className="text-[11px] text-ink-muted">Filter — hanya evaluasi gardu dalam rentang kapasitas trafo ini</p>
           </div>
         </div>
         <div
           className={`min-w-[120px] text-center text-sm font-bold px-3 py-1 rounded-full border transition-all ${
-            active ? "border-transparent text-[#0a1628]" : "border-[#1e3552] text-[#475569]"
+            active ? "border-transparent text-ink" : "border-line text-ink-muted"
           }`}
           style={active ? { background: KVA_COLOR } : undefined}
         >
@@ -205,7 +205,7 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
         <div className="space-y-3">
           {/* Min slider */}
           <div>
-            <div className="flex justify-between text-[11px] text-[#94a3b8] mb-1">
+            <div className="flex justify-between text-[11px] text-ink-soft mb-1">
               <span>Min KVA</span>
               <span className="font-semibold" style={{ color: KVA_COLOR }}>{minV} kVA</span>
             </div>
@@ -233,7 +233,7 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
 
           {/* Max slider */}
           <div>
-            <div className="flex justify-between text-[11px] text-[#94a3b8] mb-1">
+            <div className="flex justify-between text-[11px] text-ink-soft mb-1">
               <span>Max KVA</span>
               <span className="font-semibold" style={{ color: KVA_COLOR }}>{maxV} kVA</span>
             </div>
@@ -260,13 +260,13 @@ function KvaRangeRow({ minValue, maxValue, onChange }: KvaRangeRowProps) {
           </div>
 
           {/* Range labels */}
-          <div className="flex justify-between text-[10px] text-[#475569]">
+          <div className="flex justify-between text-[10px] text-ink-muted">
             <span>{KVA_SLIDER_MIN} kVA</span>
             <span>{KVA_SLIDER_MAX} kVA</span>
           </div>
 
           {!valid && (
-            <p className="text-xs text-amber-400">Min KVA harus lebih kecil dari Max KVA</p>
+            <p className="text-xs text-amber-600">Min KVA harus lebih kecil dari Max KVA</p>
           )}
         </div>
       )}
@@ -323,44 +323,44 @@ export default function AnomalySettingsPanel({
   const activeCount = CRITERIA.filter((c) => draft[c.key] !== null).length + (kvaActive ? 1 : 0);
 
   return (
-    <div className="bg-[#0d1b2a] rounded-xl border border-[#1e3552] overflow-hidden">
+    <div className="bg-white rounded-xl border border-line overflow-hidden">
       {/* ── Collapsed header ── */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-[#162334] transition-colors"
+        className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-white transition-colors"
       >
         <div className="flex items-center gap-2.5">
-          <SlidersHorizontal size={15} className="text-[#00897B] shrink-0" />
-          <span className="text-sm font-semibold text-[#e2e8f0]">Kriteria Anomali</span>
+          <SlidersHorizontal size={15} className="text-navy-600 shrink-0" />
+          <span className="text-sm font-semibold text-ink">Kriteria Anomali</span>
           {activeCount > 0 && (
-            <span className="text-xs bg-[#00897B]/20 text-[#5eead4] border border-[#00897B]/30 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-xs bg-navy-50 text-accent-deep border border-navy-300 px-2 py-0.5 rounded-full font-medium">
               {activeCount} aktif
             </span>
           )}
           {activeCount === 0 && !loading && (
-            <span className="text-xs text-[#475569]">semua nonaktif</span>
+            <span className="text-xs text-ink-muted">semua nonaktif</span>
           )}
           {loading && (
-            <span className="w-3 h-3 border-2 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+            <span className="w-3 h-3 border-2 border-line border-t-navy-600 rounded-full animate-spin" />
           )}
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[11px] text-[#475569] hidden sm:block">{ulpLabel}</span>
+          <span className="text-[11px] text-ink-muted hidden sm:block">{ulpLabel}</span>
           {savedAt && !dirty && (
             <CheckCircle2 size={13} className="text-green-500 shrink-0" />
           )}
           <ChevronDown
             size={16}
-            className={`text-[#475569] transition-transform ${open ? "rotate-180" : ""}`}
+            className={`text-ink-muted transition-transform ${open ? "rotate-180" : ""}`}
           />
         </div>
       </button>
 
       {/* ── Expanded content ── */}
       {open && (
-        <div className="border-t border-[#1e3552] px-5 py-4 space-y-3">
-          <p className="text-xs text-[#475569] mb-4">
+        <div className="border-t border-line px-5 py-4 space-y-3">
+          <p className="text-xs text-ink-muted mb-4">
             Aktifkan toggle dan atur nilai untuk setiap kriteria. Semua kriteria aktif harus terpenuhi (AND logic).
             Kriteria KVA Trafo Range berfungsi sebagai filter rentang — hanya gardu dalam rentang yang dievaluasi.
           </p>
@@ -389,22 +389,22 @@ export default function AnomalySettingsPanel({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between pt-2 border-t border-[#1e3552]">
-            <div className="text-[11px] text-[#475569]">
+          <div className="flex items-center justify-between pt-2 border-t border-line">
+            <div className="text-[11px] text-ink-muted">
               {savedAt && !dirty && (
                 <span className="flex items-center gap-1 text-green-500">
                   <CheckCircle2 size={11} />
                   Tersimpan {savedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
                 </span>
               )}
-              {dirty && <span className="text-amber-400">Belum tersimpan</span>}
+              {dirty && <span className="text-amber-600">Belum tersimpan</span>}
             </div>
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={handleReset}
                 disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-[#1e3552] text-[#94a3b8] hover:text-[#e2e8f0] hover:bg-[#1e3552] transition-colors disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-line text-ink-soft hover:text-ink hover:bg-line transition-colors disabled:opacity-50"
               >
                 <RotateCcw size={12} />
                 Reset
@@ -413,7 +413,7 @@ export default function AnomalySettingsPanel({
                 type="button"
                 onClick={handleSave}
                 disabled={saving || !dirty}
-                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-lg bg-[#00897B] text-white hover:bg-[#00695C] transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+                className="flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-lg bg-navy-600 text-white hover:bg-navy-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
               >
                 {saving ? (
                   <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />

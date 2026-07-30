@@ -46,7 +46,7 @@ function ArusHighlight({
   const high = v > threshold;
   return (
     <span
-      className={`font-mono font-semibold ${high ? "text-red-600" : "text-[#e2e8f0]"}`}
+      className={`font-mono font-semibold ${high ? "text-red-600" : "text-ink"}`}
     >
       {Math.round(v)}
       {high && (
@@ -66,11 +66,11 @@ function StatBox({
   unit?: string;
 }) {
   return (
-    <div className="bg-[#0d1b2a] rounded-lg px-3 py-2.5 text-center">
-      <p className="text-xs text-[#94a3b8] mb-0.5">{label}</p>
-      <p className="text-base font-bold text-[#e2e8f0]">
+    <div className="bg-white rounded-lg px-3 py-2.5 text-center">
+      <p className="text-xs text-ink-soft mb-0.5">{label}</p>
+      <p className="text-base font-bold text-ink">
         {value}
-        <span className="text-xs font-normal text-[#94a3b8] ml-0.5">
+        <span className="text-xs font-normal text-ink-soft ml-0.5">
           {unit}
         </span>
       </p>
@@ -87,7 +87,7 @@ function BebanBar({ pct }: { pct: number }) {
         : "bg-green-500";
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 bg-gray-200 rounded-full h-3">
+      <div className="flex-1 bg-navy-100 rounded-full h-3">
         <div
           className={`h-3 rounded-full transition-all ${color}`}
           style={{ width: `${Math.min(pct, 100)}%` }}
@@ -213,9 +213,9 @@ export default function GarduDetailModal({
       />
 
       {/* Panel slide-over kanan */}
-      <div className="fixed top-0 right-0 h-full w-full max-w-5xl bg-[#162334] z-50 shadow-2xl flex flex-col overflow-hidden">
+      <div className="fixed top-0 right-0 h-full w-full max-w-5xl bg-white z-50 shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-5 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-navy-600 px-5 py-4 flex items-center justify-between shrink-0">
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-white font-bold text-lg">{row.no_gardu}</h2>
@@ -240,7 +240,7 @@ export default function GarduDetailModal({
                 </span>
               )}
               {row.wo_sent_at && (
-                <span className="bg-[#00695C] text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                <span className="bg-navy-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   WO DIKIRIM
                 </span>
               )}
@@ -255,7 +255,7 @@ export default function GarduDetailModal({
                 </span>
               )}
             </div>
-            <p className="text-teal-100 text-sm mt-0.5">
+            <p className="text-white/60 text-sm mt-0.5">
               {row.penyulang ?? "—"} · {row.petugas_unit}
             </p>
           </div>
@@ -267,7 +267,7 @@ export default function GarduDetailModal({
                 </span>
                 <button
                   onClick={() => { setAmgReset(true); setAmgError(null); }}
-                  className="text-[10px] text-[#94a3b8] hover:text-white underline leading-tight"
+                  className="text-[10px] text-ink-soft hover:text-white underline leading-tight"
                 >
                   Kirim Ulang
                 </button>
@@ -283,7 +283,7 @@ export default function GarduDetailModal({
                 ) : null}
                 <button
                   onClick={() => { setAmgReset(true); setAmgError(null); }}
-                  className="text-[10px] text-[#94a3b8] hover:text-white underline leading-tight"
+                  className="text-[10px] text-ink-soft hover:text-white underline leading-tight"
                 >
                   Kirim ulang
                 </button>
@@ -307,7 +307,7 @@ export default function GarduDetailModal({
                     <span className="text-red-300 text-[10px] max-w-[200px] text-right leading-tight">{amgError}</span>
                     <button
                       onClick={handleKirimAmg}
-                      className="text-[10px] text-[#5eead4] hover:text-white underline leading-tight"
+                      className="text-[10px] text-accent-deep hover:text-white underline leading-tight"
                     >
                       Coba Lagi
                     </button>
@@ -340,36 +340,36 @@ export default function GarduDetailModal({
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
           {/* Info Dasar */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
               Informasi Gardu
             </h3>
             <div className="grid grid-cols-2 gap-2 text-sm">
               <div>
-                <p className="text-xs text-[#94a3b8]">Alamat</p>
-                <p className="font-medium text-[#e2e8f0]">
+                <p className="text-xs text-ink-soft">Alamat</p>
+                <p className="font-medium text-ink">
                   {row.alamat ?? "—"}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-[#94a3b8]">Kapasitas Trafo</p>
-                <p className="font-medium text-[#e2e8f0]">
+                <p className="text-xs text-ink-soft">Kapasitas Trafo</p>
+                <p className="font-medium text-ink">
                   {row.kva_trafo} KVA
                 </p>
               </div>
               <div>
-                <p className="text-xs text-[#94a3b8]">Tanggal Pengukuran</p>
-                <p className="font-medium text-[#e2e8f0]">
+                <p className="text-xs text-ink-soft">Tanggal Pengukuran</p>
+                <p className="font-medium text-ink">
                   {fmtTanggal(row.tanggal_pengukuran)}
                   {row.jam_pengukuran && (
-                    <span className="ml-1.5 text-[#94a3b8] font-normal">
+                    <span className="ml-1.5 text-ink-soft font-normal">
                       {row.jam_pengukuran}
                     </span>
                   )}
                 </p>
               </div>
               <div>
-                <p className="text-xs text-[#94a3b8]">Petugas</p>
-                <p className="font-medium text-[#e2e8f0]">
+                <p className="text-xs text-ink-soft">Petugas</p>
+                <p className="font-medium text-ink">
                   {row.petugas_nama ?? "—"}
                 </p>
               </div>
@@ -378,16 +378,16 @@ export default function GarduDetailModal({
 
           {/* Beban Trafo */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
               Beban Trafo
             </h3>
-            <div className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 space-y-3">
+            <div className="bg-white border border-line rounded-xl p-4 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#94a3b8]">
+                <span className="text-sm text-ink-soft">
                   {Math.round(row.beban_kva)} KVA / {row.kva_trafo} KVA
                 </span>
                 <span
-                  className={`text-sm font-bold ${isOverload ? "text-red-600" : "text-[#e2e8f0]"}`}
+                  className={`text-sm font-bold ${isOverload ? "text-red-600" : "text-ink"}`}
                 >
                   {isOverload ? "⚠ OVERLOAD" : "Normal"}
                 </span>
@@ -398,12 +398,12 @@ export default function GarduDetailModal({
 
           {/* Pengukuran Total */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
               Pengukuran Total
             </h3>
             <div className="space-y-3">
               <div>
-                <p className="text-xs text-[#94a3b8] mb-1.5 flex items-center gap-1">
+                <p className="text-xs text-ink-soft mb-1.5 flex items-center gap-1">
                   <Zap size={11} /> Arus (Ampere)
                 </p>
                 <div className="grid grid-cols-4 gap-2">
@@ -430,7 +430,7 @@ export default function GarduDetailModal({
                 </div>
               </div>
               <div>
-                <p className="text-xs text-[#94a3b8] mb-1.5">
+                <p className="text-xs text-ink-soft mb-1.5">
                   Tegangan Fasa-Netral (Volt)
                 </p>
                 <div className="grid grid-cols-3 gap-2">
@@ -455,7 +455,7 @@ export default function GarduDetailModal({
                 row.total_teg_st != null ||
                 row.total_teg_rt != null) && (
                 <div>
-                  <p className="text-xs text-[#94a3b8] mb-1.5">
+                  <p className="text-xs text-ink-soft mb-1.5">
                     Tegangan Fasa-Fasa (Volt)
                   </p>
                   <div className="grid grid-cols-3 gap-2">
@@ -478,15 +478,15 @@ export default function GarduDetailModal({
                 </div>
               )}
               <div
-                className={`flex items-center justify-between px-4 py-3 rounded-xl border ${isHighTemp ? "bg-amber-50 border-amber-200" : "bg-[#0d1b2a] border-[#1e3552]"}`}
+                className={`flex items-center justify-between px-4 py-3 rounded-xl border ${isHighTemp ? "bg-amber-50 border-amber-200" : "bg-white border-line"}`}
               >
                 <div className="flex items-center gap-2">
                   <Thermometer
                     size={16}
-                    className={isHighTemp ? "text-amber-600" : "text-[#94a3b8]"}
+                    className={isHighTemp ? "text-amber-600" : "text-ink-soft"}
                   />
                   <span
-                    className={`text-sm font-medium ${isHighTemp ? "text-amber-700" : "text-[#94a3b8]"}`}
+                    className={`text-sm font-medium ${isHighTemp ? "text-amber-700" : "text-ink-soft"}`}
                   >
                     Suhu Trafo
                   </span>
@@ -497,7 +497,7 @@ export default function GarduDetailModal({
                   )}
                 </div>
                 <span
-                  className={`text-xl font-bold ${isHighTemp ? "text-amber-600" : "text-[#e2e8f0]"}`}
+                  className={`text-xl font-bold ${isHighTemp ? "text-amber-600" : "text-ink"}`}
                 >
                   {row.suhu_trafo}°C
                 </span>
@@ -507,34 +507,34 @@ export default function GarduDetailModal({
 
           {/* Per Jurusan */}
           <section>
-            <h3 className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-2">
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
               Pengukuran Per Jurusan
             </h3>
             {jurusanKeys.length === 0 ? (
-              <p className="text-sm text-[#94a3b8] text-center py-4 bg-[#0d1b2a] rounded-xl">
+              <p className="text-sm text-ink-soft text-center py-4 bg-white rounded-xl">
                 Tidak ada data perjurusan
               </p>
             ) : (
-              <div className="border border-[#1e3552] rounded-xl overflow-hidden">
+              <div className="border border-line rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-[#0a2a26]">
-                      <th className="text-left px-4 py-2.5 text-xs text-[#5eead4] font-semibold">
+                    <tr className="bg-navy-50">
+                      <th className="text-left px-4 py-2.5 text-xs text-accent-deep font-semibold">
                         Jurusan
                       </th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">
+                      <th className="text-center px-3 py-2.5 text-xs text-accent-deep font-semibold">
                         Arus R (A)
                       </th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">
+                      <th className="text-center px-3 py-2.5 text-xs text-accent-deep font-semibold">
                         Arus S (A)
                       </th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">
+                      <th className="text-center px-3 py-2.5 text-xs text-accent-deep font-semibold">
                         Arus T (A)
                       </th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">
+                      <th className="text-center px-3 py-2.5 text-xs text-accent-deep font-semibold">
                         Arus N (A)
                       </th>
-                      <th className="text-center px-3 py-2.5 text-xs text-[#5eead4] font-semibold">
+                      <th className="text-center px-3 py-2.5 text-xs text-accent-deep font-semibold">
                         Status
                       </th>
                     </tr>
@@ -551,16 +551,16 @@ export default function GarduDetailModal({
                       return (
                         <tr
                           key={key}
-                          className={`${i % 2 === 0 ? "bg-[#162334]" : "bg-gray-50/50"} ${anyHigh ? "border-l-2 border-l-red-400" : ""}`}
+                          className={`${i % 2 === 0 ? "bg-white" : "bg-gray-50/50"} ${anyHigh ? "border-l-2 border-l-red-400" : ""}`}
                         >
-                          <td className="px-4 py-3 font-bold text-[#e2e8f0]">
+                          <td className="px-4 py-3 font-bold text-ink">
                             {key}
                           </td>
                           <td
                             className={`px-3 py-3 text-center ${highR ? "bg-red-50" : ""}`}
                           >
                             <span
-                              className={`font-mono text-sm font-semibold ${highR ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono text-sm font-semibold ${highR ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(arus.R)}
                               {highR && (
@@ -575,7 +575,7 @@ export default function GarduDetailModal({
                             className={`px-3 py-3 text-center ${highS ? "bg-red-50" : ""}`}
                           >
                             <span
-                              className={`font-mono text-sm font-semibold ${highS ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono text-sm font-semibold ${highS ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(arus.S)}
                               {highS && (
@@ -590,7 +590,7 @@ export default function GarduDetailModal({
                             className={`px-3 py-3 text-center ${highT ? "bg-red-50" : ""}`}
                           >
                             <span
-                              className={`font-mono text-sm font-semibold ${highT ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono text-sm font-semibold ${highT ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(arus.T)}
                               {highT && (
@@ -601,7 +601,7 @@ export default function GarduDetailModal({
                               )}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-center font-mono text-sm text-[#94a3b8]">
+                          <td className="px-3 py-3 text-center font-mono text-sm text-ink-soft">
                             {Math.round(arus.N ?? 0)}
                           </td>
                           <td className="px-3 py-3 text-center">
@@ -615,7 +615,7 @@ export default function GarduDetailModal({
                                 ✓ Normal
                               </span>
                             ) : (
-                              <span className="text-xs text-[#94a3b8]">—</span>
+                              <span className="text-xs text-ink-soft">—</span>
                             )}
                           </td>
                         </tr>
@@ -625,8 +625,8 @@ export default function GarduDetailModal({
                 </table>
 
                 {jurusanKeys.some((k) => perjurusan[k]?.tegangan) && (
-                  <div className="border-t border-[#1e3552] bg-[#0d1b2a] px-4 py-3">
-                    <p className="text-xs font-semibold text-[#94a3b8] mb-2">
+                  <div className="border-t border-line bg-white px-4 py-3">
+                    <p className="text-xs font-semibold text-ink-soft mb-2">
                       Tegangan Ujung per Jurusan (V)
                     </p>
                     <div className="grid grid-cols-5 gap-2">
@@ -636,19 +636,19 @@ export default function GarduDetailModal({
                         return (
                           <div
                             key={key}
-                            className="bg-[#162334] rounded-lg p-2 text-center border border-[#1e3552]"
+                            className="bg-white rounded-lg p-2 text-center border border-line"
                           >
-                            <p className="text-xs font-bold text-[#5eead4]">
+                            <p className="text-xs font-bold text-accent-deep">
                               {key}
                             </p>
-                            <p className="text-xs text-[#94a3b8] mt-0.5">
+                            <p className="text-xs text-ink-soft mt-0.5">
                               <span title="R">{Math.round(teg.R ?? 0)}</span>
-                              <span className="text-gray-300"> / </span>
+                              <span className="text-ink-muted"> / </span>
                               <span title="S">{Math.round(teg.S ?? 0)}</span>
-                              <span className="text-gray-300"> / </span>
+                              <span className="text-ink-muted"> / </span>
                               <span title="T">{Math.round(teg.T ?? 0)}</span>
                             </p>
-                            <p className="text-[10px] text-gray-400">R/S/T V</p>
+                            <p className="text-[10px] text-ink-muted">R/S/T V</p>
                           </div>
                         );
                       })}
@@ -664,15 +664,15 @@ export default function GarduDetailModal({
             <section>
               <button
                 onClick={() => setHistoryOpen((o) => !o)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-[#0d1b2a] rounded-xl hover:bg-[#0a2a26] transition-colors"
+                className="w-full flex items-center justify-between px-4 py-3 bg-white rounded-xl hover:bg-navy-50 transition-colors"
               >
-                <span className="text-xs font-semibold text-[#94a3b8] uppercase tracking-wider flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-ink-soft uppercase tracking-wider flex items-center gap-1.5">
                   <History size={12} /> Riwayat Pengukuran ({history.length})
                 </span>
                 {historyOpen ? (
-                  <ChevronUp size={14} className="text-[#94a3b8]" />
+                  <ChevronUp size={14} className="text-ink-soft" />
                 ) : (
-                  <ChevronDown size={14} className="text-[#94a3b8]" />
+                  <ChevronDown size={14} className="text-ink-soft" />
                 )}
               </button>
 
@@ -694,23 +694,23 @@ export default function GarduDetailModal({
                     return (
                       <div
                         key={h.id}
-                        className={`border rounded-xl overflow-hidden ${isLatest ? "border-[#00897B]" : "border-[#1e3552]"}`}
+                        className={`border rounded-xl overflow-hidden ${isLatest ? "border-navy-500" : "border-line"}`}
                       >
                         {/* Entry header */}
                         <div
-                          className={`px-4 py-2.5 flex items-center justify-between ${isLatest ? "bg-teal-50" : "bg-[#0d1b2a]"}`}
+                          className={`px-4 py-2.5 flex items-center justify-between ${isLatest ? "bg-navy-50" : "bg-white"}`}
                         >
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-semibold text-[#e2e8f0]">
+                            <span className="text-sm font-semibold text-ink">
                               {fmtTanggal(h.tanggal_pengukuran)}
                               {h.jam_pengukuran && (
-                                <span className="ml-1.5 text-xs text-[#94a3b8] font-normal">
+                                <span className="ml-1.5 text-xs text-ink-soft font-normal">
                                   {h.jam_pengukuran}
                                 </span>
                               )}
                             </span>
                             {isLatest && (
-                              <span className="text-[10px] bg-[#00897B] text-white px-1.5 py-0.5 rounded-full font-semibold">
+                              <span className="text-[10px] bg-navy-600 text-white px-1.5 py-0.5 rounded-full font-semibold">
                                 terbaru
                               </span>
                             )}
@@ -720,7 +720,7 @@ export default function GarduDetailModal({
                               </span>
                             )}
                             {h.wo_sent_at && (
-                              <span className="text-[10px] bg-teal-700/40 text-teal-300 border border-teal-600/40 px-1.5 py-0.5 rounded-full font-semibold">
+                              <span className="text-[10px] bg-navy-50 text-navy-600 border border-navy-200 px-1.5 py-0.5 rounded-full font-semibold">
                                 WO
                               </span>
                             )}
@@ -733,30 +733,30 @@ export default function GarduDetailModal({
                           <div className="flex items-center gap-3">
                             <div className="flex items-center gap-3 text-xs">
                               <span
-                                className={`font-bold font-mono ${hOverload ? "text-red-600" : "text-[#00897B]"}`}
+                                className={`font-bold font-mono ${hOverload ? "text-red-600" : "text-navy-600"}`}
                               >
                                 {Math.round(h.persen_beban)}% ·{" "}
                                 {Math.round(h.beban_kva)} KVA
                               </span>
                               <span
-                                className={`font-mono ${hHighTemp ? "text-amber-600 font-semibold" : "text-[#94a3b8]"}`}
+                                className={`font-mono ${hHighTemp ? "text-amber-600 font-semibold" : "text-ink-soft"}`}
                               >
                                 {h.suhu_trafo}°C
                               </span>
-                              <span className="text-[#94a3b8]">
+                              <span className="text-ink-soft">
                                 {h.petugas_nama ?? "—"}
                               </span>
                             </div>
                             <button
                               onClick={() => onEdit(h)}
-                              className="flex items-center gap-1 text-[10px] text-[#00897B] hover:text-[#004D40] font-semibold transition-colors border border-[#00897B]/30 rounded px-1.5 py-0.5"
+                              className="flex items-center gap-1 text-[10px] text-navy-600 hover:text-navy-700 font-semibold transition-colors border border-navy-300 rounded px-1.5 py-0.5"
                             >
                               <Pencil size={9} /> Edit
                             </button>
                             {onDeleteRow && (
                               deletingId === h.id ? (
                                 <div className="flex items-center gap-1">
-                                  <span className="text-[10px] text-red-400">Yakin hapus?</span>
+                                  <span className="text-[10px] text-red-600">Yakin hapus?</span>
                                   <button
                                     onClick={() => handleDelete(h.id)}
                                     disabled={deleteLoading}
@@ -766,7 +766,7 @@ export default function GarduDetailModal({
                                   </button>
                                   <button
                                     onClick={() => setDeletingId(null)}
-                                    className="text-[10px] text-[#94a3b8] hover:text-white border border-[#1e3552] rounded px-1.5 py-0.5"
+                                    className="text-[10px] text-ink-soft hover:text-white border border-line rounded px-1.5 py-0.5"
                                   >
                                     Batal
                                   </button>
@@ -774,7 +774,7 @@ export default function GarduDetailModal({
                               ) : (
                                 <button
                                   onClick={() => setDeletingId(h.id)}
-                                  className="flex items-center gap-1 text-[10px] text-red-400 hover:text-red-300 font-semibold transition-colors border border-red-500/30 rounded px-1.5 py-0.5"
+                                  className="flex items-center gap-1 text-[10px] text-red-600 hover:text-red-300 font-semibold transition-colors border border-red-500/30 rounded px-1.5 py-0.5"
                                 >
                                   <Trash2 size={9} /> Hapus
                                 </button>
@@ -784,11 +784,11 @@ export default function GarduDetailModal({
                         </div>
 
                         {/* Pengukuran total grid */}
-                        <div className="px-4 py-2.5 grid grid-cols-4 gap-x-6 gap-y-1 text-xs border-b border-[#1e3552] bg-[#162334]">
+                        <div className="px-4 py-2.5 grid grid-cols-4 gap-x-6 gap-y-1 text-xs border-b border-line bg-white">
                           <div>
-                            <span className="text-[#94a3b8]">Arus R: </span>
+                            <span className="text-ink-soft">Arus R: </span>
                             <span
-                              className={`font-mono font-semibold ${hHighR ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono font-semibold ${hHighR ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(h.total_arus_r)} A
                               {hHighR && (
@@ -800,9 +800,9 @@ export default function GarduDetailModal({
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Arus S: </span>
+                            <span className="text-ink-soft">Arus S: </span>
                             <span
-                              className={`font-mono font-semibold ${hHighS ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono font-semibold ${hHighS ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(h.total_arus_s)} A
                               {hHighS && (
@@ -814,9 +814,9 @@ export default function GarduDetailModal({
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Arus T: </span>
+                            <span className="text-ink-soft">Arus T: </span>
                             <span
-                              className={`font-mono font-semibold ${hHighT ? "text-red-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono font-semibold ${hHighT ? "text-red-600" : "text-ink"}`}
                             >
                               {Math.round(h.total_arus_t)} A
                               {hHighT && (
@@ -828,57 +828,57 @@ export default function GarduDetailModal({
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Arus N: </span>
-                            <span className="font-mono text-[#e2e8f0]">
+                            <span className="text-ink-soft">Arus N: </span>
+                            <span className="font-mono text-ink">
                               {Math.round(h.total_arus_n)} A
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Teg R-N: </span>
-                            <span className="font-mono text-[#e2e8f0]">
+                            <span className="text-ink-soft">Teg R-N: </span>
+                            <span className="font-mono text-ink">
                               {Math.round(h.total_teg_rn)} V
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Teg S-N: </span>
-                            <span className="font-mono text-[#e2e8f0]">
+                            <span className="text-ink-soft">Teg S-N: </span>
+                            <span className="font-mono text-ink">
                               {Math.round(h.total_teg_sn)} V
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Teg T-N: </span>
-                            <span className="font-mono text-[#e2e8f0]">
+                            <span className="text-ink-soft">Teg T-N: </span>
+                            <span className="font-mono text-ink">
                               {Math.round(h.total_teg_tn)} V
                             </span>
                           </div>
                           <div>
-                            <span className="text-[#94a3b8]">Suhu: </span>
+                            <span className="text-ink-soft">Suhu: </span>
                             <span
-                              className={`font-mono font-semibold ${hHighTemp ? "text-amber-600" : "text-[#e2e8f0]"}`}
+                              className={`font-mono font-semibold ${hHighTemp ? "text-amber-600" : "text-ink"}`}
                             >
                               {h.suhu_trafo} °C
                             </span>
                           </div>
                           {h.total_teg_rs != null && (
                             <div>
-                              <span className="text-[#94a3b8]">Teg R-S: </span>
-                              <span className="font-mono text-[#e2e8f0]">
+                              <span className="text-ink-soft">Teg R-S: </span>
+                              <span className="font-mono text-ink">
                                 {Math.round(h.total_teg_rs)} V
                               </span>
                             </div>
                           )}
                           {h.total_teg_st != null && (
                             <div>
-                              <span className="text-[#94a3b8]">Teg S-T: </span>
-                              <span className="font-mono text-[#e2e8f0]">
+                              <span className="text-ink-soft">Teg S-T: </span>
+                              <span className="font-mono text-ink">
                                 {Math.round(h.total_teg_st)} V
                               </span>
                             </div>
                           )}
                           {h.total_teg_rt != null && (
                             <div>
-                              <span className="text-[#94a3b8]">Teg R-T: </span>
-                              <span className="font-mono text-[#e2e8f0]">
+                              <span className="text-ink-soft">Teg R-T: </span>
+                              <span className="font-mono text-ink">
                                 {Math.round(h.total_teg_rt)} V
                               </span>
                             </div>
@@ -890,31 +890,31 @@ export default function GarduDetailModal({
                           <div className="overflow-x-auto">
                             <table className="w-full text-xs whitespace-nowrap">
                               <thead>
-                                <tr className="bg-gray-50 border-b border-[#1e3552]">
-                                  <th className="text-left px-3 py-1.5 text-[#94a3b8] font-semibold">
+                                <tr className="bg-gray-50 border-b border-line">
+                                  <th className="text-left px-3 py-1.5 text-ink-soft font-semibold">
                                     Jurusan
                                   </th>
-                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                  <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                     Arus R (A)
                                   </th>
-                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                  <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                     Arus S (A)
                                   </th>
-                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                  <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                     Arus T (A)
                                   </th>
-                                  <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                  <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                     Arus N (A)
                                   </th>
                                   {hasTeg && (
                                     <>
-                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                      <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                         Teg Ujung R (V)
                                       </th>
-                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                      <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                         Teg Ujung S (V)
                                       </th>
-                                      <th className="text-center px-2 py-1.5 text-[#94a3b8] font-semibold">
+                                      <th className="text-center px-2 py-1.5 text-ink-soft font-semibold">
                                         Teg Ujung T (V)
                                       </th>
                                     </>
@@ -939,15 +939,15 @@ export default function GarduDetailModal({
                                       key={k}
                                       className={
                                         ki % 2 === 0
-                                          ? "bg-[#162334]"
+                                          ? "bg-white"
                                           : "bg-gray-50/50"
                                       }
                                     >
-                                      <td className="px-3 py-1.5 font-bold text-[#e2e8f0]">
+                                      <td className="px-3 py-1.5 font-bold text-ink">
                                         {k}
                                       </td>
                                       <td
-                                        className={`px-2 py-1.5 text-center font-mono ${jHR ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}
+                                        className={`px-2 py-1.5 text-center font-mono ${jHR ? "text-red-600 font-semibold" : "text-ink-soft"}`}
                                       >
                                         {Math.round(a.R)}
                                         {jHR && (
@@ -958,7 +958,7 @@ export default function GarduDetailModal({
                                         )}
                                       </td>
                                       <td
-                                        className={`px-2 py-1.5 text-center font-mono ${jHS ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}
+                                        className={`px-2 py-1.5 text-center font-mono ${jHS ? "text-red-600 font-semibold" : "text-ink-soft"}`}
                                       >
                                         {Math.round(a.S)}
                                         {jHS && (
@@ -969,7 +969,7 @@ export default function GarduDetailModal({
                                         )}
                                       </td>
                                       <td
-                                        className={`px-2 py-1.5 text-center font-mono ${jHT ? "text-red-600 font-semibold" : "text-[#94a3b8]"}`}
+                                        className={`px-2 py-1.5 text-center font-mono ${jHT ? "text-red-600 font-semibold" : "text-ink-soft"}`}
                                       >
                                         {Math.round(a.T)}
                                         {jHT && (
@@ -979,18 +979,18 @@ export default function GarduDetailModal({
                                           />
                                         )}
                                       </td>
-                                      <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">
+                                      <td className="px-2 py-1.5 text-center font-mono text-ink-soft">
                                         {Math.round(a.N ?? 0)}
                                       </td>
                                       {hasTeg && (
                                         <>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">
+                                          <td className="px-2 py-1.5 text-center font-mono text-ink-soft">
                                             {Math.round(teg?.R ?? 0)}
                                           </td>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">
+                                          <td className="px-2 py-1.5 text-center font-mono text-ink-soft">
                                             {Math.round(teg?.S ?? 0)}
                                           </td>
-                                          <td className="px-2 py-1.5 text-center font-mono text-[#94a3b8]">
+                                          <td className="px-2 py-1.5 text-center font-mono text-ink-soft">
                                             {Math.round(teg?.T ?? 0)}
                                           </td>
                                         </>
