@@ -60,6 +60,7 @@ function systemPrompt(): string {
 - Setelah dapat hasil alat, rangkum jadi jawaban natural. Sebutkan angkanya. Jika data kosong, katakan apa adanya.
 - PENTING: gunakan PERSIS nama penyulang & ULP dari hasil alat. JANGAN mengarang/menebak ULP suatu penyulang — kalau hasil alat tidak menyebut ULP-nya, jangan tulis ULP-nya.
 - "risiko/prediksi/besok" → pakai alat risiko_besok. "terbanyak/sering/sudah terjadi" → top_penyulang/statistik_gangguan.
+- "durasi/lama padam/berapa jam padam" → pakai statistik_gangguan (ada durasi total, rata-rata, per ULP, dan 3 kejadian terlama). "penyulang mana paling lama padam" → top_penyulang dengan urut='durasi'. Sebutkan satuannya (jam/menit) dan jangan campur "jumlah kejadian" dengan "lama padam" — itu dua hal berbeda.
 - "gardu/beban/overload/suhu/alamat/lokasi gardu" → pakai alat data_gardu. Jika hasil punya maps_url, sertakan link Google Maps itu di jawaban.
 - Pertanyaan soal STANDAR/KONSTRUKSI/SPLN/spesifikasi/teori kelistrikan, ATAU soal ISI/TOPIK BUKU & DOKUMEN (mis. "buku 2 tentang apa", "isi buku ...", "menurut buku ...") → WAJIB panggil alat cari_standar DULU, lalu jawab berdasarkan kutipan & sebutkan sumber (buku + halaman). Jangan jawab dari ingatanmu sendiri, jangan mengarang.
 - ULP yang valid: AMPENAN, CAKRANEGARA, GERUNG, TANJUNG.`;
@@ -71,12 +72,12 @@ const TOOLS = [
     type: "function",
     function: {
       name: "statistik_gangguan",
-      description: "Gangguan penyulang yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang). Filter tahun/bulan/ULP; jika tahun tak disebut, default tahun berjalan. Mengembalikan total + rincian per ULP + per PENYEBAB. Bila difilter ULP + bulan, juga DAFTAR kejadian (penyulang, tanggal, penyebab). Pakai untuk 'berapa gangguan' DAN 'penyebab gangguan'.",
+      description: "Gangguan penyulang yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang). Filter tahun/bulan/ULP; jika tahun tak disebut, default tahun berjalan. Mengembalikan total, DURASI PADAM (total jam + rata-rata menit, keseluruhan & per ULP), 3 kejadian TERLAMA, rincian per PENYEBAB, per FASILITAS padam (GI/PLTD, RECLOSER, dll) dan per INDIKATOR (EF/OC). Bila difilter ULP + bulan, juga DAFTAR kejadian (penyulang, tanggal, durasi, fasilitas, indikator, penyebab). Pakai untuk 'berapa gangguan', 'penyebab gangguan', DAN semua pertanyaan soal LAMA/DURASI PADAM.",
       parameters: {
         type: "object",
         properties: {
-          tahun: { type: "integer", description: "Tahun, mis. 2026. Default tahun ini." },
-          bulan: { type: "integer", description: "Bulan 1-12 (opsional)." },
+          tahun: { type: ["integer", "string"], description: "Tahun, mis. 2026. Default tahun ini." },
+          bulan: { type: ["integer", "string"], description: "Bulan sebagai ANGKA 1-12 (Juli = 7)." },
           ulp: { type: "string", description: "AMPENAN/CAKRANEGARA/GERUNG/TANJUNG (opsional)." },
         },
       },
@@ -86,14 +87,15 @@ const TOOLS = [
     type: "function",
     function: {
       name: "top_penyulang",
-      description: "Daftar penyulang dengan gangguan terbanyak yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang). Default tahun = tahun berjalan jika tak disebut. BUKAN prediksi.",
+      description: "Peringkat penyulang dari gangguan yang SUDAH TERJADI (sumber resmi: Google Sheet gangguanPenyulang), lengkap dengan jumlah kejadian + total jam padam + rata-rata menit per penyulang. Default urut berdasarkan JUMLAH kejadian; pakai urut='durasi' untuk 'penyulang mana yang paling lama padam'. Default tahun = tahun berjalan. BUKAN prediksi.",
       parameters: {
         type: "object",
         properties: {
-          tahun: { type: "integer", description: "Tahun, mis. 2026." },
-          bulan: { type: "integer", description: "Bulan 1-12 (opsional)." },
+          tahun: { type: ["integer", "string"], description: "Tahun, mis. 2026." },
+          bulan: { type: ["integer", "string"], description: "Bulan sebagai ANGKA 1-12 (Juli = 7)." },
           ulp: { type: "string", description: "ULP (opsional)." },
-          limit: { type: "integer", description: "Jumlah penyulang teratas (default 10)." },
+          limit: { type: ["integer", "string"], description: "Jumlah penyulang teratas (default 10)." },
+          urut: { type: "string", enum: ["jumlah", "durasi"], description: "'jumlah' = paling sering terganggu (default); 'durasi' = paling lama padam." },
         },
       },
     },
@@ -110,7 +112,7 @@ const TOOLS = [
     type: "function",
     function: {
       name: "data_gardu",
-      description: "Info & beban gardu distribusi (kondisi TERKINI). Bisa cari gardu tertentu (no_gardu), filter per ULP/penyulang, atau yang overload/suhu tinggi. Mengembalikan alamat, persen beban, suhu trafo, daya, tanggal ukur, status WO, dan link Google Maps (maps_url). Pakai utk pertanyaan soal gardu: beban, overload, suhu, alamat, lokasi/peta.",
+      description: "Info & beban gardu distribusi (kondisi TERKINI). Bisa cari gardu tertentu (no_gardu), filter per ULP/penyulang, yang overload/suhu tinggi, atau di atas ambang tertentu (min_persen/min_suhu). Mengembalikan alamat, persen beban, suhu trafo, daya, tanggal ukur, status WO, dan link Google Maps (maps_url). Pakai utk pertanyaan soal gardu: beban, overload, suhu, alamat, lokasi/peta.",
       parameters: {
         type: "object",
         properties: {
@@ -119,7 +121,9 @@ const TOOLS = [
           penyulang: { type: "string", description: "Nama penyulang (opsional)." },
           hanya_overload: { type: "boolean", description: "true = hanya gardu beban >= 80%." },
           hanya_suhu_tinggi: { type: "boolean", description: "true = hanya gardu suhu trafo > 60 derajat C." },
-          limit: { type: "integer", description: "Maksimal baris yang ditampilkan (default 15)." },
+          min_persen: { type: ["number", "string"], description: "Ambang beban bawah, mis. 100 utk 'beban di atas 100%'. Pakai ini (BUKAN hanya_overload) kalau user menyebut angka persen sendiri." },
+          min_suhu: { type: ["number", "string"], description: "Ambang suhu trafo bawah dalam derajat C, mis. 70." },
+          limit: { type: ["integer", "string"], description: "Maksimal baris yang ditampilkan (default 15)." },
         },
       },
     },
@@ -165,21 +169,58 @@ function parseTglID(s?: string): Date | null {
   if (isNaN(d) || m === undefined || isNaN(y)) return null;
   return new Date(y, m, d);
 }
-interface GangguanRow { ulp: string; penyulang: string; penyebab: string; date: Date }
+/** Kolom DURASI sheet ditulis "H:MM:SS" ("0:55:12"). Jam bisa >24 untuk padam
+ *  panjang, jadi jangan diparse sebagai jam dinding. Dikembalikan dalam menit
+ *  supaya bisa dijumlah & dirata-rata tanpa aritmatika waktu. */
+function durasiMenit(s?: string): number | null {
+  const p = (s ?? "").trim().split(":").map(Number);
+  if (p.length !== 3 || p.some((n) => !Number.isFinite(n))) return null;
+  return p[0] * 60 + p[1] + p[2] / 60;
+}
+
+interface GangguanRow {
+  ulp: string; penyulang: string; penyebab: string; date: Date;
+  durasiMnt: number | null; durasiTeks: string; fasilitas: string; indikator: string; kode: string;
+}
+
 async function fetchGangguanSheet(): Promise<GangguanRow[]> {
   const raw = await fetchSheetData("gangguanPenyulang", "A:S");
   const out: GangguanRow[] = [];
   for (const r of raw) {
     const date = parseTglID(r.TANGGAL);
     if (!date) continue;
+    const ulp = (r.ULP ?? "").trim().toUpperCase();
+    // Sheet ini dulu se-UIW NTB: 2022-2024 memuat PRAYA/SELONG/PRINGGABAYA yang
+    // milik UP3 lain (2026 sudah bersih). Tanpa pagar ini, pertanyaan tahun lama
+    // tanpa sebut ULP menghitung UP3 lain dan tak sebanding dengan angka aplikasi.
+    if (!ULP_VALID.includes(ulp)) continue;
+    const durasiTeks = (r.DURASI ?? "").trim();
     out.push({
-      ulp: (r.ULP ?? "").trim().toUpperCase(),
+      ulp,
       penyulang: (r.PENYULANG_GANGGUAN ?? r["PENYULANG GANGGUAN"] ?? "").trim(),
       penyebab: (r.PENYEBAB_GANGGUAN ?? r["PENYEBAB GANGGUAN"] ?? "").trim(),
       date,
+      durasiMnt: durasiMenit(durasiTeks),
+      durasiTeks,
+      fasilitas: (r.FASILITAS_PADAM ?? r["FASILITAS PADAM"] ?? "").trim(),
+      indikator: (r.INDIKATOR ?? "").trim(),
+      kode: (r.KODE ?? "").trim(),
     });
   }
   return out;
+}
+
+/** Ringkasan durasi sekelompok kejadian. Menit dibulatkan 1 desimal — presisi
+ *  detik tak berarti untuk laporan, dan angka panjang memboroskan token. */
+function ringkasDurasi(rows: GangguanRow[]) {
+  const nilai = rows.map((r) => r.durasiMnt).filter((n): n is number => n !== null);
+  if (!nilai.length) return { jumlah: rows.length, total_jam: null, rata2_menit: null };
+  const total = nilai.reduce((a, b) => a + b, 0);
+  return {
+    jumlah: rows.length,
+    total_jam: Math.round((total / 60) * 10) / 10,
+    rata2_menit: Math.round((total / nilai.length) * 10) / 10,
+  };
 }
 // Filter sheet sesuai tahun/bulan/ulp (default tahun = tahun berjalan).
 function filterGangguan(all: GangguanRow[], tahun: number, bulan?: number, ulp?: string | null): GangguanRow[] {
@@ -256,52 +297,91 @@ async function statistikGangguan(a: { tahun?: number; bulan?: number; ulp?: stri
   const tahun = a.tahun ?? new Date().getFullYear();
   const ulp = normUlp(a.ulp);
   const rows = filterGangguan(await fetchGangguanSheet(), tahun, a.bulan, ulp);
-  const perUlp: Record<string, number> = {};
+
+  const grupUlp: Record<string, GangguanRow[]> = {};
   const perPenyebab: Record<string, number> = {};
+  const perFasilitas: Record<string, number> = {};
+  const perIndikator: Record<string, number> = {};
   for (const r of rows) {
-    perUlp[r.ulp || "?"] = (perUlp[r.ulp || "?"] ?? 0) + 1;
-    const cause = r.penyebab || "(tidak tercatat)";
-    perPenyebab[cause] = (perPenyebab[cause] ?? 0) + 1;
+    (grupUlp[r.ulp || "?"] ??= []).push(r);
+    perPenyebab[r.penyebab || "(tidak tercatat)"] = (perPenyebab[r.penyebab || "(tidak tercatat)"] ?? 0) + 1;
+    if (r.fasilitas) perFasilitas[r.fasilitas] = (perFasilitas[r.fasilitas] ?? 0) + 1;
+    if (r.indikator) perIndikator[r.indikator] = (perIndikator[r.indikator] ?? 0) + 1;
   }
-  // Daftar kejadian (penyulang + tgl + penyebab) hanya bila ULP & bulan spesifik — ringkas & akurat.
+  const perUlp = Object.fromEntries(
+    Object.entries(grupUlp).map(([u, rs]) => [u, ringkasDurasi(rs)]),
+  );
+
+  const terlama = [...rows]
+    .filter((r) => r.durasiMnt !== null)
+    .sort((x, y) => y.durasiMnt! - x.durasiMnt!)
+    .slice(0, 3)
+    .map((r) => ({
+      penyulang: r.penyulang,
+      ulp: r.ulp,
+      tgl: `${r.date.getDate()} ${BULAN_ID[r.date.getMonth() + 1]} ${r.date.getFullYear()}`,
+      durasi: r.durasiTeks,
+      penyebab: r.penyebab || "tidak tercatat",
+    }));
+
+  // Daftar kejadian hanya bila ULP & bulan spesifik — ringkas & akurat.
   const detail = ulp && a.bulan
     ? rows.slice(0, 40).map((r) => ({
         penyulang: r.penyulang,
         tgl: `${r.date.getDate()} ${BULAN_ID[r.date.getMonth() + 1]} ${r.date.getFullYear()}`,
+        durasi: r.durasiTeks || "tidak tercatat",
+        fasilitas: r.fasilitas || null,
+        indikator: r.indikator || null,
         penyebab: r.penyebab || "tidak tercatat",
       }))
     : undefined;
+
   return {
     sumber: "Google Sheet gangguanPenyulang (data resmi)",
+    cakupan: `ULP ${ULP_VALID.join(", ")} (UP3 Mataram)`,
     periode: a.bulan ? `${BULAN_ID[a.bulan]} ${tahun}` : `tahun ${tahun}`,
     ulp_filter: ulp ?? "semua ULP",
     total: rows.length,
+    durasi: ringkasDurasi(rows),
+    catatan_durasi: "total_jam = akumulasi lama padam; rata2_menit = rata-rata per kejadian.",
     per_ulp: perUlp,
     per_penyebab: perPenyebab,
+    ...(Object.keys(perFasilitas).length ? { per_fasilitas: perFasilitas } : {}),
+    ...(Object.keys(perIndikator).length ? { per_indikator: perIndikator } : {}),
+    ...(terlama.length ? { terlama } : {}),
     ...(detail ? { detail } : {}),
   };
 }
 
-async function topPenyulang(a: { tahun?: number; bulan?: number; ulp?: string; limit?: number }) {
+async function topPenyulang(a: { tahun?: number; bulan?: number; ulp?: string; limit?: number; urut?: string }) {
   const tahun = a.tahun ?? new Date().getFullYear();
   const ulp = normUlp(a.ulp);
   const limit = Math.min(Math.max(a.limit ?? 10, 1), 20);
+  // "paling sering" dan "paling lama padam" adalah dua peringkat berbeda —
+  // penyulang dgn 1 gangguan 3 jam kalah sering tapi paling parah dampaknya.
+  const urutDurasi = (a.urut ?? "").toLowerCase().startsWith("dur");
   const rows = filterGangguan(await fetchGangguanSheet(), tahun, a.bulan, ulp);
-  const m: Record<string, number> = {};
+
+  const grup: Record<string, GangguanRow[]> = {};
   const ulpOf: Record<string, string> = {};
   for (const r of rows) {
     if (!r.penyulang) continue;
-    m[r.penyulang] = (m[r.penyulang] ?? 0) + 1;
+    (grup[r.penyulang] ??= []).push(r);
     if (r.ulp) ulpOf[r.penyulang] = r.ulp;
   }
-  const top = Object.entries(m)
-    .sort((x, y) => y[1] - x[1])
-    .slice(0, limit)
-    .map(([penyulang, jumlah]) => ({ penyulang, ulp: ulpOf[penyulang] ?? "?", jumlah }));
+
+  const top = Object.entries(grup)
+    .map(([penyulang, rs]) => ({ penyulang, ulp: ulpOf[penyulang] ?? "?", ...ringkasDurasi(rs) }))
+    .sort((x, y) => (urutDurasi ? (y.total_jam ?? 0) - (x.total_jam ?? 0) : y.jumlah - x.jumlah))
+    .slice(0, limit);
+
   return {
     sumber: "Google Sheet gangguanPenyulang (data resmi)",
+    cakupan: `ULP ${ULP_VALID.join(", ")} (UP3 Mataram)`,
     periode: a.bulan ? `${BULAN_ID[a.bulan]} ${tahun}` : `tahun ${tahun}`,
-    ulp_filter: ulp ?? "semua ULP", top,
+    ulp_filter: ulp ?? "semua ULP",
+    diurutkan_berdasarkan: urutDurasi ? "total lama padam" : "jumlah kejadian",
+    top,
   };
 }
 
@@ -332,7 +412,11 @@ async function risikoBesok(sb: SB) {
   };
 }
 
-async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang?: string; hanya_overload?: boolean; hanya_suhu_tinggi?: boolean; limit?: number }) {
+async function dataGardu(sb: SB, a: {
+  no_gardu?: string; ulp?: string; penyulang?: string;
+  hanya_overload?: boolean; hanya_suhu_tinggi?: boolean;
+  min_persen?: number; min_suhu?: number; limit?: number;
+}) {
   const ulp = normUlp(a.ulp);
   const limit = Math.min(Math.max(a.limit ?? 15, 1), 50);
   let q = sb.from("gardu_latest_state")
@@ -340,8 +424,12 @@ async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang
   if (a.no_gardu) q = q.ilike("no_gardu", a.no_gardu.trim());
   if (ulp) q = q.eq("petugas_unit", ulp);
   if (a.penyulang) q = q.ilike("penyulang", `%${a.penyulang.trim()}%`);
-  if (a.hanya_overload) q = q.gte("persen_beban", OVERLOAD_PCT);
-  if (a.hanya_suhu_tinggi) q = q.gt("suhu_trafo", HIGH_TEMP_C);
+  // Ambang eksplisit menang atas flag: kalau user menyebut ">100%", jangan
+  // diam-diam dilebarkan jadi ">=80%" oleh hanya_overload yang ikut terkirim.
+  if (a.min_persen !== undefined) q = q.gte("persen_beban", a.min_persen);
+  else if (a.hanya_overload) q = q.gte("persen_beban", OVERLOAD_PCT);
+  if (a.min_suhu !== undefined) q = q.gt("suhu_trafo", a.min_suhu);
+  else if (a.hanya_suhu_tinggi) q = q.gt("suhu_trafo", HIGH_TEMP_C);
   const { data, count, error } = await q.order("persen_beban", { ascending: false }).limit(limit);
   if (error) return { error: error.message };
 
@@ -366,9 +454,12 @@ async function dataGardu(sb: SB, a: { no_gardu?: string; ulp?: string; penyulang
     };
   });
   return {
+    // Ambang yang BENAR-BENAR dipakai ikut dikirim balik supaya model menyebut
+    // angka yang sama dengan yang difilter, bukan menebak dari pertanyaan.
     filter: {
       no_gardu: a.no_gardu ?? null, ulp: ulp ?? "semua ULP", penyulang: a.penyulang ?? null,
-      overload: !!a.hanya_overload, suhu_tinggi: !!a.hanya_suhu_tinggi,
+      beban_minimal_persen: a.min_persen ?? (a.hanya_overload ? OVERLOAD_PCT : null),
+      suhu_minimal_c: a.min_suhu ?? (a.hanya_suhu_tinggi ? HIGH_TEMP_C : null),
     },
     total_cocok: count ?? gardu.length,
     ditampilkan: gardu.length,
@@ -397,12 +488,77 @@ async function cariStandar(sb: SB, a: { pertanyaan?: string }) {
   };
 }
 
+// ── Normalisasi argumen dari model ──────────────────────────────────────────────
+// Model kelas 70B masih sering mengirim `"bulan": "Juli"` atau `"limit": "10"`.
+// Groq MEMVALIDASI argumen terhadap skema di sisi mereka dan menolak seluruh
+// request (400 tool_use_failed) kalau tipenya meleset — model tidak diberi
+// kesempatan memperbaiki diri. Karena itu skema di TOOLS sengaja menerima angka
+// ATAU string, lalu dirapikan di sini. Satu tempat, executor tetap bertipe ketat.
+function toStr(v: unknown): string | undefined {
+  return typeof v === "string" && v.trim() ? v.trim() : undefined;
+}
+
+function toNum(v: unknown): number | undefined {
+  if (typeof v === "number") return Number.isFinite(v) ? v : undefined;
+  if (typeof v !== "string") return undefined;
+  const n = Number(v.replace(/[%\s]/g, "").replace(",", "."));
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function toInt(v: unknown): number | undefined {
+  const n = toNum(v);
+  return n === undefined ? undefined : Math.trunc(n);
+}
+
+/** Awalan nama bulan ID + EN — model tidak selalu menjawab dalam bahasa prompt. */
+const BULAN_PREFIX = ["jan", "feb", "mar", "apr", "mei|may", "jun", "jul", "ag|au", "sep", "o[kc]t", "nov", "de[sc]"];
+
+/** "7" · 7 · "Juli" · "juli 2026" · "July" → 7. Di luar 1-12 = dianggap tak disebut. */
+function toBulan(v: unknown): number | undefined {
+  const n = toInt(v);
+  if (n !== undefined) return n >= 1 && n <= 12 ? n : undefined;
+  const s = toStr(v)?.toLowerCase();
+  if (!s) return undefined;
+  const idx = BULAN_PREFIX.findIndex((p) => new RegExp(`^(${p})`).test(s));
+  return idx >= 0 ? idx + 1 : undefined;
+}
+
+function toBool(v: unknown): boolean | undefined {
+  if (typeof v === "boolean") return v;
+  const s = toStr(v)?.toLowerCase();
+  if (s === "true" || s === "ya" || s === "1") return true;
+  if (s === "false" || s === "tidak" || s === "0") return false;
+  return undefined;
+}
+
 async function runTool(name: string, args: Record<string, unknown>, sb: SB): Promise<unknown> {
   try {
-    if (name === "statistik_gangguan") return await statistikGangguan(args);
-    if (name === "top_penyulang") return await topPenyulang(args);
+    if (name === "statistik_gangguan")
+      return await statistikGangguan({
+        tahun: toInt(args.tahun),
+        bulan: toBulan(args.bulan),
+        ulp: toStr(args.ulp),
+      });
+    if (name === "top_penyulang")
+      return await topPenyulang({
+        tahun: toInt(args.tahun),
+        bulan: toBulan(args.bulan),
+        ulp: toStr(args.ulp),
+        limit: toInt(args.limit),
+        urut: toStr(args.urut),
+      });
     if (name === "risiko_besok") return await risikoBesok(sb);
-    if (name === "data_gardu") return await dataGardu(sb, args);
+    if (name === "data_gardu")
+      return await dataGardu(sb, {
+        no_gardu: toStr(args.no_gardu),
+        ulp: toStr(args.ulp),
+        penyulang: toStr(args.penyulang),
+        hanya_overload: toBool(args.hanya_overload),
+        hanya_suhu_tinggi: toBool(args.hanya_suhu_tinggi),
+        min_persen: toNum(args.min_persen),
+        min_suhu: toNum(args.min_suhu),
+        limit: toInt(args.limit),
+      });
     if (name === "cari_standar") return await cariStandar(sb, args);
     return { error: `alat tidak dikenal: ${name}` };
   } catch (e) {
@@ -419,11 +575,32 @@ function parseArgs(a: unknown): Record<string, unknown> {
 interface ToolCall { id: string; type?: string; function: { name: string; arguments: string } }
 interface ChatMessage { role: string; content?: string | null; tool_calls?: ToolCall[] }
 
+/** Groq menolak seluruh request (400) kalau panggilan alat hasil generate model
+ *  tak lolos validasi skema — kode `tool_use_failed`, atau pesan "did not match
+ *  schema". Ini kesalahan model menyusun JSON, bukan kesalahan permintaan user. */
+function isToolCallError(status: number, body: string): boolean {
+  return status === 400 && /tool_use_failed|did not match schema|Failed to call a function/i.test(body);
+}
+
 function chatErr(status: number, body: string): string {
   if (status === 429) return "Semua model sedang kena rate limit. Tunggu ±1 menit lalu coba lagi.";
   if (status === 401 || status === 403) return "API key chat tidak valid / tak berwenang.";
+  if (isToolCallError(status, body)) {
+    return "Asisten gagal menyusun permintaan data (sudah dicoba ulang otomatis). Coba tulis ulang pertanyaannya lebih spesifik — sebutkan ULP, dan bulan sebagai angka.";
+  }
   return `Model error ${status}: ${body.slice(0, 150) || "permintaan gagal"}`;
 }
+
+/** Disisipkan saat percobaan ulang: model diberi tahu persis apa yang salah.
+ *  Tanpa ini, percobaan kedua cenderung mengulangi kesalahan yang sama. */
+const TOOL_RETRIES = 2;
+
+const REPAIR_HINT =
+  "PERBAIKAN: panggilan alat barusan DITOLAK karena tidak sesuai skema. Ulangi sekali lagi dengan aturan ketat: " +
+  "(1) hanya gunakan parameter yang ada di skema alat, jangan mengarang parameter baru; " +
+  "(2) bulan & tahun ditulis sebagai ANGKA (Juli = 7, bukan \"Juli\"); " +
+  "(3) untuk ambang beban/suhu yang disebut user (mis. 'di atas 100%'), pakai min_persen / min_suhu; " +
+  "(4) argumen harus JSON valid.";
 
 // Satu percobaan ke satu model, dengan timeout. fetch resolve saat header tiba
 // (sebelum body) → utk stream, timeout hanya menjaga "time to first byte", bukan
@@ -457,10 +634,24 @@ async function chatFailover(
   let lastStatus = 0, lastBody = "";
   for (const model of models) {
     try {
-      const res = await chatOnce(model, messages, stream, withTools);
+      let res = await chatOnce(model, messages, stream, withTools);
       if (res.ok) return { res, model };
       lastStatus = res.status;
       lastBody = await res.text().catch(() => "");
+      console.error(`[chat] ${model} → HTTP ${lastStatus}: ${lastBody.slice(0, 500)}`);
+
+      // Panggilan alat cacat = kesalahan sesaat model menyusun token pemanggil
+      // fungsi (mis. `<function=nama={…}` — tanda `>` hilang), BUKAN model ini
+      // rusak; pindah model tak menolong. Ulangi ke model yang sama dengan
+      // petunjuk perbaikan. Terukur 2026-07-31 pada llama-3.3-70b: tanpa
+      // petunjuk gagal ~1 dari 3, dengan petunjuk 6 dari 6 lolos.
+      for (let attempt = 0; attempt < TOOL_RETRIES && withTools && isToolCallError(lastStatus, lastBody); attempt++) {
+        res = await chatOnce(model, [...messages, { role: "system", content: REPAIR_HINT }], stream, withTools);
+        if (res.ok) return { res, model };
+        lastStatus = res.status;
+        lastBody = await res.text().catch(() => "");
+        console.error(`[chat] ${model} retry#${attempt + 1} → HTTP ${lastStatus}: ${lastBody.slice(0, 500)}`);
+      }
       // Termasuk 429: di OpenRouter rate-limit bersifat PER-MODEL (upstream), jadi
       // model berikutnya bisa saja jalan → tetap lanjut failover.
     } catch (e) {
