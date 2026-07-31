@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { UserProvider } from "./_context/UserContext";
 import AdminSidebar from "./_components/AdminSidebar";
-import ChatFab from "./_components/ChatFab";
+import UserMenu from "./_components/UserMenu";
+import AskAi from "./_components/AskAi";
 import { ToastProvider } from "./_components/Toast";
 
 export default async function AdminLayout({
@@ -22,14 +23,22 @@ export default async function AdminLayout({
             bertema gelap dan mengandalkan warna terang bawaan body. Halaman yang
             sudah terang menetapkan `text-ink` sendiri di root-nya. */}
         <div className="h-screen overflow-hidden bg-surface flex">
-          <AdminSidebar
-            userEmail={user.email}
-            userName={user.name}
-            userRole={user.role}
-            userUnit={user.unit}
-          />
-          <main className="flex-1 min-w-0 p-6 overflow-y-auto">{children}</main>
-          <ChatFab />
+          <AdminSidebar userUnit={user.unit} />
+          <div className="flex-1 min-w-0 flex flex-col">
+            {/* Topbar setinggi --topbar-h. Halaman yang menghitung tinggi dari
+                100vh (command-center, peta-gardu) ikut mengurangi var yang sama
+                supaya tidak ada scrollbar liar. */}
+            <header className="h-[var(--topbar-h)] shrink-0 flex items-center justify-end gap-2 border-b border-sidebar-line bg-sidebar px-4">
+              <AskAi />
+              <UserMenu
+                userEmail={user.email}
+                userName={user.name}
+                userRole={user.role}
+                userUnit={user.unit}
+              />
+            </header>
+            <main className="flex-1 min-w-0 p-6 overflow-y-auto">{children}</main>
+          </div>
         </div>
       </ToastProvider>
     </UserProvider>

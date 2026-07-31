@@ -3,6 +3,11 @@
 :root {
   --background: #0d1b2a;
   --foreground: #e2e8f0;
+
+  /* Tinggi topbar admin. Dipakai layout DAN halaman yang menghitung tinggi
+     dari 100vh — kalau angkanya di-hardcode di dua tempat, salah satunya
+     pasti ketinggalan saat topbar berubah. */
+  --topbar-h: 3rem;
 }
 
 @theme inline {
@@ -43,6 +48,14 @@
   --color-ink-muted: #8494ab;
   --color-surface: #f2f3f5;
   --color-line: #e4e8f0;
+
+  /* Sidebar setingkat lebih gelap dari kanvas konten (2026-07-31): sebelumnya
+     putih di atas surface, jadi rel navigasi justru lebih terang dari halaman
+     dan batasnya tidak terbaca. Bertinta navy tipis supaya tetap satu keluarga
+     warna, bukan abu netral. Garisnya ikut digelapkan — `line` terlalu dekat
+     dengan bidang baru ini dan tepinya jadi hilang. */
+  --color-sidebar: #e9edf5;
+  --color-sidebar-line: #d6deed;
 
   --color-attention: #b3701a;
   --color-attention-tint: #fdf3e3;

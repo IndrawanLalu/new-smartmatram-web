@@ -136,7 +136,7 @@ export default function CommandCenterPage() {
     <div className="flex flex-col gap-3 text-ink">
 
       {/* ── BAGIAN ATAS: Layar Penuh (above the fold) ─────────────── */}
-      <div className="h-[calc(100vh-48px)] flex flex-col gap-3">
+      <div className="h-[calc(100vh-var(--topbar-h)-48px)] flex flex-col gap-3">
         <StatusBar
           gangguanCount={gangguanCountThisMonth}
           overloadCount={overloadData.length}

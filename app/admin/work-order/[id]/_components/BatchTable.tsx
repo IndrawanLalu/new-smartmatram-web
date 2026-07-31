@@ -111,7 +111,7 @@ export default function BatchTable({
 
   return (
     <div className={`${CARD} overflow-hidden`}>
-      <div className="overflow-auto max-h-[calc(100vh-24rem)] min-h-[18rem]">
+      <div className="overflow-auto max-h-[calc(100vh-var(--topbar-h)-24rem)] min-h-[18rem]">
         <table className="w-full text-[13px] border-collapse">
           <thead className="sticky top-0 z-20">
             <tr className="bg-navy-50 text-navy-600 text-[11px] uppercase tracking-wide">

@@ -86,7 +86,7 @@ export default function PetaGarduPage() {
   const isUP3 = user ? canSeeAllUnits(user.role) : false;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-96px)] -m-6">
+    <div className="flex flex-col h-[calc(100vh-var(--topbar-h)-96px)] -m-6">
       {/* Status bar */}
       <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a1628] border-b border-[#1e3552] shrink-0">
         <span className="text-[#5eead4] text-xs font-semibold tracking-wide uppercase">

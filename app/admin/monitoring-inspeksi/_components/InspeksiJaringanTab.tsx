@@ -144,7 +144,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
           </p>
         </div>
 
-        <div className="overflow-auto max-h-[calc(100vh-30rem)] min-h-[16rem]">
+        <div className="overflow-auto max-h-[calc(100vh-var(--topbar-h)-30rem)] min-h-[16rem]">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10">
               <tr className="bg-navy-50">

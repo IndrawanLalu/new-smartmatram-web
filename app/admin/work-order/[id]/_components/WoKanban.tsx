@@ -54,7 +54,7 @@ export default function WoKanban({ batch, items, onOpen }: WoKanbanProps) {
               </span>
             </header>
 
-            <div className="space-y-2 max-h-[calc(100vh-26rem)] min-h-[6rem] overflow-y-auto pr-0.5">
+            <div className="space-y-2 max-h-[calc(100vh-var(--topbar-h)-26rem)] min-h-[6rem] overflow-y-auto pr-0.5">
               {list.slice(0, limit).map((item) => (
                 <KanbanCard key={item.id} item={item} batch={batch} onOpen={onOpen} />
               ))}

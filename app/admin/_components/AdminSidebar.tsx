@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import ChangePasswordModal from "./ChangePasswordModal";
 import {
   LayoutDashboard,
   Map,
@@ -11,8 +10,6 @@ import {
   Users,
   ClipboardList,
   Gauge,
-  LogOut,
-  Lock,
   Zap,
   ZapOff,
   ChevronLeft,
@@ -34,7 +31,6 @@ import {
   Radio,
   type LucideIcon,
 } from "lucide-react";
-import { logout } from "@/app/login/actions";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -51,10 +47,9 @@ interface NavGroup {
   items: NavItem[];
 }
 
+/** Identitas user pindah ke UserMenu di topbar — sidebar hanya perlu unit
+ *  untuk subjudul logo. */
 interface AdminSidebarProps {
-  userEmail: string;
-  userName: string;
-  userRole: string;
   userUnit: string | null;
 }
 
@@ -121,7 +116,9 @@ const NAV_GROUPS: NavGroup[] = [
 const ITEM_BASE =
   "group flex items-center gap-2.5 rounded-xl text-sm font-medium transition-colors";
 const ITEM_ON = "bg-navy-600 text-white font-semibold shadow-sm";
-const ITEM_OFF = "text-ink hover:bg-navy-50 hover:text-navy-600";
+/** Hover putih, bukan navy-50: di atas bidang sidebar yang bertinta, navy-50
+ *  nyaris tak terbaca — putih memberi kenaikan terang yang jelas. */
+const ITEM_OFF = "text-ink hover:bg-white hover:text-navy-600";
 
 /** Stroke 2px (bawaan lucide) terlalu berat di samping teks 14px/500 —
  *  1,75 menyeimbangkan bobot ikon dengan bobot huruf. */
@@ -134,15 +131,9 @@ const iconCls = (active: boolean) =>
 
 // ── Component ────────────────────────────────────────────────────────────────
 
-export default function AdminSidebar({
-  userEmail,
-  userName,
-  userRole,
-  userUnit,
-}: AdminSidebarProps) {
+export default function AdminSidebar({ userUnit }: AdminSidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const [changePwOpen, setChangePwOpen] = useState(false);
 
   // Grup yang terbuka — default semua terbuka kecuali Tools
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
@@ -157,20 +148,14 @@ export default function AdminSidebar({
     setOpenGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const initials = userName
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? "")
-    .join("");
-
   return (
     <aside
-      className={`shrink-0 bg-white h-screen sticky top-0 flex flex-col transition-all duration-300 border-r border-line ${
+      className={`shrink-0 bg-sidebar h-screen sticky top-0 flex flex-col transition-all duration-300 border-r border-sidebar-line ${
         collapsed ? "w-16" : "w-60"
       }`}
     >
       {/* Logo */}
-      <div className="px-3 py-3.5 flex items-center justify-between gap-2 border-b border-line">
+      <div className="px-3 py-3.5 flex items-center justify-between gap-2 border-b border-sidebar-line">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-9 h-9 bg-navy-600 rounded-xl grid place-items-center shrink-0">
             <Zap size={18} className="text-white" />
@@ -189,7 +174,7 @@ export default function AdminSidebar({
         <button
           onClick={() => setCollapsed((c) => !c)}
           aria-label={collapsed ? "Lebarkan sidebar" : "Ringkas sidebar"}
-          className="w-6 h-6 grid place-items-center rounded-lg text-ink-muted hover:text-ink hover:bg-surface transition-colors shrink-0"
+          className="w-6 h-6 grid place-items-center rounded-lg text-ink-muted hover:text-ink hover:bg-white transition-colors shrink-0"
         >
           {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
         </button>
@@ -217,13 +202,13 @@ export default function AdminSidebar({
                     </Link>
                   );
                 })}
-                <div className="mx-2 border-t border-line" />
+                <div className="mx-2 border-t border-sidebar-line" />
               </div>
             );
           }
 
           return (
-            <div key={group.key} className={gi > 0 ? "pt-3 border-t border-line" : ""}>
+            <div key={group.key} className={gi > 0 ? "pt-3 border-t border-sidebar-line" : ""}>
               {/* Label bagian — kecil tapi tegas: kontras dinaikkan, bukan sekadar bold */}
               <button
                 onClick={() => toggleGroup(group.key)}
@@ -261,65 +246,6 @@ export default function AdminSidebar({
           );
         })}
       </nav>
-
-      {/* User + aksi */}
-      <div className="border-t border-line p-2 space-y-0.5">
-        {!collapsed ? (
-          <div className="flex items-center gap-2.5 px-1.5 pb-2 pt-1">
-            <div className="w-9 h-9 rounded-full bg-navy-50 grid place-items-center shrink-0 text-[11px] font-bold text-navy-600">
-              {initials || <Users size={14} />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-ink truncate">{userName}</p>
-              <p className="text-[11px] text-ink-soft truncate">{userEmail}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="grid place-items-center pb-2 pt-1">
-            <div
-              title={`${userName} · ${userRole}`}
-              className="w-9 h-9 rounded-full bg-navy-50 grid place-items-center text-[11px] font-bold text-navy-600"
-            >
-              {initials || <Users size={14} />}
-            </div>
-          </div>
-        )}
-
-        {!collapsed && (
-          <div className="flex items-center gap-1.5 px-1.5 pb-1.5">
-            <span className="rounded-md bg-navy-50 px-1.5 py-0.5 text-[10px] font-bold text-navy-600">
-              {userRole}
-            </span>
-            {userUnit && <span className="text-[10px] text-ink-muted">{userUnit}</span>}
-          </div>
-        )}
-
-        <button
-          onClick={() => setChangePwOpen(true)}
-          title={collapsed ? "Ganti Password" : undefined}
-          className={`w-full ${ITEM_BASE} ${ITEM_OFF} px-2.5 py-2 ${
-            collapsed ? "justify-center" : ""
-          }`}
-        >
-          <Lock size={15} className="shrink-0" />
-          {!collapsed && <span>Ganti Password</span>}
-        </button>
-
-        <form action={logout}>
-          <button
-            type="submit"
-            title={collapsed ? "Keluar" : undefined}
-            className={`w-full ${ITEM_BASE} px-2.5 py-2 text-ink-soft hover:bg-red-50 hover:text-red-600 ${
-              collapsed ? "justify-center" : ""
-            }`}
-          >
-            <LogOut size={15} className="shrink-0" />
-            {!collapsed && <span>Keluar</span>}
-          </button>
-        </form>
-      </div>
-
-      {changePwOpen && <ChangePasswordModal onClose={() => setChangePwOpen(false)} />}
     </aside>
   );
 }
