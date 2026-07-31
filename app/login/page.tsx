@@ -2,32 +2,57 @@
 
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
-import { Mail, Lock, LogIn, Zap } from "lucide-react";
+import { Mail, Lock, ArrowRight, Eye, EyeOff, Check } from "lucide-react";
 import { login } from "./actions";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import GridBackdrop from "./_components/GridBackdrop";
 
 const ACCESS_ERRORS: Record<string, string> = {
   inactive: "Akun Anda telah dinonaktifkan. Hubungi admin.",
   no_web_access: "Akun Anda hanya untuk aplikasi mobile, tidak bisa login ke web.",
 };
 
+const FIELD =
+  "w-full rounded-xl border border-white/12 bg-white/5 py-3 pl-10 text-sm text-white placeholder:text-white/35 transition-colors focus:border-[#5eead4]/60 focus:bg-white/8 focus:outline-none focus:ring-2 focus:ring-[#5eead4]/20 disabled:opacity-50 disabled:cursor-not-allowed";
+
+function salam(): string {
+  const j = new Date().getHours();
+  if (j < 11) return "Selamat pagi";
+  if (j < 15) return "Selamat siang";
+  if (j < 19) return "Selamat sore";
+  return "Selamat malam";
+}
+
 export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+  const [showPw, setShowPw] = useState(false);
+  const [greeting, setGreeting] = useState("Selamat datang");
   const submittingRef = useRef(false);
 
+  /**
+   * Keduanya hanya bisa ditentukan di klien: jam pengguna (bukan jam server VPS)
+   * dan query string. State-nya dijadwalkan setelah frame pertama agar tidak
+   * memicu render berantai — memanggil setState langsung di badan effect membuat
+   * React merender ulang sebelum sempat melukis.
+   */
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const errKey = params.get("error");
-    if (errKey && ACCESS_ERRORS[errKey]) {
-      setError(ACCESS_ERRORS[errKey]);
-      supabaseBrowser.auth.signOut();
-    }
+    const id = requestAnimationFrame(() => {
+      setGreeting(salam());
+
+      const errKey = new URLSearchParams(window.location.search).get("error");
+      if (errKey && ACCESS_ERRORS[errKey]) {
+        setError(ACCESS_ERRORS[errKey]);
+        void supabaseBrowser.auth.signOut();
+      }
+    });
+    return () => cancelAnimationFrame(id);
   }, []);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (submittingRef.current) return; // guard synchronous — tidak bisa di-bypass
+    if (submittingRef.current) return; // guard sinkron — tidak bisa di-bypass
     submittingRef.current = true;
     setLoading(true);
     setError("");
@@ -37,179 +62,156 @@ export default function LoginPage() {
       setError(result.error);
       setLoading(false);
       submittingRef.current = false;
+      return;
     }
-    // Jika sukses: redirect terjadi, tidak perlu reset
+    // Sukses: tampilkan centang sejenak, redirect menyusul dari server action.
+    setDone(true);
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* ── Panel Kiri — Branding ─────────────────────────────── */}
-      <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#003D33] via-[#004D40] to-[#00695C] flex-col items-center justify-center p-12 relative overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/5" />
-        <div className="absolute -bottom-32 -right-16 w-80 h-80 rounded-full bg-white/5" />
-        <div className="absolute top-1/2 -right-12 w-48 h-48 rounded-full bg-[#00897B]/30" />
+    <main className="lg-canvas relative flex min-h-screen items-center justify-center overflow-hidden p-5">
+      <GridBackdrop />
 
-        {/* Content */}
-        <div className="relative z-10 text-center">
+      <div className="relative z-10 w-full max-w-sm">
+        {/* Kartu kaca */}
+        <div className="lg-rise rounded-3xl border border-white/12 bg-white/6 p-8 shadow-2xl shadow-black/40 backdrop-blur-xl">
           {/* Logo */}
-          <div className="flex justify-center mb-8">
-            <div className="bg-white/10 backdrop-blur-sm rounded-3xl p-5 border border-white/20">
+          <div
+            className="lg-rise mb-6 flex justify-center"
+            style={{ animationDelay: "80ms" }}
+          >
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-3.5">
               <Image
                 src="/logsmart.png"
-                alt="SMART Mataram Logo"
-                width={96}
-                height={96}
+                alt="SMART Mataram"
+                width={56}
+                height={56}
                 className="object-contain"
                 priority
               />
             </div>
           </div>
 
-          <h1 className="text-4xl font-bold text-white mb-3 tracking-tight">
-            SMART Mataram
-          </h1>
-          <p className="text-teal-200 text-lg mb-2 font-medium">
-            Sistem Monitoring Aset & Rencana Tindak Lanjut
-          </p>
-          <p className="text-teal-300/70 text-sm">PLN UP3 Mataram</p>
+          {/* Sapaan */}
+          <div className="lg-rise mb-7 text-center" style={{ animationDelay: "150ms" }}>
+            <p className="text-sm text-[#5eead4]">{greeting}</p>
+            <h1 className="font-display mt-1 text-2xl font-extrabold tracking-tight text-white">
+              SMART Mataram
+            </h1>
+            <p className="mt-1.5 text-xs text-white/45">
+              Sistem Monitoring Aset &amp; Rencana Tindak Lanjut
+            </p>
+          </div>
 
-          {/* Feature chips */}
-          <div className="flex flex-wrap justify-center gap-2 mt-10">
-            {[
-              "Pengukuran Gardu",
-              "Monitoring Inspeksi",
-              "Gangguan Penyulang",
-              "AI Analisis",
-            ].map((f) => (
-              <span
-                key={f}
-                className="px-3 py-1.5 rounded-full bg-white/10 text-teal-100 text-xs font-medium border border-white/10"
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+            {/* Email */}
+            <div className="lg-rise" style={{ animationDelay: "220ms" }}>
+              <label htmlFor="email" className="sr-only">Email</label>
+              <div className="group relative">
+                <Mail
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-[#5eead4]"
+                />
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  autoComplete="email"
+                  disabled={loading || done}
+                  placeholder="Email"
+                  className={FIELD}
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div className="lg-rise" style={{ animationDelay: "290ms" }}>
+              <label htmlFor="password" className="sr-only">Password</label>
+              <div className="group relative">
+                <Lock
+                  size={15}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-white/40 transition-colors group-focus-within:text-[#5eead4]"
+                />
+                <input
+                  id="password"
+                  name="password"
+                  type={showPw ? "text" : "password"}
+                  required
+                  autoComplete="current-password"
+                  disabled={loading || done}
+                  placeholder="Password"
+                  className={`${FIELD} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPw((v) => !v)}
+                  aria-label={showPw ? "Sembunyikan password" : "Tampilkan password"}
+                  className="absolute right-2 top-1/2 grid h-8 w-8 -translate-y-1/2 place-items-center rounded-lg text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  {showPw ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+            </div>
+
+            {/* Error — digoyang sekali agar tertangkap mata */}
+            {error && (
+              <div
+                key={error}
+                role="alert"
+                className="lg-shake flex items-start gap-2 rounded-xl border border-red-400/30 bg-red-500/12 px-3 py-2.5 text-sm text-red-200"
               >
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Bottom badge */}
-        <div className="absolute bottom-8 left-0 right-0 flex justify-center">
-          <div className="flex items-center gap-2 bg-white/5 border border-white/10 rounded-full px-4 py-2">
-            <Zap size={12} className="text-amber-300" />
-            <span className="text-teal-200/70 text-[11px]">
-              develpo with ❤️ DiandraDev
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Panel Kanan — Form ────────────────────────────────── */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-6 bg-[#0d1b2a]">
-        <div className="w-full max-w-sm">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex flex-col items-center mb-8">
-            <div className="bg-[#162334] rounded-2xl shadow-sm border border-[#1e3552] p-4 mb-4">
-              <Image
-                src="/logsmart.png"
-                alt="SMART Mataram Logo"
-                width={64}
-                height={64}
-                className="object-contain"
-                priority
-              />
-            </div>
-            <h1 className="text-xl font-bold text-[#e2e8f0]">SMART Mataram</h1>
-            <p className="text-sm text-[#94a3b8]">PLN ULP Ampenan · Mataram</p>
-          </div>
-
-          {/* Card */}
-          <div className="bg-[#162334] rounded-2xl shadow-sm border border-[#1e3552] p-8">
-            <div className="mb-7">
-              <h2 className="text-xl font-bold text-[#e2e8f0]">
-                Selamat Datang
-              </h2>
-              <p className="text-sm text-[#94a3b8] mt-1">
-                Masuk ke akun Anda untuk melanjutkan
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Email */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-1.5">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail
-                    size={15}
-                    className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${loading ? "text-[#4a5568]" : "text-[#94a3b8]"}`}
-                  />
-                  <input
-                    name="email"
-                    type="email"
-                    required
-                    disabled={loading}
-                    placeholder="admin@pln.co.id"
-                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
+                <span className="mt-0.5 shrink-0">⚠</span>
+                <span>{error}</span>
               </div>
+            )}
 
-              {/* Password */}
-              <div>
-                <label className="block text-xs font-semibold text-[#94a3b8] uppercase tracking-wider mb-1.5">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock
-                    size={15}
-                    className={`absolute left-3 top-1/2 -translate-y-1/2 transition-colors ${loading ? "text-[#4a5568]" : "text-[#94a3b8]"}`}
-                  />
-                  <input
-                    name="password"
-                    type="password"
-                    required
-                    disabled={loading}
-                    placeholder="••••••••"
-                    className="w-full border border-[#1e3552] rounded-xl pl-9 pr-4 py-3 text-sm text-[#e2e8f0] bg-[#0d1b2a] placeholder:text-[#9CA3AF] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  />
-                </div>
-              </div>
-
-              {/* Error */}
-              {error && (
-                <div className="flex items-start gap-2 bg-red-500/10 border border-red-500/30 text-red-400 text-sm px-3 py-2.5 rounded-xl">
-                  <span className="shrink-0 mt-0.5">⚠</span>
-                  <span>{error}</span>
-                </div>
-              )}
-
-              {/* Submit */}
+            {/* Submit — ukuran tombol tetap di semua keadaan, tanpa lompatan */}
+            <div className="lg-rise pt-1" style={{ animationDelay: "360ms" }}>
               <button
                 type="submit"
-                disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-linear-to-r from-[#004D40] to-[#00897B] text-white font-semibold py-3 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed mt-2"
+                disabled={loading || done}
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-linear-to-r from-[#2a4a9c] to-[#1d3573] font-semibold text-white shadow-lg shadow-[#1d3573]/40 transition-all hover:brightness-110 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-80"
               >
-                {loading ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Sedang masuk...
-                  </>
+                {done ? (
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden>
+                    <path
+                      className="lg-draw"
+                      d="M5 13l4 4L19 7"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ) : loading ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
                 ) : (
                   <>
-                    <LogIn size={15} />
-                    Masuk
+                    Masuk <ArrowRight size={16} />
                   </>
                 )}
               </button>
-            </form>
-          </div>
+            </div>
+          </form>
 
-          <p className="text-center text-[11px] text-[#9CA3AF] mt-6">
-            HUBUNGI ADMIN
+          <p
+            className="lg-rise mt-6 text-center text-[11px] text-white/35"
+            style={{ animationDelay: "430ms" }}
+          >
+            Lupa akses? Hubungi admin unit Anda.
           </p>
         </div>
+
+        {/* Kredit */}
+        <div
+          className="lg-rise mt-5 flex items-center justify-center gap-1.5 text-[11px] text-white/30"
+          style={{ animationDelay: "500ms" }}
+        >
+          <Check size={11} className="text-[#5eead4]/60" />
+          PLN UP3 Mataram · dibuat dengan ❤ DiandraDev
+        </div>
       </div>
-    </div>
+    </main>
   );
 }

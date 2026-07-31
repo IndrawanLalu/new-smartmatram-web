@@ -110,6 +110,82 @@ body {
   .animate-skeleton { animation: none; }
 }
 
+/* ── Halaman login: "Jaringan Hidup" ──────────────────────────────────────────
+   Semua gerakan murni CSS — tanpa library animasi, tanpa canvas, tanpa JS.
+   Metafora: jaringan distribusi yang dialiri listrik. */
+
+/* Kanvas gradasi yang bergeser pelan — layar terasa bernapas, bukan mati. */
+@keyframes lg-drift {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+
+/* Kisi garis samar ikut bergeser, memberi kesan kedalaman. */
+@keyframes lg-grid {
+  from { transform: translate3d(0, 0, 0); }
+  to   { transform: translate3d(56px, 56px, 0); }
+}
+
+/* Simpul gardu berdenyut bergiliran. */
+@keyframes lg-node {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.6); }
+}
+
+/* Pulsa listrik berjalan menyusuri kabel.
+   Path diberi pathLength="100", sehingga dash diukur dalam persen panjang
+   jalur — hasilnya identik di layar lebar maupun sempit. Cara ini juga membuat
+   pulsa PERSIS mengikuti lengkung kabelnya, tidak bisa meleset. */
+@keyframes lg-pulse {
+  from { stroke-dashoffset: 106; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* Kartu & isinya masuk berurutan. */
+@keyframes lg-rise {
+  from { opacity: 0; transform: translateY(18px) scale(0.985); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Error digoyang — mata menangkapnya lebih cepat daripada teks merah diam. */
+@keyframes lg-shake {
+  0%, 100%      { transform: translateX(0); }
+  15%, 55%      { transform: translateX(-5px); }
+  35%, 75%      { transform: translateX(5px); }
+  90%           { transform: translateX(-2px); }
+}
+
+/* Centang sukses tergambar sendiri. */
+@keyframes lg-draw {
+  from { stroke-dashoffset: 32; }
+  to   { stroke-dashoffset: 0; }
+}
+
+.lg-canvas {
+  background: linear-gradient(120deg, #0b1428 0%, #16294f 38%, #1d3573 62%, #0d1830 100%);
+  background-size: 260% 260%;
+  animation: lg-drift 22s ease-in-out infinite;
+}
+
+.lg-grid {
+  background-image:
+    repeating-linear-gradient(0deg,   rgb(255 255 255 / 0.045) 0 1px, transparent 1px 56px),
+    repeating-linear-gradient(90deg,  rgb(255 255 255 / 0.045) 0 1px, transparent 1px 56px);
+  animation: lg-grid 14s linear infinite;
+}
+
+.lg-node  { animation: lg-node 3.6s ease-in-out infinite; }
+.lg-pulse { animation: lg-pulse 6s linear infinite; }
+.lg-rise  { animation: lg-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.lg-shake { animation: lg-shake 0.42s ease-in-out; }
+.lg-draw  { stroke-dasharray: 32; animation: lg-draw 0.45s ease-out 0.1s forwards; }
+
+@media (prefers-reduced-motion: reduce) {
+  .lg-canvas, .lg-grid, .lg-node, .lg-pulse, .lg-shake { animation: none; }
+  .lg-rise { animation: none; opacity: 1; transform: none; }
+  .lg-draw { stroke-dashoffset: 0; animation: none; }
+}
+
 /* Fix Leaflet tile seams on dark maps (plus-lighter blend mode causes white grid lines) */
 .leaflet-container img.leaflet-tile {
   mix-blend-mode: normal;
