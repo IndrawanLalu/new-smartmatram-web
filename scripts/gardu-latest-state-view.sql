@@ -38,6 +38,12 @@ WITH all_events AS (
     pg.jenis_pemeliharaan,
     pg.wo_sent_at
   FROM public.pengukuran_gardu pg
+  -- Baris hasil penyeimbangan dikecualikan: itu kembaran angka dari baris
+  -- penyeimbangan_gardu di bawah, yang hanya ada supaya bisa dikirim ke AMG.
+  -- Kalau ikut, keduanya bertanggal sama dan DISTINCT ON di bawah memilih
+  -- pemenang lewat tie-break `source_id DESC` yang praktis acak — event_type
+  -- gardu bisa berubah-ubah sendiri antara 'pengukuran' dan 'penyeimbangan'.
+  WHERE pg.hasil_penyeimbangan_id IS NULL
 
   UNION ALL
 

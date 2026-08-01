@@ -137,6 +137,11 @@ export function usePengukuranGardu(user: CurrentUser) {
         let query = supabaseBrowser
           .from("pengukuran_gardu")
           .select("*")
+          // Baris hasil penyeimbangan dikecualikan dari rekap: itu bukan
+          // pengukuran rutin, hanya pembawa data agar hasil pemerataan bisa
+          // dikirim ke AMG lewat mesin yang sudah ada. Angkanya sudah tampil
+          // sebagai kartu Penyeimbangan di riwayat gardu.
+          .is("hasil_penyeimbangan_id", null)
           .order("tanggal_pengukuran", { ascending: false })
           .order("created_at", { ascending: false });
 

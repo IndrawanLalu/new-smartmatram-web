@@ -52,6 +52,8 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
     (acc, s) => {
       acc.ukur     += s.jumlahUkur;
       acc.amg      += s.amgTerkirim;
+      acc.ratakan  += s.jumlahPemerataan;
+      acc.amgRatakan += s.amgPemerataan;
       acc.anomali  += s.jumlahAnomal;
       acc.bebanWsum += s.rataBeban * s.jumlahUkur;
       acc.bebanCount += s.jumlahUkur;
@@ -64,7 +66,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
       return acc;
     },
     {
-      ukur: 0, amg: 0, anomali: 0, bebanWsum: 0, bebanCount: 0,
+      ukur: 0, amg: 0, ratakan: 0, amgRatakan: 0, anomali: 0, bebanWsum: 0, bebanCount: 0,
       byJenis: Object.fromEntries(JENIS_PEMELIHARAAN_OPTIONS.map(j => [j, { wo: 0, selesai: 0 }])),
       totalWo: 0, totalSelesai: 0,
     }
@@ -93,7 +95,7 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-ink" style={{ minWidth: 1050 }}>
+        <table className="w-full border-collapse text-ink" style={{ minWidth: 1120 }}>
           <thead>
             {/* ── Row 1: Group headers ── */}
             <tr>
@@ -106,8 +108,9 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                 BULAN
               </th>
               {/* Fixed info cols — rowSpan 2 */}
-              <th rowSpan={2} className={`${TH} text-ink-soft min-w-[56px]`} style={{ background: "#EEF2FB" }}>Ukur</th>
-              <th rowSpan={2} className={`${TH} text-navy-600 min-w-[64px]`} style={{ background: "#EEF2FB" }}>AMG</th>
+              <th rowSpan={2} className={`${TH} text-ink-soft min-w-[56px]`} style={{ background: "#EEF2FB" }} title="Pengukuran rutin — tidak termasuk hasil pemerataan">Ukur</th>
+              <th rowSpan={2} className={`${TH} text-navy-600 min-w-[64px]`} style={{ background: "#EEF2FB" }} title="Pengukuran rutin yang sudah terkirim ke AMG">AMG</th>
+              <th rowSpan={2} className={`${TH} text-accent-deep min-w-[64px]`} style={{ background: "#E0F2F1" }} title="Pengukuran hasil pemerataan beban (dicatat lewat aplikasi mobile). Angka kecil = sudah terkirim ke AMG.">Ratakan</th>
               <th rowSpan={2} className={`${TH} text-ink-soft min-w-[68px]`} style={{ background: "#EEF2FB" }}>Anomali</th>
               <th rowSpan={2} className={`${TH} text-ink-soft min-w-[68px]`} style={{ background: "#EEF2FB" }}>Rata %</th>
 
@@ -177,6 +180,22 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                     <Num v={s.amgTerkirim} color="text-navy-600" />
                   </td>
 
+                  {/* Pemerataan — realisasi dipisah dari pengukuran rutin */}
+                  <td className={TD} style={{ background: "#F4FBFA" }}>
+                    {s.jumlahPemerataan > 0 ? (
+                      <span className="text-accent-deep font-semibold">
+                        {s.jumlahPemerataan}
+                        {s.amgPemerataan > 0 && (
+                          <span className="ml-1 text-[10px] font-normal text-ink-muted">
+                            ({s.amgPemerataan} AMG)
+                          </span>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-ink-muted">—</span>
+                    )}
+                  </td>
+
                   {/* Anomali */}
                   <td className={TD}>
                     <Num v={s.jumlahAnomal} color="text-red-600" />
@@ -238,6 +257,20 @@ export default function YearlyStatsTable({ stats, loading, currentMonth }: Props
                 {totals.amg > 0
                   ? <span className="text-navy-600 font-bold">{totals.amg}</span>
                   : <span className="text-ink-muted">—</span>}
+              </td>
+              <td className={TD} style={{ background: "#F4FBFA" }}>
+                {totals.ratakan > 0 ? (
+                  <span className="text-accent-deep font-bold">
+                    {totals.ratakan}
+                    {totals.amgRatakan > 0 && (
+                      <span className="ml-1 text-[10px] font-normal text-ink-muted">
+                        ({totals.amgRatakan} AMG)
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="text-ink-muted">—</span>
+                )}
               </td>
               <td className={TD}><span className="text-red-600 font-bold">{totals.anomali}</span></td>
               <td className={TD}>

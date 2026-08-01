@@ -150,6 +150,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "pengukuranGardu", label: "Pengukuran Gardu" },
   { id: "riwayatGardu",    label: "Riwayat Gardu" },
   { id: "scanMeter",       label: "Scan Meter" },
+  { id: "penyeimbangan",   label: "Penyeimbangan Beban" },
 ];
 
 const ALL_MENU_IDS = MOBILE_MENUS.map((m) => m.id);

@@ -231,6 +231,11 @@ export function useGarduTimeline(noGardu: string | null) {
           .from("pengukuran_gardu")
           .select("id,tanggal_pengukuran,kva_trafo,persen_beban,beban_kva,suhu_trafo,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,perjurusan,petugas_nama,jenis_pemeliharaan,wo_sent_at")
           .eq("no_gardu", noGardu)
+          // Baris hasil penyeimbangan disembunyikan dari riwayat: angkanya sama
+          // persis dengan kartu Penyeimbangan, jadi tanpa filter ini satu
+          // pekerjaan tampil sebagai dua kartu bertanggal sama. Baris itu ada
+          // semata sebagai pembawa data ke AMG.
+          .is("hasil_penyeimbangan_id", null)
           .order("tanggal_pengukuran", { ascending: false }),
 
         supabaseBrowser

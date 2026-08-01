@@ -36,7 +36,30 @@ export interface PenyeimbanganGardu {
   catatan: string | null;
   jenis_pemeliharaan: string | null;
   created_at: string;
+
+  /** Bukti foto per fasa dari aplikasi mobile — empat foto disimpan terpisah,
+   *  disusun 2×2 saat ditampilkan. Null untuk rekap yang diinput lewat web. */
+  foto_total: FotoFasa | null;
+  foto_perjurusan: Record<string, FotoFasa> | null;
+
+  /** 'Dikerjakan' = petugas sudah mengklaim tapi belum menyetor hasil. */
+  status: string;
+  petugas_uid: string | null;
+  diklaim_at: string | null;
+
+  /** Baris pengukuran "setelah" — pembawa data ke AMG. Array karena PostgREST
+   *  mengembalikan relasi terbalik sebagai daftar; isinya paling banyak satu. */
+  pengukuran_after?: {
+    id: string;
+    amg_queued_at: string | null;
+    amg_sent_at: string | null;
+    amg_error: string | null;
+    amg_attempts: number;
+  }[];
 }
+
+/** URL foto per fasa. Fasa yang arusnya 0 tidak difoto, jadi bisa tidak ada. */
+export type FotoFasa = Partial<Record<"R" | "S" | "T" | "N", string>>;
 
 export interface SavePenyeimbanganInput {
   pengukuranRow: PengukuranGardu;
@@ -94,7 +117,9 @@ export function usePenyeimbangan(ulp: string) {
 
       let query = supabaseBrowser
         .from("penyeimbangan_gardu")
-        .select("*")
+        .select(
+          "*, pengukuran_after:pengukuran_gardu!hasil_penyeimbangan_id(id,amg_queued_at,amg_sent_at,amg_error,amg_attempts)",
+        )
         .gte("tgl_penyeimbangan", startDate)
         .lt("tgl_penyeimbangan", endDate)
         .order("tgl_penyeimbangan", { ascending: false });
@@ -225,11 +250,36 @@ export function usePenyeimbangan(ulp: string) {
     }
   }, [fetchData]);
 
+  /** Antrekan hasil pemerataan ke AMG lewat baris pengukuran "setelah".
+   *  Memakai endpoint yang sama dengan pengukuran biasa — agen lokal yang
+   *  mengirim, karena AMG hanya bisa dijangkau dari jaringan intranet PLN. */
+  const kirimKeAmg = useCallback(async (row: PenyeimbanganGardu): Promise<string | null> => {
+    const after = row.pengukuran_after?.[0];
+    if (!after) {
+      return "Hasil ini belum punya baris pengukuran untuk AMG. Hanya pekerjaan yang dicatat lewat aplikasi mobile yang bisa dikirim.";
+    }
+    try {
+      const res = await fetch("/api/amg-queue", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pengukuranId: after.id }),
+      });
+      if (!res.ok) {
+        const e = await res.json().catch(() => ({ error: `Gagal (HTTP ${res.status})` }));
+        return e.error ?? "Gagal mengantre ke AMG";
+      }
+      await fetchData();
+      return null;
+    } catch (e) {
+      return e instanceof Error ? e.message : "Gagal mengantre ke AMG";
+    }
+  }, [fetchData]);
+
   const deleteItem = useCallback(async (id: string) => {
     const { error } = await supabaseBrowser.from("penyeimbangan_gardu").delete().eq("id", id);
     if (error) { await fetchData(); return; }
     setData((prev) => prev.filter((item) => item.id !== id));
   }, [fetchData]);
 
-  return { data, filteredData, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, deleteItem, refresh: fetchData };
+  return { data, filteredData, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, kirimKeAmg, deleteItem, refresh: fetchData };
 }

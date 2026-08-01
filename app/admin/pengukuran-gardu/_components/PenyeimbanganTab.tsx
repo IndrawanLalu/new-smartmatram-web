@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   Search, Trash2, Pencil, ChevronLeft, ChevronRight,
   Scale, FileCheck, AlertTriangle, TrendingUp, Download,
-  Check, X as XIcon, ClipboardX, Info,
+  Check, X as XIcon, ClipboardX, Info, Camera, Radio,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
@@ -16,6 +16,7 @@ import {
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import PenyeimbanganModal from "./PenyeimbanganModal";
+import FotoPenyeimbanganModal from "./FotoPenyeimbanganModal";
 import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
@@ -90,12 +91,22 @@ export default function PenyeimbanganTab({
     setFilterJenis,
     savePenyeimbangan,
     updatePenyeimbangan,
+    kirimKeAmg,
     deleteItem,
   } = usePenyeimbangan(ulp);
 
   const [searchQuery, setSearchQuery]     = useState("");
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
   const [editRecord, setEditRecord]       = useState<PenyeimbanganGardu | null>(null);
+  const [fotoRecord, setFotoRecord]       = useState<PenyeimbanganGardu | null>(null);
+  const [amgBusy, setAmgBusy]             = useState<string | null>(null);
+
+  async function handleKirimAmg(row: PenyeimbanganGardu) {
+    setAmgBusy(row.id);
+    const err = await kirimKeAmg(row);
+    setAmgBusy(null);
+    if (err) alert(err);
+  }
   const [editingJenisId, setEditingJenisId]     = useState<string | null>(null);
   const [editingJenisValue, setEditingJenisValue] = useState("");
   const [savingJenis, setSavingJenis]     = useState(false);
@@ -186,6 +197,53 @@ export default function PenyeimbanganTab({
   }
 
   // Inline jenis cell (dipakai di kedua tabel anomali)
+  /** Status pengiriman AMG untuk hasil pemerataan.
+   *
+   *  Yang dikirim adalah baris pengukuran "setelah" yang dibuat aplikasi mobile,
+   *  bukan rekap ini — AMG hanya menerima bentuk satu baris pengukuran. Rekap
+   *  yang diinput manual lewat web tidak punya baris itu, jadi tombolnya absen
+   *  ketimbang tampil mati tanpa penjelasan. */
+  function AmgCell({ row }: { row: PenyeimbanganGardu }) {
+    const after = row.pengukuran_after?.[0];
+    if (!after) return null;
+
+    if (after.amg_sent_at) {
+      return (
+        <span className="text-[10px] font-semibold text-emerald-600" title={`Terkirim ${fmtTanggal(after.amg_sent_at.split("T")[0])}`}>
+          AMG ✓
+        </span>
+      );
+    }
+    if (after.amg_queued_at) {
+      return (
+        <span className="text-[10px] font-semibold text-navy-500" title="Menunggu dikirim agen lokal">
+          ANTRE
+        </span>
+      );
+    }
+    if (after.amg_error) {
+      return (
+        <button
+          onClick={() => handleKirimAmg(row)}
+          className="text-[10px] font-semibold text-red-600 hover:underline"
+          title={`Gagal: ${after.amg_error}${after.amg_attempts >= 3 ? " (berhenti setelah 3 percobaan)" : ""}`}
+        >
+          AMG GAGAL{after.amg_attempts >= 3 ? " 3x" : ""}
+        </button>
+      );
+    }
+    return (
+      <button
+        onClick={() => handleKirimAmg(row)}
+        disabled={amgBusy === row.id}
+        className="text-navy-600 hover:text-accent-deep transition-colors disabled:opacity-40"
+        title="Kirim hasil pemerataan ke AMG"
+      >
+        <Radio size={13} />
+      </button>
+    );
+  }
+
   function JenisCell({ row }: { row: PengukuranGardu }) {
     const isEditing = editingJenisId === row.id;
     if (isEditing) {
@@ -606,6 +664,18 @@ export default function PenyeimbanganTab({
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <div className="flex items-center justify-center gap-2">
+                          {/* Hanya muncul kalau memang ada bukti — ikon mati yang
+                              tak bisa diklik lebih membingungkan daripada absen. */}
+                          {(row.foto_total || row.foto_perjurusan) && (
+                            <button
+                              onClick={() => setFotoRecord(row)}
+                              className="text-navy-600 hover:text-accent-deep transition-colors"
+                              title="Lihat foto bukti"
+                            >
+                              <Camera size={13} />
+                            </button>
+                          )}
+                          <AmgCell row={row} />
                           <button onClick={() => setEditRecord(row)} className="text-navy-600 hover:text-accent-deep transition-colors" title="Edit">
                             <Pencil size={13} />
                           </button>
@@ -643,6 +713,9 @@ export default function PenyeimbanganTab({
       )}
       {editRecord && (
         <PenyeimbanganModal mode="edit" record={editRecord} onClose={() => setEditRecord(null)} onUpdate={handleUpdate} />
+      )}
+      {fotoRecord && (
+        <FotoPenyeimbanganModal record={fotoRecord} onClose={() => setFotoRecord(null)} />
       )}
     </div>
   );

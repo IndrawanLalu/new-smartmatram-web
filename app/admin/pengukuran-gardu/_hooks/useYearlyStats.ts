@@ -12,8 +12,13 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
 
 export interface MonthStat {
   month: number;
+  /** Pengukuran rutin saja — baris hasil pemerataan TIDAK ikut, supaya angka
+   *  realisasi pengukuran tidak terdongkrak oleh pekerjaan pemerataan. */
   jumlahUkur: number;
   amgTerkirim: number;
+  /** Pengukuran yang lahir dari pekerjaan pemerataan (dicatat lewat mobile). */
+  jumlahPemerataan: number;
+  amgPemerataan: number;
   jumlahAnomal: number;
   rataBeban: number;
   byJenis: Record<string, { wo: number; selesai: number }>;
@@ -50,7 +55,7 @@ export function useYearlyStats(
           fetchAllRows(() => {
             let q = supabaseBrowser
               .from("pengukuran_gardu")
-              .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,amg_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t")
+              .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,amg_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t,hasil_penyeimbangan_id")
               .gte("tanggal_pengukuran", startDate)
               .lt("tanggal_pengukuran", endDate);
             if (unitFilter) q = q.eq("petugas_unit", unitFilter);
@@ -69,18 +74,30 @@ export function useYearlyStats(
 
         type Acc = {
           ukur: number; amg: number; bebanSum: number; anomali: number;
+          ratakan: number; amgRatakan: number;
           woByJenis: Record<string, number>;
           selesaiByJenis: Record<string, number>;
         };
         const emptyJenis = () => Object.fromEntries(JENIS_PEMELIHARAAN_OPTIONS.map(j => [j, 0]));
         const monthMap = new Map<number, Acc>();
         for (let m = 1; m <= 12; m++) {
-          monthMap.set(m, { ukur: 0, amg: 0, bebanSum: 0, anomali: 0, woByJenis: emptyJenis(), selesaiByJenis: emptyJenis() });
+          monthMap.set(m, { ukur: 0, amg: 0, bebanSum: 0, anomali: 0, ratakan: 0, amgRatakan: 0, woByJenis: emptyJenis(), selesaiByJenis: emptyJenis() });
         }
 
         for (const row of pgRows ?? []) {
           const m = new Date(row.tanggal_pengukuran).getMonth() + 1;
           const acc = monthMap.get(m)!;
+
+          // Baris hasil pemerataan dihitung terpisah dan berhenti di sini:
+          // ia bukan pengukuran rutin, jadi tidak boleh menambah jumlah ukur,
+          // menggeser rata-rata beban, atau dihitung sebagai temuan anomali —
+          // gardu yang baru saja diratakan memang seharusnya membaik.
+          if (row.hasil_penyeimbangan_id) {
+            acc.ratakan++;
+            if (row.amg_sent_at) acc.amgRatakan++;
+            continue;
+          }
+
           acc.ukur++;
           if (row.amg_sent_at) acc.amg++;
           acc.bebanSum += row.persen_beban ?? 0;
@@ -121,9 +138,11 @@ export function useYearlyStats(
           }
           result.push({
             month: m,
-            jumlahUkur:   acc.ukur,
-            amgTerkirim:  acc.amg,
-            jumlahAnomal: acc.anomali,
+            jumlahUkur:       acc.ukur,
+            amgTerkirim:      acc.amg,
+            jumlahPemerataan: acc.ratakan,
+            amgPemerataan:    acc.amgRatakan,
+            jumlahAnomal:     acc.anomali,
             rataBeban:    acc.ukur > 0 ? Math.round(acc.bebanSum / acc.ukur) : 0,
             byJenis,
             totalWo,

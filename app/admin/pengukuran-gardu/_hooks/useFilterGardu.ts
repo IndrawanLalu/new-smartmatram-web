@@ -76,6 +76,8 @@ export function useFilterGardu(user: UserLike) {
         let query = supabaseBrowser
           .from("pengukuran_gardu")
           .select("*")
+          // Sama dengan rekap: baris pembawa data AMG bukan pengukuran rutin.
+          .is("hasil_penyeimbangan_id", null)
           .order("tanggal_pengukuran", { ascending: false })
           .order("id");
 
