@@ -286,7 +286,9 @@ function FotoFasaGrid({ judul, foto }: { judul: string; foto: FotoFasa }) {
         <p className="text-[11px] font-semibold text-navy-600">{judul}</p>
         <span className="text-[11px] text-ink-muted">{jumlah} dari 4 fasa</span>
       </div>
-      <div className="grid grid-cols-2 gap-2 max-w-md">
+      {/* Satu baris berisi empat: R/S/T/N jadi terbaca berurutan seperti
+          urutan fasa yang sebenarnya, bukan melipat ke baris kedua. */}
+      <div className="grid grid-cols-4 gap-2">
         {FASA.map((f) => (
           <FotoFasaItem
             key={f}
