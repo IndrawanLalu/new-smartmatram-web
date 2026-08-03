@@ -58,8 +58,28 @@ export interface PenyeimbanganGardu {
   }[];
 }
 
-/** URL foto per fasa. Fasa yang arusnya 0 tidak difoto, jadi bisa tidak ada. */
-export type FotoFasa = Partial<Record<"R" | "S" | "T" | "N", string>>;
+/** Satu foto beserta waktu pengambilannya (patokan server, jatuh ke jam HP). */
+export interface FotoSlot {
+  url: string;
+  waktu: string;
+  sumber_waktu: "server" | "hp";
+}
+
+/** Foto per fasa. Fasa yang arusnya 0 tidak difoto, jadi bisa tidak ada.
+ *
+ *  Nilainya bisa `string` (bentuk lama, sebelum cap waktu) atau `FotoSlot`.
+ *  Rekap yang tersimpan sebelum 3 Agustus 2026 memakai bentuk lama — baca
+ *  SELALU lewat `urlFoto()` / `waktuFoto()`, jangan diakses langsung. */
+export type FotoFasa = Partial<Record<"R" | "S" | "T" | "N", FotoSlot | string>>;
+
+export const urlFoto = (v?: FotoSlot | string): string | undefined =>
+  typeof v === "string" ? v : v?.url;
+
+export const waktuFoto = (v?: FotoSlot | string): string | undefined =>
+  typeof v === "string" ? undefined : v?.waktu;
+
+export const sumberWaktuFoto = (v?: FotoSlot | string): string | undefined =>
+  typeof v === "string" ? undefined : v?.sumber_waktu;
 
 export interface SavePenyeimbanganInput {
   pengukuranRow: PengukuranGardu;

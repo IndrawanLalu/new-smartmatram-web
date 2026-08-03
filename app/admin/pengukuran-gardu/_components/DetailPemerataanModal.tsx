@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { Camera, ExternalLink, Radio, Loader2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
-import type { FotoFasa, PenyeimbanganGardu } from "../_hooks/usePenyeimbangan";
+import {
+  urlFoto,
+  waktuFoto,
+  sumberWaktuFoto,
+  type FotoFasa,
+  type PenyeimbanganGardu,
+} from "../_hooks/usePenyeimbangan";
 
 const FASA = ["R", "S", "T", "N"] as const;
 const JURUSAN = ["A", "B", "C", "D", "K"];
@@ -25,6 +31,16 @@ function unbalance(r: number, s: number, t: number): number {
 }
 
 const fmt = (n: number, d = 1) => Number(n ?? 0).toFixed(d).replace(".", ",");
+
+/** ISO ber-offset WITA → "03/08/2026 14:32 WITA". Sengaja dibaca dari komponen
+ *  tanggalnya langsung, bukan dikonversi ke zona browser — cap ini menyatakan
+ *  jam lapangan, bukan jam pembacanya. */
+function fmtWaktu(iso: string): string {
+  const m = iso.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return iso;
+  const [, y, bl, d, h, mi] = m;
+  return `${d}/${bl}/${y} ${h}:${mi} WITA`;
+}
 
 function fmtTanggal(s: string): string {
   if (!s) return "—";
@@ -209,10 +225,15 @@ function TabelArus({
   );
 }
 
-function FotoFasaItem({ fasa, url }: { fasa: string; url?: string }) {
+function FotoFasaItem({
+  fasa, url, waktu, dariHp,
+}: {
+  fasa: string; url?: string; waktu?: string; dariHp?: boolean;
+}) {
   const [error, setError] = useState(false);
 
   return (
+    <div>
     <div className="relative rounded-lg overflow-hidden border border-line bg-surface aspect-4/3">
       <span className={`absolute top-1.5 left-1.5 z-10 px-1.5 py-0.5 rounded text-[10px] font-bold ${FASA_CLS[fasa]}`}>
         {fasa}
@@ -244,13 +265,21 @@ function FotoFasaItem({ fasa, url }: { fasa: string; url?: string }) {
         </a>
       )}
     </div>
+    {/* Waktu tetap tampil meski capnya tidak terbakar ke gambar. Ditandai
+        kalau patokannya jam HP petugas, bukan waktu server. */}
+    {waktu && (
+      <p className="mt-1 text-center text-[10px] text-ink-muted">
+        {fmtWaktu(waktu)}{dariHp ? " · jam HP" : ""}
+      </p>
+    )}
+    </div>
   );
 }
 
 /** Petak 2×2 — "satu foto berisi empat foto R S T N". Digabung saat ditampilkan,
  *  bukan dijahit di HP, supaya foto asli tetap utuh sebagai bukti. */
 function FotoFasaGrid({ judul, foto }: { judul: string; foto: FotoFasa }) {
-  const jumlah = FASA.filter((f) => foto[f]).length;
+  const jumlah = FASA.filter((f) => urlFoto(foto[f])).length;
   return (
     <div>
       <div className="flex items-baseline gap-2 mb-2">
@@ -258,7 +287,15 @@ function FotoFasaGrid({ judul, foto }: { judul: string; foto: FotoFasa }) {
         <span className="text-[11px] text-ink-muted">{jumlah} dari 4 fasa</span>
       </div>
       <div className="grid grid-cols-2 gap-2 max-w-md">
-        {FASA.map((f) => <FotoFasaItem key={f} fasa={f} url={foto[f]} />)}
+        {FASA.map((f) => (
+          <FotoFasaItem
+            key={f}
+            fasa={f}
+            url={urlFoto(foto[f])}
+            waktu={waktuFoto(foto[f])}
+            dariHp={sumberWaktuFoto(foto[f]) === "hp"}
+          />
+        ))}
       </div>
     </div>
   );
