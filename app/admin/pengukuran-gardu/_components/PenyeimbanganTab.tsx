@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import {
   Search, Trash2, Pencil, ChevronLeft, ChevronRight,
   Scale, FileCheck, AlertTriangle, TrendingUp, Download,
-  Check, X as XIcon, ClipboardX, Info, Camera, Radio,
+  Check, X as XIcon, ClipboardX, Info, Radio, Eye,
 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
@@ -16,7 +16,7 @@ import {
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import PenyeimbanganModal from "./PenyeimbanganModal";
-import FotoPenyeimbanganModal from "./FotoPenyeimbanganModal";
+import DetailPemerataanModal from "./DetailPemerataanModal";
 import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
@@ -98,7 +98,7 @@ export default function PenyeimbanganTab({
   const [searchQuery, setSearchQuery]     = useState("");
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
   const [editRecord, setEditRecord]       = useState<PenyeimbanganGardu | null>(null);
-  const [fotoRecord, setFotoRecord]       = useState<PenyeimbanganGardu | null>(null);
+  const [detailRecord, setDetailRecord]   = useState<PenyeimbanganGardu | null>(null);
   const [amgBusy, setAmgBusy]             = useState<string | null>(null);
 
   async function handleKirimAmg(row: PenyeimbanganGardu) {
@@ -664,17 +664,16 @@ export default function PenyeimbanganTab({
                       </td>
                       <td className="px-3 py-2.5 text-center">
                         <div className="flex items-center justify-center gap-2">
-                          {/* Hanya muncul kalau memang ada bukti — ikon mati yang
-                              tak bisa diklik lebih membingungkan daripada absen. */}
-                          {(row.foto_total || row.foto_perjurusan) && (
-                            <button
-                              onClick={() => setFotoRecord(row)}
-                              className="text-navy-600 hover:text-accent-deep transition-colors"
-                              title="Lihat foto bukti"
-                            >
-                              <Camera size={13} />
-                            </button>
-                          )}
+                          {/* Satu pintu: detail, bukti foto, dan kirim AMG semuanya
+                              di dalam modal — keputusan kirim diambil setelah
+                              melihat angkanya, bukan dari baris tabel. */}
+                          <button
+                            onClick={() => setDetailRecord(row)}
+                            className="text-navy-600 hover:text-accent-deep transition-colors"
+                            title="Lihat detail, foto, & kirim AMG"
+                          >
+                            <Eye size={14} />
+                          </button>
                           <AmgCell row={row} />
                           <button onClick={() => setEditRecord(row)} className="text-navy-600 hover:text-accent-deep transition-colors" title="Edit">
                             <Pencil size={13} />
@@ -714,8 +713,13 @@ export default function PenyeimbanganTab({
       {editRecord && (
         <PenyeimbanganModal mode="edit" record={editRecord} onClose={() => setEditRecord(null)} onUpdate={handleUpdate} />
       )}
-      {fotoRecord && (
-        <FotoPenyeimbanganModal record={fotoRecord} onClose={() => setFotoRecord(null)} />
+      {detailRecord && (
+        <DetailPemerataanModal
+          record={detailRecord}
+          amgBusy={amgBusy === detailRecord.id}
+          onKirimAmg={handleKirimAmg}
+          onClose={() => setDetailRecord(null)}
+        />
       )}
     </div>
   );
