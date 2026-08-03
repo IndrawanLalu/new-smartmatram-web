@@ -17,6 +17,8 @@ import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import PenyeimbanganModal from "./PenyeimbanganModal";
 import DetailPemerataanModal from "./DetailPemerataanModal";
+import GarduDetailModal from "./GarduDetailModal";
+import EditPengukuranModal from "./EditPengukuranModal";
 import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 
@@ -99,6 +101,10 @@ export default function PenyeimbanganTab({
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
   const [editRecord, setEditRecord]       = useState<PenyeimbanganGardu | null>(null);
   const [detailRecord, setDetailRecord]   = useState<PenyeimbanganGardu | null>(null);
+  /** Detail pengukuran dari baris tabel anomali — dibuka dengan mengklik baris,
+   *  bukan tombol tersendiri, karena kolomnya sudah padat. */
+  const [detailPengukuran, setDetailPengukuran] = useState<PengukuranGardu | null>(null);
+  const [editPengukuran, setEditPengukuran]     = useState<PengukuranGardu | null>(null);
   const [amgBusy, setAmgBusy]             = useState<string | null>(null);
 
   async function handleKirimAmg(row: PenyeimbanganGardu) {
@@ -361,7 +367,7 @@ export default function PenyeimbanganTab({
                   {anomaliBelumWo.map((row, idx) => {
                     const { reasons } = anomaliBelumWoMap.get(row.id) ?? { reasons: [] };
                     return (
-                      <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-white"}>
+                      <tr key={row.id} onClick={() => setDetailPengukuran(row)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-white"}`}>
                         <td className="px-3 py-2.5 text-xs text-ink-soft">{idx + 1}</td>
                         <td className="px-3 py-2.5 font-semibold text-ink">{row.no_gardu}</td>
                         <td className="px-3 py-2.5 text-xs text-ink-soft">{row.penyulang ?? "—"}</td>
@@ -473,7 +479,7 @@ export default function PenyeimbanganTab({
                   const sudahSeimbang = pengukuranSeimbang.has(row.id);
                   const anomResult = anomaliSudahWoMap.get(row.id) ?? null;
                   return (
-                    <tr key={row.id} className={i % 2 === 0 ? "bg-white" : "bg-white"}>
+                    <tr key={row.id} onClick={() => setDetailPengukuran(row)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-white"}`}>
                       <td className="px-4 py-2.5 font-semibold text-ink">{row.no_gardu}</td>
                       <td className="px-4 py-2.5 text-ink-soft text-xs">{row.penyulang ?? "—"}</td>
                       <td className="px-4 py-2.5 text-ink-soft text-xs max-w-40 truncate">{row.alamat ?? "—"}</td>
@@ -654,7 +660,7 @@ export default function PenyeimbanganTab({
                 </thead>
                 <tbody className="divide-y divide-line">
                   {paginatedRekap.map((row, idx) => (
-                    <tr key={row.id} className={idx % 2 === 0 ? "bg-white" : "bg-white"}>
+                    <tr key={row.id} onClick={() => setDetailRecord(row)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-white"}`}>
                       <td className="px-3 py-2.5 text-xs text-ink-soft">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                       <td className="px-3 py-2.5 text-xs text-ink">{fmtTanggal(row.tgl_penyeimbangan)}</td>
                       <td className="px-3 py-2.5 text-xs font-semibold text-ink">{row.no_gardu}</td>
@@ -684,7 +690,9 @@ export default function PenyeimbanganTab({
                       <td className="px-3 py-2.5 text-xs text-ink-soft max-w-[200px]">
                         {row.catatan ? <span className="truncate block" title={row.catatan}>{row.catatan}</span> : "—"}
                       </td>
-                      <td className="px-3 py-2.5 text-center">
+                      {/* Barisnya sendiri sudah bisa diklik; tanpa penahan ini
+                          menekan Edit atau Hapus ikut membuka modal detail. */}
+                      <td className="px-3 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-2">
                           {/* Satu pintu: detail, bukti foto, dan kirim AMG semuanya
                               di dalam modal — keputusan kirim diambil setelah
@@ -743,6 +751,24 @@ export default function PenyeimbanganTab({
           onClose={() => setDetailRecord(null)}
         />
       )}
+      <GarduDetailModal
+        key={detailPengukuran?.id}
+        row={detailPengukuran}
+        onClose={() => setDetailPengukuran(null)}
+        onEdit={setEditPengukuran}
+        allData={latestData}
+        onPatchRow={onPatchRow}
+      />
+      <EditPengukuranModal
+        row={editPengukuran}
+        onClose={() => setEditPengukuran(null)}
+        onSaved={(id) => {
+          setEditPengukuran(null);
+          setDetailPengukuran(null);
+          // Baris di tabel ikut menyesuaikan tanpa memuat ulang seluruh data.
+          onPatchRow(id, {});
+        }}
+      />
     </div>
   );
 }

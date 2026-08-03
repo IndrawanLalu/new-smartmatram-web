@@ -137,6 +137,144 @@ function SliderRow({
   );
 }
 
+// ── ArusNominalRangeRow ───────────────────────────────────────────────────
+//
+// Pembebanan arus terhadap arus nominal trafo — RENTANG, bukan satu ambang,
+// supaya bisa dipakai untuk "70–100%" maupun ">100%".
+//
+// Menggeser batas atas sampai mentok = TANPA BATAS (disimpan null). Tanpa itu
+// ">100%" tidak bisa diungkapkan: berapa pun angka yang dipilih sebagai batas
+// atas akan diam-diam mengecualikan gardu yang lebih parah dari itu.
+
+const ARUS_MIN = 50;
+const ARUS_MAX = 150;
+const ARUS_STEP = 5;
+const ARUS_COLOR = "#e11d48";
+const ARUS_TRACK = "#4c0519";
+
+interface ArusNominalRowProps {
+  minValue: number | null;
+  maxValue: number | null;
+  onChange: (min: number | null, max: number | null) => void;
+}
+
+function ArusNominalRangeRow({ minValue, maxValue, onChange }: ArusNominalRowProps) {
+  const active = minValue !== null || maxValue !== null;
+  const minV = minValue ?? 70;
+  const maxV = maxValue ?? ARUS_MAX;          // mentok = tanpa batas
+  const tanpaBatas = maxValue === null;
+  const minPct = ((minV - ARUS_MIN) / (ARUS_MAX - ARUS_MIN)) * 100;
+  const maxPct = ((maxV - ARUS_MIN) / (ARUS_MAX - ARUS_MIN)) * 100;
+
+  const label = !active
+    ? "—"
+    : tanpaBatas
+      ? `≥${minV}%`
+      : minValue === null
+        ? `≤${maxV}%`
+        : `${minV}–${maxV}%`;
+
+  return (
+    <div className={`rounded-xl border p-4 transition-all md:col-span-2 ${
+      active ? "border-line bg-white" : "border-line/40 bg-surface opacity-60"
+    }`}>
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <button
+            type="button"
+            onClick={() => (active ? onChange(null, null) : onChange(70, null))}
+            className={`relative w-9 h-5 rounded-full transition-colors shrink-0 ${active ? "bg-navy-600" : "bg-line"}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-white transition-transform shadow-sm ${
+              active ? "translate-x-4" : "translate-x-0"
+            }`} />
+          </button>
+          <div>
+            <p className="text-sm font-semibold text-ink">Arus vs Nominal Trafo</p>
+            <p className="text-[11px] text-ink-muted">
+              Fasa tertinggi dibanding arus nominal (kVA×1000 ÷ √3×400) — berbeda dari
+              beban kVA saat tegangan turun
+            </p>
+          </div>
+        </div>
+        <div
+          className={`min-w-[110px] text-center text-sm font-bold px-3 py-1 rounded-full border transition-all ${
+            active ? "border-transparent text-white" : "border-line text-ink-muted"
+          }`}
+          style={active ? { background: ARUS_COLOR } : undefined}
+        >
+          {label}
+        </div>
+      </div>
+
+      {active && (
+        <div className="space-y-3">
+          <div>
+            <div className="flex justify-between text-[11px] text-ink-soft mb-1">
+              <span>Batas bawah</span>
+              <span className="font-semibold" style={{ color: ARUS_COLOR }}>{minV}%</span>
+            </div>
+            <div className="relative pt-1">
+              <div className="relative h-2 rounded-full" style={{ background: ARUS_TRACK }}>
+                <div className="absolute left-0 top-0 h-2 rounded-full" style={{ width: `${minPct}%`, background: ARUS_COLOR }} />
+              </div>
+              <input
+                type="range"
+                min={ARUS_MIN} max={ARUS_MAX} step={ARUS_STEP}
+                value={minV}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  onChange(v, tanpaBatas ? null : Math.max(v + ARUS_STEP, maxV));
+                }}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer h-2 top-1"
+                style={{ WebkitAppearance: "none" }}
+              />
+              <div
+                className="absolute top-[-4px] w-4 h-4 rounded-full shadow-lg border-2 border-white"
+                style={{ left: `calc(${minPct}% - 8px)`, background: ARUS_COLOR }}
+              />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex justify-between text-[11px] text-ink-soft mb-1">
+              <span>Batas atas</span>
+              <span className="font-semibold" style={{ color: ARUS_COLOR }}>
+                {tanpaBatas ? "tanpa batas" : `${maxV}%`}
+              </span>
+            </div>
+            <div className="relative pt-1">
+              <div className="relative h-2 rounded-full" style={{ background: ARUS_TRACK }}>
+                <div className="absolute left-0 top-0 h-2 rounded-full" style={{ width: `${maxPct}%`, background: ARUS_COLOR }} />
+              </div>
+              <input
+                type="range"
+                min={ARUS_MIN} max={ARUS_MAX} step={ARUS_STEP}
+                value={maxV}
+                onChange={(e) => {
+                  const v = Number(e.target.value);
+                  // Mentok kanan = tanpa batas atas.
+                  onChange(Math.min(minV, v - ARUS_STEP), v >= ARUS_MAX ? null : v);
+                }}
+                className="absolute inset-0 w-full opacity-0 cursor-pointer h-2 top-1"
+                style={{ WebkitAppearance: "none" }}
+              />
+              <div
+                className="absolute top-[-4px] w-4 h-4 rounded-full shadow-lg border-2 border-white"
+                style={{ left: `calc(${maxPct}% - 8px)`, background: ARUS_COLOR }}
+              />
+            </div>
+            <div className="flex justify-between mt-2 text-[10px] text-ink-muted">
+              <span>{ARUS_MIN}%</span>
+              <span>geser mentok kanan = tanpa batas</span>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── KvaRangeRow ───────────────────────────────────────────────────────────
 
 interface KvaRangeRowProps {
@@ -297,7 +435,7 @@ export default function AnomalySettingsPanel({
   useEffect(() => {
     if (!dirty) setDraft(settings);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.max_beban_trafo_pct, settings.max_arus_jurusan_a, settings.max_unbalance_pct, settings.max_suhu_trafo_c, settings.min_kva_trafo, settings.max_kva_trafo, dirty]);
+  }, [settings.max_beban_trafo_pct, settings.max_arus_jurusan_a, settings.max_unbalance_pct, settings.max_suhu_trafo_c, settings.min_arus_nominal_pct, settings.max_arus_nominal_pct, settings.min_kva_trafo, settings.max_kva_trafo, dirty]);
 
   function patchDraft(key: keyof AnomalySettings, v: number | null) {
     setDraft((prev) => ({ ...prev, [key]: v }));
@@ -320,7 +458,8 @@ export default function AnomalySettingsPanel({
   }
 
   const kvaActive  = draft.min_kva_trafo !== null || draft.max_kva_trafo !== null;
-  const activeCount = CRITERIA.filter((c) => draft[c.key] !== null).length + (kvaActive ? 1 : 0);
+  const arusActive = draft.min_arus_nominal_pct !== null || draft.max_arus_nominal_pct !== null;
+  const activeCount = CRITERIA.filter((c) => draft[c.key] !== null).length + (kvaActive ? 1 : 0) + (arusActive ? 1 : 0);
 
   return (
     <div className="bg-white rounded-xl border border-line overflow-hidden">
@@ -381,6 +520,14 @@ export default function AnomalySettingsPanel({
                 onChange={(v) => patchDraft(c.key, v)}
               />
             ))}
+            <ArusNominalRangeRow
+              minValue={draft.min_arus_nominal_pct}
+              maxValue={draft.max_arus_nominal_pct}
+              onChange={(min, max) => {
+                setDraft((prev) => ({ ...prev, min_arus_nominal_pct: min, max_arus_nominal_pct: max }));
+                setDirty(true);
+              }}
+            />
             <KvaRangeRow
               minValue={draft.min_kva_trafo}
               maxValue={draft.max_kva_trafo}

@@ -16,6 +16,10 @@ export interface AnomalySettings {
   max_arus_jurusan_a:  number | null;
   max_unbalance_pct:   number | null;
   max_suhu_trafo_c:    number | null;
+  /** Pembebanan arus terhadap arus nominal trafo, sebagai RENTANG.
+   *  max NULL = tanpa batas atas (mis. ">100%"). */
+  min_arus_nominal_pct: number | null;
+  max_arus_nominal_pct: number | null;
   min_kva_trafo:       number | null;  // range filter — hanya evaluasi gardu dalam rentang KVA ini
   max_kva_trafo:       number | null;
 }
@@ -25,6 +29,8 @@ export const DEFAULT_SETTINGS: AnomalySettings = {
   max_arus_jurusan_a:  null,
   max_unbalance_pct:   null,
   max_suhu_trafo_c:    null,
+  min_arus_nominal_pct: null,
+  max_arus_nominal_pct: null,
   min_kva_trafo:       null,
   max_kva_trafo:       null,
 };
@@ -32,6 +38,25 @@ export const DEFAULT_SETTINGS: AnomalySettings = {
 export interface AnomalyResult {
   isAnomali: boolean;
   reasons: string[];
+}
+
+/** Arus nominal sekunder trafo: I = kVA × 1000 / (√3 × 400).
+ *  Rumus yang sama dipakai saat mengirim ke AMG (calcINominal di
+ *  app/api/kirim-amg/route.ts) — jangan sampai dua tempat memakai angka beda. */
+export function calcArusNominal(kva: number): number {
+  return (kva * 1000) / (Math.sqrt(3) * 400);
+}
+
+/** Pembebanan arus terhadap arus nominal, dalam persen.
+ *
+ *  Memakai fasa TERTINGGI, bukan rata-rata: satu fasa yang sudah melewati
+ *  kemampuan trafo tetap berbahaya walau dua fasa lain masih longgar — dan itu
+ *  justru keadaan yang hendak diperbaiki lewat pemerataan beban. */
+export function calcPembebananArusPct(row: AnomalyRow): number {
+  const nominal = calcArusNominal(row.kva_trafo);
+  if (nominal <= 0) return 0;
+  const maxArus = Math.max(row.total_arus_r, row.total_arus_s, row.total_arus_t);
+  return (maxArus / nominal) * 100;
 }
 
 // Hitung persentase unbalance antar fasa R/S/T (NEMA formula)
@@ -92,7 +117,29 @@ export function detectAnomali(
     if (!jurusanHit) failed.push("arus_jurusan");
   }
 
-  // 4. Unbalance antar fasa
+  // 4. Pembebanan arus terhadap arus nominal trafo (rentang)
+  //
+  // Terpisah dari kriteria "Beban Trafo" yang berbasis kVA: saat tegangan
+  // turun, beban kVA bisa terlihat wajar padahal arusnya sudah melewati
+  // kemampuan trafo. Yang menentukan panas belitan adalah arusnya.
+  if (settings.min_arus_nominal_pct !== null || settings.max_arus_nominal_pct !== null) {
+    const pct = calcPembebananArusPct(row);
+    const diAtasMin = settings.min_arus_nominal_pct === null || pct >= settings.min_arus_nominal_pct;
+    const diBawahMax = settings.max_arus_nominal_pct === null || pct <= settings.max_arus_nominal_pct;
+
+    if (diAtasMin && diBawahMax) {
+      const batas = settings.max_arus_nominal_pct === null
+        ? `≥${settings.min_arus_nominal_pct}%`
+        : `${settings.min_arus_nominal_pct ?? 0}–${settings.max_arus_nominal_pct}%`;
+      reasons.push(
+        `Arus ${Math.round(pct)}% dari nominal ${Math.round(calcArusNominal(row.kva_trafo))}A (${batas})`,
+      );
+    } else {
+      failed.push("arus_nominal");
+    }
+  }
+
+  // 5. Unbalance antar fasa
   if (settings.max_unbalance_pct !== null) {
     const ub = calcUnbalancePct(row.total_arus_r, row.total_arus_s, row.total_arus_t);
     if (ub > settings.max_unbalance_pct) {
@@ -110,10 +157,12 @@ export function detectAnomali(
 // KVA range TIDAK dihitung — ia adalah filter scope, bukan trigger anomali
 export function hasThresholdCriteria(s: AnomalySettings): boolean {
   return (
-    s.max_beban_trafo_pct !== null ||
-    s.max_arus_jurusan_a  !== null ||
-    s.max_unbalance_pct   !== null ||
-    s.max_suhu_trafo_c    !== null
+    s.max_beban_trafo_pct  !== null ||
+    s.max_arus_jurusan_a   !== null ||
+    s.max_unbalance_pct    !== null ||
+    s.max_suhu_trafo_c     !== null ||
+    s.min_arus_nominal_pct !== null ||
+    s.max_arus_nominal_pct !== null
   );
 }
 
