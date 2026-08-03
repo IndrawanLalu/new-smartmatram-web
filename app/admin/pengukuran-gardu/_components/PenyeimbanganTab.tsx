@@ -79,7 +79,7 @@ export default function PenyeimbanganTab({
   const now = new Date();
 
   const {
-    data: allRekapData,
+    pengukuranSeimbang,
     filteredData: rekapData,
     loading: rekapLoading,
     error: rekapError,
@@ -448,7 +448,10 @@ export default function PenyeimbanganTab({
               </thead>
               <tbody className="divide-y divide-line">
                 {anomaliSudahWo.map((row, i) => {
-                  const sudahSeimbang = allRekapData.some((r) => r.pengukuran_id === row.id);
+                  // Dibaca dari daftar lintas bulan, BUKAN dari rekap yang
+                  // sedang ditampilkan — status pekerjaan tidak boleh berubah
+                  // hanya karena filter bulan di tabel bawah digeser.
+                  const sudahSeimbang = pengukuranSeimbang.has(row.id);
                   const anomResult = anomaliSudahWoMap.get(row.id) ?? null;
                   return (
                     <tr key={row.id} className={i % 2 === 0 ? "bg-white" : "bg-white"}>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { JurusanData, PengukuranGardu } from "./usePengukuranGardu";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -122,6 +123,13 @@ export interface UpdatePenyeimbanganInput {
 export function usePenyeimbangan(ulp: string) {
   const now = new Date();
   const [data, setData] = useState<PenyeimbanganGardu[]>([]);
+  /** id pengukuran yang SUDAH pernah diseimbangkan, LINTAS BULAN.
+   *
+   *  Sengaja terpisah dari `data`: status "sudah seimbang" di tabel Gardu Sudah
+   *  di-WO tidak boleh ikut jendela bulan yang dipilih di rekap. Dulu memakai
+   *  `data`, sehingga gardu yang diratakan Juli tampak belum seimbang begitu
+   *  rekap dipindah ke Agustus — pekerjaannya seolah hilang. */
+  const [pengukuranSeimbang, setPengukuranSeimbang] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -158,7 +166,22 @@ export function usePenyeimbangan(ulp: string) {
     }
   }, [month, year, ulp]);
 
+  /** Hanya kolom id — muatannya ringan meski dikumpulkan lintas tahun.
+   *  Paginasi wajib: batas 1000 baris PostgREST akan memotong diam-diam begitu
+   *  rekap menumpuk, dan gejalanya berupa status yang "hilang" tanpa error. */
+  const fetchSeimbang = useCallback(async () => {
+    let query = supabaseBrowser
+      .from("penyeimbangan_gardu")
+      .select("pengukuran_id")
+      .not("pengukuran_id", "is", null);
+    if (ulp) query = query.eq("ulp", ulp);
+
+    const rows = await fetchAllRows<{ pengukuran_id: string }>(() => query);
+    setPengukuranSeimbang(new Set(rows.map((r) => r.pengukuran_id)));
+  }, [ulp]);
+
   useEffect(() => { fetchData(); }, [fetchData]);
+  useEffect(() => { fetchSeimbang(); }, [fetchSeimbang]);
 
   // Client-side filter by jenis — data lengkap tetap tersedia untuk WO table
   const filteredData = useMemo(
@@ -215,12 +238,14 @@ export function usePenyeimbangan(ulp: string) {
       // pengukuran_gardu TIDAK di-update — data historis pengukuran harus immutable.
       // Kondisi terkini gardu dibaca dari gardu_latest_state view (merge pengukuran + penyeimbangan).
 
-      await fetchData();
+      // Daftar "sudah seimbang" ikut disegarkan: rekap baru harus langsung
+      // terlihat di tabel Gardu Sudah di-WO, apa pun bulan yang sedang dipilih.
+      await Promise.all([fetchData(), fetchSeimbang()]);
       return null;
     } catch (e) {
       return e instanceof Error ? e.message : "Gagal menyimpan";
     }
-  }, [fetchData]);
+  }, [fetchData, fetchSeimbang]);
 
   const updatePenyeimbangan = useCallback(async (input: UpdatePenyeimbanganInput): Promise<string | null> => {
     const bebanKvaAfter =
@@ -310,7 +335,9 @@ export function usePenyeimbangan(ulp: string) {
     const { error } = await supabaseBrowser.from("penyeimbangan_gardu").delete().eq("id", id);
     if (error) { await fetchData(); return; }
     setData((prev) => prev.filter((item) => item.id !== id));
-  }, [fetchData]);
+    // Gardu-nya kembali berstatus belum seimbang di tabel Gardu Sudah di-WO.
+    await fetchSeimbang();
+  }, [fetchData, fetchSeimbang]);
 
-  return { data, filteredData, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, kirimKeAmg, deleteItem, refresh: fetchData };
+  return { data, filteredData, pengukuranSeimbang, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, kirimKeAmg, deleteItem, refresh: fetchData };
 }
