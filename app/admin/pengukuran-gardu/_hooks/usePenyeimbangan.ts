@@ -79,6 +79,8 @@ export interface SavePenyeimbanganInput {
 
 export interface UpdatePenyeimbanganInput {
   id: string;
+  /** Pengukuran ASAL (kondisi sebelum). Disimpan sebagai rujukan saja — JANGAN
+   *  dipakai untuk menulis apa pun. Menimpanya menghapus bukti kondisi sebelum. */
   pengukuranId: string | null;
   kvaTrafo: number;
   perjurusanAfter: Record<string, JurusanData>;
@@ -227,21 +229,30 @@ export function usePenyeimbangan(ulp: string) {
 
       if (updateErr) throw updateErr;
 
-      // Sync back to pengukuran_gardu if linked
-      if (input.pengukuranId) {
-        await supabaseBrowser
-          .from("pengukuran_gardu")
-          .update({
-            total_arus_r: input.arusRAfter,
-            total_arus_s: input.arusSAfter,
-            total_arus_t: input.arusTAfter,
-            total_arus_n: input.arusNAfter,
-            beban_kva:    bebanKvaAfter,
-            persen_beban: bebanPctAfter,
-            perjurusan:   input.perjurusanAfter,
-          })
-          .eq("id", input.pengukuranId);
-      }
+      // Koreksi ikut diterapkan ke baris pengukuran "setelah" — pembawa data ke
+      // AMG — supaya angka yang dikirim sama dengan rekap yang sudah dibetulkan.
+      // Dicocokkan lewat FK, jadi tidak perlu tahu id-nya lebih dulu.
+      //
+      // Pengukuran ASAL (input.pengukuranId) SENGAJA TIDAK DISENTUH. Dulu baris
+      // itu ikut ditimpa nilai sesudah, sehingga menyunting satu rekap diam-diam
+      // menghapus bukti kondisi sebelum — dan baris anomali yang jadi dasar WO
+      // mendadak terlihat sehat. Kondisi sesudah sudah punya barisnya sendiri.
+      await supabaseBrowser
+        .from("pengukuran_gardu")
+        .update({
+          total_arus_r:       input.arusRAfter,
+          total_arus_s:       input.arusSAfter,
+          total_arus_t:       input.arusTAfter,
+          total_arus_n:       input.arusNAfter,
+          total_teg_rn:       input.tegRNAfter,
+          total_teg_sn:       input.tegSNAfter,
+          total_teg_tn:       input.tegTNAfter,
+          beban_kva:          bebanKvaAfter,
+          persen_beban:       bebanPctAfter,
+          perjurusan:         input.perjurusanAfter,
+          tanggal_pengukuran: input.tglPenyeimbangan,
+        })
+        .eq("hasil_penyeimbangan_id", input.id);
 
       await fetchData();
       return null;
