@@ -112,6 +112,7 @@ export default function PenyeimbanganTab({
   const [savingJenis, setSavingJenis]     = useState(false);
   const [page, setPage]                   = useState(1);
   const [filterWoJenis, setFilterWoJenis] = useState("");
+  const [filterWoStatus, setFilterWoStatus] = useState<"" | "selesai" | "proses">("");
 
   const years = useMemo(
     () => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i),
@@ -127,11 +128,16 @@ export default function PenyeimbanganTab({
 
   // Sudah di-WO: semua latestData dengan jenis_pemeliharaan terisi, bebas dari kriteria anomali
   const anomaliSudahWo = useMemo(
-    () => latestData.filter(
-      (d) => !!d.jenis_pemeliharaan &&
-             (!filterWoJenis || d.jenis_pemeliharaan === filterWoJenis)
-    ),
-    [latestData, filterWoJenis]
+    () => latestData.filter((d) => {
+      if (!d.jenis_pemeliharaan) return false;
+      if (filterWoJenis && d.jenis_pemeliharaan !== filterWoJenis) return false;
+      if (!filterWoStatus) return true;
+      // Sumbernya sama dengan kolom Status di baris — lintas bulan, bukan
+      // rekap yang sedang ditampilkan.
+      const selesai = pengukuranSeimbang.has(d.id);
+      return filterWoStatus === "selesai" ? selesai : !selesai;
+    }),
+    [latestData, filterWoJenis, filterWoStatus, pengukuranSeimbang]
   );
 
   // Memoize detectAnomali results — hindari hitung ulang tiap render
@@ -399,7 +405,7 @@ export default function PenyeimbanganTab({
       )}
 
       {/* ── Section: Anomali Sudah di-WO ────────────────────────────────────── */}
-      {anomaliSudahWo.length > 0 || filterWoJenis ? (
+      {anomaliSudahWo.length > 0 || filterWoJenis || filterWoStatus ? (
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
           <div className="px-5 py-3 bg-navy-50 border-b border-navy-200 flex flex-wrap items-center gap-2">
             <FileCheck size={16} className="text-emerald-600 shrink-0" />
@@ -413,6 +419,15 @@ export default function PenyeimbanganTab({
               <option value="">Semua Jenis</option>
               {JENIS_PEMELIHARAAN_OPTIONS.map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
+            <select
+              value={filterWoStatus}
+              onChange={(e) => setFilterWoStatus(e.target.value as "" | "selesai" | "proses")}
+              className="border border-line rounded-lg px-2 py-1 text-xs text-ink bg-white focus:outline-none focus:border-navy-500"
+            >
+              <option value="">Semua Status</option>
+              <option value="proses">Proses</option>
+              <option value="selesai">Selesai</option>
+            </select>
             <button
               onClick={() => downloadWoGarduXlsx(anomaliSudahWo, `Gardu_WO_${new Date().toISOString().split("T")[0]}.xlsx`)}
               disabled={anomaliSudahWo.length === 0}
@@ -425,7 +440,11 @@ export default function PenyeimbanganTab({
           {anomaliSudahWo.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-ink-muted">
               <ClipboardX size={24} className="text-ink-muted/50" />
-              <p className="text-sm">Tidak ada gardu dengan jenis {filterWoJenis}</p>
+              <p className="text-sm">
+                Tidak ada gardu
+                {filterWoJenis && ` dengan jenis ${filterWoJenis}`}
+                {filterWoStatus && ` berstatus ${filterWoStatus === "selesai" ? "Selesai" : "Proses"}`}
+              </p>
             </div>
           ) : (
           <div className="overflow-x-auto">
