@@ -6,7 +6,6 @@ import { useState } from "react";
 import {
   LayoutDashboard,
   Map,
-  BarChart3,
   Users,
   ClipboardList,
   Gauge,
@@ -66,7 +65,9 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/advanced-dashboard",   label: "Advanced Analytics",   icon: TrendingUp },
       { href: "/admin/cara-kerja-ml",        label: "SMART Learning",       icon: BrainCircuit },
       { href: "/admin/efektifitas-inspeksi", label: "Efektivitas Inspeksi", icon: ShieldCheck },
-      { href: "/admin/dashboard-penyulang",  label: "Dashboard Penyulang",  icon: BarChart3 },
+      // "Dashboard Penyulang" dihapus 2026-08-04: route-nya tidak pernah punya
+      // page.tsx, jadi item ini selalu berujung 404. Analisis per penyulang ada
+      // di Advanced Analytics.
     ],
   },
   {
@@ -154,8 +155,10 @@ export default function AdminSidebar({ userUnit }: AdminSidebarProps) {
         collapsed ? "w-16" : "w-60"
       }`}
     >
-      {/* Logo */}
-      <div className="px-3 py-3.5 flex items-center justify-between gap-2 border-b border-sidebar-line">
+      {/* Logo — tingginya DIIKAT ke var yang sama dengan topbar supaya garis
+          bawah keduanya menyambung jadi satu garis lurus. Jangan diganti padding
+          lagi: begitu keduanya dihitung terpisah, tingginya pasti melenceng. */}
+      <div className="h-[var(--topbar-h)] shrink-0 px-3 flex items-center justify-between gap-2 border-b border-sidebar-line">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <div className="w-9 h-9 bg-navy-600 rounded-xl grid place-items-center shrink-0">
             <Zap size={18} className="text-white" />

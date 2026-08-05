@@ -60,7 +60,7 @@ export default function SetPasswordPage() {
     if (err) { setError(err.message); return; }
 
     setDone(true);
-    setTimeout(() => router.push("/admin/command-center"), 2500);
+    setTimeout(() => router.push("/admin/dashboard"), 2500);
   };
 
   return (

@@ -30,7 +30,7 @@ export async function middleware(request: NextRequest) {
   }
 
   if (user && request.nextUrl.pathname === "/login" && !request.nextUrl.searchParams.get("error")) {
-    return NextResponse.redirect(new URL("/admin/command-center", request.url));
+    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
   }
 
   return supabaseResponse;

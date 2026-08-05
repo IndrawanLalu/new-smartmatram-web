@@ -40,6 +40,21 @@ export function parseTanggalToISO(raw: string | undefined): string | null {
   return null;
 }
 
+/** "20 Agustus 2023" → objek `Date` lokal, null bila formatnya bukan itu.
+ *  Untuk perbandingan atau penyimpanan pakai `parseTanggalToISO` — ini khusus
+ *  konsumen yang memang butuh `Date` (feed Command Center, Morning Brief). */
+export function parseIndonesianDate(raw: string | undefined | null): Date | null {
+  if (typeof raw !== "string") return null;
+  const p = raw.trim().split(/\s+/);
+  if (p.length !== 3) return null;
+  const day = parseInt(p[0], 10);
+  const month = MONTH_ID[p[1].toLowerCase()];
+  const year = parseInt(p[2], 10);
+  if (!month || Number.isNaN(day) || Number.isNaN(year)) return null;
+  if (day < 1 || day > 31 || year < 1900 || year > 2100) return null;
+  return new Date(year, month - 1, day);
+}
+
 /** Durasi "H:MM:SS" / "MM:SS" → detik. */
 function durToSecs(t: string | undefined): number {
   if (!t) return 0;

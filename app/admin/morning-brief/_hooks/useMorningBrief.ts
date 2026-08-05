@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchSheetData } from "@/lib/sheets";
 import { type CurrentUser, canSeeAllUnits, calcRemainingDays, getUrgencyLevel } from "@/lib/roles";
-import { parseIndonesianDate } from "@/app/admin/dashboard/_hooks/useGangguanData";
+import { parseIndonesianDate } from "@/lib/gangguanAnalytics";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 import type { PengukuranGardu } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
 import type { InspeksiJaringan } from "@/app/admin/monitoring-inspeksi/_hooks/useInspeksiJaringan";

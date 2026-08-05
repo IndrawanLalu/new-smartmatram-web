@@ -15,7 +15,7 @@ export async function login(formData: FormData) {
     return { error: error.message };
   }
 
-  redirect("/admin/command-center");
+  redirect("/admin/dashboard");
 }
 
 export async function logout() {

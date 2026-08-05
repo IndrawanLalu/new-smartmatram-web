@@ -252,15 +252,14 @@ Variable/func  : camelCase
 | Halaman | Route | Status | Catatan |
 |---------|-------|--------|---------|
 | Login | `/login` | ✅ Done | |
-| Dashboard | `/admin/dashboard` | ✅ Done | |
-| Command Center | `/admin/command-center` | ✅ Done | Root `/` redirect ke sini |
+| Dashboard | `/admin/dashboard` | ✅ Done | **Beranda** — root `/`, setelah login, dan set-password mendarat di sini. Ringkasan lintas domain, bukan lagi dashboard gangguan |
+| Command Center | `/admin/command-center` | ✅ Done | Layar operasional real-time (feed, peta, alert). Bukan lagi beranda |
 | Pengukuran Gardu | `/admin/pengukuran-gardu` | ✅ Done | WO marking, PDF WO, filter multi-kriteria |
 | Monitoring Inspeksi | `/admin/monitoring-inspeksi` | ✅ Done | Peta interaktif, filter ULP+status |
 | Score Board LM | `/admin/scoreboard` | ✅ Done | Lead Measures, Gangguan Penyulang, Mode Presentasi |
 | Morning Brief | `/admin/morning-brief` | ✅ Done | Auto-send Telegram jam 08.00 WITA |
 | Manajemen Petugas | `/admin/petugas` | 🔲 | |
 | Peta Gardu | `/admin/peta-gardu` | 🔲 | |
-| Dashboard Penyulang | `/admin/dashboard-penyulang` | 🔲 | |
 
 ## Fitur yang Sudah Dikerjakan (Log)
 
@@ -334,7 +333,12 @@ app/admin/scoreboard/
 
 ### Bug Fixes & Build
 - Fix Vercel TypeScript build errors (literal type inference, Role type widening)
-- Fix root `/` menampilkan halaman test → redirect ke `/admin/command-center`
+- Fix root `/` menampilkan halaman test → redirect ke halaman beranda
+
+### Beranda aplikasi (2026-08-04)
+Beranda = `/admin/dashboard`. **Empat tempat** yang menentukan ini dan harus diubah
+bersamaan kalau berpindah lagi: `app/page.tsx` · `middleware.ts` (sesi aktif buka
+`/login`) · `app/login/actions.ts` (setelah login) · `app/set-password/page.tsx`.
 
 ## Optimasi UI/UX & Performa — Aturan Wajib
 

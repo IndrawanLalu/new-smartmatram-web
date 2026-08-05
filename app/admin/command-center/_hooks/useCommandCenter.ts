@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback, useRef, useId } from "react";
 import { fetchSheetData } from "@/lib/sheets";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { parseIndonesianDate } from "@/app/admin/dashboard/_hooks/useGangguanData";
+import { parseIndonesianDate } from "@/lib/gangguanAnalytics";
 import type { CurrentUser } from "@/lib/roles";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
