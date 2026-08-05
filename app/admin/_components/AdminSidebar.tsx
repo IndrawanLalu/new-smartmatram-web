@@ -3,48 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import {
-  LayoutDashboard,
-  Map,
-  Users,
-  ClipboardList,
-  Gauge,
-  Zap,
-  ZapOff,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  FileText,
-  Target,
-  UserCog,
-  MessageSquare,
-  CalendarDays,
-  BrainCircuit,
-  ShieldCheck,
-  SearchCheck,
-  Radar,
-  TrendingUp,
-  TriangleAlert,
-  Table2,
-  Wrench,
-  Radio,
-  type LucideIcon,
-} from "lucide-react";
+import { Zap, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { NAV_GROUPS } from "@/app/admin/_nav";
 
 // ── Types ────────────────────────────────────────────────────────────────────
-
-interface NavItem {
-  href: string;
-  label: string;
-  icon: LucideIcon;
-}
-
-/** Grup tidak berikon: hanya item yang berikon, supaya rel ikon di kiri lurus. */
-interface NavGroup {
-  key: string;
-  label: string;
-  items: NavItem[];
-}
 
 /** Identitas user pindah ke UserMenu di topbar — sidebar hanya perlu unit
  *  untuk subjudul logo. */
@@ -53,64 +15,6 @@ interface AdminSidebarProps {
 }
 
 // ── Constants ────────────────────────────────────────────────────────────────
-
-/** Setiap item pakai ikon yang BERBEDA — ikon ganda membuat mata tidak bisa
- *  memakainya sebagai penanda, jadi tinggal membaca teks. */
-const NAV_GROUPS: NavGroup[] = [
-  {
-    key: "analitik",
-    label: "Analitik",
-    items: [
-      { href: "/admin/dashboard",            label: "Dashboard",            icon: LayoutDashboard },
-      { href: "/admin/advanced-dashboard",   label: "Advanced Analytics",   icon: TrendingUp },
-      { href: "/admin/cara-kerja-ml",        label: "SMART Learning",       icon: BrainCircuit },
-      { href: "/admin/efektifitas-inspeksi", label: "Efektivitas Inspeksi", icon: ShieldCheck },
-      // "Dashboard Penyulang" dihapus 2026-08-04: route-nya tidak pernah punya
-      // page.tsx, jadi item ini selalu berujung 404. Analisis per penyulang ada
-      // di Advanced Analytics.
-    ],
-  },
-  {
-    key: "monitoring",
-    label: "Monitoring",
-    items: [
-      { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck },
-      { href: "/admin/pengukuran-gardu",    label: "Pengukuran Gardu",     icon: Gauge },
-      { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
-      { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },
-    ],
-  },
-  {
-    key: "operasional",
-    label: "Operasional",
-    items: [
-      { href: "/admin/work-order",            label: "Work Order",           icon: ClipboardList },
-      { href: "/admin/morning-brief",         label: "Morning Brief",        icon: FileText },
-      { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target },
-      { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench },
-      { href: "/admin/padam-apkt",            label: "Rekap Padam APKT",     icon: ZapOff },
-      { href: "/admin/detail-gangguan",       label: "Detail Gangguan APKT", icon: TriangleAlert },
-      { href: "/admin/rekap-produktivitas",   label: "Rekap Produktivitas",  icon: CalendarDays },
-    ],
-  },
-  {
-    key: "manajemen",
-    label: "Manajemen",
-    items: [
-      { href: "/admin/petugas",          label: "Manajemen Petugas", icon: Users },
-      { href: "/admin/user-management",  label: "Manajemen User",    icon: UserCog },
-      { href: "/admin/settings/wa",      label: "Setting WA Group",  icon: MessageSquare },
-      { href: "/admin/settings/amg",     label: "Setting AMG",       icon: Radio },
-    ],
-  },
-  {
-    key: "tools",
-    label: "Tools",
-    items: [
-      { href: "/admin/json-to-table", label: "JSON ke Tabel", icon: Table2 },
-    ],
-  },
-];
 
 /** Item aktif = blok navy penuh. Item lain tetap tinta penuh + bobot 500 —
  *  bobot 400 di 14px membuat teks terlihat buram di layar biasa. */

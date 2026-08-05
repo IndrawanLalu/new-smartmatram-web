@@ -17,6 +17,7 @@ async function checkAuth() {
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 // ?date=2026-05-29  → rows untuk tanggal itu
+// ?month=2026-05    → rows sebulan (berkas yang namanya berawalan itu saja)
 // ?all=true         → semua rows dari semua tanggal
 // (kosong)          → daftar tanggal + jumlah baris
 
@@ -26,8 +27,9 @@ export async function GET(req: Request) {
 
   await ensureDir();
   const { searchParams } = new URL(req.url);
-  const date = searchParams.get("date");
-  const all  = searchParams.get("all");
+  const date  = searchParams.get("date");
+  const month = searchParams.get("month");
+  const all   = searchParams.get("all");
 
   // Kembalikan rows 1 tanggal
   if (date) {
@@ -38,6 +40,30 @@ export async function GET(req: Request) {
     } catch {
       return NextResponse.json({ label: date, rows: [], savedAt: null });
     }
+  }
+
+  // Kembalikan rows satu bulan. Dashboard SLA hanya butuh sebulan; tanpa ini
+  // ia ikut membaca seluruh berkas yang ada (35 berkas ≈ 4.900 baris) padahal
+  // yang dipakai cuma sebagian kecil.
+  if (month) {
+    // Cegah "../" dan sejenisnya ikut jadi nama berkas.
+    if (!/^\d{4}-\d{2}$/.test(month)) {
+      return NextResponse.json({ error: "Format month harus YYYY-MM" }, { status: 400 });
+    }
+    let files: string[] = [];
+    try {
+      files = (await fs.readdir(DATA_DIR)).filter((f) => f.startsWith(month) && f.endsWith(".json")).sort();
+    } catch { /* dir belum ada */ }
+
+    const rows: unknown[] = [];
+    for (const f of files) {
+      try {
+        const raw = await fs.readFile(path.join(DATA_DIR, f), "utf-8");
+        const parsed = JSON.parse(raw) as { rows?: unknown[] };
+        rows.push(...(parsed.rows ?? []));
+      } catch { /* skip berkas rusak */ }
+    }
+    return NextResponse.json({ rows });
   }
 
   // Kembalikan semua rows gabungan

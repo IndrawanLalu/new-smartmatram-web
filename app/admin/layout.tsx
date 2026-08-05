@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { UserProvider } from "./_context/UserContext";
 import AdminSidebar from "./_components/AdminSidebar";
+import PageTitle from "./_components/PageTitle";
 import UserMenu from "./_components/UserMenu";
 import AskAi from "./_components/AskAi";
 import { ToastProvider } from "./_components/Toast";
@@ -28,7 +29,9 @@ export default async function AdminLayout({
             {/* Topbar setinggi --topbar-h. Halaman yang menghitung tinggi dari
                 100vh (command-center, peta-gardu) ikut mengurangi var yang sama
                 supaya tidak ada scrollbar liar. */}
-            <header className="h-[var(--topbar-h)] shrink-0 flex items-center justify-end gap-2 border-b border-sidebar-line bg-sidebar px-4">
+            <header className="h-[var(--topbar-h)] shrink-0 flex items-center gap-2 border-b border-sidebar-line bg-sidebar px-4">
+              <PageTitle />
+              <div className="flex-1" />
               <AskAi />
               <UserMenu
                 userEmail={user.email}
