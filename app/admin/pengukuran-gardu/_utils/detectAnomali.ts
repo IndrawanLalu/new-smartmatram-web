@@ -41,8 +41,10 @@ export interface AnomalyResult {
 }
 
 /** Arus nominal sekunder trafo: I = kVA × 1000 / (√3 × 400).
- *  Rumus yang sama dipakai saat mengirim ke AMG (calcINominal di
- *  app/api/kirim-amg/route.ts) — jangan sampai dua tempat memakai angka beda. */
+ *  Rumus yang sama dipakai saat mengirim ke AMG (`calcINominal` di
+ *  `smart-agent/index.js`, repo terpisah) — jangan sampai dua tempat memakai
+ *  angka beda. Catatan: AMG sendiri memakai 1,732 alih-alih √3, jadi selisih
+ *  tampilannya sekitar 0,01 A dan itu wajar. */
 export function calcArusNominal(kva: number): number {
   return (kva * 1000) / (Math.sqrt(3) * 400);
 }

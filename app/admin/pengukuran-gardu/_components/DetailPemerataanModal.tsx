@@ -23,7 +23,8 @@ const FASA_CLS: Record<string, string> = {
   N: "bg-blue-100 text-blue-700",
 };
 
-/** Rumus sama dengan yang dikirim ke AMG (buildBody di /api/kirim-amg). */
+/** Rumus sama dengan yang dikirim ke AMG (`buildBody` di `smart-agent/index.js`,
+ *  repo terpisah — pengiriman ke AMG dilakukan agen lokal, bukan server web). */
 function unbalance(r: number, s: number, t: number): number {
   const avg = (r + s + t) / 3;
   if (avg === 0) return 0;

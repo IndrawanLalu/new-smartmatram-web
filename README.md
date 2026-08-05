@@ -111,12 +111,16 @@ NEXT_PUBLIC_SITE_URL=http://localhost:3000
 # Buat sendiri, bisa string acak apa saja
 AGENT_SECRET=ganti-dengan-string-rahasia-acak
 
-# ── AMG (Aplikasi Manajemen Gardu — intranet PLN, opsional) ──────────────────
-AMG_URL=http://10.33.1.77/gardu
-AMG_USERNAME=username-anda
-AMG_PASSWORD=password-anda
-AMG_KODE_PREFIX=
 ```
+
+> **AMG tidak lagi memakai env var di sini.** Pengiriman pengukuran ke AMG
+> dikerjakan **agen lokal** (repo terpisah `smart-agent`) yang berjalan di PC
+> dalam jaringan PLN — server web tidak bisa menjangkau 10.33.1.77. Kredensial
+> per-ULP tersimpan di tabel Supabase `amg_config` dan disetel lewat
+> **Setting AMG** di aplikasi, bukan lewat `.env.local`.
+> Variabel `AMG_URL` / `AMG_USERNAME` / `AMG_PASSWORD` / `AMG_KODE_PREFIX` sudah
+> tidak dipakai sejak route `/api/kirim-amg` dihapus (2026-08-05) — aman dihapus
+> dari `.env.local` di VPS.
 
 > **Catatan:** Nilai `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, dan `SUPABASE_SERVICE_ROLE_KEY` bisa diminta ke administrator sistem.
 

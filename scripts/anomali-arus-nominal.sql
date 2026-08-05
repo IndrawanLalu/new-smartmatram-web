@@ -8,7 +8,8 @@
 -- Keduanya bisa berbeda jauh saat tegangan turun — beban kVA terlihat wajar
 -- padahal arusnya sudah melewati kemampuan trafo. Rumus I_nominal ini sama
 -- persis dengan yang dipakai saat mengirim ke AMG (calcINominal di
--- app/api/kirim-amg/route.ts), supaya angkanya tidak berbeda antar tempat.
+-- smart-agent/index.js, repo terpisah), supaya angkanya tidak berbeda
+-- antar tempat.
 --
 -- Disimpan sebagai RENTANG (min–max), bukan satu ambang, supaya bisa dipakai
 -- untuk "70–100%" maupun ">100%" (max dibiarkan NULL = tanpa batas atas).
