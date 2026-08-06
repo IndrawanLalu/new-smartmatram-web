@@ -6,6 +6,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { CARD, PANEL_HEAD } from "@/app/admin/_ui";
+import ArsirPattern from "@/app/admin/_components/ArsirPattern";
 import { CHART_OTHER, CHART_SERIES, SURFACE, TOOLTIP_LIGHT } from "@/lib/chartColors";
 import type { ChartPoint, PeriodKey } from "../_hooks/useDashboardOverview";
 
@@ -93,10 +94,10 @@ export default function TrenGangguan({ data, period, loading }: TrenGangguanProp
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 18, right: 8, left: -18, bottom: 0 }} barCategoryGap="22%">
               <defs>
-                <Arsir id={HATCH_ID} opacity={0.14} />
+                <ArsirPattern id={HATCH_ID} warna={WARNA} />
                 {/* Ember yang sedang berjalan diarsir lebih rapat — belum genap,
                     jadi ditandai berbeda supaya tidak dibaca setara ember penuh. */}
-                <Arsir id={HATCH_KINI_ID} opacity={0.28} jarak={4} />
+                <ArsirPattern id={HATCH_KINI_ID} warna={WARNA} opacity={0.28} jarak={4} />
               </defs>
 
               <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
@@ -167,17 +168,3 @@ export default function TrenGangguan({ data, period, loading }: TrenGangguanProp
 }
 
 /** Pola arsir diagonal 45°: dasar bertinta tipis + garis warna penuh. */
-function Arsir({ id, opacity, jarak = 6 }: { id: string; opacity: number; jarak?: number }) {
-  return (
-    <pattern
-      id={id}
-      patternUnits="userSpaceOnUse"
-      width={jarak}
-      height={jarak}
-      patternTransform="rotate(45)"
-    >
-      <rect width={jarak} height={jarak} fill={WARNA} fillOpacity={opacity} />
-      <line x1={0} y1={0} x2={0} y2={jarak} stroke={WARNA} strokeWidth={2} />
-    </pattern>
-  );
-}

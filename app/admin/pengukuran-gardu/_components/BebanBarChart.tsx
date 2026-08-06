@@ -1,11 +1,12 @@
 "use client";
 
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList,
   Tooltip, ReferenceLine, Cell, ResponsiveContainer,
 } from "recharts";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "../_hooks/usePengukuranGardu";
-import { STATUS_COLOR, SURFACE, TOOLTIP_LIGHT } from "@/lib/chartColors";
+import { STATUS_COLOR, SURFACE } from "@/lib/chartColors";
+import ArsirPattern, { arsir } from "@/app/admin/_components/ArsirPattern";
 
 export interface BebanChartItem {
   id: string;
@@ -25,10 +26,21 @@ interface Props {
   onBarClick?: (id: string) => void;
 }
 
+/** Warna dikunci untuk ARTI, bukan identitas: merah lewat ambang, amber
+ *  mendekati, hijau aman. Arsirnya ikut warna itu supaya maknanya tidak
+ *  hilang saat isian batang jadi bergaris. */
 function barColor(pct: number): string {
   if (pct >= OVERLOAD_PCT) return STATUS_COLOR.kritis;
   if (pct >= 60)           return STATUS_COLOR.waspada;
   return STATUS_COLOR.aman;
+}
+
+const ARSIR_ID = { kritis: "arsirBebanKritis", waspada: "arsirBebanWaspada", aman: "arsirBebanAman" } as const;
+
+function arsirId(pct: number): string {
+  if (pct >= OVERLOAD_PCT) return ARSIR_ID.kritis;
+  if (pct >= 60)           return ARSIR_ID.waspada;
+  return ARSIR_ID.aman;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -96,7 +108,13 @@ export default function BebanBarChart({ data, onBarClick }: Props) {
         }}
         style={{ cursor: onBarClick ? "pointer" : "default" }}
       >
-        <CartesianGrid stroke={SURFACE.line} vertical={false} />
+        <defs>
+          <ArsirPattern id={ARSIR_ID.kritis}  warna={STATUS_COLOR.kritis} opacity={0.18} jarak={5} />
+          <ArsirPattern id={ARSIR_ID.waspada} warna={STATUS_COLOR.waspada} />
+          <ArsirPattern id={ARSIR_ID.aman}    warna={STATUS_COLOR.aman} />
+        </defs>
+
+        <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="name"
           tick={{ fontSize: 9, fill: SURFACE.inkMuted }}
@@ -123,10 +141,25 @@ export default function BebanBarChart({ data, onBarClick }: Props) {
           strokeDasharray="4 2"
           label={{ value: "60%", position: "right", fontSize: 10, fill: STATUS_COLOR.waspada }}
         />
-        <Bar dataKey="persen" radius={[3, 3, 0, 0]} maxBarSize={36}>
+        <Bar dataKey="persen" radius={[6, 6, 0, 0]} maxBarSize={36} strokeWidth={1.25}>
           {data.map((entry, i) => (
-            <Cell key={i} fill={barColor(entry.persen)} fillOpacity={0.9} />
+            <Cell
+              key={i}
+              fill={arsir(arsirId(entry.persen))}
+              stroke={barColor(entry.persen)}
+            />
           ))}
+          {/* Maksimal 20 gardu (dipotong di usePengukuranGardu), jadi labelnya
+              masih muat — angka persisnya lebih berguna daripada menebak tinggi
+              batang terhadap dua garis ambang. */}
+          <LabelList
+            dataKey="persen"
+            position="top"
+            offset={5}
+            fontSize={9}
+            fill={SURFACE.inkSoft}
+            formatter={(v) => (Number(v) > 0 ? `${Math.round(Number(v))}` : "")}
+          />
         </Bar>
       </BarChart>
     </ResponsiveContainer>

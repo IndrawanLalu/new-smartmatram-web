@@ -5,6 +5,7 @@ import {
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
 import { CARD, PANEL_HEAD } from "@/app/admin/_ui";
+import ArsirPattern from "@/app/admin/_components/ArsirPattern";
 import { CHART_OTHER, CHART_SERIES, STATUS_COLOR, SURFACE, TOOLTIP_LIGHT } from "@/lib/chartColors";
 
 export interface SlaPoint {
@@ -61,14 +62,8 @@ export default function SlaChart({ judul, data, target, warna, hatchId }: SlaCha
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={data} margin={{ top: 14, right: 8, left: -18, bottom: 0 }} barCategoryGap="20%">
               <defs>
-                <pattern id={hatchId} patternUnits="userSpaceOnUse" width={6} height={6} patternTransform="rotate(45)">
-                  <rect width={6} height={6} fill={warna} fillOpacity={0.14} />
-                  <line x1={0} y1={0} x2={0} y2={6} stroke={warna} strokeWidth={2} />
-                </pattern>
-                <pattern id={`${hatchId}-lewat`} patternUnits="userSpaceOnUse" width={5} height={5} patternTransform="rotate(45)">
-                  <rect width={5} height={5} fill={STATUS_COLOR.kritis} fillOpacity={0.16} />
-                  <line x1={0} y1={0} x2={0} y2={5} stroke={STATUS_COLOR.kritis} strokeWidth={2} />
-                </pattern>
+                <ArsirPattern id={hatchId} warna={warna} />
+                <ArsirPattern id={`${hatchId}-lewat`} warna={STATUS_COLOR.kritis} opacity={0.18} jarak={5} />
               </defs>
 
               <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />

@@ -3,9 +3,10 @@
 import { useState, useMemo } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
-  Gauge, AlertTriangle, Wrench, Zap, RefreshCw,
+  Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet,
 } from "lucide-react";
-import { type CurrentUser } from "@/lib/roles";
+import { canManageSettings, type CurrentUser } from "@/lib/roles";
+import ImportMasterGarduModal from "./ImportMasterGarduModal";
 import { useGarduStatus, type GarduLatestState } from "../_hooks/useGarduStatus";
 import { type AnomalySettings } from "../_utils/detectAnomali";
 import { OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
@@ -100,6 +101,10 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
   } = useGarduStatus(user, ulp, settings, showTable);
 
   const [selectedGardu, setSelectedGardu] = useState<GarduLatestState | null>(null);
+  const [imporTerbuka, setImporTerbuka] = useState(false);
+  /** Master gardu menentukan acuan kVA seluruh pengukuran — perubahannya
+   *  berdampak ke semua ULP, jadi dibatasi ke yang boleh mengatur setelan. */
+  const bisaImpor = canManageSettings(user.role);
 
   const kvaOptions = useMemo(
     () => [...new Set(rawData.map((d) => d.kva_trafo))].sort((a, b) => a - b),
@@ -170,6 +175,14 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
         </label>
 
         <div className="flex items-center gap-2 ml-auto">
+          {bisaImpor && (
+            <button
+              onClick={() => setImporTerbuka(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-line text-ink-soft hover:text-navy-600 hover:border-navy-300 transition-colors"
+            >
+              <FileSpreadsheet size={12} /> Impor Master
+            </button>
+          )}
           {showTable && (
             <button
               onClick={refresh}
@@ -328,6 +341,13 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           gardu={selectedGardu}
           onClose={() => setSelectedGardu(null)}
           settings={settings}
+        />
+      )}
+
+      {imporTerbuka && (
+        <ImportMasterGarduModal
+          onClose={() => setImporTerbuka(false)}
+          onSelesai={refresh}
         />
       )}
     </div>

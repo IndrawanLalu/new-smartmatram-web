@@ -1,7 +1,10 @@
 "use client";
 
-import { X, Zap, Wrench, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { X, Zap, Wrench, AlertTriangle, CheckCircle2, FileText, History } from "lucide-react";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import { useGarduTimeline, type GarduLatestState, type TimelineEvent } from "../_hooks/useGarduStatus";
+import DataGarduPanel from "./DataGarduPanel";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import { HIGH_TEMP_C, OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
 import type { JurusanData } from "../_hooks/usePengukuranGardu";
@@ -259,12 +262,27 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
 
 export default function GarduTimelineModal({ gardu, onClose, settings }: Props) {
   const { events, loading } = useGarduTimeline(gardu?.no_gardu ?? null);
+  const [tab, setTab] = useState<"data" | "history">("data");
+
+  // Esc menutup — modal ini tidak memakai ModalShell karena punya kepala sendiri
+  // yang cukup khas, tapi perilaku dasarnya tetap harus ada.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   if (!gardu) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="bg-white rounded-2xl border border-line w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-2xl border border-line w-full max-w-6xl h-[92vh] flex flex-col shadow-2xl"
+      >
 
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 border-b border-line shrink-0">
@@ -293,8 +311,41 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
           </button>
         </div>
 
-        {/* Timeline */}
+        {/* Tab */}
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-line shrink-0">
+          <button
+            onClick={() => setTab("data")}
+            className={`${CHIP} ${tab === "data" ? CHIP_ON : CHIP_OFF}`}
+          >
+            <FileText className="w-3.5 h-3.5" /> Data Gardu
+          </button>
+          <button
+            onClick={() => setTab("history")}
+            className={`${CHIP} ${tab === "history" ? CHIP_ON : CHIP_OFF}`}
+          >
+            <History className="w-3.5 h-3.5" /> History
+            {events.length > 0 && (
+              <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                tab === "history" ? "bg-white/25 text-white" : "bg-navy-50 text-navy-600"
+              }`}>
+                {events.length}
+              </span>
+            )}
+          </button>
+        </div>
+
+        {/* Isi tab */}
         <div className="flex-1 overflow-y-auto px-6 py-5">
+          {tab === "data" && (
+            <DataGarduPanel
+              kode={gardu.no_gardu}
+              ulp={gardu.petugas_unit ?? null}
+              kvaPengukuran={gardu.kva_trafo}
+            />
+          )}
+
+          {tab === "history" && (
+          <>
           {loading && (
             <div className="flex items-center justify-center py-12 gap-2 text-ink-soft text-sm">
               <div className="w-5 h-5 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
@@ -317,6 +368,8 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
                 )
               )}
             </div>
+          )}
+          </>
           )}
         </div>
 

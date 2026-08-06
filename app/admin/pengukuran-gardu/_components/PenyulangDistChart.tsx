@@ -2,9 +2,12 @@
 
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, Legend, ResponsiveContainer, Cell,
+  Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
 import { STATUS_COLOR, SURFACE } from "@/lib/chartColors";
+import ArsirPattern, { arsir } from "@/app/admin/_components/ArsirPattern";
+
+const ARSIR = { overload: "arsirPnyOverload", warning: "arsirPnyWarning", normal: "arsirPnyNormal" } as const;
 
 export interface PenyulangChartItem {
   name: string;
@@ -56,7 +59,15 @@ export default function PenyulangDistChart({ data }: Props) {
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }} barSize={18}>
-        <CartesianGrid stroke={SURFACE.line} vertical={false} />
+        <defs>
+          {/* Batang bertumpuk: garis tepi tiap segmen justru membantu —
+              ia memisahkan tumpukan tanpa perlu jarak antar segmen. */}
+          <ArsirPattern id={ARSIR.overload} warna={STATUS_COLOR.kritis} opacity={0.18} jarak={5} />
+          <ArsirPattern id={ARSIR.warning}  warna={STATUS_COLOR.waspada} />
+          <ArsirPattern id={ARSIR.normal}   warna={STATUS_COLOR.aman} />
+        </defs>
+
+        <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
         <XAxis
           dataKey="name"
           tick={{ fontSize: 10, fill: SURFACE.inkMuted }}
@@ -76,15 +87,18 @@ export default function PenyulangDistChart({ data }: Props) {
           iconType="square"
           iconSize={8}
         />
-        <Bar dataKey="overload" name="Overload" stackId="a" fill={STATUS_COLOR.kritis} radius={[0, 0, 0, 0]}>
-          {data.map((_, i) => <Cell key={i} fill={STATUS_COLOR.kritis} fillOpacity={0.85} />)}
-        </Bar>
-        <Bar dataKey="warning" name="Warning" stackId="a" fill={STATUS_COLOR.waspada}>
-          {data.map((_, i) => <Cell key={i} fill={STATUS_COLOR.waspada} fillOpacity={0.85} />)}
-        </Bar>
-        <Bar dataKey="normal" name="Normal" stackId="a" fill={STATUS_COLOR.aman} radius={[3, 3, 0, 0]}>
-          {data.map((_, i) => <Cell key={i} fill={STATUS_COLOR.aman} fillOpacity={0.85} />)}
-        </Bar>
+        <Bar
+          dataKey="overload" name="Overload" stackId="a"
+          fill={arsir(ARSIR.overload)} stroke={STATUS_COLOR.kritis} strokeWidth={1}
+        />
+        <Bar
+          dataKey="warning" name="Warning" stackId="a"
+          fill={arsir(ARSIR.warning)} stroke={STATUS_COLOR.waspada} strokeWidth={1}
+        />
+        <Bar
+          dataKey="normal" name="Normal" stackId="a" radius={[6, 6, 0, 0]}
+          fill={arsir(ARSIR.normal)} stroke={STATUS_COLOR.aman} strokeWidth={1}
+        />
       </BarChart>
     </ResponsiveContainer>
   );

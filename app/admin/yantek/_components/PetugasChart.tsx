@@ -4,6 +4,7 @@ import {
   Bar, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
+import ArsirPattern from "@/app/admin/_components/ArsirPattern";
 import { CHART_SERIES, STATUS_COLOR, SURFACE, TOOLTIP_LIGHT } from "@/lib/chartColors";
 
 export interface PetugasChartPoint {
@@ -50,10 +51,7 @@ export default function PetugasChart({
     <ResponsiveContainer width="100%" height={280}>
       <ComposedChart data={data} margin={{ top: 16, right: 4, left: -20, bottom: 0 }} barCategoryGap="22%">
         <defs>
-          <pattern id={HATCH} patternUnits="userSpaceOnUse" width={6} height={6} patternTransform="rotate(45)">
-            <rect width={6} height={6} fill={NAVY} fillOpacity={0.14} />
-            <line x1={0} y1={0} x2={0} y2={6} stroke={NAVY} strokeWidth={2} />
-          </pattern>
+          <ArsirPattern id={HATCH} warna={NAVY} />
         </defs>
 
         <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
