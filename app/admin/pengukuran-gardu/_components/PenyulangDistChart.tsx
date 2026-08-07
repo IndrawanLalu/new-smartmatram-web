@@ -19,6 +19,13 @@ export interface PenyulangChartItem {
 
 interface Props {
   data: PenyulangChartItem[];
+  /** Batas jumlah penyulang yang digambar. Datanya sudah terurut dari yang
+   *  paling banyak overload, jadi memotongnya menyisakan yang paling penting.
+   *
+   *  Ada 32 penyulang di keempat ULP (23 di Ampenan saja). Di kartu selebar
+   *  sepertiga baris, 32 nama pada sumbu X saling menimpa jadi bubur dan
+   *  batangnya menyusut ke beberapa piksel — grafiknya berhenti bercerita. */
+  maks?: number;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -47,7 +54,7 @@ function CustomTooltip({ active, payload, label }: any) {
   );
 }
 
-export default function PenyulangDistChart({ data }: Props) {
+export default function PenyulangDistChart({ data, maks }: Props) {
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-full text-ink-soft text-sm">
@@ -56,9 +63,19 @@ export default function PenyulangDistChart({ data }: Props) {
     );
   }
 
+  const tampil = maks ? data.slice(0, maks) : data;
+
   return (
+    // Batang menyamping: nama penyulang jadi label baris, bukan tulisan sumbu X
+    // yang saling menimpa. Nama sepanjang "OUTLET EPICENTRUM" pun terbaca utuh,
+    // dan menambah penyulang tinggal menambah baris — bukan memepetkan kolom.
     <ResponsiveContainer width="100%" height="100%">
-      <BarChart data={data} margin={{ top: 8, right: 8, left: 0, bottom: 4 }} barSize={18}>
+      <BarChart
+        data={tampil}
+        layout="vertical"
+        margin={{ top: 4, right: 12, left: 0, bottom: 0 }}
+        barSize={13}
+      >
         <defs>
           {/* Batang bertumpuk: garis tepi tiap segmen justru membantu —
               ia memisahkan tumpukan tanpa perlu jarak antar segmen. */}
@@ -67,23 +84,27 @@ export default function PenyulangDistChart({ data }: Props) {
           <ArsirPattern id={ARSIR.normal}   warna={STATUS_COLOR.aman} />
         </defs>
 
-        <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
+        <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" horizontal={false} />
         <XAxis
-          dataKey="name"
-          tick={{ fontSize: 10, fill: SURFACE.inkMuted }}
-          axisLine={false}
-          tickLine={false}
-        />
-        <YAxis
+          type="number"
           allowDecimals={false}
           tick={{ fontSize: 10, fill: SURFACE.inkMuted }}
-          width={24}
+          axisLine={false}
+          tickLine={false}
+          height={18}
+        />
+        <YAxis
+          type="category"
+          dataKey="name"
+          tick={{ fontSize: 10, fill: SURFACE.inkSoft }}
+          width={94}
+          interval={0}
           axisLine={false}
           tickLine={false}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(255,255,255,0.04)" }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ fill: "rgba(20,33,58,0.04)" }} />
         <Legend
-          wrapperStyle={{ fontSize: 10, color: SURFACE.inkMuted, paddingTop: 4 }}
+          wrapperStyle={{ fontSize: 10, color: SURFACE.inkMuted, paddingTop: 2 }}
           iconType="square"
           iconSize={8}
         />
@@ -96,7 +117,7 @@ export default function PenyulangDistChart({ data }: Props) {
           fill={arsir(ARSIR.warning)} stroke={STATUS_COLOR.waspada} strokeWidth={1}
         />
         <Bar
-          dataKey="normal" name="Normal" stackId="a" radius={[6, 6, 0, 0]}
+          dataKey="normal" name="Normal" stackId="a" radius={[0, 5, 5, 0]}
           fill={arsir(ARSIR.normal)} stroke={STATUS_COLOR.aman} strokeWidth={1}
         />
       </BarChart>

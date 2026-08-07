@@ -1,24 +1,25 @@
 "use client";
 
 import { useState } from "react";
-import dynamic from "next/dynamic";
 import { RefreshCw } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
-import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import {
   PERIOD_OPTIONS, useDashboardOverview, type PeriodKey,
 } from "./_hooks/useDashboardOverview";
 import ActionBar from "./_components/ActionBar";
 import KpiStrip from "./_components/KpiStrip";
-import RisikoPanel from "./_components/RisikoPanel";
-import DomainGrid from "./_components/DomainGrid";
+import SeksiNav from "./_components/SeksiNav";
+import SeksiGangguan from "./_components/SeksiGangguan";
+import SeksiGardu from "./_components/SeksiGardu";
+import SeksiApkt from "./_components/SeksiApkt";
+import SeksiInspeksi from "./_components/SeksiInspeksi";
+import SeksiPekerjaan from "./_components/SeksiPekerjaan";
 
-/** Recharts berat dan hanya dipakai satu panel — jangan ikut membebani muat awal. */
-const TrenGangguan = dynamic(() => import("./_components/TrenGangguan"), {
-  ssr: false,
-  loading: () => <div className={`${CARD} h-full min-h-[300px] animate-pulse`} />,
-});
+/** Garis pemisah antar seksi — cukup tipis supaya tidak jadi elemen sendiri,
+ *  tapi ada, karena tanpa jeda kelima seksi terbaca sebagai satu tumpukan. */
+const PEMISAH = "border-t border-line pt-4 mt-4";
 
 export default function DashboardPage() {
   const user = useCurrentUser();
@@ -85,29 +86,41 @@ export default function DashboardPage() {
         loading={o.loading}
       />
 
-      {/* ── Tren gangguan + prediksi risiko ── */}
-      <div className="grid gap-3 grid-cols-1 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <TrenGangguan data={o.trenChart} period={o.period} loading={o.loading} />
-        </div>
-        <RisikoPanel
-          tgl={o.risiko.tgl}
-          kritis={o.risiko.kritis}
-          waspada={o.risiko.waspada}
-          teratas={o.risiko.teratas}
+      <SeksiNav />
+
+      {/* ── Seksi per domain ── */}
+      <div className={PEMISAH}>
+        <SeksiGangguan
+          gangguan={o.gangguan}
+          padam={o.padam}
+          trenChart={o.trenChart}
+          period={o.period}
+          risiko={{
+            tgl: o.risiko.tgl,
+            kritis: o.risiko.kritis,
+            waspada: o.risiko.waspada,
+            teratas: o.risiko.teratas,
+            loading: o.loading,
+          }}
           loading={o.loading}
         />
       </div>
 
-      {/* ── Rincian per domain ── */}
-      <DomainGrid
-        inspeksi={o.inspeksi}
-        wo={o.wo}
-        gardu={o.gardu}
-        pemerataan={o.pemerataan}
-        produktivitas={o.produktivitas}
-        gangguan={o.gangguan}
-      />
+      <div className={PEMISAH}>
+        <SeksiGardu gardu={o.gardu} pemerataan={o.pemerataan} />
+      </div>
+
+      <div className={PEMISAH}>
+        <SeksiApkt apkt={o.apkt} />
+      </div>
+
+      <div className={PEMISAH}>
+        <SeksiInspeksi inspeksi={o.inspeksi} />
+      </div>
+
+      <div className={PEMISAH}>
+        <SeksiPekerjaan wo={o.wo} produktivitas={o.produktivitas} />
+      </div>
 
       <div className="h-2" />
     </div>

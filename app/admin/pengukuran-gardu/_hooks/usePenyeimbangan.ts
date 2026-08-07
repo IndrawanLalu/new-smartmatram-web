@@ -120,6 +120,23 @@ export interface UpdatePenyeimbanganInput {
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
+/**
+ * Daya trafo menurut master gardu.
+ *
+ * `null` kalau gardunya belum ada di master — pemanggilnya lalu jatuh ke kVA
+ * pengukuran. Lebih baik memakai angka lapangan daripada menolak menyimpan
+ * pekerjaan yang sudah dikerjakan petugas.
+ */
+async function ambilKvaMaster(kode: string, ulp: string | null): Promise<number | null> {
+  let q = supabaseBrowser.from("gardu").select("daya").eq("kode", kode);
+  // Kode gardu tidak unik lintas ULP — tanpa penyaring ini bisa terambil daya
+  // gardu ULP lain yang kebetulan berkode sama.
+  if (ulp) q = q.eq("ulp", ulp);
+  const { data } = await q.limit(1).maybeSingle();
+  const daya = (data as { daya: number | null } | null)?.daya;
+  return typeof daya === "number" && daya > 0 ? daya : null;
+}
+
 export function usePenyeimbangan(ulp: string) {
   const now = new Date();
   const [data, setData] = useState<PenyeimbanganGardu[]>([]);
@@ -197,7 +214,17 @@ export function usePenyeimbangan(ulp: string) {
       (input.arusRAfter * input.tegRNAfter +
         input.arusSAfter * input.tegSNAfter +
         input.arusTAfter * input.tegTNAfter) / 1000;
-    const bebanPctAfter = row.kva_trafo > 0 ? (bebanKvaAfter / row.kva_trafo) * 100 : 0;
+
+    // Daya trafo diambil dari MASTER, bukan dari baris pengukuran.
+    //
+    // kVA di baris pengukuran diketik petugas di lapangan dan bisa salah baca
+    // papan nama. Dulu angka itu ikut tersalin ke sini, sehingga memperbaiki
+    // kVA di pengukuran tidak membetulkan rekap pemerataannya — gardunya tetap
+    // terbaca overload selamanya. AM197 contohnya: diketik 100 kVA padahal 160,
+    // membuat beban 84,9 kVA terbaca 84,9% (overload) alih-alih 53,1%.
+    const kvaMaster = await ambilKvaMaster(row.no_gardu, row.petugas_unit);
+    const kvaDipakai = kvaMaster ?? row.kva_trafo;
+    const bebanPctAfter = kvaDipakai > 0 ? (bebanKvaAfter / kvaDipakai) * 100 : 0;
 
     try {
       // 1. Insert rekap penyeimbangan
@@ -209,7 +236,9 @@ export function usePenyeimbangan(ulp: string) {
           penyulang:          row.penyulang,
           alamat:             row.alamat,
           ulp:                row.petugas_unit,
-          kva_trafo:          row.kva_trafo,
+          // Yang dicatat adalah kVA yang BENAR-BENAR dipakai menghitung
+          // persentase di atas, supaya baris ini bisa diaudit sendiri.
+          kva_trafo:          kvaDipakai,
 
           arus_r_before:      row.total_arus_r,
           arus_s_before:      row.total_arus_s,

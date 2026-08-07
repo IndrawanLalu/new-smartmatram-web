@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { X, Zap, Wrench, AlertTriangle, CheckCircle2, FileText, History } from "lucide-react";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
-import { useGarduTimeline, type GarduLatestState, type TimelineEvent } from "../_hooks/useGarduStatus";
+import { useGarduTimeline, type GarduMasterState, type TimelineEvent } from "../_hooks/useGarduStatus";
 import DataGarduPanel from "./DataGarduPanel";
 import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
 import { HIGH_TEMP_C, OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
@@ -46,7 +46,7 @@ function DataItem({ label, value, cls }: { label: string; value: React.ReactNode
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
-  gardu: GarduLatestState | null;
+  gardu: GarduMasterState | null;
   onClose: () => void;
   settings: AnomalySettings;
 }
@@ -261,7 +261,7 @@ function PenyeimbanganCard({ ev }: { ev: Extract<TimelineEvent, { type: "penyeim
 // ── Main Modal ────────────────────────────────────────────────────────────────
 
 export default function GarduTimelineModal({ gardu, onClose, settings }: Props) {
-  const { events, loading } = useGarduTimeline(gardu?.no_gardu ?? null);
+  const { events, loading } = useGarduTimeline(gardu?.kode ?? null);
   const [tab, setTab] = useState<"data" | "history">("data");
 
   // Esc menutup — modal ini tidak memakai ModalShell karena punya kepala sendiri
@@ -288,22 +288,27 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
         <div className="flex items-start justify-between px-6 py-4 border-b border-line shrink-0">
           <div className="flex items-start gap-4">
             <div>
-              <h2 className="text-lg font-bold text-ink">{gardu.no_gardu}</h2>
-              <p className="text-xs text-ink-soft mt-0.5">
-                {gardu.penyulang ?? "—"} · {gardu.kva_trafo} kVA
+              <h2 className="text-lg font-bold text-ink">{gardu.kode}</h2>
+              <p className="text-sm text-ink-soft mt-0.5">
+                {gardu.penyulang ?? "—"}
+                {gardu.kva_master !== null && ` · ${gardu.kva_master} kVA`}
               </p>
             </div>
             {gardu.alamat && (
               <div className="hidden md:block border-l border-line pl-4">
-                <p className="text-[10px] uppercase tracking-wide text-ink-muted">Alamat</p>
-                <p className="text-xs text-ink-soft mt-0.5 max-w-60">{gardu.alamat}</p>
+                <p className="text-[11px] uppercase tracking-wide font-medium text-ink-soft">Alamat</p>
+                <p className="text-sm text-ink-soft mt-0.5 max-w-60">{gardu.alamat}</p>
               </div>
             )}
             <div className="hidden md:block border-l border-line pl-4">
-              <p className="text-[10px] uppercase tracking-wide text-ink-muted">Kondisi Terkini</p>
-              <p className={`text-sm font-bold mt-0.5 ${pctCls(gardu.persen_beban)}`}>
-                {Math.round(gardu.persen_beban)}%
-              </p>
+              <p className="text-[11px] uppercase tracking-wide font-medium text-ink-soft">Kondisi Terkini</p>
+              {gardu.persen_beban !== null ? (
+                <p className={`text-sm font-bold mt-0.5 ${pctCls(gardu.persen_beban)}`}>
+                  {Math.round(gardu.persen_beban)}%
+                </p>
+              ) : (
+                <p className="text-sm font-semibold text-ink-soft mt-0.5">Belum diukur</p>
+              )}
             </div>
           </div>
           <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors shrink-0">
@@ -338,9 +343,9 @@ export default function GarduTimelineModal({ gardu, onClose, settings }: Props) 
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {tab === "data" && (
             <DataGarduPanel
-              kode={gardu.no_gardu}
-              ulp={gardu.petugas_unit ?? null}
-              kvaPengukuran={gardu.kva_trafo}
+              kode={gardu.kode}
+              ulp={gardu.ulp}
+              kvaPengukuran={gardu.kva_pengukuran}
             />
           )}
 

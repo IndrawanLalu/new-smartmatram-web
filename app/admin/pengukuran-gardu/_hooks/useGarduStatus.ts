@@ -2,46 +2,79 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { detectAnomali, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
+import { detectAnomali, type AnomalyRow, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
 import type { JurusanData } from "./usePengukuranGardu";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface GarduLatestState {
-  source_id: string;
-  event_type: "pengukuran" | "penyeimbangan";
-  event_date: string;
-  no_gardu: string;
-  penyulang: string | null;
+/**
+ * Satu gardu dari master, beserta kondisi terakhirnya.
+ *
+ * Barisnya berasal dari view `gardu_master_state` — yaitu dari MASTER, bukan
+ * dari pengukuran. Bedanya menentukan: dengan baris dari pengukuran, gardu yang
+ * belum pernah diukur tidak punya baris sama sekali, jadi pertanyaan "mana yang
+ * belum pernah diukur" mustahil dijawab oleh tabelnya sendiri.
+ *
+ * Konsekuensinya seluruh kolom kondisi boleh NULL. Itu bukan kelalaian data,
+ * itu justru keadaan yang ingin ditampilkan.
+ */
+export interface GarduMasterState {
+  // ── Identitas dari master ──
+  kode: string;
+  kode_amg: string | null;
+  nama: string | null;
   alamat: string | null;
-  kva_trafo: number;
-  petugas_unit: string;
-  petugas_nama: string | null;
-  persen_beban: number;
-  beban_kva: number;
+  penyulang: string | null;
+  ulp: string;
+  /** Daya trafo menurut master — inilah acuan yang benar. */
+  kva_master: number | null;
+  merk: string | null;
+  status: string | null;
+  lat: number | null;
+  lng: number | null;
+
+  // ── Kondisi terakhir — NULL semua kalau belum pernah diukur ──
+  source_id: string | null;
+  event_type: "pengukuran" | "penyeimbangan" | null;
+  event_date: string | null;
+  /** kVA yang diketik petugas saat mengukur — potret saat itu, bisa beda dari master. */
+  kva_pengukuran: number | null;
+  persen_beban: number | null;
+  beban_kva: number | null;
   suhu_trafo: number | null;
-  total_arus_r: number;
-  total_arus_s: number;
-  total_arus_t: number;
-  total_arus_n: number;
+  total_arus_r: number | null;
+  total_arus_s: number | null;
+  total_arus_t: number | null;
+  total_arus_n: number | null;
   total_teg_rn: number | null;
   total_teg_sn: number | null;
   total_teg_tn: number | null;
-  total_teg_rs: number | null;
-  total_teg_st: number | null;
-  total_teg_rt: number | null;
   perjurusan: Record<string, JurusanData> | null;
   jenis_pemeliharaan: string | null;
   wo_sent_at: string | null;
+  petugas_nama: string | null;
+
+  // ── Penanda dari view ──
+  belum_diukur: boolean;
+  kva_beda: boolean;
 }
+
+/** Kunci baris. Kode gardu TIDAK unik lintas ULP — ekspor AMG memuat enam kode
+ *  yang muncul di dua ULP berbeda, jadi memakai kode saja membuat dua gardu
+ *  berbagi satu hasil deteksi anomali. */
+export const kunciGardu = (r: { kode: string; ulp: string }) => `${r.kode}|${r.ulp}`;
+
+export type StatusUkur = "" | "belum" | "basi" | "terukur";
 
 export interface GarduStatusFilter {
   search: string;
   penyulang: string;
   anomaliOnly: boolean;
-  kvaTrafo: string;   // "" = semua, atau nilai kva spesifik
-  minBeban: number;   // 0 = semua, atau minimum persen beban
+  kvaTrafo: string;      // "" = semua, atau nilai kva spesifik
+  minBeban: number;      // 0 = semua, atau minimum persen beban
+  statusUkur: StatusUkur; // "" = semua
 }
 
 // ── Timeline types (untuk modal) ──────────────────────────────────────────────
@@ -85,6 +118,78 @@ export type TimelineEvent = TimelinePengukuran | TimelinePenyeimbangan;
 
 const PAGE_SIZE = 20;
 
+// ── Cakupan pengukuran ────────────────────────────────────────────────────────
+
+/**
+ * Ambang "pengukuran sudah basi".
+ *
+ * Gardu bermuatan tinggi diukur lebih sering: pada beban segitu, kenaikan kecil
+ * saja sudah menembus batas, jadi potret berumur tiga bulan tidak lagi bisa
+ * dipercaya. Gardu berbeban rendah punya ruang lebih longgar.
+ */
+export const AMBANG_BASI = {
+  bebanTinggi: 80,
+  bulanTinggi: 3,
+  bulanRendah: 5,
+} as const;
+
+export interface CakupanPengukuran {
+  /** Gardu terdaftar di master yang belum pernah diukur sama sekali. */
+  belumDiukur: number;
+  /** Beban terakhir ≥80% dan sudah lewat 3 bulan sejak diukur. */
+  basiTinggi: number;
+  /** Beban terakhir <80% dan sudah lewat 5 bulan sejak diukur. */
+  basiRendah: number;
+  /** Jumlah gardu di master — penyebut untuk cakupan. */
+  totalMaster: number;
+  /** Gardu yang sudah punya setidaknya satu pengukuran/penyeimbangan. */
+  terukur: number;
+}
+
+/** Tanggal batas `n` bulan ke belakang, dalam bentuk YYYY-MM-DD. */
+function batasBulan(n: number): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() - n);
+  return d.toISOString().slice(0, 10);
+}
+
+/**
+ * Apakah pengukuran terakhir gardu ini sudah kedaluwarsa.
+ *
+ * Gardu yang belum pernah diukur mengembalikan `false` — ia punya kategorinya
+ * sendiri, dan menghitungnya sebagai "basi" akan membuatnya masuk dua kartu.
+ */
+export function pengukuranBasi(
+  // Sengaja tipe struktural minimal, bukan `GarduMasterState` utuh: dashboard
+  // menarik kolom seperlunya dari view yang sama dan tetap harus memakai aturan
+  // ini, bukan menyalin ulang tiga barisnya.
+  r: { belum_diukur: boolean; persen_beban: number | null; event_date: string | null },
+  b3: string,
+  b5: string,
+): boolean {
+  if (r.belum_diukur || r.persen_beban === null || !r.event_date) return false;
+  // Dibandingkan pada persen yang TAMPIL, sama dengan kartu overload.
+  return Math.round(r.persen_beban) >= AMBANG_BASI.bebanTinggi ? r.event_date < b3 : r.event_date < b5;
+}
+
+/** Ambil kolom yang dibutuhkan detektor anomali. `null` = belum pernah diukur,
+ *  jadi tidak ada yang bisa dinilai. */
+function barisAnomali(r: GarduMasterState): AnomalyRow | null {
+  if (r.belum_diukur || r.persen_beban === null) return null;
+  return {
+    // Anomali dinilai memakai kVA yang dipakai SAAT mengukur, bukan kVA master:
+    // persen bebannya dihitung dari angka itu, jadi menilainya dengan angka lain
+    // akan bertentangan dengan persentase yang tampil di baris yang sama.
+    kva_trafo: r.kva_pengukuran ?? r.kva_master ?? 0,
+    persen_beban: r.persen_beban,
+    suhu_trafo: r.suhu_trafo,
+    perjurusan: r.perjurusan,
+    total_arus_r: r.total_arus_r ?? 0,
+    total_arus_s: r.total_arus_s ?? 0,
+    total_arus_t: r.total_arus_t ?? 0,
+  };
+}
+
 // ── Hook: useGarduStatus ──────────────────────────────────────────────────────
 
 export function useGarduStatus(
@@ -93,11 +198,11 @@ export function useGarduStatus(
   settings: AnomalySettings = DEFAULT_SETTINGS,
   enabled = true,
 ) {
-  const [rawData, setRawData] = useState<GarduLatestState[]>([]);
+  const [rawData, setRawData] = useState<GarduMasterState[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<GarduStatusFilter>({
-    search: "", penyulang: "", anomaliOnly: false, kvaTrafo: "", minBeban: 0,
+    search: "", penyulang: "", anomaliOnly: false, kvaTrafo: "", minBeban: 0, statusUkur: "",
   });
   const [page, setPage] = useState(1);
 
@@ -105,20 +210,25 @@ export function useGarduStatus(
     setLoading(true);
     setError(null);
     try {
-      let query = supabaseBrowser
-        .from("gardu_latest_state")
-        .select("*")
-        .order("event_date", { ascending: false });
+      const unit = !canSeeAllUnits(user.role) && user.unit ? user.unit : ulp;
 
-      if (!canSeeAllUnits(user.role) && user.unit) {
-        query = query.eq("petugas_unit", user.unit);
-      } else if (ulp) {
-        query = query.eq("petugas_unit", ulp);
-      }
+      // Wajib paginasi: PostgREST memotong di 1.000 baris tanpa berkata apa-apa,
+      // dan master berisi 2.526 gardu — tanpa ini, lebih dari separuhnya hilang
+      // dari tabel sekaligus dari semua hitungan KPI.
+      //
+      // Diurutkan (kode, ulp) karena kode saja tidak unik: tanpa urutan yang
+      // benar-benar pasti, batas antar halaman bisa bergeser dan membuat baris
+      // terlewat atau terhitung dua kali.
+      const rows = await fetchAllRows<GarduMasterState>(() => {
+        const q = supabaseBrowser
+          .from("gardu_master_state")
+          .select("*")
+          .order("kode")
+          .order("ulp");
+        return unit ? q.eq("ulp", unit) : q;
+      });
 
-      const { data, error: err } = await query;
-      if (err) throw err;
-      setRawData((data as GarduLatestState[]) ?? []);
+      setRawData(rows);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data");
     } finally {
@@ -128,11 +238,26 @@ export function useGarduStatus(
 
   useEffect(() => { if (enabled) fetchData(); }, [fetchData, enabled]);
 
-  // Anomali detection per gardu — memoized
-  const anomaliMap = useMemo(
-    () => new Map(rawData.map((row) => [row.no_gardu, detectAnomali(row, settings)])),
-    [rawData, settings]
-  );
+  /** Deteksi anomali per gardu. Gardu yang belum pernah diukur tidak masuk peta
+   *  ini sama sekali — tidak ada apa pun untuk dinilai. */
+  const anomaliMap = useMemo(() => {
+    const peta = new Map<string, ReturnType<typeof detectAnomali>>();
+    for (const row of rawData) {
+      const baris = barisAnomali(row);
+      if (baris) peta.set(kunciGardu(row), detectAnomali(baris, settings));
+    }
+    return peta;
+  }, [rawData, settings]);
+
+  /** Kunci gardu yang pengukurannya sudah kedaluwarsa. Batas tanggalnya dihitung
+   *  sekali di sini, bukan per baris. */
+  const basiSet = useMemo(() => {
+    const b3 = batasBulan(AMBANG_BASI.bulanTinggi);
+    const b5 = batasBulan(AMBANG_BASI.bulanRendah);
+    const set = new Set<string>();
+    for (const row of rawData) if (pengukuranBasi(row, b3, b5)) set.add(kunciGardu(row));
+    return set;
+  }, [rawData]);
 
   const filteredData = useMemo(() => {
     let data = rawData;
@@ -142,26 +267,36 @@ export function useGarduStatus(
     }
     if (filter.kvaTrafo) {
       const kva = Number(filter.kvaTrafo);
-      data = data.filter((d) => d.kva_trafo === kva);
+      data = data.filter((d) => d.kva_master === kva);
     }
+    if (filter.statusUkur === "belum") {
+      data = data.filter((d) => d.belum_diukur);
+    } else if (filter.statusUkur === "terukur") {
+      data = data.filter((d) => !d.belum_diukur);
+    } else if (filter.statusUkur === "basi") {
+      data = data.filter((d) => basiSet.has(kunciGardu(d)));
+    }
+    // Beban minimum hanya bermakna untuk gardu yang punya angka beban — yang
+    // belum diukur otomatis tersaring keluar, dan itu memang benar.
     if (filter.minBeban > 0) {
-      data = data.filter((d) => d.persen_beban >= filter.minBeban);
+      data = data.filter((d) => (d.persen_beban ?? -1) >= filter.minBeban);
     }
     if (filter.anomaliOnly) {
-      data = data.filter((d) => anomaliMap.get(d.no_gardu)?.isAnomali);
+      data = data.filter((d) => anomaliMap.get(kunciGardu(d))?.isAnomali);
     }
     if (filter.search) {
       const q = filter.search.toLowerCase();
       data = data.filter(
         (d) =>
-          d.no_gardu.toLowerCase().includes(q) ||
+          d.kode.toLowerCase().includes(q) ||
           d.penyulang?.toLowerCase().includes(q) ||
-          d.alamat?.toLowerCase().includes(q)
+          d.alamat?.toLowerCase().includes(q) ||
+          d.nama?.toLowerCase().includes(q)
       );
     }
 
     return data;
-  }, [rawData, filter, anomaliMap]);
+  }, [rawData, filter, anomaliMap, basiSet]);
 
   const paginatedData = useMemo(
     () => filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -171,12 +306,12 @@ export function useGarduStatus(
   const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
 
   const penyulangOptions = useMemo(
-    () => [...new Set(rawData.map((d) => d.penyulang).filter(Boolean))] as string[],
+    () => ([...new Set(rawData.map((d) => d.penyulang).filter(Boolean))] as string[]).sort(),
     [rawData]
   );
 
   const anomaliCount = useMemo(
-    () => rawData.filter((d) => anomaliMap.get(d.no_gardu)?.isAnomali).length,
+    () => rawData.filter((d) => anomaliMap.get(kunciGardu(d))?.isAnomali).length,
     [rawData, anomaliMap]
   );
 
@@ -185,12 +320,36 @@ export function useGarduStatus(
     [rawData]
   );
 
-  const avgBeban = useMemo(
-    () => rawData.length > 0
-      ? Math.round(rawData.reduce((s, d) => s + d.persen_beban, 0) / rawData.length)
-      : 0,
-    [rawData]
-  );
+  /** Rata-rata beban dihitung hanya atas gardu yang PUNYA pengukuran. Ikut
+   *  membagi dengan gardu yang belum diukur akan menyeret angkanya turun dan
+   *  membuat armada terlihat lebih longgar daripada kenyataannya. */
+  const avgBeban = useMemo(() => {
+    const terukur = rawData.filter((d) => d.persen_beban !== null);
+    return terukur.length > 0
+      ? Math.round(terukur.reduce((s, d) => s + (d.persen_beban ?? 0), 0) / terukur.length)
+      : 0;
+  }, [rawData]);
+
+  /** Cakupan pengukuran — diturunkan dari baris yang sudah ada di memori.
+   *  Tidak perlu query hitung terpisah: seluruh master memang sudah ditarik. */
+  const cakupan = useMemo<CakupanPengukuran>(() => {
+    const b3 = batasBulan(AMBANG_BASI.bulanTinggi);
+    const b5 = batasBulan(AMBANG_BASI.bulanRendah);
+    let belumDiukur = 0, basiTinggi = 0, basiRendah = 0;
+
+    for (const r of rawData) {
+      if (r.belum_diukur) { belumDiukur += 1; continue; }
+      if (!pengukuranBasi(r, b3, b5)) continue;
+      if ((r.persen_beban ?? 0) >= AMBANG_BASI.bebanTinggi) basiTinggi += 1;
+      else basiRendah += 1;
+    }
+
+    return {
+      belumDiukur, basiTinggi, basiRendah,
+      totalMaster: rawData.length,
+      terukur: rawData.length - belumDiukur,
+    };
+  }, [rawData]);
 
   return {
     data: paginatedData,
@@ -209,6 +368,8 @@ export function useGarduStatus(
     anomaliCount,
     penyeimbanganCount,
     avgBeban,
+    cakupan,
+    basiSet,
     refresh: fetchData,
   };
 }

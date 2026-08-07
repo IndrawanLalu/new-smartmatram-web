@@ -9,7 +9,7 @@ import {
 import { woStage, type WoBatch, type WoItem } from "../../_types";
 import { STAGE_CONFIG, fmtDate, fmtDateTime } from "../../_constants";
 
-const LocationMap = dynamic(() => import("../../_components/LocationMap"), { ssr: false });
+const LocationMap = dynamic(() => import("@/app/admin/_components/LocationMap"), { ssr: false });
 
 interface ApprovalDrawerProps {
   item: WoItem;

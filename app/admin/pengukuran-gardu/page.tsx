@@ -1,7 +1,6 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { DISPLAY } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { supabaseBrowser } from "@/lib/supabase-browser";
@@ -16,12 +15,7 @@ import {
   type PengukuranGardu,
 } from "./_hooks/usePengukuranGardu";
 import {
-  Gauge,
   AlertTriangle,
-  TrendingUp,
-  TrendingDown,
-  Thermometer,
-  Zap,
   RefreshCw,
   Search,
   ChevronLeft,
@@ -50,11 +44,12 @@ import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
 import { useAnomalySettings } from "./_hooks/useAnomalySettings";
-import { detectAnomali, hasActiveCriteria, hasThresholdCriteria } from "./_utils/detectAnomali";
+import { detectAnomali, hasThresholdCriteria } from "./_utils/detectAnomali";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
 const YearlyStatsTable   = dynamic(() => import("./_components/YearlyStatsTable"),   { ssr: false });
+const DistribusiBebanDonut = dynamic(() => import("./_components/DistribusiBebanDonut"), { ssr: false });
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -78,40 +73,18 @@ const INPUT_CLASS =
 
 const PAGE_SIZE = 20;
 
+/** Penyulang yang digambar di kartu distribusi. Ada 32 penyulang di keempat ULP
+ *  (23 di Ampenan saja) — semuanya sekaligus di kartu sepertiga baris membuat
+ *  nama pada sumbu X saling menimpa. Datanya sudah terurut dari overload
+ *  terbanyak, jadi yang dipotong adalah yang paling tidak mendesak. */
+const PENYULANG_TAMPIL = 10;
+
 function fmtTanggal(s: string): string {
   const [y, m, d] = s.split("-");
   return `${d}-${m}-${y}`;
 }
 
 // ── Sub-components ────────────────────────────────────────────────────────────
-
-function KPICard({
-  label, value, sub, icon: Icon, variant = "default",
-}: {
-  label: string; value: number | string; sub: string;
-  icon: React.ElementType; variant?: "default" | "danger" | "warning" | "success" | "info";
-}) {
-  const styles = {
-    default: { card: "border-line",        icon: "bg-navy-50 text-accent-deep",  value: "text-ink" },
-    danger:  { card: "border-red-200",        icon: "bg-red-50 text-red-600",   value: "text-red-600" },
-    warning: { card: "border-amber-200",      icon: "bg-amber-50 text-amber-600", value: "text-amber-600" },
-    success: { card: "border-green-200",      icon: "bg-green-50 text-green-700", value: "text-green-700" },
-    info:    { card: "border-blue-200",       icon: "bg-blue-50 text-blue-700",  value: "text-blue-700" },
-  }[variant];
-
-  return (
-    <div className={`bg-white rounded-xl border p-4 flex items-center gap-4 ${styles.card}`}>
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${styles.icon}`}>
-        <Icon size={18} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-xs text-ink-soft truncate">{label}</p>
-        <p className={`text-2xl font-bold leading-tight ${styles.value}`}>{value}</p>
-        <p className="text-xs text-ink-soft">{sub}</p>
-      </div>
-    </div>
-  );
-}
 
 function BebanBadge({ pct }: { pct: number }) {
   const cfg =
@@ -185,10 +158,10 @@ export default function PengukuranGarduPage() {
   }, [editRow, selectedRow]);
 
   const {
-    data, latestData, loading, error,
+    data, latestData, latestPengukuran, loading, error,
     filter, setFilter,
     overloadData, underloadData, highTempData, highCurrentItems, phaseOverloadItems,
-    alertGarduIds, penyulangOptions, avgBeban, bebanChartData, penyulangChartData,
+    alertGarduIds, penyulangOptions, avgBeban, bebanChartData, penyulangChartData, bebanValues,
     refresh, patchRow, fetchAndPatchRow, deleteRow,
   } = usePengukuranGardu(user);
 
@@ -229,17 +202,21 @@ export default function PengukuranGarduPage() {
 
   const showUlpFilter = canSeeAllUnits(user.role);
 
+  // Tabel Realisasi mendaftar catatan pengukuran saja. Hasil pemerataan tetap
+  // di luar sini — ia tidak punya baris di `pengukuran_gardu`, jadi tidak bisa
+  // disunting, dihapus, maupun dikirim ke AMG. Kondisinya tetap ikut seluruh
+  // perhitungan beban lewat `latestData`.
   const filteredData = useMemo(() => {
-    if (!search) return latestData;
+    if (!search) return latestPengukuran;
     const q = search.toLowerCase();
-    return latestData.filter(
+    return latestPengukuran.filter(
       (d) =>
         d.no_gardu?.toLowerCase().includes(q) ||
         d.penyulang?.toLowerCase().includes(q) ||
         d.alamat?.toLowerCase().includes(q) ||
         d.petugas_nama?.toLowerCase().includes(q)
     );
-  }, [latestData, search]);
+  }, [latestPengukuran, search]);
 
   const paginatedData = useMemo(
     () => filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -298,33 +275,13 @@ export default function PengukuranGarduPage() {
     <>
     <div className="space-y-4 text-ink">
 
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="rounded-2xl bg-navy-600 px-6 py-5 text-white shadow-card">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
-          <div>
-            <h1 className={`${DISPLAY} text-2xl font-extrabold`}>Pengukuran Gardu</h1>
-            <p className="text-white/60 text-sm mt-1">
-              {canSeeAllUnits(user.role) ? "Semua ULP — PLN UP3 Mataram" : `ULP ${user.unit} · ${user.role}`}
-            </p>
-          </div>
-          <div className="flex items-center gap-3 text-sm text-white/60">
-            <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              <span className="font-semibold text-white">{latestData.length}</span> Gardu
-              {data.length > latestData.length && (
-                <span className="ml-1 opacity-70">({data.length} pengukuran)</span>
-              )}
-            </div>
-            <div className="bg-white/10 rounded-lg px-3 py-1.5">
-              Rata-rata:{" "}
-              <span className={`font-semibold ${avgBeban >= OVERLOAD_PCT ? "text-red-700" : "text-white"}`}>
-                {avgBeban}%
-              </span>
-            </div>
-          </div>
-        </div>
-      </header>
-
       {/* ── Filter Bar — shared semua tab ───────────────────────────────────── */}
+      {/* Blok header navy dihapus: judulnya sudah ada di topbar (`PageTitle`),
+          cakupan ULP-nya sudah dinyatakan oleh penyaring di bilah ini, dan
+          jumlah gardu + rata-ratanya sudah jadi kartu KPI pertama di tab
+          Dashboard. Yang tersisa hanyalah ~90px tinggi yang tidak membawa
+          satu pun keterangan baru. Dua angkanya dipindah ke ujung bilah ini
+          supaya tetap terlihat dari tab mana pun. */}
       <div className="bg-white rounded-xl border border-line p-4 flex flex-wrap items-center gap-3">
         <span className="text-sm font-medium text-ink-soft">Periode:</span>
         <select
@@ -342,7 +299,7 @@ export default function PengukuranGarduPage() {
         >
           {years.map((y) => <option key={y} value={y}>{y}</option>)}
         </select>
-        {showUlpFilter && (
+        {showUlpFilter ? (
           <select
             value={filter.ulp}
             onChange={(e) => { setFilter((f) => ({ ...f, ulp: e.target.value, penyulang: "" })); setPage(1); }}
@@ -351,6 +308,12 @@ export default function PengukuranGarduPage() {
             <option value="">Semua ULP</option>
             {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
           </select>
+        ) : (
+          // Pengguna ULP tidak punya penyaring unit, jadi tanpa ini tidak ada
+          // apa pun di layar yang menyebut data siapa yang sedang dilihat.
+          <span className="h-9 flex items-center rounded-lg bg-surface border border-line px-3 text-sm font-medium text-ink-soft">
+            ULP {user.unit}
+          </span>
         )}
         <select
           value={filter.penyulang}
@@ -360,13 +323,27 @@ export default function PengukuranGarduPage() {
           <option value="">Semua Penyulang</option>
           {penyulangOptions.map((p) => <option key={p} value={p}>{p}</option>)}
         </select>
-        <button
-          onClick={() => refresh()}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-ink-soft hover:text-ink hover:bg-line transition-colors ml-auto"
-        >
-          <RefreshCw size={14} />
-          Refresh
-        </button>
+        <div className="ml-auto flex items-center gap-3">
+          <span className="text-sm text-ink-soft">
+            <span className="font-bold text-ink">{latestData.length}</span> gardu
+            {data.length > latestData.length && (
+              <span className="text-ink-muted"> · {data.length} pengukuran</span>
+            )}
+          </span>
+          <span className="text-sm text-ink-soft">
+            Rata-rata{" "}
+            <span className={`font-bold ${avgBeban >= OVERLOAD_PCT ? "text-red-600" : "text-ink"}`}>
+              {avgBeban}%
+            </span>
+          </span>
+          <button
+            onClick={() => refresh()}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-ink-soft hover:text-ink hover:bg-surface transition-colors"
+          >
+            <RefreshCw size={14} />
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Kriteria Anomali ────────────────────────────────────────────────── */}
@@ -512,20 +489,13 @@ export default function PengukuranGarduPage() {
           )}
 
           {/* ── Charts Row ────────────────────────────────────────────────── */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            {/* Bar chart top 20 beban — 3/5 */}
-            <div className="lg:col-span-3 bg-white rounded-xl border border-line overflow-hidden">
-              <div className="px-5 py-3 border-b border-line flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-ink">Top 20 — % Beban Trafo</h3>
-                  <p className="text-xs text-ink-soft mt-0.5">{periodLabel} · klik bar untuk detail</p>
-                </div>
-                <div className="flex items-center gap-3 text-[10px] text-ink-soft">
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-red-500 inline-block" /> ≥80%</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-500 inline-block" /> ≥60%</span>
-                  <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-600 inline-block" /> Normal</span>
-                </div>
+            {/* Bar chart top 10 beban */}
+            <div className="bg-white rounded-xl border border-line overflow-hidden">
+              <div className="px-5 py-3 border-b border-line">
+                <h3 className="text-sm font-semibold text-ink">Top 10 — % Beban Trafo</h3>
+                <p className="text-xs text-ink-soft mt-0.5">{periodLabel} · klik bar untuk detail</p>
               </div>
               <div className="p-4">
                 {loading ? (
@@ -544,11 +514,13 @@ export default function PengukuranGarduPage() {
               </div>
             </div>
 
-            {/* Distribusi per penyulang — 2/5 */}
-            <div className="lg:col-span-2 bg-white rounded-xl border border-line overflow-hidden">
+            {/* Distribusi beban seluruh gardu */}
+            <div className="bg-white rounded-xl border border-line overflow-hidden">
               <div className="px-5 py-3 border-b border-line">
-                <h3 className="text-sm font-semibold text-ink">Distribusi per Penyulang</h3>
-                <p className="text-xs text-ink-soft mt-0.5">Jumlah gardu per kategori beban</p>
+                <h3 className="text-sm font-semibold text-ink">Distribusi Beban Trafo</h3>
+                <p className="text-xs text-ink-soft mt-0.5">
+                  {periodLabel} · batas 20% dan 80% sama dengan kartu di atas
+                </p>
               </div>
               <div className="p-4 h-72">
                 {loading ? (
@@ -556,7 +528,27 @@ export default function PengukuranGarduPage() {
                     <div className="w-6 h-6 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
                   </div>
                 ) : (
-                  <PenyulangDistChart data={penyulangChartData} />
+                  <DistribusiBebanDonut beban={bebanValues} />
+                )}
+              </div>
+            </div>
+
+            {/* Distribusi per penyulang */}
+            <div className="bg-white rounded-xl border border-line overflow-hidden">
+              <div className="px-5 py-3 border-b border-line">
+                <h3 className="text-sm font-semibold text-ink">Top 10 Penyulang</h3>
+                <p className="text-xs text-ink-soft mt-0.5">
+                  Overload terbanyak
+                  {penyulangChartData.length > PENYULANG_TAMPIL && ` · dari ${penyulangChartData.length} penyulang`}
+                </p>
+              </div>
+              <div className="p-4 h-72">
+                {loading ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="w-6 h-6 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
+                  </div>
+                ) : (
+                  <PenyulangDistChart data={penyulangChartData} maks={PENYULANG_TAMPIL} />
                 )}
               </div>
             </div>

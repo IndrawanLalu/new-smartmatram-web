@@ -12,6 +12,26 @@ export const UNDERLOAD_PCT = 20;
 export const HIGH_CURRENT_A = 160;
 export const HIGH_TEMP_C = 60;
 
+/**
+ * Persen beban SEBAGAIMANA TAMPIL — semua tabel, kartu, dan grafik membulatkan
+ * ke persen terdekat.
+ *
+ * Klasifikasi wajib memakai angka yang sama dengan yang dibaca mata. Contoh
+ * nyatanya: AM053 tercatat 79,73% dan tampil "80%" di seluruh layar, tapi
+ * dulu tidak ikut terhitung overload karena pembandingnya memakai 79,73.
+ * Hasilnya kartu berkata "4 gardu overload" sementara di tabel terlihat lima
+ * baris bertuliskan 80% atau lebih — dan yang salah bukan orang yang
+ * menghitungnya dengan jari.
+ *
+ * Konsekuensinya ambang efektifnya jadi 79,5%. Untuk trafo 160 kVA itu selisih
+ * 0,8 kVA — jauh lebih kecil daripada ketidakpastian pengukuran tang ampere
+ * yang jadi sumber angkanya.
+ */
+export const bebanTampil = (v: number | null | undefined) => Math.round(v ?? 0);
+
+export const isOverload = (v: number | null | undefined) => bebanTampil(v) >= OVERLOAD_PCT;
+export const isUnderload = (v: number | null | undefined) => bebanTampil(v) < UNDERLOAD_PCT;
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface JurusanData {
@@ -43,13 +63,84 @@ export interface PengukuranGardu {
   suhu_trafo: number;
   petugas_nama: string | null;
   petugas_unit: string;
-  created_at: string;
+  /** NULL di SELURUH baris tabel `pengukuran_gardu` — kolomnya tidak pernah
+   *  terisi. Tipenya dulu menyatakan `string`, dan kebohongan itu membuat
+   *  pengurutan yang memakainya runtuh saat dijalankan. */
+  created_at: string | null;
   wo_sent_at: string | null;
   jenis_pemeliharaan: string | null;
   amg_sent_at: string | null;
   amg_queued_at: string | null;
   amg_error: string | null;
   amg_attempts: number | null;
+  /** Baris ini sebenarnya hasil PEMERATAAN BEBAN, bukan pengukuran rutin.
+   *  Kondisinya tetap kondisi nyata gardu, jadi ia ikut semua perhitungan —
+   *  tapi tidak boleh masuk tabel Realisasi maupun antrean kirim AMG, karena
+   *  barisnya tidak ada di tabel `pengukuran_gardu`. */
+  dari_penyeimbangan?: boolean;
+}
+
+/** Baris `penyeimbangan_gardu` — kolom yang dipakai saja. */
+interface PenyeimbanganRow {
+  id: string;
+  no_gardu: string;
+  penyulang: string | null;
+  alamat: string | null;
+  ulp: string;
+  kva_trafo: number;
+  arus_r_after: number;
+  arus_s_after: number;
+  arus_t_after: number;
+  arus_n_after: number;
+  beban_kva_after: number;
+  beban_pct_after: number;
+  perjurusan_after: Record<string, JurusanData> | null;
+  tgl_penyeimbangan: string;
+  petugas_penyeimbang: string | null;
+  jenis_pemeliharaan: string | null;
+}
+
+/**
+ * Ubah hasil pemerataan jadi bentuk pengukuran.
+ *
+ * Pemerataan beban ADALAH pengukuran: petugas mengukur ulang setelah memindah
+ * jurusan, dan angka sesudahnya itulah kondisi gardu yang berlaku. Tanpa ini,
+ * gardu yang terakhir disentuh lewat pemerataan hilang dari seluruh hitungan
+ * overload di halaman ini — tiga gardu Ampenan di atas 80% tidak terlihat sama
+ * sekali karena kondisi terakhirnya berasal dari pemerataan.
+ *
+ * Suhu dan tegangan sengaja nol/null: pemerataan memang tidak mengukurnya, dan
+ * mengarang angka di situ akan menyeret rata-rata suhu ke bawah.
+ */
+function dariPenyeimbangan(r: PenyeimbanganRow): PengukuranGardu {
+  return {
+    // Awalan "ps-" supaya id-nya tidak mungkin bentrok dengan id pengukuran,
+    // dan supaya baris sintetis ini kentara saat menelusuri masalah.
+    id: `ps-${r.id}`,
+    no_gardu: r.no_gardu,
+    alamat: r.alamat,
+    penyulang: r.penyulang,
+    kva_trafo: r.kva_trafo,
+    tanggal_pengukuran: r.tgl_penyeimbangan,
+    jam_pengukuran: null,
+    total_arus_r: r.arus_r_after,
+    total_arus_s: r.arus_s_after,
+    total_arus_t: r.arus_t_after,
+    total_arus_n: r.arus_n_after,
+    total_teg_rn: 0, total_teg_sn: 0, total_teg_tn: 0,
+    total_teg_rs: null, total_teg_st: null, total_teg_rt: null,
+    perjurusan: r.perjurusan_after ?? {},
+    beban_kva: r.beban_kva_after,
+    persen_beban: r.beban_pct_after,
+    suhu_trafo: 0,
+    petugas_nama: r.petugas_penyeimbang,
+    petugas_unit: r.ulp,
+    created_at: r.tgl_penyeimbangan,
+    wo_sent_at: null,
+    jenis_pemeliharaan: r.jenis_pemeliharaan ?? "PEMERATAAN BEBAN",
+    amg_sent_at: null, amg_queued_at: null, amg_error: null, amg_attempts: null,
+    dari_penyeimbangan: true,
+  };
 }
 
 export interface HighCurrentItem {
@@ -91,6 +182,20 @@ export function getNominalCurrent(kva: number): number {
   return (kva * 1000) / (Math.sqrt(3) * 400);
 }
 
+/**
+ * Kunci pengurut "paling baru dulu": tanggal, lalu waktu simpan sebagai pemutus.
+ *
+ * Keduanya boleh NULL di database meskipun tipenya menyatakan string — dan itu
+ * sempat membuat halaman ini runtuh (`Cannot read properties of null`). Nilai
+ * kosong sengaja diurutkan paling belakang: baris tanpa tanggal tidak boleh
+ * mengklaim posisi "terakhir" untuk sebuah gardu.
+ *
+ * Digabung jadi satu string karena tanggalnya lebar tetap (YYYY-MM-DD), jadi
+ * urutan leksikografisnya sama dengan urutan waktunya.
+ */
+const kunciUrut = (r: PengukuranGardu) =>
+  `${r.tanggal_pengukuran ?? ""}|${r.created_at ?? ""}`;
+
 function getHighCurrentItems(data: PengukuranGardu[]): HighCurrentItem[] {
   const result: HighCurrentItem[] = [];
   for (const row of data) {
@@ -120,6 +225,9 @@ function getHighCurrentItems(data: PengukuranGardu[]): HighCurrentItem[] {
 export function usePengukuranGardu(user: CurrentUser) {
   const now = new Date();
   const [data, setData] = useState<PengukuranGardu[]>([]);
+  /** Hasil pemerataan pada jendela yang sama — dipakai HANYA untuk menentukan
+   *  kondisi terakhir gardu, tidak ikut ke tabel Realisasi. */
+  const [penyeimbangan, setPenyeimbangan] = useState<PengukuranGardu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterPengukuran>({
@@ -164,7 +272,36 @@ export function usePengukuranGardu(user: CurrentUser) {
 
         return query;
       });
+
+      const hasilPemerataan = await fetchAllRows<PenyeimbanganRow>(() => {
+        let q = supabaseBrowser
+          .from("penyeimbangan_gardu")
+          // Satu literal utuh, jangan dipecah dengan `+`: supabase-js membaca
+          // daftar kolomnya dari tipe literal string, dan gabungan runtime
+          // membuat inferensinya jatuh ke tipe galat.
+          .select("id,no_gardu,penyulang,alamat,ulp,kva_trafo,arus_r_after,arus_s_after,arus_t_after,arus_n_after,beban_kva_after,beban_pct_after,perjurusan_after,tgl_penyeimbangan,petugas_penyeimbang,jenis_pemeliharaan")
+          .order("tgl_penyeimbangan", { ascending: false })
+          .order("id");
+
+        if (filter.month !== 0) {
+          const startDate = `${filter.year}-${String(filter.month).padStart(2, "0")}-01`;
+          const nextMonth = filter.month === 12 ? 1 : filter.month + 1;
+          const nextYear  = filter.month === 12 ? filter.year + 1 : filter.year;
+          const endDate   = `${nextYear}-${String(nextMonth).padStart(2, "0")}-01`;
+          q = q.gte("tgl_penyeimbangan", startDate).lt("tgl_penyeimbangan", endDate);
+        }
+
+        // Penyaring unitnya bernama `ulp` di sini, bukan `petugas_unit`.
+        if (!canSeeAllUnits(user.role) && user.unit) q = q.eq("ulp", user.unit);
+        else if (filter.ulp) q = q.eq("ulp", filter.ulp);
+
+        if (filter.penyulang) q = q.eq("penyulang", filter.penyulang);
+
+        return q;
+      });
+
       setData(rows);
+      setPenyeimbangan(hasilPemerataan.map(dariPenyeimbangan));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data");
     } finally {
@@ -222,8 +359,37 @@ export function usePengukuranGardu(user: CurrentUser) {
 
   // ── Derived Metrics ─────────────────────────────────────────────────────────
 
-  // Data sudah sort tanggal DESC — ambil satu (terbaru) per no_gardu
+  /**
+   * Kondisi terakhir tiap gardu pada periode ini — dari pengukuran ATAU
+   * pemerataan, mana yang paling baru.
+   *
+   * Pemerataan diperlakukan sebagai pengukuran karena memang begitu: petugas
+   * mengukur ulang setelah memindah jurusan. Tanpa penggabungan ini, gardu yang
+   * terakhir disentuh lewat pemerataan hilang dari hitungan overload halaman
+   * ini, sementara dashboard (yang membaca `gardu_master_state`) tetap
+   * memperhitungkannya — dua angka berbeda untuk pertanyaan yang sama.
+   */
   const latestData = useMemo(() => {
+    const seen = new Set<string>();
+    return [...data, ...penyeimbangan]
+      .sort((a, b) => kunciUrut(b).localeCompare(kunciUrut(a)))
+      .filter((d) => {
+        if (seen.has(d.no_gardu)) return false;
+        seen.add(d.no_gardu);
+        return true;
+      });
+  }, [data, penyeimbangan]);
+
+  /**
+   * Pengukuran terakhir per gardu — TANPA hasil pemerataan.
+   *
+   * Khusus tabel Realisasi Pengukuran: yang didaftar di sana adalah catatan
+   * pengukuran yang benar-benar ada di `pengukuran_gardu`, karena barisnya bisa
+   * disunting, dihapus, dan dikirim ke AMG. Hasil pemerataan tidak punya baris
+   * di tabel itu, jadi ia tetap di luar realisasi — meski kondisinya ikut semua
+   * perhitungan beban lewat `latestData`.
+   */
+  const latestPengukuran = useMemo(() => {
     const seen = new Set<string>();
     return data.filter((d) => {
       if (seen.has(d.no_gardu)) return false;
@@ -233,12 +399,12 @@ export function usePengukuranGardu(user: CurrentUser) {
   }, [data]);
 
   const overloadData = useMemo(
-    () => latestData.filter((d) => d.persen_beban >= OVERLOAD_PCT),
+    () => latestData.filter((d) => isOverload(d.persen_beban)),
     [latestData]
   );
 
   const underloadData = useMemo(
-    () => latestData.filter((d) => d.persen_beban < UNDERLOAD_PCT && d.persen_beban >= 0),
+    () => latestData.filter((d) => isUnderload(d.persen_beban) && d.persen_beban >= 0),
     [latestData]
   );
 
@@ -311,7 +477,7 @@ export function usePengukuranGardu(user: CurrentUser) {
     () =>
       [...latestData]
         .sort((a, b) => b.persen_beban - a.persen_beban)
-        .slice(0, 20)
+        .slice(0, 10)
         .map((d) => ({
           id:        d.id,
           name:      d.no_gardu,
@@ -324,6 +490,13 @@ export function usePengukuranGardu(user: CurrentUser) {
           arusT:     Math.round(d.total_arus_t),
           suhu:      d.suhu_trafo ?? 0,
         })),
+    [latestData]
+  );
+
+  /** Persentase beban tiap gardu — bahan donat distribusi. Cuma angkanya,
+   *  bukan seluruh barisnya: pengelompokan embernya milik grafik itu sendiri. */
+  const bebanValues = useMemo(
+    () => latestData.map((d) => d.persen_beban ?? 0),
     [latestData]
   );
 
@@ -367,6 +540,7 @@ export function usePengukuranGardu(user: CurrentUser) {
   return {
     data,
     latestData,
+    latestPengukuran,
     loading,
     error,
     filter,
@@ -381,6 +555,7 @@ export function usePengukuranGardu(user: CurrentUser) {
     avgBeban,
     bebanChartData,
     penyulangChartData,
+    bebanValues,
     refresh: fetchData,
     patchRow,
     fetchAndPatchRow,

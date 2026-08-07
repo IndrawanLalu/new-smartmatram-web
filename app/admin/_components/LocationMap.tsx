@@ -7,16 +7,20 @@ interface LocationMapProps {
   lat: number;
   lng: number;
   label?: string;
+  /** Tinggi peta dalam piksel. Leaflet butuh tinggi eksplisit — wadah tanpa
+   *  tinggi membuat petanya runtuh jadi 0px. */
+  tinggi?: number;
 }
 
 // Pakai CircleMarker (tanpa aset ikon) supaya bebas masalah bundling ikon Leaflet.
-export default function LocationMap({ lat, lng, label }: LocationMapProps) {
+// Dipakai bersama: bukti selesai Work Order dan detail master gardu.
+export default function LocationMap({ lat, lng, label, tinggi = 220 }: LocationMapProps) {
   return (
     <MapContainer
       center={[lat, lng]}
       zoom={16}
       scrollWheelZoom={false}
-      style={{ height: 220, width: "100%", borderRadius: 8 }}
+      style={{ height: tinggi, width: "100%" }}
     >
       <TileLayer
         attribution='&copy; OpenStreetMap'
