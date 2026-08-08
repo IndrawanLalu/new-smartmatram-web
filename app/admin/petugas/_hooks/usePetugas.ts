@@ -22,12 +22,19 @@ export interface SavePetugasInput {
   status: string;
 }
 
-export function usePetugas(filterUlp?: string) {
+/**
+ * @param enabled `false` menahan pengambilan data tanpa menahan pemanggilan
+ *   hook-nya. Dipakai halaman Petugas: penolakan akses harus digambar SETELAH
+ *   semua hook dipanggil (urutan hook tidak boleh berubah antar render), tapi
+ *   pengguna yang ditolak juga tidak perlu menembak kueri.
+ */
+export function usePetugas(filterUlp?: string, enabled = true) {
   const [data, setData] = useState<Petugas[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetch = useCallback(async () => {
+    if (!enabled) { setLoading(false); return; }
     setLoading(true);
     setError(null);
     let q = supabaseBrowser
@@ -43,7 +50,7 @@ export function usePetugas(filterUlp?: string) {
     if (err) setError(err.message);
     else setData(rows ?? []);
     setLoading(false);
-  }, [filterUlp]);
+  }, [filterUlp, enabled]);
 
   useEffect(() => { fetch(); }, [fetch]);
 

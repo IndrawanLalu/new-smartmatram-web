@@ -75,7 +75,11 @@ export function useInspeksiJaringan(user: CurrentUser) {
       const data = await fetchAllRows<InspeksiJaringan>(() => {
         let query = supabaseBrowser
           .from("inspeksi")
-          .select("*")
+          // Persis kolom di interface `InspeksiJaringan`. `*` ikut menarik
+          // device_info, device_timestamp, image_url, updated_by, status_validasi,
+          // dan inspektor_or_petugas -- enam kolom dengan NOL pemakaian di
+          // seluruh aplikasi. Diukur pada 2.071 baris: 273 KB gzip -> 183 KB.
+          .select("id,category,deskripsi,temuan,status,lokasi,ulp,penyulang,inspektor,nama_inspektor,eksekutor,team_name,keterangan,koordinat,foto_sebelum_url,foto_lokasi_url,foto_sesudah_url,tgl_inspeksi,tgl_eksekusi,created_at")
           .order("tgl_inspeksi", { ascending: false })
           .order("created_at", { ascending: false });
         // Push date filter ke DB — hindari full table scan

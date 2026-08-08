@@ -12,14 +12,27 @@
  * belasan langganan realtime dan payload berlipat untuk data yang cuma
  * dijadikan angka.
  *
- * Pola yang dipegang:
- *  - Satu tarikan untuk jendela 24 bulan, semua periode DITURUNKAN di useMemo.
- *    Ganti periode tidak memicu fetch ulang.
- *  - `fetchAllRows` wajib: `inspeksi` (1.982), `inspeksi_pohon` (3.285) dan
- *    `gardu_latest_state` (984) semuanya di sekitar/di atas batas 1.000 baris
- *    PostgREST — tanpa paginasi angkanya salah diam-diam.
- *  - Angka yang tidak butuh baris pakai `count: "exact", head: true`.
- *  - Kolom seminimal mungkin, tidak ada `select("*")`.
+ * ── Agregasinya di DATABASE, bukan di browser ───────────────────────────────
+ * Versi sebelumnya menarik ~9.500 baris (inspeksi 2.071, inspeksi_pohon 3.534,
+ * gardu_master_state 2.526, pengukuran_gardu 1.261) hanya untuk menghasilkan
+ * sekitar 40 angka. Karena `fetchAllRows` memaginasi berurutan, itu jadi belasan
+ * request bolak-balik sebelum satu angka pun tampil.
+ *
+ * Sekarang satu panggilan RPC `dashboard_ringkas` (~1,6 KB) menggantikan
+ * semuanya. Ambangnya DIKIRIM sebagai parameter, jadi TypeScript tetap
+ * satu-satunya pemilik angka ambang — SQL tidak menyimpan salinannya.
+ * Definisinya di `scripts/dashboard-ringkas-rpc.sql`.
+ *
+ * Yang TETAP ditarik dari klien, beserta alasannya:
+ *  - Gangguan penyulang → sumbernya Google Sheets, bukan Postgres.
+ *  - Work Order         → 233 baris, 0 KB setelah gzip; `buildWoStats` di TS
+ *                         adalah satu-satunya definisi tahapan WO.
+ *  - Risiko ML          → `useFeederRisk` sudah menyaring satu tanggal.
+ *  - Ringkasan Yantek   → berkas JSON di server, lewat /api/yantek/ringkas.
+ *
+ * Konsekuensi yang diterima: ganti periode kini memicu satu panggilan RPC baru,
+ * tidak lagi diturunkan dari cache 24 bulan. 1,6 KB per pergantian periode
+ * jauh lebih murah daripada 63 KB sekali muat.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -32,9 +45,7 @@ import { buildWoStats, type WoStats } from "@/app/admin/work-order/_lib/woStats"
 import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
 // Ambang "pengukuran sudah basi" diimpor, tidak disalin: kalau ULP mengubah
 // kebijakannya, dashboard dan halaman pengukuran-gardu harus ikut bersama.
-import { AMBANG_BASI, pengukuranBasi } from "@/app/admin/pengukuran-gardu/_hooks/useGarduStatus";
-// Ambang overload dinilai pada angka yang TAMPIL — lihat catatannya di sana.
-import { bebanTampil, isOverload } from "@/app/admin/pengukuran-gardu/_hooks/usePengukuranGardu";
+import { AMBANG_BASI } from "@/app/admin/pengukuran-gardu/_hooks/useGarduStatus";
 
 // ── Ambang ───────────────────────────────────────────────────────────────────
 // Sengaja tetap, bukan dari `anomali_settings`: ambang di tabel itu default-nya
@@ -102,13 +113,6 @@ function buildWindow(period: PeriodKey, now: Date): Window {
 
 const inWindow = (d: string | null, from: string, to: string) =>
   !!d && d.slice(0, 10) >= from && d.slice(0, 10) <= to;
-
-/** Tanggal batas `n` bulan ke belakang, YYYY-MM-DD. */
-function batasBulanLalu(n: number): string {
-  const d = new Date();
-  d.setMonth(d.getMonth() - n);
-  return iso(d);
-}
 
 /** Tambah hari pada tanggal ISO tanpa melewati objek Date bermuatan zona waktu —
  *  `new Date("2026-08-04")` diurai sebagai UTC sementara pembacaan baliknya
@@ -280,77 +284,59 @@ export interface DomainProduktivitas {
   top: { nama: string; jumlah: number }[];
 }
 
-// ── Baris mentah ─────────────────────────────────────────────────────────────
+// ── Bentuk balasan RPC ───────────────────────────────────────────────────────
+// Cerminan `scripts/dashboard-ringkas-rpc.sql`. Kalau SQL-nya diubah, tipe ini
+// harus ikut — tidak ada yang memeriksanya untuk kita.
 
-interface InspeksiRow { tgl_inspeksi: string | null; tgl_eksekusi: string | null; status: string; ulp: string | null; nama_inspektor: string | null }
-/** Baris pohon dalam jendela hanya dipakai untuk tren & hitungan periode —
- *  kolom risiko/prediksi cukup ditarik pada kueri "terbuka" di bawah. */
-type PohonRow = InspeksiRow;
-interface PengukuranRow {
-  no_gardu: string;
-  tanggal_pengukuran: string | null;
-  petugas_unit: string | null;
-  petugas_nama: string | null;
-  /** Terisi = baris pembawa hasil pemerataan, bukan pengukuran rutin. Halaman
-   *  /admin/pengukuran-gardu mengecualikannya dari rekap; dashboard harus sama. */
-  hasil_penyeimbangan_id: string | null;
+interface RingkasRpc {
+  kpi: {
+    inspeksiNow: number; inspeksiPrev: number;
+    garduNow: number; garduPrev: number;
+    merataNow: number; merataPrev: number;
+  };
+  /** Peta 'YYYY-MM' → jumlah. Bulan tanpa kegiatan tidak muncul; kerangka
+   *  12 bulannya disusun di klien, jadi bolongnya jadi nol di sana. */
+  tren: { inspeksi: Record<string, number>; gardu: Record<string, number> };
+  inspeksi: DomainInspeksi;
+  gardu: DomainGardu;
+  pemerataan: DomainPemerataan;
+  padam: DomainPadam;
+  produktivitas: DomainProduktivitas;
 }
-interface PenyeimbanganRow { no_gardu: string; tgl_penyeimbangan: string | null; ulp: string | null; status: string; beban_pct_before: number; beban_pct_after: number }
-/** Baris `gardu_master_state`: master sebagai penentu baris, kondisi menyusul
- *  dari pengukuran/pemeliharaan terakhir (boleh NULL). */
-interface GarduMasterRow {
-  kode: string;
-  ulp: string;
-  persen_beban: number | null;
-  suhu_trafo: number | null;
-  event_type: "pengukuran" | "penyeimbangan" | null;
-  event_date: string | null;
-  belum_diukur: boolean;
-}
-interface PadamRow {
-  ulp: string | null; tgl_padam: string | null; penyebab_padam: string | null;
-  jml_pelanggan_padam: number | null; lama_padam_jam: number | null; ens: number | null;
-}
-interface SlaRow { ulp: string; target_response_menit: number | null; target_recovery_menit: number | null }
+
 interface WoItemRow { batch_id: string; regu: string | null; status: string; verified_at: string | null; approved_at: string | null; sla_ok: boolean | null }
 interface WoBatchRow { id: string; bulan: number; tahun: number; ulp: string | null }
 interface GangguanRow { TANGGAL?: string; ULP?: string; PENYULANG?: string }
-
-/** Baris terbuka ditarik TANPA batas tanggal — lihat catatan di `load()`. */
-interface TerbukaRow { status: string }
-interface PohonTerbukaRow extends TerbukaRow {
-  tgl_inspeksi: string | null;
-  prediksi_inspektur: string | null;
-  tingkat_risiko: string | null;
-}
+interface SlaRow { ulp: string; target_response_menit: number | null; target_recovery_menit: number | null }
 
 interface RawBundle {
-  inspeksi: InspeksiRow[];
-  pohon: PohonRow[];
-  inspeksiTerbuka: TerbukaRow[];
-  pohonTerbuka: PohonTerbukaRow[];
-  pengukuran: PengukuranRow[];
-  penyeimbangan: PenyeimbanganRow[];
-  garduMaster: GarduMasterRow[];
+  ringkas: RingkasRpc | null;
   woItems: WoItemRow[];
   woBatches: WoBatchRow[];
   gangguan: GangguanRow[];
-  padam: PadamRow[];
   sla: SlaRow[];
-  totalPetugas: number;
 }
+
+const RINGKAS_KOSONG: RingkasRpc = {
+  kpi: { inspeksiNow: 0, inspeksiPrev: 0, garduNow: 0, garduPrev: 0, merataNow: 0, merataPrev: 0 },
+  tren: { inspeksi: {}, gardu: {} },
+  inspeksi: { jaringanBaru: 0, pohonBaru: 0, terbuka: 0, selesai: 0, byStatus: [], risikoSangatTinggi: 0 },
+  gardu: {
+    totalMaster: 0, terukur: 0, belumDiukur: 0, perluUkurUlang: 0, overload: 0,
+    overloadDariPemeliharaan: 0, overloadDiPeriode: 0, suhuTinggi: 0, avgBeban: 0,
+    sebaran: [], bebanValues: [], overloadTeratas: [], diukur: 0, barisPengukuran: 0,
+  },
+  pemerataan: { selesai: 0, perbaikanRataRata: 0, terbaik: null },
+  padam: { total: 0, pelangganPadam: 0, ens: 0, durasiRataRata: 0, topPenyebab: [] },
+  produktivitas: { petugasAktif: 0, totalPetugas: 0, top: [] },
+};
+
+const EMPTY: RawBundle = { ringkas: null, woItems: [], woBatches: [], gangguan: [], sla: [] };
 
 const APKT_KOSONG: DomainApkt = {
   total: 0, rptMedian: null, rctMedian: null, lewatResponse: 0, lewatRecovery: 0,
   targetResponse: null, targetRecovery: null, pelangganPadam: 0,
   ratingRataRata: null, jumlahRating: 0, terakhirData: null, harian: [], topPetugas: [],
-};
-
-const EMPTY: RawBundle = {
-  inspeksi: [], pohon: [], inspeksiTerbuka: [], pohonTerbuka: [],
-  pengukuran: [], penyeimbangan: [],
-  garduMaster: [], woItems: [], woBatches: [], gangguan: [],
-  padam: [], sla: [], totalPetugas: 0,
 };
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -365,74 +351,27 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
 
   const { riskData, dateTgl: riskTgl, loading: riskLoading } = useFeederRisk(user);
 
-  // Jendela tarikan: 1 Januari tahun lalu — cukup untuk tren 12 bulan sekaligus
-  // pembanding "tahun lalu" pada periode Tahun Ini.
-  const fetchFrom = useMemo(() => `${new Date().getFullYear() - 1}-01-01`, []);
+  // Jendela periode dihitung lebih dulu: RPC-nya menerimanya sebagai parameter,
+  // jadi `load` memang bergantung pada periode terpilih.
+  const win = useMemo(() => buildWindow(period, new Date()), [period]);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      // Filter unit ditulis berulang alih-alih lewat helper generik: pembungkus
-      // generik di atas query-builder Supabase memicu TS2589 (instansiasi tipe
-      // terlalu dalam) begitu rantainya panjang.
-      const [
-        inspeksi, pohon, inspeksiTerbuka, pohonTerbuka,
-        pengukuran, penyeimbangan, garduMaster, woBatches, gangguanSheet, petugasCount,
-        padam, sla,
-      ] = await Promise.all([
-        fetchAllRows<InspeksiRow>(() => {
-          const q = supabaseBrowser
-            .from("inspeksi")
-            .select("tgl_inspeksi,tgl_eksekusi,status,ulp,nama_inspektor")
-            .gte("tgl_inspeksi", fetchFrom);
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        fetchAllRows<PohonRow>(() => {
-          const q = supabaseBrowser
-            .from("inspeksi_pohon")
-            .select("tgl_inspeksi,tgl_eksekusi,status,ulp,nama_inspektor")
-            .gte("tgl_inspeksi", fetchFrom);
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        // Pekerjaan yang MASIH TERBUKA ditarik tanpa batas tanggal. Temuan 2024
-        // yang belum ditutup tetap tunggakan hari ini; kalau ikut disaring
-        // jendela 24 bulan, angkanya menyusut diam-diam seiring waktu. Payload-nya
-        // kecil karena kolomnya sedikit dan barisnya hanya yang belum selesai.
-        fetchAllRows<TerbukaRow>(() => {
-          const q = supabaseBrowser.from("inspeksi").select("status").neq("status", "Selesai");
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        fetchAllRows<PohonTerbukaRow>(() => {
-          const q = supabaseBrowser
-            .from("inspeksi_pohon")
-            .select("status,tgl_inspeksi,prediksi_inspektur,tingkat_risiko")
-            .neq("status", "Selesai");
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        fetchAllRows<PengukuranRow>(() => {
-          const q = supabaseBrowser
-            .from("pengukuran_gardu")
-            .select("no_gardu,tanggal_pengukuran,petugas_unit,petugas_nama,hasil_penyeimbangan_id")
-            .gte("tanggal_pengukuran", fetchFrom);
-          return (unit ? q.eq("petugas_unit", unit) : q).order("id");
-        }),
-        fetchAllRows<PenyeimbanganRow>(() => {
-          const q = supabaseBrowser
-            .from("penyeimbangan_gardu")
-            .select("no_gardu,tgl_penyeimbangan,ulp,status,beban_pct_before,beban_pct_after")
-            .gte("tgl_penyeimbangan", fetchFrom);
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        // Master sebagai penentu baris, bukan `gardu_latest_state`. Bedanya
-        // menentukan: dengan baris dari pengukuran, 1.546 gardu yang belum
-        // pernah diukur tidak punya baris sama sekali, sehingga 985 gardu
-        // terbaca seolah itulah seluruh armada — padahal masternya 2.526.
-        fetchAllRows<GarduMasterRow>(() => {
-          const q = supabaseBrowser
-            .from("gardu_master_state")
-            .select("kode,ulp,persen_beban,suhu_trafo,event_type,event_date,belum_diukur");
-          return (unit ? q.eq("ulp", unit) : q).order("kode").order("ulp");
+      const [ringkasRes, woBatches, gangguanSheet, slaRes] = await Promise.all([
+        // Satu panggilan menggantikan tujuh kueri dan ~9.500 baris. Ambangnya
+        // dikirim dari sini supaya SQL tidak menyimpan salinan angka ambang.
+        supabaseBrowser.rpc("dashboard_ringkas", {
+          p_from: win.start,
+          p_to: win.end,
+          p_prev_from: win.prevStart,
+          p_prev_to: win.prevEnd,
+          p_ulp: unit,
+          p_overload_pct: OVERLOAD_PCT,
+          p_suhu_c: HIGH_TEMP_C,
+          p_basi_tinggi: AMBANG_BASI.bulanTinggi,
+          p_basi_rendah: AMBANG_BASI.bulanRendah,
         }),
         (async () => {
           const q = supabaseBrowser.from("wo_batch").select("id,bulan,tahun,ulp");
@@ -440,26 +379,17 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
           return (data ?? []) as WoBatchRow[];
         })(),
         fetchSheetData("gangguanPenyulang", "A:S").catch(() => [] as Record<string, string>[]),
-        supabaseBrowser
-          .from("petugas")
-          .select("id", { count: "exact", head: true })
-          .eq("status", "aktif")
-          .then((r) => r.count ?? 0),
-        // Padam APKT — 114 baris seluruhnya, cukup sekali tarik.
-        fetchAllRows<PadamRow>(() => {
-          const q = supabaseBrowser
-            .from("padam_apkt")
-            .select("ulp,tgl_padam,penyebab_padam,jml_pelanggan_padam,lama_padam_jam,ens")
-            .gte("tgl_padam", fetchFrom);
-          return (unit ? q.eq("ulp", unit) : q).order("id");
-        }),
-        (async () => {
-          const { data } = await supabaseBrowser
-            .from("yantek_sla")
-            .select("ulp,target_response_menit,target_recovery_menit");
-          return (data ?? []) as SlaRow[];
-        })(),
+        supabaseBrowser.from("yantek_sla").select("ulp,target_response_menit,target_recovery_menit"),
       ]);
+
+      if (ringkasRes.error) {
+        // Pesan aslinya ikut ditampilkan: kalau fungsinya belum dibuat,
+        // yang perlu dibaca orang adalah "function does not exist", bukan
+        // "gagal memuat data".
+        throw new Error(
+          `${ringkasRes.error.message} — pastikan scripts/dashboard-ringkas-rpc.sql sudah dijalankan.`,
+        );
+      }
 
       // Item WO ditarik terpisah karena bergantung pada daftar batch di atas.
       const batchIds = woBatches.map((b) => b.id);
@@ -474,12 +404,11 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
         : [];
 
       setRaw({
-        inspeksi, pohon, inspeksiTerbuka, pohonTerbuka,
-        pengukuran, penyeimbangan, garduMaster,
-        woItems, woBatches,
+        ringkas: (ringkasRes.data as RingkasRpc | null) ?? RINGKAS_KOSONG,
+        woItems,
+        woBatches,
         gangguan: (Array.isArray(gangguanSheet) ? gangguanSheet : []) as GangguanRow[],
-        padam, sla,
-        totalPetugas: petugasCount,
+        sla: (slaRes.data ?? []) as SlaRow[],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat data dashboard");
@@ -487,13 +416,16 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
     } finally {
       setLoading(false);
     }
-  }, [unit, fetchFrom]);
+  }, [unit, win]);
 
   useEffect(() => { void load(); }, [load]);
 
   // ── Turunan ────────────────────────────────────────────────────────────────
 
-  const win = useMemo(() => buildWindow(period, new Date()), [period]);
+  /** Balasan RPC, dengan cadangan nol supaya turunan di bawah tidak perlu
+   *  memeriksa null satu per satu. */
+  const ringkas = raw.ringkas ?? RINGKAS_KOSONG;
+
 
   /** Gangguan dari Sheets — disaring unit & dijadikan tanggal ISO sekali saja. */
   const gangguanEvents = useMemo(() => {
@@ -508,6 +440,17 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
       .map((r) => ({ ...r, tglIso: iso(r.tgl as Date) }));
   }, [raw.gangguan, unit]);
 
+  /** Jumlah gangguan per bulan — hanya gangguan yang masih dihitung di klien,
+   *  sumbernya Google Sheets. */
+  const gangguanPerBulan = useMemo(() => {
+    const m = new Map<string, number>();
+    gangguanEvents.forEach((g) => {
+      const k = g.tglIso.slice(0, 7);
+      m.set(k, (m.get(k) ?? 0) + 1);
+    });
+    return m;
+  }, [gangguanEvents]);
+
   const kpi = useMemo(() => {
     const mk = (value: number, prev: number): Kpi => ({
       value,
@@ -515,76 +458,38 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
       deltaPct: prev > 0 ? ((value - prev) / prev) * 100 : null,
     });
 
-    const countIn = <T,>(rows: T[], get: (r: T) => string | null, a: string, b: string) =>
-      rows.filter((r) => inWindow(get(r), a, b)).length;
-
+    // Gangguan tetap dihitung di klien: sumbernya Sheets, bukan Postgres.
     const gangguanNow = gangguanEvents.filter((g) => inWindow(g.tglIso, win.start, win.end)).length;
     const gangguanPrev = gangguanEvents.filter((g) => inWindow(g.tglIso, win.prevStart, win.prevEnd)).length;
-
-    const insNow =
-      countIn(raw.inspeksi, (r) => r.tgl_inspeksi, win.start, win.end) +
-      countIn(raw.pohon, (r) => r.tgl_inspeksi, win.start, win.end);
-    const insPrev =
-      countIn(raw.inspeksi, (r) => r.tgl_inspeksi, win.prevStart, win.prevEnd) +
-      countIn(raw.pohon, (r) => r.tgl_inspeksi, win.prevStart, win.prevEnd);
-
-    // Gardu unik, bukan baris. Pemerataan ikut terhitung sebagai pengukuran:
-    // petugas memang mengukur ulang setelah memindah jurusan, jadi gardu yang
-    // hanya disentuh lewat pemerataan tetap gardu yang diukur pada periode itu.
-    const garduUnik = (a: string, b: string) =>
-      new Set([
-        ...raw.pengukuran
-          .filter((r) => inWindow(r.tanggal_pengukuran, a, b))
-          .map((r) => r.no_gardu),
-        ...raw.penyeimbangan
-          .filter((r) => inWindow(r.tgl_penyeimbangan, a, b))
-          .map((r) => r.no_gardu),
-      ]).size;
-    const garduNow = garduUnik(win.start, win.end);
-    const garduPrev = garduUnik(win.prevStart, win.prevEnd);
-
-    const merataNow = countIn(raw.penyeimbangan, (r) => r.tgl_penyeimbangan, win.start, win.end);
-    const merataPrev = countIn(raw.penyeimbangan, (r) => r.tgl_penyeimbangan, win.prevStart, win.prevEnd);
+    const k = ringkas.kpi;
 
     return {
       gangguan: mk(gangguanNow, gangguanPrev),
-      inspeksi: mk(insNow, insPrev),
-      gardu: mk(garduNow, garduPrev),
-      pemerataan: mk(merataNow, merataPrev),
+      inspeksi: mk(k.inspeksiNow, k.inspeksiPrev),
+      gardu: mk(k.garduNow, k.garduPrev),
+      pemerataan: mk(k.merataNow, k.merataPrev),
     };
-  }, [gangguanEvents, raw.inspeksi, raw.pohon, raw.pengukuran, raw.penyeimbangan, win]);
+  }, [gangguanEvents, ringkas, win]);
 
-  /** Tren 12 bulan — hanya untuk sparkline KPI. */
+
+  /** Tren 12 bulan untuk sparkline. Kerangkanya disusun di sini — RPC hanya
+   *  mengirim bulan yang punya kegiatan, jadi bulan kosong jadi nol di sini. */
   const tren = useMemo<MonthPoint[]>(() => {
     const now = new Date();
-    const points: MonthPoint[] = [];
-    const index = new Map<string, MonthPoint>();
-
-    for (let i = 11; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    return Array.from({ length: 12 }, (_, i) => {
+      const d = new Date(now.getFullYear(), now.getMonth() - (11 - i), 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const p: MonthPoint = { key, label: BULAN_SHORT[d.getMonth()], gangguan: 0, inspeksi: 0, gardu: 0 };
-      points.push(p);
-      index.set(key, p);
-    }
+      return {
+        key,
+        label: BULAN_SHORT[d.getMonth()],
+        gangguan: gangguanPerBulan.get(key) ?? 0,
+        inspeksi: ringkas.tren.inspeksi[key] ?? 0,
+        gardu: ringkas.tren.gardu[key] ?? 0,
+      };
+    });
+  }, [gangguanPerBulan, ringkas]);
 
-    const bump = (d: string | null, field: "gangguan" | "inspeksi" | "gardu") => {
-      if (!d) return;
-      const p = index.get(d.slice(0, 7));
-      if (p) p[field] += 1;
-    };
 
-    gangguanEvents.forEach((g) => bump(g.tglIso, "gangguan"));
-    raw.inspeksi.forEach((r) => bump(r.tgl_inspeksi, "inspeksi"));
-    raw.pohon.forEach((r) => bump(r.tgl_inspeksi, "inspeksi"));
-    raw.pengukuran.forEach((r) => bump(r.tanggal_pengukuran, "gardu"));
-
-    return points;
-  }, [gangguanEvents, raw.inspeksi, raw.pohon, raw.pengukuran]);
-
-  /** Jumlah gangguan per tanggal — dasar semua kerapatan ember di bawah.
-   *  Gangguan berasal dari Sheets dan TIDAK disaring jendela 24 bulan, jadi
-   *  rentang tahun lalu selalu tersedia. */
   const gangguanPerHari = useMemo(() => {
     const m = new Map<string, number>();
     gangguanEvents.forEach((g) => m.set(g.tglIso, (m.get(g.tglIso) ?? 0) + 1));
@@ -655,26 +560,7 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
     });
   }, [gangguanPerHari, period, win]);
 
-  const inspeksi = useMemo<DomainInspeksi>(() => {
-    const terbuka = [...raw.inspeksiTerbuka, ...raw.pohonTerbuka];
-    const selesaiPeriode = [...raw.inspeksi, ...raw.pohon].filter(
-      (r) => r.status === "Selesai" && inWindow(r.tgl_eksekusi, win.start, win.end),
-    );
-
-    const byStatus = new Map<string, number>();
-    terbuka.forEach((r) => byStatus.set(r.status, (byStatus.get(r.status) ?? 0) + 1));
-
-    return {
-      jaringanBaru: raw.inspeksi.filter((r) => inWindow(r.tgl_inspeksi, win.start, win.end)).length,
-      pohonBaru: raw.pohon.filter((r) => inWindow(r.tgl_inspeksi, win.start, win.end)).length,
-      terbuka: terbuka.length,
-      selesai: selesaiPeriode.length,
-      byStatus: [...byStatus.entries()]
-        .map(([status, jumlah]) => ({ status, jumlah }))
-        .sort((a, b) => b.jumlah - a.jumlah),
-      risikoSangatTinggi: raw.pohonTerbuka.filter((r) => r.tingkat_risiko === "Sangat Tinggi").length,
-    };
-  }, [raw.inspeksi, raw.pohon, raw.inspeksiTerbuka, raw.pohonTerbuka, win]);
+  const inspeksi = ringkas.inspeksi;
 
   const wo = useMemo<WoStats>(
     // Dashboard tidak memakai kolom ukuran per batch — volume ditampilkan di
@@ -683,90 +569,14 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
     [raw.woItems],
   );
 
-  const gardu = useMemo<DomainGardu>(() => {
-    const st = raw.garduMaster;
-    const terukur = st.filter((g) => !g.belum_diukur);
-    const bebanValues = terukur.map((g) => g.persen_beban ?? 0);
-    const b3 = batasBulanLalu(AMBANG_BASI.bulanTinggi);
-    const b5 = batasBulanLalu(AMBANG_BASI.bulanRendah);
+  const gardu = ringkas.gardu;
 
-    const overloadRows = terukur
-      .filter((g) => isOverload(g.persen_beban))
-      .sort((a, b) => (b.persen_beban ?? 0) - (a.persen_beban ?? 0));
-
-    // Pemerataan dihitung sebagai pengukuran — kondisinya memang hasil ukur
-    // ulang. Dihitung per GARDU, bukan per baris: satu gardu yang diukur dua
-    // kali dalam sebulan tetap satu gardu yang diukur.
-    const kegiatanPeriode = [
-      ...raw.pengukuran
-        .filter((r) => inWindow(r.tanggal_pengukuran, win.start, win.end))
-        .map((r) => r.no_gardu),
-      ...raw.penyeimbangan
-        .filter((r) => inWindow(r.tgl_penyeimbangan, win.start, win.end))
-        .map((r) => r.no_gardu),
-    ];
-
-    // Ember memakai angka yang tampil, sama seperti kartu overload di atasnya —
-    // kalau tidak, gardu bertulisan "80%" jatuh ke ember "60–80%".
-    const rentang = [
-      { rentang: "< 40%", test: (v: number) => bebanTampil(v) < 40 },
-      { rentang: "40–60%", test: (v: number) => bebanTampil(v) >= 40 && bebanTampil(v) < 60 },
-      { rentang: "60–80%", test: (v: number) => bebanTampil(v) >= 60 && bebanTampil(v) < OVERLOAD_PCT },
-      { rentang: "≥ 80%", test: (v: number) => bebanTampil(v) >= OVERLOAD_PCT },
-    ];
-
-    return {
-      totalMaster: st.length,
-      terukur: terukur.length,
-      belumDiukur: st.length - terukur.length,
-      perluUkurUlang: terukur.filter((g) => pengukuranBasi(g, b3, b5)).length,
-      overload: overloadRows.length,
-      overloadDariPemeliharaan: overloadRows.filter((g) => g.event_type === "penyeimbangan").length,
-      overloadDiPeriode: overloadRows.filter((g) => inWindow(g.event_date, win.start, win.end)).length,
-      suhuTinggi: terukur.filter((g) => (g.suhu_trafo ?? 0) >= HIGH_TEMP_C).length,
-      avgBeban: bebanValues.length
-        ? bebanValues.reduce((a, b) => a + b, 0) / bebanValues.length
-        : 0,
-      sebaran: rentang.map((r) => ({ rentang: r.rentang, jumlah: bebanValues.filter(r.test).length })),
-      bebanValues,
-      overloadTeratas: overloadRows.slice(0, 8).map((g) => ({
-        kode: g.kode,
-        ulp: g.ulp,
-        persen: g.persen_beban ?? 0,
-        tanggal: g.event_date,
-        dariPemeliharaan: g.event_type === "penyeimbangan",
-      })),
-      diukur: new Set(kegiatanPeriode).size,
-      barisPengukuran: kegiatanPeriode.length,
-    };
-  }, [raw.garduMaster, raw.pengukuran, raw.penyeimbangan, win]);
-
-  const padam = useMemo<DomainPadam>(() => {
-    const dalam = raw.padam.filter((r) => inWindow(r.tgl_padam, win.start, win.end));
-    const durasi = dalam.map((r) => r.lama_padam_jam ?? 0).filter((v) => v > 0);
-    const per = new Map<string, number>();
-    dalam.forEach((r) => {
-      const n = (r.penyebab_padam ?? "").trim();
-      if (n) per.set(n, (per.get(n) ?? 0) + 1);
-    });
-
-    return {
-      total: dalam.length,
-      pelangganPadam: dalam.reduce((s, r) => s + (r.jml_pelanggan_padam ?? 0), 0),
-      ens: dalam.reduce((s, r) => s + (r.ens ?? 0), 0),
-      durasiRataRata: durasi.length ? durasi.reduce((a, b) => a + b, 0) / durasi.length : 0,
-      topPenyebab: [...per.entries()]
-        .map(([nama, jumlah]) => ({ nama, jumlah }))
-        .sort((a, b) => b.jumlah - a.jumlah)
-        .slice(0, 5),
-    };
-  }, [raw.padam, win]);
+  const padam = ringkas.padam;
 
   // ── Ringkasan Yantek ───────────────────────────────────────────────────────
   // Datanya berupa berkas JSON di server (9.924 baris), jadi diringkas di sisi
   // server lewat /api/yantek/ringkas dan yang dikirim ke sini hanya angkanya.
-  // Ini satu-satunya bagian yang menarik ulang saat periode berganti — memang
-  // harus, karena berkas yang dibaca ditentukan oleh rentang tanggalnya.
+
   const [apkt, setApkt] = useState<DomainApkt>(APKT_KOSONG);
 
   /** Ambang SLA: baris khusus ULP menang; kalau tidak ada, pakai baris "ALL"
@@ -818,24 +628,7 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
     return () => { hidup = false; };
   }, [win.start, win.end, unit, targetSla]);
 
-  const pemerataan = useMemo<DomainPemerataan>(() => {
-    const dalamPeriode = raw.penyeimbangan.filter((r) => inWindow(r.tgl_penyeimbangan, win.start, win.end));
-    const selisih = dalamPeriode.map((r) => r.beban_pct_before - r.beban_pct_after);
-    const terbaikIdx = selisih.length ? selisih.indexOf(Math.max(...selisih)) : -1;
-
-    return {
-      selesai: dalamPeriode.length,
-      perbaikanRataRata: selisih.length ? selisih.reduce((a, b) => a + b, 0) / selisih.length : 0,
-      terbaik:
-        terbaikIdx >= 0
-          ? {
-              no_gardu: dalamPeriode[terbaikIdx].no_gardu,
-              before: dalamPeriode[terbaikIdx].beban_pct_before,
-              after: dalamPeriode[terbaikIdx].beban_pct_after,
-            }
-          : null,
-    };
-  }, [raw.penyeimbangan, win]);
+  const pemerataan = ringkas.pemerataan;
 
   const gangguan = useMemo<DomainGangguan>(() => {
     const dalamPeriode = gangguanEvents.filter((g) => inWindow(g.tglIso, win.start, win.end));
@@ -852,32 +645,10 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
     };
   }, [gangguanEvents, win]);
 
-  const produktivitas = useMemo<DomainProduktivitas>(() => {
-    const per = new Map<string, number>();
-    const tambah = (nama: string | null) => {
-      const n = (nama ?? "").trim();
-      if (n) per.set(n, (per.get(n) ?? 0) + 1);
-    };
+  /** Produktivitas datang utuh dari RPC — `petugasAktif` dihitung di sana atas
+   *  pengukuran, pemerataan, DAN inspeksi sekaligus. */
+  const produktivitas = ringkas.produktivitas;
 
-    raw.pengukuran
-      .filter((r) => inWindow(r.tanggal_pengukuran, win.start, win.end))
-      .forEach((r) => tambah(r.petugas_nama));
-    [...raw.inspeksi, ...raw.pohon]
-      .filter((r) => inWindow(r.tgl_inspeksi, win.start, win.end))
-      .forEach((r) => tambah(r.nama_inspektor));
-
-    return {
-      petugasAktif: per.size,
-      totalPetugas: raw.totalPetugas,
-      top: [...per.entries()]
-        .map(([nama, jumlah]) => ({ nama, jumlah }))
-        .sort((a, b) => b.jumlah - a.jumlah)
-        .slice(0, 5),
-    };
-  }, [raw.pengukuran, raw.inspeksi, raw.pohon, raw.totalPetugas, win]);
-
-  /** Risiko ML: useFeederRisk hanya menyaring unit milik user, jadi pilihan
-   *  dropdown UP3 disaring di sini. */
   const risiko = useMemo(() => {
     const want = unit.toUpperCase();
     const rows = want ? riskData.filter((r) => (r.ulp ?? "").toUpperCase() === want) : riskData;

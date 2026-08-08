@@ -10,6 +10,7 @@ import {
   HIGH_CURRENT_A,
   OVERLOAD_PCT,
   HIGH_TEMP_C,
+  KOLOM_PENGUKURAN,
 } from "./usePengukuranGardu";
 
 export interface FilterGardu {
@@ -75,7 +76,7 @@ export function useFilterGardu(user: UserLike) {
       const data = await fetchAllRows<PengukuranGardu>(() => {
         let query = supabaseBrowser
           .from("pengukuran_gardu")
-          .select("*")
+          .select(KOLOM_PENGUKURAN)
           // Sama dengan rekap: baris pembawa data AMG bukan pengukuran rutin.
           .is("hasil_penyeimbangan_id", null)
           .order("tanggal_pengukuran", { ascending: false })

@@ -87,7 +87,11 @@ export function useInspeksiPohon(user: CurrentUser) {
       const data = await fetchAllRows<Omit<InspeksiPohon, "remainingDays" | "urgency">>(() => {
         let query = supabaseBrowser
           .from("inspeksi_pohon")
-          .select("*")
+          // Persis kolom di interface `InspeksiPohon`; sisanya turunan di klien.
+          // Tabel terbesar di aplikasi -- 3.534 baris, dan `*` = 516 KB gzip
+          // karena ikut menarik device_info serta lima kolom nol-pemakaian.
+          // Dengan daftar ini 348 KB.
+          .select("id,deskripsi,eksekutor,petugas,inspektor,team_name,keterangan,penyulang,lokasi,ulp,status,category,jenis_pohon,tinggi_pohon,jarak_ke_jaringan,tingkat_risiko,prediksi_inspektur,tindakan_rekomendasi,foto_sebelum_url,foto_lokasi_url,foto_sesudah_url,koordinat,tgl_inspeksi,tgl_eksekusi,created_at")
           .order("tgl_inspeksi", { ascending: false })
           .order("created_at", { ascending: false });
         // Push date filter ke DB — hindari full table scan

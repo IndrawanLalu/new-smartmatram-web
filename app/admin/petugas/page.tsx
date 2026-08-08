@@ -18,13 +18,7 @@ export default function PetugasPage() {
   const isUP3 = currentUser?.role === "UP3";
   const isAdmin = currentUser?.role === "admin";
 
-  if (!isUP3 && !isAdmin) {
-    return (
-      <div className="flex items-center justify-center h-64 text-[#5D6D7E]">
-        Akses ditolak. Halaman ini hanya untuk UP3 dan Admin ULP.
-      </div>
-    );
-  }
+  const bolehLihat = isUP3 || isAdmin;
 
   const [filterUlp, setFilterUlp] = useState(isUP3 ? "" : (currentUser?.unit ?? ""));
   const [filterGroup, setFilterGroup] = useState("");
@@ -36,7 +30,7 @@ export default function PetugasPage() {
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data, loading, error, refresh, addPetugas, updatePetugas, deletePetugas } =
-    usePetugas(filterUlp || undefined);
+    usePetugas(filterUlp || undefined, bolehLihat);
 
   const filtered = useMemo(() => {
     let rows = data;
@@ -56,6 +50,19 @@ export default function PetugasPage() {
     const set = new Set(data.map((p) => p.group_name).filter(Boolean));
     return ["", ...[...set].sort()];
   }, [data]);
+
+  // Penolakan akses digambar SETELAH seluruh hook dipanggil. Dulu `return`
+  // ini berada di atas sepuluh hook di bawahnya, sehingga jumlah hook per
+  // render bergantung pada peran pengguna — begitu perannya bisa berubah tanpa
+  // remount, React melempar "Rendered fewer hooks than expected" dan halamannya
+  // putih. Pengambilan datanya sendiri ditahan lewat `bolehLihat`.
+  if (!bolehLihat) {
+    return (
+      <div className="flex items-center justify-center h-64 text-[#5D6D7E]">
+        Akses ditolak. Halaman ini hanya untuk UP3 dan Admin ULP.
+      </div>
+    );
+  }
 
   const handleDelete = async () => {
     if (!deleteTarget) return;

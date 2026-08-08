@@ -222,7 +222,15 @@ export function useGarduStatus(
       const rows = await fetchAllRows<GarduMasterState>(() => {
         const q = supabaseBrowser
           .from("gardu_master_state")
-          .select("*")
+          // Kolomnya didaftar eksplisit meski HARI INI muatannya sama dengan
+          // `*` (view-nya persis 31 kolom ini, 186 KB gzip untuk 2.526 baris).
+          // Gunanya mengunci kontrak: kolom baru di view tidak lagi diam-diam
+          // ikut terkirim ke browser.
+          //
+          // `perjurusan` tidak bisa dibuang meski JSONB-nya yang paling berat
+          // (tanpa itu 142 KB) — `barisAnomali()` memakainya untuk kriteria
+          // arus jurusan, jadi membuangnya mematikan deteksi anomali di tabel ini.
+          .select("kode,kode_amg,nama,alamat,penyulang,ulp,kva_master,merk,status,lat,lng,source_id,event_type,event_date,kva_pengukuran,persen_beban,beban_kva,suhu_trafo,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,perjurusan,jenis_pemeliharaan,wo_sent_at,petugas_nama,belum_diukur,kva_beda")
           .order("kode")
           .order("ulp");
         return unit ? q.eq("ulp", unit) : q;

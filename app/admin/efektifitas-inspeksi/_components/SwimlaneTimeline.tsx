@@ -196,16 +196,12 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
     ].sort();
   }, [gangguanGroups, inspeksiGroups, eksekusiGroups, ligaExekusiDates, today]);
 
-  if (allDates.length === 0) {
-    return (
-      <div className="h-20 flex items-center justify-center text-xs text-[#64748b]">
-        Tidak ada data untuk ditampilkan dalam periode ini
-      </div>
-    );
-  }
-
-  const minMs  = toMs(allDates[0]);
-  const maxMs  = toMs(allDates[allDates.length - 1]);
+  // Rentang sumbu. Nilai pengganti dipakai saat datanya kosong supaya dua hook
+  // di bawah TETAP terpanggil — urutan hook tidak boleh bergantung pada ada
+  // atau tidaknya data. Keadaan kosong ditangani setelah semua hook selesai.
+  const kosong = allDates.length === 0;
+  const minMs  = kosong ? 0 : toMs(allDates[0]);
+  const maxMs  = kosong ? 0 : toMs(allDates[allDates.length - 1]);
   const spanMs = Math.max(maxMs - minMs, 86400000);
 
   function dateToX(d: string): number {
@@ -215,6 +211,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
   // ── Month ticks ─────────────────────────────────────────────────────────────
   const monthTicks = useMemo(() => {
     const ticks: { label: string; x: number }[] = [];
+    if (allDates.length === 0) return ticks;
     const start = new Date(allDates[0] + "T12:00:00");
     const end   = new Date(allDates[allDates.length - 1] + "T12:00:00");
     const cur   = new Date(start.getFullYear(), start.getMonth(), 1);
@@ -236,6 +233,15 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
       return { gd, before, after };
     });
   }, [gangguanGroups, inspeksiGroups]);
+
+  // Baru di sini boleh keluar lebih awal — seluruh hook sudah dipanggil.
+  if (kosong) {
+    return (
+      <div className="h-20 flex items-center justify-center text-xs text-[#64748b]">
+        Tidak ada data untuk ditampilkan dalam periode ini
+      </div>
+    );
+  }
 
   function showHover(e: React.MouseEvent<SVGElement>, lines: string[]) {
     const rect = (e.currentTarget.ownerSVGElement as SVGSVGElement).getBoundingClientRect();

@@ -27,6 +27,24 @@ export const HIGH_TEMP_C = 60;
  * 0,8 kVA — jauh lebih kecil daripada ketidakpastian pengukuran tang ampere
  * yang jadi sumber angkanya.
  */
+/**
+ * Kolom `pengukuran_gardu` yang benar-benar dipakai — persis isi interface
+ * `PengukuranGardu` di bawah.
+ *
+ * Tabelnya punya 48 kolom, 18 di antaranya warisan dengan NOL pemakaian di
+ * seluruh aplikasi: `total_tegangan_*` (kembaran `total_teg_*`), `foto_arus`,
+ * `foto_tegangan`, `input_amg`, `input_probis`, `unbalance`, `jam_ukur`,
+ * `nama`, `petugas`. Hematnya setelah gzip kecil — kolom kembar sangat mudah
+ * dikompresi — jadi yang dibeli di sini kejelasan kontrak, bukan byte: kolom
+ * baru di tabel tidak lagi ikut terkirim ke browser tanpa ada yang memutuskan.
+ *
+ * Satu konstanta dipakai `usePengukuranGardu` dan `useFilterGardu` karena
+ * keduanya menghasilkan `PengukuranGardu[]`. Dua daftar yang "seharusnya sama"
+ * adalah cara termudah membuatnya melenceng.
+ */
+export const KOLOM_PENGUKURAN =
+  "id,no_gardu,alamat,penyulang,kva_trafo,tanggal_pengukuran,jam_pengukuran,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,total_teg_rs,total_teg_st,total_teg_rt,perjurusan,beban_kva,persen_beban,suhu_trafo,petugas_nama,petugas_unit,created_at,wo_sent_at,jenis_pemeliharaan,amg_sent_at,amg_queued_at,amg_error,amg_attempts";
+
 export const bebanTampil = (v: number | null | undefined) => Math.round(v ?? 0);
 
 export const isOverload = (v: number | null | undefined) => bebanTampil(v) >= OVERLOAD_PCT;
@@ -244,7 +262,7 @@ export function usePengukuranGardu(user: CurrentUser) {
       const rows = await fetchAllRows<PengukuranGardu>(() => {
         let query = supabaseBrowser
           .from("pengukuran_gardu")
-          .select("*")
+          .select(KOLOM_PENGUKURAN)
           // Baris hasil penyeimbangan dikecualikan dari rekap: itu bukan
           // pengukuran rutin, hanya pembawa data agar hasil pemerataan bisa
           // dikirim ke AMG lewat mesin yang sudah ada. Angkanya sudah tampil
