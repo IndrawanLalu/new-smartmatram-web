@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, AlertCircle } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
+import { X, AlertCircle, RotateCcw, Clock } from "lucide-react";
 import { fetchSheetData } from "@/lib/sheets";
 import { fetchJurnalMap, normNoLaporan, type JurnalApkt } from "../_utils/jurnal";
+import { fmtDurasi } from "../_lib/mvod";
+import { nilaiAsli, selisihJam, turunkan } from "../_lib/koreksi";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -43,17 +45,30 @@ export interface PadamApktRecord {
   status_gangguan: string | null;
   analisis_keterangan: string | null;
   ref_gangguan: RefGangguan | null;
+  tgl_nyala_koreksi: string | null;
+  jam_nyala_koreksi: string | null;
+  koreksi_alasan: string | null;
+  koreksi_oleh: string | null;
+  koreksi_at: string | null;
   [key: string]: unknown;
+}
+
+/** Perubahan yang dikirim balik ke halaman untuk menambal barisnya di tempat. */
+export interface PatchAnalisis {
+  status_gangguan: string | null;
+  analisis_keterangan: string | null;
+  ref_gangguan: RefGangguan | null;
+  tgl_nyala_koreksi: string | null;
+  jam_nyala_koreksi: string | null;
+  koreksi_alasan: string | null;
+  koreksi_oleh: string | null;
+  koreksi_at: string | null;
 }
 
 interface AnalisisModalProps {
   record: PadamApktRecord;
   onClose: () => void;
-  onSaved: (id: string, patch: {
-    status_gangguan: string | null;
-    analisis_keterangan: string | null;
-    ref_gangguan: RefGangguan | null;
-  }) => void;
+  onSaved: (id: string, patch: PatchAnalisis) => void;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -112,6 +127,25 @@ function FieldRow({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
+/** Satu angka: nilai asli dicoret, nilai koreksi menonjol. */
+function BarisBanding({ label, asli, koreksi }: {
+  label: string; asli: string; koreksi: string;
+}) {
+  const sama = asli === koreksi;
+  return (
+    <div className="flex items-baseline gap-2 text-sm">
+      <span className="text-[11px] text-[#5D6D7E] w-32 shrink-0">{label}</span>
+      <span className={sama ? "text-[#1B2631]" : "text-[#94a3b8] line-through"}>{asli}</span>
+      {!sama && (
+        <>
+          <span className="text-[#94a3b8]">→</span>
+          <span className="font-bold text-[#00695C]">{koreksi}</span>
+        </>
+      )}
+    </div>
+  );
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModalProps) {
@@ -126,6 +160,35 @@ export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModa
   const [jurnal,     setJurnal]     = useState<JurnalApkt | null>(null);
   const [loadJurnal, setLoadJurnal] = useState(true);
   const [jurnalErr,  setJurnalErr]  = useState<string | null>(null);
+
+  // ── Koreksi waktu nyala ────────────────────────────────────────────────────
+  // Kotak isian selalu terisi: koreksi bila sudah ada, kalau belum ya waktu
+  // aslinya. Mengoreksi ke waktu yang sama persis = tidak ada koreksi, jadi
+  // tidak perlu tombol "aktifkan koreksi" yang harus diingat orang.
+  const asliTgl = record.tgl_nyala ?? "";
+  const asliJam = (record.jam_nyala ?? "").slice(0, 5);
+  const [korTgl, setKorTgl] = useState(record.tgl_nyala_koreksi ?? asliTgl);
+  const [korJam, setKorJam] = useState((record.jam_nyala_koreksi ?? record.jam_nyala ?? "").slice(0, 5));
+  const [alasan, setAlasan] = useState(record.koreksi_alasan ?? "");
+
+  const koreksi = useMemo(() => {
+    const berubah = Boolean(korTgl && korJam) && (korTgl !== asliTgl || korJam !== asliJam);
+    if (!berubah) return { berubah: false, lamaJam: null, nilai: null, salah: null as string | null };
+    const lamaJam = selisihJam(record.tgl_padam, record.jam_padam, korTgl, korJam);
+    if (lamaJam === null)
+      return { berubah, lamaJam: null, nilai: null, salah: "Waktu padam tidak lengkap, durasi tidak bisa dihitung." };
+    if (lamaJam < 0)
+      return { berubah, lamaJam, nilai: null, salah: "Waktu nyala koreksi mendahului waktu padam." };
+    return { berubah, lamaJam, nilai: turunkan(record, lamaJam), salah: null };
+  }, [korTgl, korJam, asliTgl, asliJam, record]);
+
+  const asli = nilaiAsli(record);
+
+  function kembalikanAsli() {
+    setKorTgl(asliTgl);
+    setKorJam(asliJam);
+    setAlasan("");
+  }
 
   // Ambil Jurnal APKT dari sheet LOMBOK, cocokkan no_laporan ↔ "NO. GANGGUAN TM"
   useEffect(() => {
@@ -177,25 +240,39 @@ export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModa
   }, [status, record.tgl_padam, record.ulp, sheetRows.length]);
 
   async function handleSave() {
+    if (koreksi.salah) return;
     setSaving(true);
     setSaveErr(null);
+    const simpanKoreksi = koreksi.berubah && !koreksi.salah;
     try {
-      const res = await fetch("/api/padam-apkt", {
-        method:  "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({
-          id:                  record.id,
-          status_gangguan:     status || null,
-          analisis_keterangan: keterangan.trim() || null,
-          ref_gangguan:        status === "murni" ? refRow : null,
-        }),
-      });
-      const data = await res.json() as { ok: boolean; error?: string };
-      if (!data.ok) throw new Error(data.error ?? "Gagal menyimpan");
-      onSaved(record.id, {
+      const kirim = {
+        id:                  record.id,
         status_gangguan:     status || null,
         analisis_keterangan: keterangan.trim() || null,
         ref_gangguan:        status === "murni" ? refRow : null,
+        tgl_nyala_koreksi:   simpanKoreksi ? korTgl : null,
+        jam_nyala_koreksi:   simpanKoreksi ? korJam : null,
+        koreksi_alasan:      simpanKoreksi ? alasan.trim() || null : null,
+      };
+      const res = await fetch("/api/padam-apkt", {
+        method:  "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body:    JSON.stringify(kirim),
+      });
+      const data = await res.json() as {
+        ok: boolean; error?: string; hint?: string;
+        koreksi_oleh?: string | null; koreksi_at?: string | null;
+      };
+      if (!data.ok) throw new Error(`${data.error ?? "Gagal menyimpan"}${data.hint ? ` — ${data.hint}` : ""}`);
+      onSaved(record.id, {
+        status_gangguan:     kirim.status_gangguan,
+        analisis_keterangan: kirim.analisis_keterangan,
+        ref_gangguan:        kirim.ref_gangguan,
+        tgl_nyala_koreksi:   kirim.tgl_nyala_koreksi,
+        jam_nyala_koreksi:   kirim.jam_nyala_koreksi,
+        koreksi_alasan:      kirim.koreksi_alasan,
+        koreksi_oleh:        data.koreksi_oleh ?? null,
+        koreksi_at:          data.koreksi_at ?? null,
       });
       onClose();
     } catch (e) {
@@ -246,7 +323,7 @@ export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModa
           {/* Left: Detail */}
           <div className="w-[55%] overflow-y-auto border-r border-[#E2E8F0] p-5">
 
-            <SectionLabel>Waktu Padam</SectionLabel>
+            <SectionLabel>Waktu Padam (APKT)</SectionLabel>
             <div className="grid grid-cols-2 gap-x-4">
               <FieldRow label="Tgl Padam"  value={fmtDate(record.tgl_padam)} />
               <FieldRow label="Jam Padam"  value={record.jam_padam?.slice(0, 5)} />
@@ -258,6 +335,108 @@ export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModa
                   ? `${Math.round(record.lama_padam_jam * 60)} menit`
                   : null}
               />
+            </div>
+
+            {/* Koreksi waktu nyala. Ditaruh persis di bawah waktu aslinya supaya
+                yang dikoreksi dan hasilnya terbaca dalam satu tarikan mata. */}
+            <div className={`mt-4 rounded-xl border p-4 ${
+              koreksi.salah ? "border-red-300 bg-red-50/60"
+                : koreksi.berubah ? "border-[#00897B]/40 bg-[#E0F2F1]/40"
+                : "border-[#E2E8F0] bg-[#FAFBFC]"
+            }`}>
+              <div className="flex items-center justify-between gap-2 mb-3">
+                <p className="text-[10px] font-semibold text-[#00695C] uppercase tracking-widest flex items-center gap-1.5">
+                  <Clock size={12} /> Koreksi Waktu Nyala
+                </p>
+                {koreksi.berubah && (
+                  <button
+                    onClick={kembalikanAsli}
+                    className="flex items-center gap-1 text-[11px] text-[#5D6D7E] hover:text-[#00897B] transition-colors"
+                  >
+                    <RotateCcw size={11} /> Kembalikan ke asli
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-[#94a3b8] uppercase tracking-wide mb-1">
+                    Tanggal Nyala
+                  </label>
+                  <input
+                    type="date"
+                    value={korTgl}
+                    onChange={(e) => setKorTgl(e.target.value)}
+                    className="w-full border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-[#94a3b8] uppercase tracking-wide mb-1">
+                    Jam Nyala
+                  </label>
+                  <input
+                    type="time"
+                    value={korJam}
+                    onChange={(e) => setKorJam(e.target.value)}
+                    className="w-full border border-[#E2E8F0] rounded-lg px-3 py-1.5 text-sm bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  />
+                </div>
+              </div>
+
+              {koreksi.salah ? (
+                <div className="flex items-center gap-1.5 text-xs text-red-600 mt-3">
+                  <AlertCircle size={13} className="shrink-0" />
+                  <span>{koreksi.salah}</span>
+                </div>
+              ) : koreksi.nilai ? (
+                <div className="mt-3 pt-3 border-t border-[#E2E8F0] space-y-1.5">
+                  <BarisBanding
+                    label="Lama padam"
+                    asli={fmtDurasi(asli.lamaJam * 60)}
+                    koreksi={fmtDurasi(koreksi.nilai.lamaJam * 60)}
+                  />
+                  <BarisBanding
+                    label="Jam × Pelanggan"
+                    asli={fmtNum(asli.jamXPelanggan, 2)}
+                    koreksi={fmtNum(koreksi.nilai.jamXPelanggan, 2)}
+                  />
+                  <BarisBanding
+                    label="ENS (kWh)"
+                    asli={fmtNum(asli.ens, 2)}
+                    koreksi={fmtNum(koreksi.nilai.ens, 2)}
+                  />
+                </div>
+              ) : (
+                <p className="text-[11px] text-[#94a3b8] mt-2.5">
+                  Ubah tanggal atau jam di atas — durasi, Jam × Pelanggan, dan ENS
+                  ikut dihitung ulang.
+                </p>
+              )}
+
+              {koreksi.berubah && !koreksi.salah && (
+                <div className="mt-3">
+                  <label className="block text-[10px] text-[#94a3b8] uppercase tracking-wide mb-1">
+                    Alasan koreksi
+                  </label>
+                  <textarea
+                    value={alasan}
+                    onChange={(e) => setAlasan(e.target.value)}
+                    placeholder="Mis. regu melapor normal 18:45, penutupan laporan terlambat"
+                    rows={2}
+                    className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 resize-none"
+                  />
+                </div>
+              )}
+
+              {record.koreksi_oleh && record.koreksi_at && (
+                <p className="text-[11px] text-[#94a3b8] mt-2.5">
+                  Dikoreksi {record.koreksi_oleh} ·{" "}
+                  {new Date(record.koreksi_at).toLocaleString("id-ID", {
+                    day: "2-digit", month: "short", year: "numeric",
+                    hour: "2-digit", minute: "2-digit",
+                  })}
+                </p>
+              )}
             </div>
 
             <SectionLabel>Dampak</SectionLabel>
@@ -456,10 +635,11 @@ export default function AnalisisModal({ record, onClose, onSaved }: AnalisisModa
           </button>
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled={saving || Boolean(koreksi.salah)}
+            title={koreksi.salah ?? undefined}
             className="px-5 py-2 rounded-lg bg-linear-to-r from-[#004D40] to-[#00897B] text-white text-sm font-medium disabled:opacity-50 transition-opacity"
           >
-            {saving ? "Menyimpan…" : "Simpan Analisis"}
+            {saving ? "Menyimpan…" : koreksi.berubah ? "Simpan Analisis & Koreksi" : "Simpan Analisis"}
           </button>
         </div>
       </div>

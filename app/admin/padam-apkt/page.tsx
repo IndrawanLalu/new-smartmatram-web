@@ -6,7 +6,8 @@ import {
   ChevronLeft, ChevronRight, Search, RotateCcw, FileDown,
 } from "lucide-react";
 import AnalisisModal from "./_components/AnalisisModal";
-import type { RefGangguan } from "./_components/AnalisisModal";
+import type { PatchAnalisis, RefGangguan } from "./_components/AnalisisModal";
+import { adaKoreksi, nilaiAsli, nilaiKoreksi } from "./_lib/koreksi";
 import { downloadPadamApktTemplate } from "./_utils/downloadTemplate";
 import { fetchJurnalMap, normNoLaporan, type JurnalApkt } from "./_utils/jurnal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -47,10 +48,16 @@ interface PadamApktRecord {
   status_gangguan: string | null;
   analisis_keterangan: string | null;
   ref_gangguan: RefGangguan | null;
+  // Koreksi waktu nyala — kolom aslinya tidak pernah ditimpa, lihat _lib/koreksi.ts
+  tgl_nyala_koreksi: string | null;
+  jam_nyala_koreksi: string | null;
+  koreksi_alasan: string | null;
+  koreksi_oleh: string | null;
+  koreksi_at: string | null;
   [key: string]: unknown;
 }
 
-interface DbRow extends Omit<PadamApktRecord, "id"> {}
+type DbRow = Omit<PadamApktRecord, "id">;
 
 interface PenyulangStat {
   ulp: string;
@@ -58,8 +65,15 @@ interface PenyulangStat {
   jml_j: number;
   jml_p: number;
   pelanggan: number;
+  /** Angka apa adanya dari APKT. */
   jam_x_plgn: number;
   ens: number;
+  /** Angka yang berlaku setelah koreksi waktu nyala — baris yang belum
+   *  dikoreksi ikut dengan nilai aslinya. */
+  jam_x_plgn_kor: number;
+  ens_kor: number;
+  /** Berapa baris di kelompok ini yang waktunya sudah dikoreksi. */
+  dikoreksi: number;
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -284,14 +298,23 @@ function buildRekap(rows: PadamApktRecord[]): PenyulangStat[] {
     const s = map.get(key) ?? {
       ulp: r.ulp ?? "—",
       penyulang: r.penyulang ?? "—",
-      jml_j: 0, jml_p: 0, pelanggan: 0, jam_x_plgn: 0, ens: 0,
+      jml_j: 0, jml_p: 0, pelanggan: 0,
+      jam_x_plgn: 0, ens: 0,
+      jam_x_plgn_kor: 0, ens_kor: 0, dikoreksi: 0,
     };
     const kode = (r.no_laporan[0] ?? "").toUpperCase();
     if (kode === "J") s.jml_j++;
     else if (kode === "P") s.jml_p++;
-    s.pelanggan  += r.jml_pelanggan_padam   ?? 0;
-    s.jam_x_plgn += r.jam_x_pelanggan_padam ?? 0;
-    s.ens        += r.ens                   ?? 0;
+    s.pelanggan += r.jml_pelanggan_padam ?? 0;
+
+    const a = nilaiAsli(r);
+    const k = nilaiKoreksi(r);
+    s.jam_x_plgn     += a.jamXPelanggan;
+    s.ens            += a.ens;
+    s.jam_x_plgn_kor += k.jamXPelanggan;
+    s.ens_kor        += k.ens;
+    if (adaKoreksi(r)) s.dikoreksi++;
+
     map.set(key, s);
   }
   return [...map.values()].sort((a, b) => (b.jml_j + b.jml_p) - (a.jml_j + a.jml_p));
@@ -440,11 +463,9 @@ export default function PadamApktPage() {
     }
   }
 
-  function handleAnalisisSaved(id: string, patch: {
-    status_gangguan: string | null;
-    analisis_keterangan: string | null;
-    ref_gangguan: RefGangguan | null;
-  }) {
+  // Tambal baris di tempat, bukan menarik ulang sebulan penuh: urutan tabel
+  // tetap dan halaman tidak melompat.
+  function handleAnalisisSaved(id: string, patch: PatchAnalisis) {
     setRows((prev) => prev.map((r) => r.id === id ? { ...r, ...patch } : r));
     setModalRow((prev) => prev?.id === id ? { ...prev, ...patch } : prev);
   }
@@ -454,13 +475,16 @@ export default function PadamApktPage() {
   const activeMonthLabel = MONTHS.find((m) => m.value === filterMonth)?.label ?? "";
   const rekapTotal = rekapStats.reduce(
     (acc, s) => ({
-      jml_j:    acc.jml_j    + s.jml_j,
-      jml_p:    acc.jml_p    + s.jml_p,
+      jml_j:     acc.jml_j     + s.jml_j,
+      jml_p:     acc.jml_p     + s.jml_p,
       pelanggan: acc.pelanggan + s.pelanggan,
       jam_x_plgn: acc.jam_x_plgn + s.jam_x_plgn,
-      ens:      acc.ens      + s.ens,
+      ens:       acc.ens       + s.ens,
+      jam_x_plgn_kor: acc.jam_x_plgn_kor + s.jam_x_plgn_kor,
+      ens_kor:   acc.ens_kor   + s.ens_kor,
+      dikoreksi: acc.dikoreksi + s.dikoreksi,
     }),
-    { jml_j: 0, jml_p: 0, pelanggan: 0, jam_x_plgn: 0, ens: 0 },
+    { jml_j: 0, jml_p: 0, pelanggan: 0, jam_x_plgn: 0, ens: 0, jam_x_plgn_kor: 0, ens_kor: 0, dikoreksi: 0 },
   );
 
   return (
@@ -704,45 +728,102 @@ export default function PadamApktPage() {
 
 // ── Rekap Tab ─────────────────────────────────────────────────────────────────
 
+interface RekapTotal {
+  jml_j: number; jml_p: number; pelanggan: number;
+  jam_x_plgn: number; ens: number;
+  jam_x_plgn_kor: number; ens_kor: number; dikoreksi: number;
+}
+
 interface RekapTabProps {
   stats: PenyulangStat[];
-  total: { jml_j: number; jml_p: number; pelanggan: number; jam_x_plgn: number; ens: number };
+  total: RekapTotal;
+}
+
+/** Angka asli dicoret + angka koreksi di bawahnya. Dipakai di sel tabel yang
+ *  sempit, jadi bertumpuk ke bawah, bukan berdampingan. */
+function SelBanding({ asli, koreksi }: { asli: number; koreksi: number }) {
+  const sama = Math.abs(asli - koreksi) < 0.005;
+  if (sama) return <span className="text-[#1B2631]">{fmtNum(asli, 2)}</span>;
+  return (
+    <span className="font-semibold text-[#00695C]">{fmtNum(koreksi, 2)}</span>
+  );
 }
 
 function RekapTab({ stats, total }: RekapTabProps) {
+  // Kolom koreksi hanya muncul kalau memang ada yang dikoreksi — kalau tidak,
+  // empat kolom berisi angka yang sama persis cuma menambah lebar tabel.
+  const adaKoreksiData = total.dikoreksi > 0;
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-px bg-[#E2E8F0]">
         {[
-          { label: "Gangguan J",        value: total.jml_j.toString(),         note: "unplanned" },
-          { label: "Gangguan P",        value: total.jml_p.toString(),         note: "planned" },
-          { label: "Pelanggan Padam",   value: total.pelanggan.toLocaleString("id-ID"), note: "total" },
-          { label: "Jam × Pelanggan",   value: fmtNum(total.jam_x_plgn, 0),    note: "total" },
-          { label: "ENS (kWh)",         value: fmtNum(total.ens, 2),           note: "total" },
-        ].map((c) => (
-          <div key={c.label} className="bg-white px-4 py-3">
-            <p className="text-xs text-[#5D6D7E]">{c.label}</p>
-            <p className="text-xl font-bold text-[#1B2631] mt-0.5">{c.value}</p>
-            <p className="text-xs text-[#94a3b8]">{c.note}</p>
-          </div>
-        ))}
+          { label: "Gangguan J",      value: total.jml_j.toString(),                  note: "unplanned", asli: null as number | null, kor: null as number | null },
+          { label: "Gangguan P",      value: total.jml_p.toString(),                  note: "planned",   asli: null, kor: null },
+          { label: "Pelanggan Padam", value: total.pelanggan.toLocaleString("id-ID"), note: "total",     asli: null, kor: null },
+          { label: "Jam × Pelanggan", value: fmtNum(total.jam_x_plgn_kor, 0),         note: "total",     asli: total.jam_x_plgn, kor: total.jam_x_plgn_kor },
+          { label: "ENS (kWh)",       value: fmtNum(total.ens_kor, 2),                note: "total",     asli: total.ens, kor: total.ens_kor },
+        ].map((c) => {
+          const berubah = c.asli !== null && c.kor !== null && Math.abs(c.asli - c.kor) >= 0.005;
+          return (
+            <div key={c.label} className="bg-white px-4 py-3">
+              <p className="text-xs text-[#5D6D7E]">{c.label}</p>
+              <p className={`text-xl font-bold mt-0.5 ${berubah ? "text-[#00695C]" : "text-[#1B2631]"}`}>
+                {c.value}
+              </p>
+              {berubah ? (
+                <p className="text-xs text-[#94a3b8]">
+                  asli <span className="line-through">{fmtNum(c.asli, c.label.startsWith("ENS") ? 2 : 0)}</span>
+                </p>
+              ) : (
+                <p className="text-xs text-[#94a3b8]">{c.note}</p>
+              )}
+            </div>
+          );
+        })}
       </div>
+
+      {adaKoreksiData && (
+        <div className="px-4 py-2.5 bg-[#E0F2F1]/50 border-y border-[#B2DFDB] text-xs text-[#00695C]">
+          <b>{total.dikoreksi} kejadian</b> waktu nyalanya sudah dikoreksi. Kolom
+          Koreksi memakai waktu hasil koreksi untuk baris itu dan waktu asli untuk
+          sisanya — jadi angkanya adalah total yang berlaku sekarang.
+        </div>
+      )}
 
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
-              <th className="px-4 py-3 text-left">ULP</th>
-              <th className="px-4 py-3 text-left">Penyulang</th>
-              <th className="px-3 py-3 text-center">J</th>
-              <th className="px-3 py-3 text-center">P</th>
-              <th className="px-3 py-3 text-center">Total</th>
-              <th className="px-4 py-3 text-right">Pelanggan Padam</th>
-              <th className="px-4 py-3 text-right">Jam × Plgn</th>
-              <th className="px-4 py-3 text-right">ENS (kWh)</th>
+              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>ULP</th>
+              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>Penyulang</th>
+              <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>J</th>
+              <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>P</th>
+              <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>Total</th>
+              <th className="px-4 py-3 text-right"  rowSpan={adaKoreksiData ? 2 : 1}>Pelanggan Padam</th>
+              {adaKoreksiData ? (
+                <>
+                  <th className="px-3 py-3 text-center" rowSpan={2}>Dikoreksi</th>
+                  <th className="px-4 py-2 text-center border-l border-[#B2DFDB]" colSpan={2}>Jam × Plgn</th>
+                  <th className="px-4 py-2 text-center border-l border-[#B2DFDB]" colSpan={2}>ENS (kWh)</th>
+                </>
+              ) : (
+                <>
+                  <th className="px-4 py-3 text-right">Jam × Plgn</th>
+                  <th className="px-4 py-3 text-right">ENS (kWh)</th>
+                </>
+              )}
             </tr>
+            {adaKoreksiData && (
+              <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-[11px]">
+                <th className="px-4 py-1.5 text-right border-l border-[#B2DFDB] font-normal">Asli</th>
+                <th className="px-4 py-1.5 text-right">Koreksi</th>
+                <th className="px-4 py-1.5 text-right border-l border-[#B2DFDB] font-normal">Asli</th>
+                <th className="px-4 py-1.5 text-right">Koreksi</th>
+              </tr>
+            )}
           </thead>
           <tbody>
             {stats.map((s, i) => (
@@ -769,12 +850,38 @@ function RekapTab({ stats, total }: RekapTabProps) {
                 <td className="px-4 py-2.5 text-right text-[#1B2631]">
                   {s.pelanggan.toLocaleString("id-ID")}
                 </td>
-                <td className="px-4 py-2.5 text-right text-[#1B2631]">
-                  {fmtNum(s.jam_x_plgn, 2)}
-                </td>
-                <td className="px-4 py-2.5 text-right text-[#1B2631]">
-                  {fmtNum(s.ens, 2)}
-                </td>
+                {adaKoreksiData ? (
+                  <>
+                    <td className="px-3 py-2.5 text-center">
+                      {s.dikoreksi > 0 ? (
+                        <span className="inline-block bg-[#E0F2F1] text-[#00695C] text-xs font-semibold px-2 py-0.5 rounded">
+                          {s.dikoreksi}
+                        </span>
+                      ) : <span className="text-[#94a3b8]">—</span>}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[#94a3b8] border-l border-[#E2E8F0]">
+                      {fmtNum(s.jam_x_plgn, 2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <SelBanding asli={s.jam_x_plgn} koreksi={s.jam_x_plgn_kor} />
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[#94a3b8] border-l border-[#E2E8F0]">
+                      {fmtNum(s.ens, 2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <SelBanding asli={s.ens} koreksi={s.ens_kor} />
+                    </td>
+                  </>
+                ) : (
+                  <>
+                    <td className="px-4 py-2.5 text-right text-[#1B2631]">
+                      {fmtNum(s.jam_x_plgn, 2)}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-[#1B2631]">
+                      {fmtNum(s.ens, 2)}
+                    </td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>
@@ -785,8 +892,20 @@ function RekapTab({ stats, total }: RekapTabProps) {
               <td className="px-3 py-2.5 text-center">{total.jml_p}</td>
               <td className="px-3 py-2.5 text-center font-bold">{total.jml_j + total.jml_p}</td>
               <td className="px-4 py-2.5 text-right">{total.pelanggan.toLocaleString("id-ID")}</td>
-              <td className="px-4 py-2.5 text-right">{fmtNum(total.jam_x_plgn, 2)}</td>
-              <td className="px-4 py-2.5 text-right">{fmtNum(total.ens, 2)}</td>
+              {adaKoreksiData ? (
+                <>
+                  <td className="px-3 py-2.5 text-center">{total.dikoreksi}</td>
+                  <td className="px-4 py-2.5 text-right font-normal border-l border-[#B2DFDB]">{fmtNum(total.jam_x_plgn, 2)}</td>
+                  <td className="px-4 py-2.5 text-right">{fmtNum(total.jam_x_plgn_kor, 2)}</td>
+                  <td className="px-4 py-2.5 text-right font-normal border-l border-[#B2DFDB]">{fmtNum(total.ens, 2)}</td>
+                  <td className="px-4 py-2.5 text-right">{fmtNum(total.ens_kor, 2)}</td>
+                </>
+              ) : (
+                <>
+                  <td className="px-4 py-2.5 text-right">{fmtNum(total.jam_x_plgn, 2)}</td>
+                  <td className="px-4 py-2.5 text-right">{fmtNum(total.ens, 2)}</td>
+                </>
+              )}
             </tr>
           </tfoot>
         </table>

@@ -141,26 +141,57 @@ export async function DELETE(req: Request) {
   return NextResponse.json({ ok: true });
 }
 
-// PATCH /api/padam-apkt  body: { id, status_gangguan, analisis_keterangan, ref_gangguan }
+// Kolom yang boleh diubah lewat PATCH. Daftar putih, bukan daftar hitam: badan
+// permintaan datang dari klien, dan `update` dengan objek apa adanya berarti
+// setiap kolom tabel ini bisa ditimpa dari luar.
+const KOLOM_PATCH = [
+  "status_gangguan", "analisis_keterangan", "ref_gangguan",
+  "tgl_nyala_koreksi", "jam_nyala_koreksi", "koreksi_alasan",
+] as const;
+
+// PATCH /api/padam-apkt  body: { id, ...kolom yang ingin diubah }
+// Hanya kunci yang benar-benar dikirim yang ikut diubah, sehingga menyimpan
+// koreksi waktu tidak menghapus hasil analisis, dan sebaliknya.
 export async function PATCH(req: Request) {
   const { supabase, user } = await getAuth();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const body = await req.json() as {
-    id: string;
-    status_gangguan: string | null;
-    analisis_keterangan: string | null;
-    ref_gangguan: unknown | null;
-  };
+  const body = await req.json() as Record<string, unknown>;
+  const id = body.id;
+  if (!id || typeof id !== "string")
+    return NextResponse.json({ error: "id wajib diisi" }, { status: 400 });
 
-  const { id, status_gangguan, analisis_keterangan, ref_gangguan } = body;
-  if (!id) return NextResponse.json({ error: "id wajib diisi" }, { status: 400 });
+  const patch: Record<string, unknown> = {};
+  for (const kolom of KOLOM_PATCH) {
+    if (kolom in body) patch[kolom] = body[kolom];
+  }
+  if (Object.keys(patch).length === 0)
+    return NextResponse.json({ error: "tidak ada kolom yang diubah" }, { status: 400 });
 
-  const { error } = await supabase
-    .from("padam_apkt")
-    .update({ status_gangguan, analisis_keterangan, ref_gangguan })
-    .eq("id", id);
+  // Jejak koreksi distempel di server dari sesi yang login — kalau diambil dari
+  // badan permintaan, siapa pun bisa menuliskan nama orang lain di sana.
+  if ("tgl_nyala_koreksi" in patch) {
+    const dikoreksi = Boolean(patch.tgl_nyala_koreksi);
+    patch.koreksi_oleh = dikoreksi ? user.email ?? null : null;
+    patch.koreksi_at = dikoreksi ? new Date().toISOString() : null;
+  }
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true });
+  const { error } = await supabase.from("padam_apkt").update(patch).eq("id", id);
+
+  if (error) {
+    return NextResponse.json(
+      {
+        error: error.message,
+        hint: "Kolom koreksi butuh scripts/padam-apkt-koreksi-nyala.sql dijalankan di Supabase SQL Editor.",
+      },
+      { status: 500 },
+    );
+  }
+  // Stempel dikembalikan supaya klien bisa menambal barisnya sendiri tanpa
+  // menarik ulang seluruh bulan.
+  return NextResponse.json({
+    ok: true,
+    koreksi_oleh: patch.koreksi_oleh ?? null,
+    koreksi_at: patch.koreksi_at ?? null,
+  });
 }

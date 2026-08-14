@@ -44,6 +44,8 @@
  *    MVOD meleset 60 kali lipat.
  */
 
+import { menitAsli, menitKoreksi, type BarisKoreksi } from "./koreksi";
+
 /** Ambang durasi minimum, dalam menit. Kejadian yang TEPAT 5 menit tidak ikut —
  *  aturannya "lebih dari 5 menit". */
 export const MIN_DURASI_MENIT = 5;
@@ -52,14 +54,16 @@ export const MIN_DURASI_MENIT = 5;
 export const SLA_MENIT_BAWAAN = 60;
 
 /** Kolom yang dibutuhkan perhitungan ini — sengaja minimal supaya bisa dipakai
- *  atas bentuk baris mana pun yang membawanya. */
-export interface BarisPadam {
+ *  atas bentuk baris mana pun yang membawanya. Kolom koreksi ikut karena MVOD
+ *  dihitung dua kali: atas waktu asli APKT dan atas waktu setelah koreksi. */
+export interface BarisPadam extends BarisKoreksi {
   no_laporan: string;
-  lama_padam_jam: number | null;
   status_gangguan: string | null;
   ulp: string | null;
-  tgl_padam: string | null;
 }
+
+/** Sisi perhitungan: apa adanya dari APKT, atau setelah koreksi waktu nyala. */
+export type Sisi = "asli" | "koreksi";
 
 export interface HasilMvod {
   /** Jumlah kali padam yang masuk hitungan. */
@@ -86,11 +90,19 @@ export const KOSONG: HasilMvod = { kali: 0, totalMenit: 0, rataMenit: 0, mvod: n
 export const isKodeJ = (r: BarisPadam) => r.no_laporan?.[0]?.toUpperCase() === "J";
 
 /** Durasi padam dalam MENIT. Kolom sumbernya bersatuan jam. */
-export const durasiMenit = (r: BarisPadam) => (r.lama_padam_jam ?? 0) * 60;
+export const durasiMenit = (r: BarisPadam, sisi: Sisi = "asli") =>
+  sisi === "koreksi" ? menitKoreksi(r) : menitAsli(r);
 
-/** Baris yang memenuhi kedua syarat MVOD: kode J dan lebih dari 5 menit. */
-export const layakMvod = (r: BarisPadam) =>
-  isKodeJ(r) && durasiMenit(r) > MIN_DURASI_MENIT;
+/**
+ * Baris yang memenuhi kedua syarat MVOD: kode J dan lebih dari 5 menit.
+ *
+ * Penyaringan ini SENGAJA ikut sisinya. Kejadian yang tercatat 7 menit tapi
+ * setelah dikoreksi jadi 3 menit memang keluar dari hitungan — ambang ">5 menit"
+ * bagian dari definisi MVOD, bukan penyaring data mentah. Akibatnya jumlah kali
+ * padam bisa berbeda antara kedua sisi, dan itu memang harus terlihat.
+ */
+export const layakMvod = (r: BarisPadam, sisi: Sisi = "asli") =>
+  isKodeJ(r) && durasiMenit(r, sisi) > MIN_DURASI_MENIT;
 
 /**
  * Hitung MVOD atas sekumpulan baris yang SUDAH disaring lewat `layakMvod`.
@@ -99,9 +111,9 @@ export const layakMvod = (r: BarisPadam) =>
  * kumpulan yang sama menurut status atau ULP, dan menyaring berulang kali di
  * tiap pemecahan adalah cara mudah membuat salah satunya terlewat.
  */
-export function hitungMvod(rows: BarisPadam[], slaMenit: number): HasilMvod {
+export function hitungMvod(rows: BarisPadam[], slaMenit: number, sisi: Sisi = "asli"): HasilMvod {
   if (rows.length === 0 || slaMenit <= 0) return KOSONG;
-  const totalMenit = rows.reduce((s, r) => s + durasiMenit(r), 0);
+  const totalMenit = rows.reduce((s, r) => s + durasiMenit(r, sisi), 0);
   const rataMenit = totalMenit / rows.length;
   const mentah = (2 - rataMenit / slaMenit) * 100;
   return {
