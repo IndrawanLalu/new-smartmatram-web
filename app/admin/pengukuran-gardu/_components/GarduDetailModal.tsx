@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
-import { supabaseBrowser } from "@/lib/supabase-browser";
+import { antreKeAmg } from "../_lib/amgQueue";
 import {
   type PengukuranGardu,
   HIGH_CURRENT_A,
@@ -144,14 +144,8 @@ export default function GarduDetailModal({
     setAmgReset(false);
     setAmgError(null);
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession();
-      const res = await fetch("/api/amg-queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-        body: JSON.stringify({ pengukuranId: row!.id }),
-      });
-      const json = await res.json() as { ok?: boolean; error?: string };
-      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      const err = await antreKeAmg(row!.id);
+      if (err) throw new Error(err);
       setAmgMarked(true);
       setAmgSuccess(true);
       setTimeout(() => setAmgSuccess(false), 2200);

@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
-import { supabaseBrowser } from "@/lib/supabase-browser";
+import { antreKeAmg } from "./_lib/amgQueue";
 import { downloadXlsx } from "./_utils/downloadXlsx";
 import {
   usePengukuranGardu,
@@ -248,20 +248,14 @@ export default function PengukuranGarduPage() {
     setIsBulkSending(true);
     setAmgStatus(Object.fromEntries(ids.map((id) => [id, "sending"])));
     try {
-      const { data: { session } } = await supabaseBrowser.auth.getSession();
-      const res = await fetch("/api/amg-queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${session?.access_token ?? ""}` },
-        body: JSON.stringify({ pengukuranIds: ids }),
-      });
-      if (res.ok) {
+      const err = await antreKeAmg(ids);
+      if (err) {
+        setAmgStatus(Object.fromEntries(ids.map((id) => [id, "error"])));
+        alert(err);
+      } else {
         setAmgStatus(Object.fromEntries(ids.map((id) => [id, "ok"])));
         ids.forEach((id) => patchRow(id, { amg_queued_at: new Date().toISOString(), amg_sent_at: null, amg_error: null }));
-      } else {
-        setAmgStatus(Object.fromEntries(ids.map((id) => [id, "error"])));
       }
-    } catch {
-      setAmgStatus(Object.fromEntries(ids.map((id) => [id, "error"])));
     } finally {
       setIsBulkSending(false);
     }

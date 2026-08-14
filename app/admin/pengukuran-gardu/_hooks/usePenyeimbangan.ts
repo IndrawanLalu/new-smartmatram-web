@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { antreKeAmg } from "../_lib/amgQueue";
 import type { JurusanData, PengukuranGardu } from "./usePengukuranGardu";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -343,21 +344,10 @@ export function usePenyeimbangan(ulp: string) {
     if (!after) {
       return "Hasil ini belum punya baris pengukuran untuk AMG. Hanya pekerjaan yang dicatat lewat aplikasi mobile yang bisa dikirim.";
     }
-    try {
-      const res = await fetch("/api/amg-queue", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pengukuranId: after.id }),
-      });
-      if (!res.ok) {
-        const e = await res.json().catch(() => ({ error: `Gagal (HTTP ${res.status})` }));
-        return e.error ?? "Gagal mengantre ke AMG";
-      }
-      await fetchData();
-      return null;
-    } catch (e) {
-      return e instanceof Error ? e.message : "Gagal mengantre ke AMG";
-    }
+    const err = await antreKeAmg(after.id);
+    if (err) return err;
+    await fetchData();
+    return null;
   }, [fetchData]);
 
   const deleteItem = useCallback(async (id: string) => {
