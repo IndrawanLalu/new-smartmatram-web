@@ -9,6 +9,11 @@ import AnalisisModal from "./_components/AnalisisModal";
 import type { RefGangguan } from "./_components/AnalisisModal";
 import { downloadPadamApktTemplate } from "./_utils/downloadTemplate";
 import { fetchJurnalMap, normNoLaporan, type JurnalApkt } from "./_utils/jurnal";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
+import { canManageSettings } from "@/lib/roles";
+import MvodTab from "./_components/MvodTab";
+import MvodSettingsModal from "./_components/MvodSettingsModal";
+import { useMvodSettings } from "./_hooks/useMvodSettings";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -302,7 +307,8 @@ export default function PadamApktPage() {
   const [filterYear,  setFilterYear]  = useState(CURRENT_YEAR.toString());
   const [filterMonth, setFilterMonth] = useState(CURRENT_MONTH);
   const [filterUlp,   setFilterUlp]   = useState<string | null>(null);
-  const [tab,         setTab]         = useState<"rekap" | "detail" | "jdobel">("rekap");
+  const [tab,         setTab]         = useState<"rekap" | "mvod" | "detail" | "jdobel">("rekap");
+  const [slaTerbuka,  setSlaTerbuka]  = useState(false);
   const [rows,        setRows]        = useState<PadamApktRecord[]>([]);
   const [ulpList,     setUlpList]     = useState<string[]>([]);
   const [loading,     setLoading]     = useState(false);
@@ -310,6 +316,9 @@ export default function PadamApktPage() {
   const [search,      setSearch]      = useState("");
   const [modalRow,    setModalRow]    = useState<PadamApktRecord | null>(null);
   const [jurnalMap,   setJurnalMap]   = useState<Map<string, JurnalApkt>>(new Map());
+
+  const user = useCurrentUser();
+  const mvodSla = useMvodSettings(filterUlp ?? "");
 
   // ── Data loading ───────────────────────────────────────────────────────────
 
@@ -609,7 +618,7 @@ export default function PadamApktPage() {
 
       {/* Tabs */}
       <div className="flex gap-1">
-        {(["rekap", "detail", "jdobel"] as const).map((t) => (
+        {(["rekap", "mvod", "detail", "jdobel"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -619,7 +628,7 @@ export default function PadamApktPage() {
                 : "bg-white text-[#5D6D7E] border border-[#E2E8F0] hover:bg-gray-50"
             }`}
           >
-            {t === "rekap" ? "Rekap" : t === "detail" ? "Detail" : "Kode J Dobel"}
+            {t === "rekap" ? "Rekap" : t === "mvod" ? "MVOD" : t === "detail" ? "Detail" : "Kode J Dobel"}
             {t === "jdobel" && jDobelGroups.length > 0 && (
               <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
                 tab === "jdobel" ? "bg-white/20 text-white" : "bg-orange-100 text-orange-700"
@@ -638,6 +647,15 @@ export default function PadamApktPage() {
         </div>
       ) : tab === "jdobel" ? (
         <JDobelTab groups={jDobelGroups} />
+      ) : tab === "mvod" ? (
+        <MvodTab
+          rows={filteredRows}
+          slaMenit={mvodSla.slaMenit}
+          slaTersimpan={mvodSla.tersimpan}
+          bisaAturSla={canManageSettings(user.role)}
+          onAturSla={() => setSlaTerbuka(true)}
+          periodeLabel={`${activeMonthLabel} ${filterYear}${filterUlp ? ` · ULP ${filterUlp}` : ""}`}
+        />
       ) : filteredRows.length === 0 ? (
         <div className="bg-white rounded-xl border border-[#E2E8F0] py-20 text-center text-[#5D6D7E] text-sm">
           Tidak ada data untuk {activeMonthLabel} {filterYear}
@@ -656,6 +674,20 @@ export default function PadamApktPage() {
           totalRows={searchedRows.length}
           onPageChange={setPage}
           onRowClick={setModalRow}
+        />
+      )}
+
+      {slaTerbuka && (
+        <MvodSettingsModal
+          slaMenit={mvodSla.slaMenit}
+          ulp={filterUlp ?? ""}
+          saving={mvodSla.saving}
+          error={mvodSla.error}
+          onSimpan={async (nilai, untukUlp) => {
+            const err = await mvodSla.simpan(nilai, untukUlp);
+            if (!err) setSlaTerbuka(false);
+          }}
+          onClose={() => setSlaTerbuka(false)}
         />
       )}
 
