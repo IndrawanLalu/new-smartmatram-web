@@ -347,7 +347,7 @@ function AmgFooter({
         className="ml-auto flex items-center gap-1.5 rounded-lg bg-navy-600 px-3 py-1.5 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-40"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
-        {after.amg_error ? "Coba kirim lagi" : "Kirim ke AMG"}
+        {busy ? "Mengantre…" : after.amg_error ? "Coba kirim lagi" : "Kirim ke AMG"}
       </button>
     </div>
   );

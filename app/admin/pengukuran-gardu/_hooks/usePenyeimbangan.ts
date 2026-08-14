@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useId, useMemo } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { antreKeAmg } from "../_lib/amgQueue";
@@ -200,6 +200,61 @@ export function usePenyeimbangan(ulp: string) {
 
   useEffect(() => { fetchData(); }, [fetchData]);
   useEffect(() => { fetchSeimbang(); }, [fetchSeimbang]);
+
+  // ── Supabase Realtime: status kirim AMG ──────────────────────────────────────
+  // Kolom `amg_*` diubah oleh AGEN LOKAL, di luar aplikasi ini. Tanpa langganan
+  // ini barisnya bertahan di "ANTRE" sampai halaman dimuat ulang — persis
+  // keluhan yang muncul, dan bedanya dengan tabel Pengukuran Gardu yang memang
+  // sudah punya langganan serupa.
+  //
+  // Yang didengarkan `pengukuran_gardu`, bukan `penyeimbangan_gardu`: di situlah
+  // kolom amg_* berada, terhubung lewat `hasil_penyeimbangan_id`.
+  const instanceId = useId();
+  useEffect(() => {
+    const channel = supabaseBrowser
+      .channel(`penyeimbangan-amg-rt:${instanceId}`)
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "pengukuran_gardu" },
+        (payload) => {
+          const baru = payload.new as {
+            id?: string;
+            amg_queued_at?: string | null;
+            amg_sent_at?: string | null;
+            amg_error?: string | null;
+            amg_attempts?: number | null;
+          };
+          if (!baru.id) return;
+
+          setData((prev) => {
+            let kena = false;
+            const next = prev.map((item) => {
+              const after = item.pengukuran_after?.[0];
+              if (!after || after.id !== baru.id) return item;
+              kena = true;
+              return {
+                ...item,
+                pengukuran_after: [{
+                  ...after,
+                  amg_queued_at: baru.amg_queued_at ?? null,
+                  amg_sent_at: baru.amg_sent_at ?? null,
+                  amg_error: baru.amg_error ?? null,
+                  amg_attempts: baru.amg_attempts ?? 0,
+                }],
+              };
+            });
+            // Sebagian besar perubahan `pengukuran_gardu` tidak ada sangkut
+            // pautnya dengan rekap ini; kembalikan acuan yang sama supaya tidak
+            // memicu render ulang percuma.
+            return kena ? next : prev;
+          });
+        },
+      )
+      .subscribe();
+
+    return () => { void supabaseBrowser.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Client-side filter by jenis — data lengkap tetap tersedia untuk WO table
   const filteredData = useMemo(

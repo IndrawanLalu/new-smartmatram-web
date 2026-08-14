@@ -100,12 +100,21 @@ export default function PenyeimbanganTab({
   const [searchQuery, setSearchQuery]     = useState("");
   const [selectedGardu, setSelectedGardu] = useState<PengukuranGardu | null>(null);
   const [editRecord, setEditRecord]       = useState<PenyeimbanganGardu | null>(null);
-  const [detailRecord, setDetailRecord]   = useState<PenyeimbanganGardu | null>(null);
+  const [detailId, setDetailId]           = useState<string | null>(null);
   /** Detail pengukuran dari baris tabel anomali — dibuka dengan mengklik baris,
    *  bukan tombol tersendiri, karena kolomnya sudah padat. */
   const [detailPengukuran, setDetailPengukuran] = useState<PengukuranGardu | null>(null);
   const [editPengukuran, setEditPengukuran]     = useState<PengukuranGardu | null>(null);
   const [amgBusy, setAmgBusy]             = useState<string | null>(null);
+
+  /** Modal detail membaca dari daftar HIDUP, bukan dari salinan baris saat
+   *  dibuka. Tanpa ini, isinya beku: setelah "Kirim ke AMG" — dan juga saat agen
+   *  lokal menyelesaikan kirimannya — statusnya tetap seperti semula sehingga
+   *  tombolnya terlihat tidak bereaksi, padahal tabel di belakangnya berubah. */
+  const detailRecord = useMemo(
+    () => (detailId ? rekapData.find((r) => r.id === detailId) ?? null : null),
+    [detailId, rekapData],
+  );
 
   async function handleKirimAmg(row: PenyeimbanganGardu) {
     setAmgBusy(row.id);
@@ -660,7 +669,7 @@ export default function PenyeimbanganTab({
                 </thead>
                 <tbody className="divide-y divide-line">
                   {paginatedRekap.map((row, idx) => (
-                    <tr key={row.id} onClick={() => setDetailRecord(row)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-white"}`}>
+                    <tr key={row.id} onClick={() => setDetailId(row.id)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${idx % 2 === 0 ? "bg-white" : "bg-white"}`}>
                       <td className="px-3 py-2.5 text-xs text-ink-soft">{(page - 1) * PAGE_SIZE + idx + 1}</td>
                       <td className="px-3 py-2.5 text-xs text-ink">{fmtTanggal(row.tgl_penyeimbangan)}</td>
                       <td className="px-3 py-2.5 text-xs font-semibold text-ink">{row.no_gardu}</td>
@@ -698,7 +707,7 @@ export default function PenyeimbanganTab({
                               di dalam modal — keputusan kirim diambil setelah
                               melihat angkanya, bukan dari baris tabel. */}
                           <button
-                            onClick={() => setDetailRecord(row)}
+                            onClick={() => setDetailId(row.id)}
                             className="text-navy-600 hover:text-accent-deep transition-colors"
                             title="Lihat detail, foto, & kirim AMG"
                           >
@@ -748,7 +757,7 @@ export default function PenyeimbanganTab({
           record={detailRecord}
           amgBusy={amgBusy === detailRecord.id}
           onKirimAmg={handleKirimAmg}
-          onClose={() => setDetailRecord(null)}
+          onClose={() => setDetailId(null)}
         />
       )}
       <GarduDetailModal
