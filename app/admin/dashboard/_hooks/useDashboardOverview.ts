@@ -209,7 +209,6 @@ export interface DomainGardu {
   overloadDiPeriode: number;
   suhuTinggi: number;
   avgBeban: number;
-  sebaran: { rentang: string; jumlah: number }[];
   /** Persentase beban tiap gardu terukur — bahan donat distribusi. */
   bebanValues: number[];
   overloadTeratas: {
@@ -324,12 +323,60 @@ const RINGKAS_KOSONG: RingkasRpc = {
   gardu: {
     totalMaster: 0, terukur: 0, belumDiukur: 0, perluUkurUlang: 0, overload: 0,
     overloadDariPemeliharaan: 0, overloadDiPeriode: 0, suhuTinggi: 0, avgBeban: 0,
-    sebaran: [], bebanValues: [], overloadTeratas: [], diukur: 0, barisPengukuran: 0,
+    bebanValues: [], overloadTeratas: [], diukur: 0, barisPengukuran: 0,
   },
   pemerataan: { selesai: 0, perbaikanRataRata: 0, terbaik: null },
   padam: { total: 0, pelangganPadam: 0, ens: 0, durasiRataRata: 0, topPenyebab: [] },
   produktivitas: { petugasAktif: 0, totalPetugas: 0, top: [] },
 };
+
+/** Larik dari JSON: kunci yang hilang atau bernilai `null` jadi larik kosong. */
+function larik<T>(v: T[] | null | undefined): T[] {
+  return Array.isArray(v) ? v : [];
+}
+
+/**
+ * Rapikan balasan RPC supaya bentuknya pasti.
+ *
+ * `dashboard_ringkas` dipasang manual lewat SQL Editor, jadi versi fungsi di
+ * database bisa tertinggal dari `scripts/dashboard-ringkas-rpc.sql` yang ada di
+ * repo. Satu kunci yang belum ada di versi lama — `produktivitas.top` misalnya —
+ * langsung menjatuhkan seluruh halaman dengan "Cannot read properties of
+ * undefined" di tengah render, padahal yang hilang cuma satu kartu.
+ *
+ * Di sini kunci yang tidak dikenali jatuh ke nilai nol: kartunya tampil kosong,
+ * halamannya tetap hidup. Pola yang sama sudah dipakai untuk balasan
+ * /api/yantek/ringkas di bawah.
+ */
+function normalisasiRingkas(data: unknown): RingkasRpc {
+  if (!data || typeof data !== "object") return RINGKAS_KOSONG;
+  const d = data as Partial<RingkasRpc>;
+  return {
+    kpi: { ...RINGKAS_KOSONG.kpi, ...d.kpi },
+    tren: {
+      inspeksi: d.tren?.inspeksi ?? {},
+      gardu: d.tren?.gardu ?? {},
+    },
+    inspeksi: {
+      ...RINGKAS_KOSONG.inspeksi,
+      ...d.inspeksi,
+      byStatus: larik(d.inspeksi?.byStatus),
+    },
+    gardu: {
+      ...RINGKAS_KOSONG.gardu,
+      ...d.gardu,
+      bebanValues: larik(d.gardu?.bebanValues),
+      overloadTeratas: larik(d.gardu?.overloadTeratas),
+    },
+    pemerataan: { ...RINGKAS_KOSONG.pemerataan, ...d.pemerataan },
+    padam: { ...RINGKAS_KOSONG.padam, ...d.padam, topPenyebab: larik(d.padam?.topPenyebab) },
+    produktivitas: {
+      ...RINGKAS_KOSONG.produktivitas,
+      ...d.produktivitas,
+      top: larik(d.produktivitas?.top),
+    },
+  };
+}
 
 const EMPTY: RawBundle = { ringkas: null, woItems: [], woBatches: [], gangguan: [], sla: [] };
 
@@ -404,7 +451,7 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
         : [];
 
       setRaw({
-        ringkas: (ringkasRes.data as RingkasRpc | null) ?? RINGKAS_KOSONG,
+        ringkas: normalisasiRingkas(ringkasRes.data),
         woItems,
         woBatches,
         gangguan: (Array.isArray(gangguanSheet) ? gangguanSheet : []) as GangguanRow[],
