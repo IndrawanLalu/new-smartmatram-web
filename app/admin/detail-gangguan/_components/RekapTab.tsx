@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo } from "react";
-import { CheckCircle2, Clock, TrendingDown } from "lucide-react";
-import type { KoreksiRow } from "./KoreksiModal";
+import { CheckCircle2, Clock, ListChecks, PencilLine, TrendingDown } from "lucide-react";
+import StatTile from "@/app/admin/_components/StatTile";
+import { CARD, DISPLAY, EYEBROW } from "@/app/admin/_ui";
+import { fmtMenit, type KoreksiRow } from "../_lib/gangguan";
 
 interface GangguanLite {
   no_laporan?: string;
@@ -15,14 +17,8 @@ interface Props {
   koreksiMap: Map<string, KoreksiRow>;
 }
 
-function jam(min: number): string {
-  const t = Math.max(0, Math.round(min));
-  const h = Math.floor(t / 60);
-  const m = t % 60;
-  if (h === 0) return `${m} mnt`;
-  if (m === 0) return `${h} jam`;
-  return `${h} j ${m} m`;
-}
+const TH =
+  "py-2.5 px-2 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line whitespace-nowrap";
 
 export default function RekapTab({ rows, koreksiMap }: Props) {
   const total = rows.length;
@@ -58,49 +54,64 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
   const koreksiList = useMemo(() => [...koreksiMap.values()], [koreksiMap]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Kartu jumlah */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Stat label="Total Non CT" value={total} sub="laporan" />
-        <Stat label="Sudah Dikoreksi" value={corrected} sub={`${pct}% selesai`} accent="emerald" icon={<CheckCircle2 className="w-4 h-4" />} />
-        <Stat label="Belum Dikoreksi" value={belum} sub="laporan" accent="amber" />
-        <Stat label="Progres" value={pct} sub="% dari Non CT" />
+      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+        <StatTile label="Total Non CT" value={total} icon={ListChecks} hint="laporan" />
+        <StatTile
+          label="Sudah Dikoreksi"
+          value={corrected}
+          tone="green"
+          icon={CheckCircle2}
+          hint={`${pct}% selesai`}
+        />
+        <StatTile
+          label="Belum Dikoreksi"
+          value={belum}
+          tone={belum > 0 ? "attention" : "green"}
+          icon={PencilLine}
+          hint="laporan"
+        />
+        <StatTile label="Progres" value={`${pct}%`} hint="dari seluruh Non CT" />
       </div>
 
       {/* Rata-rata sebelum vs sesudah (seluruh Non CT) */}
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid gap-3 md:grid-cols-2">
         <CompareCard title="Rata-rata RPT (Response)" before={stat.rpt.before} after={stat.rpt.after} n={stat.rpt.n} corrected={corrected} />
         <CompareCard title="Rata-rata RCT (Recovery)" before={stat.rct.before} after={stat.rct.after} n={stat.rct.n} corrected={corrected} />
       </div>
 
       {/* Tabel per laporan terkoreksi */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
-        <div className="px-4 py-3 border-b border-[#E2E8F0] text-sm font-semibold text-[#1B2631]">
+      <div className={`${CARD} overflow-hidden`}>
+        <div className="px-4 py-3 border-b border-line text-sm font-semibold text-ink">
           Detail Koreksi ({koreksiList.length})
         </div>
         {koreksiList.length === 0 ? (
-          <div className="py-12 text-center text-sm text-[#94a3b8]">Belum ada laporan yang dikoreksi</div>
+          <div className="py-12 flex flex-col items-center gap-2 text-ink-muted">
+            <PencilLine className="w-9 h-9 opacity-25" />
+            <p className="text-sm">Belum ada laporan yang dikoreksi</p>
+          </div>
         ) : (
           <div className="overflow-auto max-h-[55vh]">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0">
+              <thead className="sticky top-0 z-10">
                 <tr>
                   {["#", "No Laporan", "RPT Asli", "RPT Koreksi", "RCT Asli", "RCT Koreksi", "Korektor", "Tgl Koreksi"].map((h) => (
-                    <th key={h} className="py-2.5 px-2 text-left bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] whitespace-nowrap">{h}</th>
+                    <th key={h} className={TH}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {koreksiList.map((k, i) => (
-                  <tr key={k.no_laporan} className="border-t border-[#E2E8F0] hover:bg-[#F4F6F8]">
-                    <td className="py-2 px-2 text-[#94a3b8] text-right tabular-nums">{i + 1}</td>
-                    <td className="py-2 px-2 font-mono text-[#1B2631] whitespace-nowrap">{k.no_laporan}</td>
-                    <td className="py-2 px-2 text-[#94a3b8] line-through whitespace-nowrap">{jam(Number(k.rpt_asli) || 0)}</td>
-                    <td className="py-2 px-2 font-semibold text-emerald-700 whitespace-nowrap">{jam(Number(k.rpt_koreksi) || 0)}</td>
-                    <td className="py-2 px-2 text-[#94a3b8] line-through whitespace-nowrap">{jam(Number(k.rct_asli) || 0)}</td>
-                    <td className="py-2 px-2 font-semibold text-emerald-700 whitespace-nowrap">{jam(Number(k.rct_koreksi) || 0)}</td>
-                    <td className="py-2 px-2 text-[#1B2631] whitespace-nowrap">{k.korektor || "—"}</td>
-                    <td className="py-2 px-2 text-[#64748b] whitespace-nowrap">
+                  <tr key={k.no_laporan} className="border-t border-line hover:bg-surface transition-colors">
+                    <td className="py-2 px-2 text-ink-muted text-right tabular-nums">{i + 1}</td>
+                    <td className="py-2 px-2 font-mono text-ink whitespace-nowrap">{k.no_laporan}</td>
+                    <td className="py-2 px-2 text-ink-muted line-through whitespace-nowrap">{fmtMenit(Number(k.rpt_asli) || 0)}</td>
+                    <td className="py-2 px-2 font-semibold text-green-700 whitespace-nowrap">{fmtMenit(Number(k.rpt_koreksi) || 0)}</td>
+                    <td className="py-2 px-2 text-ink-muted line-through whitespace-nowrap">{fmtMenit(Number(k.rct_asli) || 0)}</td>
+                    <td className="py-2 px-2 font-semibold text-green-700 whitespace-nowrap">{fmtMenit(Number(k.rct_koreksi) || 0)}</td>
+                    <td className="py-2 px-2 text-ink whitespace-nowrap">{k.korektor || "—"}</td>
+                    <td className="py-2 px-2 text-ink-soft whitespace-nowrap">
                       {k.tgl_koreksi ? new Date(k.tgl_koreksi).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" }) : "—"}
                     </td>
                   </tr>
@@ -114,38 +125,26 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
   );
 }
 
-function Stat({ label, value, sub, accent, icon }: {
-  label: string; value: number; sub?: string; accent?: "emerald" | "amber"; icon?: React.ReactNode;
-}) {
-  const color = accent === "emerald" ? "text-emerald-600" : accent === "amber" ? "text-amber-600" : "text-[#1B2631]";
-  return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">
-      <p className="text-xs text-[#94a3b8] mb-1 flex items-center gap-1">{icon}{label}</p>
-      <p className={`text-2xl font-bold ${color}`}>{value}</p>
-      {sub && <p className="text-[11px] text-[#94a3b8] mt-0.5">{sub}</p>}
-    </div>
-  );
-}
-
 function CompareCard({ title, before, after, n, corrected }: {
   title: string; before: number; after: number; n: number; corrected: number;
 }) {
   const delta = before - after;
   const pct = before > 0 ? Math.round((delta / before) * 100) : 0;
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">
-      <p className="text-xs text-[#64748b] mb-2 flex items-center gap-1.5">
-        <Clock className="w-3.5 h-3.5 text-[#00897B]" /> {title}
-        <span className="ml-auto text-[10px] text-[#94a3b8]">{n} laporan · {corrected} dikoreksi</span>
+    <div className={`${CARD} p-4`}>
+      <p className="flex items-center gap-1.5 mb-2">
+        <Clock className="w-3.5 h-3.5 text-navy-600 shrink-0" />
+        <span className={EYEBROW}>{title}</span>
+        <span className="ml-auto text-[10px] text-ink-muted">{n} laporan · {corrected} dikoreksi</span>
       </p>
       <div className="flex items-baseline gap-2 flex-wrap">
-        <span className="text-sm text-[#94a3b8] line-through">{jam(before)}</span>
-        <span className="text-[#94a3b8]">→</span>
-        <span className="text-xl font-bold text-emerald-600">{jam(after)}</span>
+        <span className="text-sm text-ink-muted line-through">{fmtMenit(before)}</span>
+        <span className="text-ink-muted">→</span>
+        <span className={`${DISPLAY} text-xl font-bold text-green-700`}>{fmtMenit(after)}</span>
       </div>
-      <p className="text-[11px] text-[#64748b] mt-1.5 flex items-center gap-1">
-        <TrendingDown className="w-3.5 h-3.5 text-emerald-600" />
-        Turun rata-rata <b className="text-emerald-700">{jam(Math.abs(delta))}</b> ({pct}%)
+      <p className="text-[11px] text-ink-soft mt-1.5 flex items-center gap-1">
+        <TrendingDown className="w-3.5 h-3.5 text-green-700 shrink-0" />
+        Turun rata-rata <b className="text-green-700">{fmtMenit(Math.abs(delta))}</b> ({pct}%)
       </p>
     </div>
   );

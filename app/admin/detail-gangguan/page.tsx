@@ -19,36 +19,28 @@ import {
   Check,
   FileJson,
   Clock,
+  Settings,
+  LayoutDashboard,
+  ListChecks,
+  Table2,
 } from "lucide-react";
-import KoreksiModal, { type KoreksiRow } from "./_components/KoreksiModal";
+import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import KoreksiModal from "./_components/KoreksiModal";
 import RekapTab from "./_components/RekapTab";
+import DashboardTab from "./_components/DashboardTab";
 import {
   STEPS,
   loadSettings,
   saveSettings,
 } from "./_components/koreksiSettings";
-import { Settings } from "lucide-react";
-
-// ── Types ───────────────────────────────────────────────────────────────────────
-
-interface GangguanRow {
-  id?: number | string;
-  apkt_id?: string;
-  no_laporan?: string;
-  pembuat_laporan?: string;
-  waktu_lapor?: string;
-  durasi_response_time?: number | null;
-  durasi_recovery_time?: number | null;
-  status_akhir?: string;
-  nama_posko?: string;
-  nama_pelapor?: string;
-  alamat_pelapor?: string;
-  penyebab?: string | null;
-  tindakan?: string | null;
-  kode_gangguan?: string | null;
-  jenis_gangguan?: string | null;
-  [key: string]: unknown;
-}
+import {
+  classifyCt,
+  fmtDurSec,
+  KATEGORI_LABEL as KATEGORI,
+  type FilterMode,
+  type GangguanRow,
+  type KoreksiRow,
+} from "./_lib/gangguan";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -70,6 +62,18 @@ const COLS: { key: keyof GangguanRow; label: string; numeric?: boolean }[] = [
 const NUMERIC_KEYS = new Set(
   COLS.filter((c) => c.numeric).map((c) => c.key as string),
 );
+
+/** Sel kepala tabel — dipakai belasan kali di satu tabel. */
+const TH =
+  "py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line";
+
+type Tab = "data" | "dashboard" | "rekap";
+
+const TABS: { key: Tab; label: string; icon: typeof Table2 }[] = [
+  { key: "data", label: "Data & Koreksi", icon: Table2 },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "rekap", label: "Rekap Koreksi", icon: ListChecks },
+];
 
 // Query GraphQL (1 baris) untuk dipakai di perintah console.
 const GQL = `query ssdetailGangguan($dateFrom:Date!,$dateTo:Date!,$posko:[Int],$idUid:[Int],$idUp3:[Int],$idUlp:[Int],$idRegu:Int!,$media:String!,$namaRegional:String!,$isSelesai:Int!,$tanggal:String,$skip:Int,$take:Int,$requireTotalCount:Boolean,$sort:[SortInput],$filter:[FilterInput]){ssdetailGangguan(dateFrom:$dateFrom,dateTo:$dateTo,posko:$posko,idUid:$idUid,idUp3:$idUp3,idRegu:$idRegu,idUlp:$idUlp,namaRegional:$namaRegional,media:$media,isSelesai:$isSelesai,tanggal:$tanggal,skip:$skip,take:$take,requireTotalCount:$requireTotalCount,sort:$sort,filter:$filter){totalCount data{id no_laporan pembuat_laporan waktu_lapor waktu_response waktu_recovery durasi_dispatch_time durasi_response_time durasi_recovery_time durasi_perjalanan_time status_akhir is_marking referensi_marking idpel_nometer nama_pelapor alamat_pelapor no_telp_pelapor keterangan_pelapor media nama_posko jarak_closing dispatch_oleh diselesaikan_oleh penyebab tindakan kode_gangguan jenis_gangguan ket_batal batal_by ket_marking}}}`;
@@ -125,42 +129,6 @@ function extractRows(text: string): {
   return { rows: arr as GangguanRow[], error: null };
 }
 
-// ── Klasifikasi Non CT (Fase A) ─────────────────────────────────────────────────
-// "CT" = periksa meter/CT → DIBUANG. "Non CT" = perlu dikoreksi waktunya.
-const CT_KODE = ["99112", "99113", "13500", "99111", "11522", "99110"];
-const CT_TINDAKAN = ["tamper", "temper", "ct"];
-
-function classifyCt(row: GangguanRow): {
-  isCT: boolean;
-  reason: string | null;
-} {
-  const ket = String(row.keterangan_pelapor ?? "").toLowerCase();
-  if (ket.includes("periksa") || ket.includes("priksa"))
-    return { isCT: true, reason: "Pengaduan periksa meter" };
-  const tind = String(row.tindakan ?? "").toLowerCase();
-  const hitT = CT_TINDAKAN.find((t) => tind.includes(t));
-  if (hitT) return { isCT: true, reason: `Tindakan "${hitT}"` };
-  const kode = String(row.kode_gangguan ?? "").trim();
-  if (CT_KODE.includes(kode)) return { isCT: true, reason: `Kode ${kode}` };
-  return { isCT: false, reason: null };
-}
-
-type FilterMode = "non" | "ct" | "all";
-
-// Durasi APKT dalam DETIK → "2j 9m" / "9m 18d". (7758 dtk = 2:09:18)
-function fmtDurSec(sec: number): string {
-  if (!Number.isFinite(sec)) return "—";
-  const t = Math.max(0, Math.round(sec));
-  const h = Math.floor(t / 3600);
-  const m = Math.floor((t % 3600) / 60);
-  const s = t % 60;
-  const parts: string[] = [];
-  if (h) parts.push(`${h}j`);
-  if (m) parts.push(`${m}m`);
-  if (s && !h) parts.push(`${s}d`); // detik hanya bila < 1 jam
-  return parts.length ? parts.join(" ") : "0d";
-}
-
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -174,7 +142,7 @@ function firstOfMonthStr(): string {
 export default function DetailGangguanPage() {
   const [dateFrom, setDateFrom] = useState(firstOfMonthStr());
   const [dateTo, setDateTo] = useState(todayStr());
-  const [tab, setTab] = useState<"data" | "rekap">("data");
+  const [tab, setTab] = useState<Tab>("data");
 
   const [showCmd, setShowCmd] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -206,6 +174,10 @@ export default function DetailGangguanPage() {
   const [saveErr, setSaveErr] = useState<string | null>(null);
 
   const [rows, setRows] = useState<GangguanRow[]>([]);
+  /** Rentang yang benar-benar sedang dimuat — bukan isi kotak tanggal. Grafik
+   *  memakai ini supaya sumbunya tidak bergeser saat tanggal diubah tapi
+   *  tombol "Muat dari DB" belum ditekan. */
+  const [range, setRange] = useState({ from: firstOfMonthStr(), to: todayStr() });
   const [koreksiMap, setKoreksiMap] = useState<Map<string, KoreksiRow>>(
     new Map(),
   );
@@ -240,7 +212,10 @@ export default function DetailGangguanPage() {
         `/api/apkt/gangguan?from=${dateFrom}&to=${dateTo}`,
       );
       const data = await res.json();
-      if (res.ok && Array.isArray(data.rows)) setRows(data.rows);
+      if (res.ok && Array.isArray(data.rows)) {
+        setRows(data.rows);
+        setRange({ from: dateFrom, to: dateTo });
+      }
     } catch {
       /* tabel mungkin belum dibuat */
     } finally {
@@ -366,50 +341,23 @@ export default function DetailGangguanPage() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `gangguan-ampenan-${dateFrom}_${dateTo}.csv`;
+    a.download = `gangguan-ampenan-${range.from}_${range.to}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-4">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-lg shrink-0">
-            <Zap className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">
-              Detail Gangguan APKT — Ampenan
-            </h1>
-            <p className="text-sm text-white/75 mt-0.5">
-              Jalankan perintah di console APKT → paste JSON di sini → simpan ke
-              database
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Tabs */}
-      <div className="flex items-center gap-2">
-        <TabBtn active={tab === "data"} onClick={() => setTab("data")}>Data &amp; Koreksi</TabBtn>
-        <TabBtn active={tab === "rekap"} onClick={() => setTab("rekap")}>Rekap</TabBtn>
-      </div>
-
-      {tab === "rekap" && <RekapTab rows={nonRows} koreksiMap={koreksiMap} />}
-
-      {tab === "data" && (
-      <>
-      {/* Tanggal + perintah console */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 space-y-3">
+    // Judul halaman ada di topbar (PageTitle), jadi halaman ini langsung isi.
+    <div className="space-y-3 text-ink">
+      {/* Rentang tanggal — berlaku untuk seluruh tab, termasuk Dashboard */}
+      <div className={`${CARD} p-4 space-y-3`}>
         <div className="flex items-end gap-3 flex-wrap">
           <Field label="Dari tanggal">
             <input
               type="date"
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
-              className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className={FIELD}
             />
           </Field>
           <Field label="Sampai tanggal">
@@ -417,14 +365,10 @@ export default function DetailGangguanPage() {
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
-              className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className={FIELD}
             />
           </Field>
-          <button
-            onClick={loadSaved}
-            disabled={loading}
-            className="flex items-center gap-2 px-4 py-2 border border-[#E2E8F0] text-[#00897B] text-sm font-semibold rounded-lg hover:border-[#00897B] disabled:opacity-60 transition-colors"
-          >
+          <button onClick={loadSaved} disabled={loading} className={BTN_GHOST}>
             {loading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
@@ -432,84 +376,120 @@ export default function DetailGangguanPage() {
             )}
             Muat dari DB
           </button>
-        </div>
-
-        {/* Perintah console */}
-        <div>
-          <button
-            onClick={() => setShowCmd((v) => !v)}
-            className="flex items-center gap-1 text-xs font-semibold text-[#00897B] hover:text-[#00695C] transition-colors"
-          >
-            <ChevronDown
-              size={12}
-              className={`transition-transform ${showCmd ? "" : "-rotate-90"}`}
-            />
-            <Terminal size={12} /> Perintah Console (untuk tanggal {dateFrom}{" "}
-            s/d {dateTo})
-          </button>
-          {showCmd && (
-            <div className="mt-2 space-y-2">
-              <ol className="text-[11px] text-[#64748b] list-decimal list-inside space-y-0.5">
-                <li>
-                  Login & buka situs APKT, lalu buka <b>DevTools → Console</b>.
-                </li>
-                <li>
-                  Klik <b>Salin Perintah</b>, paste di console, tekan{" "}
-                  <b>Enter</b>.
-                </li>
-                <li>
-                  Tunggu sampai muncul{" "}
-                  <span className="font-mono text-[#00897B]">
-                    ✅ N baris siap
-                  </span>
-                  , lalu ketik{" "}
-                  <span className="font-mono text-[#00897B]">
-                    copy(apktData)
-                  </span>{" "}
-                  + Enter (menyalin ke clipboard).
-                </li>
-                <li>
-                  Kembali ke sini, paste di kotak bawah, klik{" "}
-                  <b>Simpan ke Database</b>.
-                </li>
-              </ol>
-              <div className="relative">
-                <pre className="bg-[#0d1b2a] text-[#e2e8f0] text-[10px] font-mono rounded-lg p-3 pr-24 overflow-x-auto whitespace-pre-wrap break-all max-h-32">
-                  {snippet}
-                </pre>
-                <button
-                  onClick={handleCopy}
-                  className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1 bg-[#00897B] hover:bg-[#00695C] text-white text-[11px] font-semibold rounded transition-colors"
-                >
-                  {copied ? (
-                    <>
-                      <Check size={12} /> Tersalin
-                    </>
-                  ) : (
-                    <>
-                      <Copy size={12} /> Salin Perintah
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
+          {rows.length > 0 && (
+            <span className="text-xs text-ink-muted ml-auto">
+              {rows.length} laporan tersimpan · {range.from} s/d {range.to}
+            </span>
           )}
         </div>
+
+        {/* Perintah console — hanya relevan saat menarik data baru */}
+        {tab === "data" && (
+          <div className="border-t border-line pt-3">
+            <button
+              onClick={() => setShowCmd((v) => !v)}
+              className="flex items-center gap-1 text-xs font-semibold text-navy-600 hover:text-navy-500 transition-colors"
+            >
+              <ChevronDown
+                size={12}
+                className={`transition-transform ${showCmd ? "" : "-rotate-90"}`}
+              />
+              <Terminal size={12} /> Perintah Console (untuk tanggal {dateFrom}{" "}
+              s/d {dateTo})
+            </button>
+            {showCmd && (
+              <div className="mt-2 space-y-2">
+                <ol className="text-[11px] text-ink-soft list-decimal list-inside space-y-0.5">
+                  <li>
+                    Login & buka situs APKT, lalu buka <b>DevTools → Console</b>.
+                  </li>
+                  <li>
+                    Klik <b>Salin Perintah</b>, paste di console, tekan{" "}
+                    <b>Enter</b>.
+                  </li>
+                  <li>
+                    Tunggu sampai muncul{" "}
+                    <span className="font-mono text-navy-600">
+                      ✅ N baris siap
+                    </span>
+                    , lalu ketik{" "}
+                    <span className="font-mono text-navy-600">
+                      copy(apktData)
+                    </span>{" "}
+                    + Enter (menyalin ke clipboard).
+                  </li>
+                  <li>
+                    Kembali ke sini, paste di kotak bawah, klik{" "}
+                    <b>Simpan ke Database</b>.
+                  </li>
+                </ol>
+                <div className="relative">
+                  <pre className="bg-navy-900 text-[#e2e8f0] text-[10px] font-mono rounded-xl p-3 pr-24 overflow-x-auto whitespace-pre-wrap break-all max-h-32">
+                    {snippet}
+                  </pre>
+                  <button
+                    onClick={handleCopy}
+                    className="absolute top-2 right-2 flex items-center gap-1 px-2.5 py-1 bg-navy-600 hover:bg-navy-500 text-white text-[11px] font-semibold rounded-lg transition-colors"
+                  >
+                    {copied ? (
+                      <>
+                        <Check size={12} /> Tersalin
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Salin Perintah
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Tabs */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {TABS.map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setTab(key)}
+            className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}
+          >
+            <Icon className="w-3.5 h-3.5" /> {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "dashboard" && (
+        <DashboardTab
+          items={classified}
+          koreksiMap={koreksiMap}
+          dateFrom={range.from}
+          dateTo={range.to}
+          mode={filterMode}
+          counts={counts}
+          onMode={setFilterMode}
+        />
+      )}
+
+      {tab === "rekap" && <RekapTab rows={nonRows} koreksiMap={koreksiMap} />}
+
+      {tab === "data" && (
+      <>
       {/* Pengaturan default koreksi */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">
+      <div className={`${CARD} p-4`}>
         <button
           onClick={() => setShowSettings((v) => !v)}
-          className="flex items-center gap-1 text-sm font-semibold text-[#1B2631] hover:text-[#00897B] transition-colors"
+          className="flex items-center gap-1.5 text-sm font-semibold text-ink hover:text-navy-600 transition-colors"
         >
           <ChevronDown
             size={14}
             className={`transition-transform ${showSettings ? "" : "-rotate-90"}`}
           />
-          <Settings size={14} className="text-[#00897B]" /> Pengaturan Default
+          <Settings size={14} className="text-navy-600" /> Pengaturan Default
           Koreksi
-          <span className="text-xs font-normal text-[#94a3b8] ml-1">
+          <span className="text-xs font-normal text-ink-muted ml-1">
             (durasi & korektor dipakai otomatis di modal)
           </span>
         </button>
@@ -518,9 +498,7 @@ export default function DetailGangguanPage() {
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
               {STEPS.map((s, i) => (
                 <div key={s.key} className="flex items-center gap-2">
-                  <label className="flex-1 text-xs text-[#1B2631]">
-                    {s.label}
-                  </label>
+                  <label className="flex-1 text-xs text-ink">{s.label}</label>
                   <input
                     type="number"
                     min={0}
@@ -536,26 +514,21 @@ export default function DetailGangguanPage() {
                         ),
                       )
                     }
-                    className="w-20 border border-[#E2E8F0] rounded-lg px-2 py-1 text-sm text-right text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B]"
+                    className={`${FIELD} w-20 text-right`}
                   />
-                  <span className="text-[10px] text-[#94a3b8] w-7">mnt</span>
+                  <span className="text-[10px] text-ink-muted w-7">mnt</span>
                 </div>
               ))}
             </div>
-            <div className="flex items-center gap-3 pt-2 border-t border-[#E2E8F0]">
-              <label className="text-xs text-[#64748b]">
-                Korektor default:
-              </label>
+            <div className="flex items-center gap-3 pt-3 border-t border-line">
+              <label className="text-xs text-ink-soft">Korektor default:</label>
               <input
                 value={setKorektor}
                 onChange={(e) => setSetKorektor(e.target.value)}
                 placeholder="Nama korektor"
-                className="w-44 border border-[#E2E8F0] rounded-lg px-2 py-1 text-sm text-[#1B2631] bg-white placeholder-[#94a3b8] focus:outline-none focus:border-[#00897B]"
+                className={`${FIELD} w-44`}
               />
-              <button
-                onClick={handleSaveSettings}
-                className="ml-auto flex items-center gap-1.5 px-3 py-1.5 bg-[#00897B] hover:bg-[#00695C] text-white text-xs font-semibold rounded-lg transition-colors"
-              >
+              <button onClick={handleSaveSettings} className={`${BTN_PRIMARY} ml-auto`}>
                 {settingsSaved ? (
                   <>
                     <Check className="w-3.5 h-3.5" /> Tersimpan
@@ -572,26 +545,22 @@ export default function DetailGangguanPage() {
       </div>
 
       {/* Paste JSON */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">
-        <div className="flex items-center justify-between mb-3">
+      <div className={`${CARD} p-4`}>
+        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
           <div className="flex items-center gap-2">
-            <FileJson className="w-4 h-4 text-[#00897B]" />
-            <span className="text-sm font-semibold text-[#1B2631]">
+            <FileJson className="w-4 h-4 text-navy-600" />
+            <span className="text-sm font-semibold text-ink">
               Paste JSON dari Console
             </span>
             {parsed.length > 0 && (
-              <span className="text-xs text-emerald-600">
+              <span className="text-xs text-green-700">
                 ✓ {parsed.length} baris terdeteksi
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
             {parsed.length > 0 && !parseErr && (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="flex items-center gap-1.5 px-3 py-1.5 bg-[#00897B] hover:bg-[#00695C] disabled:opacity-60 text-white text-xs font-semibold rounded-lg transition-colors"
-              >
+              <button onClick={handleSave} disabled={saving} className={BTN_PRIMARY}>
                 {saving ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 ) : (
@@ -603,7 +572,7 @@ export default function DetailGangguanPage() {
             {input && (
               <button
                 onClick={() => setInput("")}
-                className="p-1 rounded-lg text-[#94a3b8] hover:text-red-500 hover:bg-red-50 transition-colors"
+                className="p-1 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
@@ -616,85 +585,56 @@ export default function DetailGangguanPage() {
           onChange={(e) => setInput(e.target.value)}
           placeholder='Tempel array JSON di sini, mis. [ { "id": ..., "no_laporan": "G...", ... }, ... ]'
           rows={4}
-          className="w-full bg-[#0d1b2a] border border-[#1e3552] rounded-lg p-3 font-mono text-xs text-[#e2e8f0] placeholder-[#334155] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 resize-y"
+          className="w-full rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 resize-y"
           spellCheck={false}
         />
 
-        {parseErr && (
-          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-            <p className="text-[11px] text-red-600 font-mono">{parseErr}</p>
-          </div>
-        )}
-        {saveErr && (
-          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-            <AlertCircle className="w-3.5 h-3.5 text-red-500 shrink-0" />
-            <p className="text-[11px] text-red-600">{saveErr}</p>
-          </div>
-        )}
-        {saveMsg && (
-          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-emerald-50 border border-emerald-200 rounded-lg">
-            <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <p className="text-[11px] text-emerald-700">{saveMsg}</p>
-          </div>
-        )}
+        {parseErr && <Peringatan nada="merah" mono>{parseErr}</Peringatan>}
+        {saveErr && <Peringatan nada="merah">{saveErr}</Peringatan>}
+        {saveMsg && <Peringatan nada="hijau">{saveMsg}</Peringatan>}
       </div>
 
       {/* Tabel data tersimpan */}
       {rows.length > 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
-          <div className="flex items-center gap-3 px-4 py-3 border-b border-[#E2E8F0] flex-wrap">
-            <CalendarDays className="w-4 h-4 text-[#00897B] shrink-0" />
-            <span className="text-sm font-semibold text-[#1B2631]">
-              {rows.length} tersimpan · {dateFrom} s/d {dateTo}
+        <div className={`${CARD} overflow-hidden`}>
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-line flex-wrap">
+            <CalendarDays className="w-4 h-4 text-navy-600 shrink-0" />
+            <span className="text-sm font-semibold text-ink mr-1">
+              {rows.length} tersimpan · {range.from} s/d {range.to}
             </span>
 
-            {/* Toggle Non CT / CT / Semua */}
-            <div className="flex items-center gap-1">
-              <FilterBtn
-                active={filterMode === "non"}
-                onClick={() => setFilterMode("non")}
-                cls="bg-emerald-600 border-emerald-600"
+            {/* Toggle Non CT / CT / Semua — state yang sama dengan tab Dashboard */}
+            {KATEGORI.map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilterMode(key)}
+                className={`${CHIP} ${filterMode === key ? CHIP_ON : CHIP_OFF}`}
               >
-                Non CT · {counts.non}
-              </FilterBtn>
-              <FilterBtn
-                active={filterMode === "ct"}
-                onClick={() => setFilterMode("ct")}
-                cls="bg-gray-500 border-gray-500"
-              >
-                CT · {counts.ct}
-              </FilterBtn>
-              <FilterBtn
-                active={filterMode === "all"}
-                onClick={() => setFilterMode("all")}
-                cls="bg-[#00897B] border-[#00897B]"
-              >
-                Semua · {counts.all}
-              </FilterBtn>
-            </div>
+                {label}
+                <span className="opacity-70">
+                  {key === "non" ? counts.non : key === "ct" ? counts.ct : counts.all}
+                </span>
+              </button>
+            ))}
 
             <div className="relative ml-auto">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94a3b8]" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-muted" />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Cari..."
-                className="pl-8 pr-3 py-1.5 text-xs border border-[#E2E8F0] rounded-lg focus:outline-none focus:border-[#00897B] w-48 text-[#1B2631] placeholder-[#94a3b8]"
+                className="h-8 w-48 pl-8 pr-3 rounded-xl border border-line bg-white text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 transition-colors"
               />
             </div>
             {search && (
               <button
                 onClick={() => setSearch("")}
-                className="p-1 rounded text-[#94a3b8] hover:text-[#1B2631]"
+                className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface transition-colors"
               >
                 <X className="w-3 h-3" />
               </button>
             )}
-            <button
-              onClick={handleDownloadCsv}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-white border border-[#E2E8F0] text-[#64748b] hover:text-[#00897B] hover:border-[#00897B] transition-colors"
-            >
+            <button onClick={handleDownloadCsv} className={BTN_GHOST}>
               <Download className="w-3.5 h-3.5" /> CSV
             </button>
           </div>
@@ -703,56 +643,52 @@ export default function DetailGangguanPage() {
             <table className="w-full text-xs border-collapse">
               <thead className="sticky top-0 z-10">
                 <tr>
-                  <th className="py-2.5 px-3 text-left bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] w-8">
-                    #
-                  </th>
-                  <th className="py-2.5 px-3 text-left bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] whitespace-nowrap">
-                    Kategori
-                  </th>
+                  <th className={`${TH} w-8`}>#</th>
+                  <th className={`${TH} whitespace-nowrap`}>Kategori</th>
                   {COLS.map((c) => (
                     <th
                       key={c.key as string}
                       onClick={() => handleSort(c.key as string)}
-                      className="py-2.5 px-2 text-left bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] cursor-pointer hover:bg-[#b2dfdb] transition-colors select-none"
+                      className={`${TH} px-2 cursor-pointer hover:bg-navy-100 transition-colors select-none`}
                     >
                       <div className="flex items-center gap-1">
                         <span>{c.label}</span>
                         {sortKey === (c.key as string) ? (
                           sortDir === "asc" ? (
-                            <ChevronUp className="w-3 h-3 text-[#00897B]" />
+                            <ChevronUp className="w-3 h-3 text-navy-600" />
                           ) : (
-                            <ChevronDown className="w-3 h-3 text-[#00897B]" />
+                            <ChevronDown className="w-3 h-3 text-navy-600" />
                           )
                         ) : (
-                          <ChevronsUpDown className="w-3 h-3 text-[#b2dfdb]" />
+                          <ChevronsUpDown className="w-3 h-3 text-navy-300" />
                         )}
                       </div>
                     </th>
                   ))}
-                  <th className="py-2.5 px-3 text-right bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] whitespace-nowrap">
-                    Aksi
-                  </th>
+                  <th className={`${TH} text-right whitespace-nowrap`}>Aksi</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(({ row, ct }, i) => (
                   <tr
                     key={row.apkt_id ?? row.id ?? i}
-                    className="border-t border-[#E2E8F0] hover:bg-[#F4F6F8] transition-colors"
+                    className="border-t border-line hover:bg-surface transition-colors"
                   >
-                    <td className="py-2 px-3 text-[#94a3b8] text-right tabular-nums">
+                    <td className="py-2 px-3 text-ink-muted text-right tabular-nums">
                       {i + 1}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
+                      {/* Navy vs abu, bukan hijau vs abu: hijau dikunci untuk
+                          status, sedangkan ini kategori. */}
                       {ct.isCT ? (
                         <span
-                          className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-gray-100 text-gray-500"
+                          className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-surface text-ink-muted"
                           title={ct.reason ?? ""}
                         >
                           CT
                         </span>
                       ) : (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold bg-emerald-50 text-emerald-700">
+                        <span className="inline-block px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-navy-50 text-navy-600">
                           Non CT
                         </span>
                       )}
@@ -765,32 +701,30 @@ export default function DetailGangguanPage() {
                           className={`py-2 px-2 align-top break-words ${c.numeric ? "text-right tabular-nums whitespace-nowrap" : ""}`}
                         >
                           {v === null || v === undefined || v === "" ? (
-                            <span className="text-[#C7D2DA] italic">—</span>
+                            <span className="text-ink-muted italic">—</span>
                           ) : c.numeric && Number.isFinite(Number(v)) ? (
-                            <span className="text-[#1B2631]">
+                            <span className="text-ink">
                               {String(v)}
-                              <span className="text-[10px] text-[#94a3b8] ml-1">
+                              <span className="text-[10px] text-ink-muted ml-1">
                                 ({fmtDurSec(Number(v))})
                               </span>
                             </span>
                           ) : (
-                            <span className="text-[#1B2631]">{String(v)}</span>
+                            <span className="text-ink">{String(v)}</span>
                           )}
                         </td>
                       );
                     })}
                     <td className="py-2 px-3 whitespace-nowrap text-right">
                       {(() => {
-                        const done = koreksiMap.has(
-                          String(row.no_laporan ?? ""),
-                        );
+                        const done = koreksiMap.has(String(row.no_laporan ?? ""));
                         return (
                           <button
                             onClick={() => setSelectedRow(row)}
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-semibold transition-colors ${
+                            className={`inline-flex items-center gap-1 h-7 px-2 rounded-lg text-[11px] font-semibold transition-colors ${
                               done
-                                ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                                : "bg-[#00897B] text-white hover:bg-[#00695C]"
+                                ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
+                                : "bg-navy-600 text-white hover:bg-navy-500"
                             }`}
                           >
                             {done ? (
@@ -814,7 +748,7 @@ export default function DetailGangguanPage() {
         </div>
       ) : (
         !loading && (
-          <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] py-16 flex flex-col items-center gap-3 text-[#94a3b8]">
+          <div className={`${CARD} py-16 flex flex-col items-center gap-3 text-ink-muted`}>
             <Zap className="w-10 h-10 opacity-30" />
             <p className="text-sm font-medium">
               Belum ada data tersimpan untuk rentang ini
@@ -842,41 +776,32 @@ export default function DetailGangguanPage() {
   );
 }
 
-function TabBtn({ active, onClick, children }: {
-  active: boolean; onClick: () => void; children: React.ReactNode;
-}) {
-  return (
-    <button onClick={onClick}
-      className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-        active ? "bg-[#00897B] text-white shadow-sm" : "bg-white text-[#64748b] border border-[#E2E8F0] hover:text-[#00897B]"
-      }`}>
-      {children}
-    </button>
-  );
-}
-
-function FilterBtn({
-  active,
-  onClick,
-  cls,
+/** Bilah pesan di bawah kotak paste — merah untuk gagal, hijau untuk berhasil. */
+function Peringatan({
+  nada,
+  mono,
   children,
 }: {
-  active: boolean;
-  onClick: () => void;
-  cls: string;
+  nada: "merah" | "hijau";
+  mono?: boolean;
   children: React.ReactNode;
 }) {
+  const merah = nada === "merah";
   return (
-    <button
-      onClick={onClick}
-      className={`px-2.5 py-1 rounded-full text-xs font-semibold border transition-colors ${
-        active
-          ? `${cls} text-white`
-          : "bg-white border-[#E2E8F0] text-[#64748b] hover:border-[#00897B] hover:text-[#00897B]"
+    <div
+      className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl border ${
+        merah ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"
       }`}
     >
-      {children}
-    </button>
+      {merah ? (
+        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
+      ) : (
+        <Check className="w-3.5 h-3.5 text-green-700 shrink-0" />
+      )}
+      <p className={`text-[11px] ${merah ? "text-red-700" : "text-green-700"} ${mono ? "font-mono" : ""}`}>
+        {children}
+      </p>
+    </div>
   );
 }
 
@@ -889,7 +814,7 @@ function Field({
 }) {
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-xs font-semibold text-[#64748b]">{label}</span>
+      <span className="text-xs font-semibold text-ink-soft">{label}</span>
       {children}
     </div>
   );
