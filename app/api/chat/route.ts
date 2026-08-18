@@ -14,13 +14,20 @@ const API_KEY = process.env.CHAT_API_KEY ?? process.env.GEMINI_API_KEY ?? "";
 // otomatis lanjut ke model berikutnya. CHAT_MODELS (koma) atau CHAT_MODEL (tunggal).
 const MODELS = (process.env.CHAT_MODELS ?? process.env.CHAT_MODEL ?? "gemini-2.5-flash")
   .split(",").map((s) => s.trim()).filter(Boolean);
-const MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS ?? 2048);
+// Model penalar (gpt-oss, o-series, Gemini thinking) menghabiskan sebagian
+// anggaran ini untuk token penalaran yang TIDAK ikut tampil di jawaban. Diukur
+// 2026-08-18 pada gpt-oss-120b: pertanyaan dokumen dengan 2048 berhenti di
+// tengah kalimat (finish_reason "length"), dengan 4096 selesai utuh memakai
+// ~3.400 token. Karena alur cari_standar memang menuntut jawaban lengkap,
+// bawaannya 4096 — bukan angka pilih-pilih, itu batas terukurnya.
+const MAX_TOKENS = Number(process.env.CHAT_MAX_TOKENS ?? 4096);
 // Timeout per percobaan model. Jika tak ada respons sampai sekian → pindah model.
 const TIMEOUT_MS = Number(process.env.CHAT_TIMEOUT_MS ?? 15000);
 const ULP_VALID = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
-// reasoning_effort HANYA didukung model "thinking" Gemini (2.5/3.x). Provider lain
-// (Groq llama-3.3, Ollama qwen2.5, dll) menolak param ini → jangan dikirim.
+// reasoning_effort HANYA dikirim untuk model "thinking" Gemini (2.5/3.x).
+// Provider lain menolak param ini (Ollama qwen2.5) atau memaknainya berbeda —
+// gpt-oss di Groq menerimanya, tapi tidak dikirim karena bawaannya sudah pas.
 function isThinking(model: string): boolean {
   if (!/gemini/i.test(model)) return false;
   return /2\.5|gemini-3|flash-latest/.test(model);
