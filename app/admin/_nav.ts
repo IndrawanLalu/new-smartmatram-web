@@ -59,7 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target },
       { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench },
       { href: "/admin/padam-apkt",            label: "Rekap Padam APKT",     icon: ZapOff },
-      { href: "/admin/detail-gangguan",       label: "Detail Gangguan APKT", icon: TriangleAlert },
+      { href: "/admin/detail-gangguan",       label: "Kode G APKT",          icon: TriangleAlert },
       { href: "/admin/rekap-produktivitas",   label: "Rekap Produktivitas",  icon: CalendarDays },
     ],
   },

@@ -7,7 +7,6 @@ import {
   X,
   Download,
   Loader2,
-  AlertCircle,
   CalendarDays,
   ChevronDown,
   ChevronUp,
@@ -17,7 +16,6 @@ import {
   Terminal,
   Copy,
   Check,
-  FileJson,
   Clock,
   Settings,
   LayoutDashboard,
@@ -28,6 +26,8 @@ import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/
 import KoreksiModal from "./_components/KoreksiModal";
 import RekapTab from "./_components/RekapTab";
 import DashboardTab from "./_components/DashboardTab";
+import ImportPanel from "./_components/ImportPanel";
+import Paginasi from "./_components/Paginasi";
 import {
   STEPS,
   loadSettings,
@@ -63,6 +63,10 @@ const NUMERIC_KEYS = new Set(
   COLS.filter((c) => c.numeric).map((c) => c.key as string),
 );
 
+/** Baris yang dirender sekaligus. Datanya tetap lengkap di memori — yang
+ *  dibatasi hanya berapa banyak yang jadi DOM. */
+const PER_HALAMAN = 50;
+
 /** Sel kepala tabel — dipakai belasan kali di satu tabel. */
 const TH =
   "py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line";
@@ -96,37 +100,6 @@ function buildSnippet(from: string, to: string): string {
     tanggal: "",
   };
   return `fetch("https://new-apktservice.pln.co.id:32183/graphql",{method:"POST",headers:{accept:"application/json","content-type":"application/json"},body:JSON.stringify({query:${JSON.stringify(GQL)},variables:${JSON.stringify(vars)}})}).then(r=>r.json()).then(d=>{const a=d.data.ssdetailGangguan.data;window.apktData=JSON.stringify(a);console.log("✅ "+a.length+" baris siap. Sekarang ketik:  copy(apktData)  lalu Enter, lalu paste di Smart.");}).catch(e=>console.error(e));`;
-}
-
-function extractRows(text: string): {
-  rows: GangguanRow[];
-  error: string | null;
-} {
-  if (!text.trim()) return { rows: [], error: null };
-  let p: unknown;
-  try {
-    p = JSON.parse(text);
-  } catch (e) {
-    return { rows: [], error: (e as Error).message };
-  }
-  let arr: unknown = p;
-  if (!Array.isArray(arr)) {
-    const o = p as Record<string, unknown>;
-    arr =
-      (o?.data as { ssdetailGangguan?: { data?: unknown } })?.ssdetailGangguan
-        ?.data ??
-      (o?.ssdetailGangguan as { data?: unknown })?.data ??
-      o?.data ??
-      o?.rows ??
-      null;
-  }
-  if (!Array.isArray(arr))
-    return {
-      rows: [],
-      error:
-        "Tidak menemukan array data. Tempel hasil ssdetailGangguan.data atau seluruh respons JSON.",
-    };
-  return { rows: arr as GangguanRow[], error: null };
 }
 
 function todayStr(): string {
@@ -168,11 +141,6 @@ export default function DetailGangguanPage() {
     setTimeout(() => setSettingsSaved(false), 2000);
   }
 
-  const [input, setInput] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
-  const [saveErr, setSaveErr] = useState<string | null>(null);
-
   const [rows, setRows] = useState<GangguanRow[]>([]);
   /** Rentang yang benar-benar sedang dimuat — bukan isi kotak tanggal. Grafik
    *  memakai ini supaya sumbunya tidak bergeser saat tanggal diubah tapi
@@ -187,8 +155,10 @@ export default function DetailGangguanPage() {
   const [filterMode, setFilterMode] = useState<FilterMode>("non");
   const [sortKey, setSortKey] = useState<string>("durasi_response_time");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [halaman, setHalaman] = useState(1);
 
   function handleSort(key: string) {
+    setHalaman(1);
     if (sortKey === key) setSortDir((d) => (d === "desc" ? "asc" : "desc"));
     else {
       setSortKey(key);
@@ -196,10 +166,6 @@ export default function DetailGangguanPage() {
     }
   }
 
-  const { rows: parsed, error: parseErr } = useMemo(
-    () => extractRows(input),
-    [input],
-  );
   const snippet = useMemo(
     () => buildSnippet(dateFrom, dateTo),
     [dateFrom, dateTo],
@@ -215,6 +181,7 @@ export default function DetailGangguanPage() {
       if (res.ok && Array.isArray(data.rows)) {
         setRows(data.rows);
         setRange({ from: dateFrom, to: dateTo });
+        setHalaman(1);
       }
     } catch {
       /* tabel mungkin belum dibuat */
@@ -251,36 +218,6 @@ export default function DetailGangguanPage() {
       setTimeout(() => setCopied(false), 2000);
     } catch {
       /* abaikan */
-    }
-  }
-
-  async function handleSave() {
-    if (parsed.length === 0 || parseErr) return;
-    setSaving(true);
-    setSaveMsg(null);
-    setSaveErr(null);
-    try {
-      const res = await fetch("/api/apkt/gangguan", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: parsed }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setSaveErr(
-          `${data.error ?? "Gagal menyimpan"}${data.hint ? " — " + data.hint : ""}`,
-        );
-        return;
-      }
-      setSaveMsg(
-        `${data.saved} laporan tersimpan${data.deduped ? ` (${data.deduped} duplikat dilewati)` : ""}`,
-      );
-      setInput("");
-      await loadSaved();
-    } catch (e) {
-      setSaveErr((e as Error).message);
-    } finally {
-      setSaving(false);
     }
   }
 
@@ -326,6 +263,16 @@ export default function DetailGangguanPage() {
     });
     return list;
   }, [classified, search, filterMode, sortKey, sortDir]);
+
+  /** Halaman dijepit di sini, bukan lewat efek: filterMode juga bisa berubah
+   *  dari tab Dashboard, dan tanpa jepitan ini tabel akan tampil kosong saat
+   *  halaman yang sedang dibuka melewati ujung hasil filter yang baru. */
+  const totalHalaman = Math.max(1, Math.ceil(filtered.length / PER_HALAMAN));
+  const halamanAman = Math.min(halaman, totalHalaman);
+  const halamanIni = useMemo(
+    () => filtered.slice((halamanAman - 1) * PER_HALAMAN, halamanAman * PER_HALAMAN),
+    [filtered, halamanAman],
+  );
 
   function handleDownloadCsv() {
     if (filtered.length === 0) return;
@@ -544,55 +491,8 @@ export default function DetailGangguanPage() {
         )}
       </div>
 
-      {/* Paste JSON */}
-      <div className={`${CARD} p-4`}>
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <FileJson className="w-4 h-4 text-navy-600" />
-            <span className="text-sm font-semibold text-ink">
-              Paste JSON dari Console
-            </span>
-            {parsed.length > 0 && (
-              <span className="text-xs text-green-700">
-                ✓ {parsed.length} baris terdeteksi
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {parsed.length > 0 && !parseErr && (
-              <button onClick={handleSave} disabled={saving} className={BTN_PRIMARY}>
-                {saving ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Save className="w-3.5 h-3.5" />
-                )}
-                {saving ? "Menyimpan..." : "Simpan ke Database"}
-              </button>
-            )}
-            {input && (
-              <button
-                onClick={() => setInput("")}
-                className="p-1 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder='Tempel array JSON di sini, mis. [ { "id": ..., "no_laporan": "G...", ... }, ... ]'
-          rows={4}
-          className="w-full rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 resize-y"
-          spellCheck={false}
-        />
-
-        {parseErr && <Peringatan nada="merah" mono>{parseErr}</Peringatan>}
-        {saveErr && <Peringatan nada="merah">{saveErr}</Peringatan>}
-        {saveMsg && <Peringatan nada="hijau">{saveMsg}</Peringatan>}
-      </div>
+      {/* Impor data: unggah Excel APKT, atau tempel JSON dari console */}
+      <ImportPanel dateFrom={dateFrom} dateTo={dateTo} onImported={loadSaved} />
 
       {/* Tabel data tersimpan */}
       {rows.length > 0 ? (
@@ -607,7 +507,7 @@ export default function DetailGangguanPage() {
             {KATEGORI.map(({ key, label }) => (
               <button
                 key={key}
-                onClick={() => setFilterMode(key)}
+                onClick={() => { setFilterMode(key); setHalaman(1); }}
                 className={`${CHIP} ${filterMode === key ? CHIP_ON : CHIP_OFF}`}
               >
                 {label}
@@ -621,14 +521,14 @@ export default function DetailGangguanPage() {
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-ink-muted" />
               <input
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => { setSearch(e.target.value); setHalaman(1); }}
                 placeholder="Cari..."
                 className="h-8 w-48 pl-8 pr-3 rounded-xl border border-line bg-white text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 transition-colors"
               />
             </div>
             {search && (
               <button
-                onClick={() => setSearch("")}
+                onClick={() => { setSearch(""); setHalaman(1); }}
                 className="p-1 rounded-lg text-ink-muted hover:text-ink hover:bg-surface transition-colors"
               >
                 <X className="w-3 h-3" />
@@ -669,13 +569,13 @@ export default function DetailGangguanPage() {
                 </tr>
               </thead>
               <tbody>
-                {filtered.map(({ row, ct }, i) => (
+                {halamanIni.map(({ row, ct }, i) => (
                   <tr
-                    key={row.apkt_id ?? row.id ?? i}
+                    key={String(row.no_laporan ?? i)}
                     className="border-t border-line hover:bg-surface transition-colors"
                   >
                     <td className="py-2 px-3 text-ink-muted text-right tabular-nums">
-                      {i + 1}
+                      {(halamanAman - 1) * PER_HALAMAN + i + 1}
                     </td>
                     <td className="py-2 px-3 whitespace-nowrap">
                       {/* Navy vs abu, bukan hijau vs abu: hijau dikunci untuk
@@ -745,6 +645,14 @@ export default function DetailGangguanPage() {
               </tbody>
             </table>
           </div>
+
+          <Paginasi
+            total={filtered.length}
+            halaman={halamanAman}
+            perHalaman={PER_HALAMAN}
+            onGanti={setHalaman}
+            satuan="laporan"
+          />
         </div>
       ) : (
         !loading && (
@@ -754,7 +662,7 @@ export default function DetailGangguanPage() {
               Belum ada data tersimpan untuk rentang ini
             </p>
             <p className="text-xs opacity-70">
-              Salin perintah console di atas, jalankan, lalu paste hasilnya
+              Unduh Excel dari APKT, lalu unggah di kotak &quot;Impor Data APKT&quot; di atas
             </p>
           </div>
         )
@@ -772,35 +680,6 @@ export default function DetailGangguanPage() {
           onSaved={loadKoreksi}
         />
       )}
-    </div>
-  );
-}
-
-/** Bilah pesan di bawah kotak paste — merah untuk gagal, hijau untuk berhasil. */
-function Peringatan({
-  nada,
-  mono,
-  children,
-}: {
-  nada: "merah" | "hijau";
-  mono?: boolean;
-  children: React.ReactNode;
-}) {
-  const merah = nada === "merah";
-  return (
-    <div
-      className={`mt-2 flex items-center gap-2 px-3 py-2 rounded-xl border ${
-        merah ? "bg-red-50 border-red-200" : "bg-green-50 border-green-200"
-      }`}
-    >
-      {merah ? (
-        <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
-      ) : (
-        <Check className="w-3.5 h-3.5 text-green-700 shrink-0" />
-      )}
-      <p className={`text-[11px] ${merah ? "text-red-700" : "text-green-700"} ${mono ? "font-mono" : ""}`}>
-        {children}
-      </p>
     </div>
   );
 }

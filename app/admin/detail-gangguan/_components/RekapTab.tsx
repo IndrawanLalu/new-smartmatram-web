@@ -1,10 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { CheckCircle2, Clock, ListChecks, PencilLine, TrendingDown } from "lucide-react";
 import StatTile from "@/app/admin/_components/StatTile";
 import { CARD, DISPLAY, EYEBROW } from "@/app/admin/_ui";
 import { fmtMenit, type KoreksiRow } from "../_lib/gangguan";
+import Paginasi from "./Paginasi";
 
 interface GangguanLite {
   no_laporan?: string;
@@ -16,6 +17,9 @@ interface Props {
   rows: GangguanLite[]; // semua laporan Non CT
   koreksiMap: Map<string, KoreksiRow>;
 }
+
+/** Daftar koreksi ikut tumbuh seumur pemakaian — jangan dirender sekaligus. */
+const PER_HALAMAN = 50;
 
 const TH =
   "py-2.5 px-2 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line whitespace-nowrap";
@@ -52,6 +56,18 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
   }, [rows, koreksiMap]);
 
   const koreksiList = useMemo(() => [...koreksiMap.values()], [koreksiMap]);
+
+  const [halaman, setHalaman] = useState(1);
+  // Dijepit, bukan direset lewat efek: daftar bisa menyusut saat koreksi
+  // dimuat ulang, dan halaman yang melewati ujung akan tampil kosong.
+  const halamanAman = Math.min(
+    halaman,
+    Math.max(1, Math.ceil(koreksiList.length / PER_HALAMAN)),
+  );
+  const halamanIni = useMemo(
+    () => koreksiList.slice((halamanAman - 1) * PER_HALAMAN, halamanAman * PER_HALAMAN),
+    [koreksiList, halamanAman],
+  );
 
   return (
     <div className="space-y-3">
@@ -102,9 +118,9 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {koreksiList.map((k, i) => (
+                {halamanIni.map((k, i) => (
                   <tr key={k.no_laporan} className="border-t border-line hover:bg-surface transition-colors">
-                    <td className="py-2 px-2 text-ink-muted text-right tabular-nums">{i + 1}</td>
+                    <td className="py-2 px-2 text-ink-muted text-right tabular-nums">{(halamanAman - 1) * PER_HALAMAN + i + 1}</td>
                     <td className="py-2 px-2 font-mono text-ink whitespace-nowrap">{k.no_laporan}</td>
                     <td className="py-2 px-2 text-ink-muted line-through whitespace-nowrap">{fmtMenit(Number(k.rpt_asli) || 0)}</td>
                     <td className="py-2 px-2 font-semibold text-green-700 whitespace-nowrap">{fmtMenit(Number(k.rpt_koreksi) || 0)}</td>
@@ -120,6 +136,14 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
             </table>
           </div>
         )}
+
+        <Paginasi
+          total={koreksiList.length}
+          halaman={halamanAman}
+          perHalaman={PER_HALAMAN}
+          onGanti={setHalaman}
+          satuan="koreksi"
+        />
       </div>
     </div>
   );
