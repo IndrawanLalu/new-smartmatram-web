@@ -29,9 +29,11 @@ const iso = (d: Date) =>
 interface KonsolPanelProps {
   /** ULP user; UP3 (null) bebas memilih posko. */
   unit: string | null;
+  /** Terbuka sejak awal — dipakai saat panel ini jadi isi utama sebuah tab. */
+  bukaAwal?: boolean;
 }
 
-export default function KonsolPanel({ unit }: KonsolPanelProps) {
+export default function KonsolPanel({ unit, bukaAwal = false }: KonsolPanelProps) {
   const hariIni = useMemo(() => new Date(), []);
   const [from, setFrom] = useState(() => iso(new Date(hariIni.getFullYear(), hariIni.getMonth(), 1)));
   const [to, setTo] = useState(() => iso(hariIni));
@@ -39,9 +41,7 @@ export default function KonsolPanel({ unit }: KonsolPanelProps) {
   const poskoTersedia = unit ? POSKO_MAP.filter((p) => p.ulp === unit) : POSKO_MAP;
   const [idPosko, setIdPosko] = useState(poskoTersedia[0]?.idPosko ?? 441501);
   const [tersalin, setTersalin] = useState(false);
-  /** Tertutup secara bawaan — perintahnya hanya dipakai sesekali saat menarik
-   *  data, sementara ruang layar di halaman ini lebih berharga untuk dashboard. */
-  const [buka, setBuka] = useState(false);
+  const [buka, setBuka] = useState(bukaAwal);
 
   const snippet = useMemo(() => buildSnippet(from, to, idPosko), [from, to, idPosko]);
 
@@ -72,13 +72,6 @@ export default function KonsolPanel({ unit }: KonsolPanelProps) {
 
       {!buka ? null : (
       <div className="px-4 pb-4 border-t border-line pt-3">
-      <div className="flex items-center justify-end mb-3">
-        <button onClick={salin} className={BTN_GHOST}>
-          {tersalin ? <Check size={14} className="text-green-700" /> : <Copy size={14} />}
-          {tersalin ? "Tersalin" : "Salin Perintah"}
-        </button>
-      </div>
-
       <div className="flex flex-wrap items-end gap-3 mb-3">
         <div>
           <p className={EYEBROW}>Dari</p>
@@ -101,6 +94,11 @@ export default function KonsolPanel({ unit }: KonsolPanelProps) {
             ))}
           </select>
         </div>
+        <div className="flex-1" />
+        <button onClick={salin} className={BTN_GHOST}>
+          {tersalin ? <Check size={14} className="text-green-700" /> : <Copy size={14} />}
+          {tersalin ? "Tersalin" : "Salin Perintah"}
+        </button>
       </div>
 
       <ol className="text-[11px] text-ink-soft space-y-1 mb-3 list-decimal list-inside">
@@ -110,17 +108,13 @@ export default function KonsolPanel({ unit }: KonsolPanelProps) {
           Ketik <code className="px-1 py-0.5 rounded bg-surface border border-line font-mono">copy(yantekData)</code>{" "}
           lalu Enter — hasilnya masuk clipboard.
         </li>
-        <li>Tempel di kotak <b>Paste JSON</b> di bawah, lalu Simpan.</li>
+        <li>Tempel di kotak <b>Tempel Hasil JSON</b> di bawah, lalu Simpan.</li>
       </ol>
 
       <pre className="max-h-28 overflow-auto rounded-xl border border-line bg-surface p-3 text-[10px] font-mono text-ink-soft whitespace-pre-wrap break-all">
         {snippet}
       </pre>
 
-      <p className="text-[11px] text-ink-muted mt-2">
-        Hasil rentang tanggal otomatis dipecah per hari saat disimpan, memakai kolom{" "}
-        <code className="font-mono">waktu_lapor</code>.
-      </p>
       </div>
       )}
     </div>

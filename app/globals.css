@@ -218,3 +218,75 @@ body {
 ::-webkit-scrollbar-track { background: #0a1628; }
 ::-webkit-scrollbar-thumb { background: #1e3552; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #2d4a6b; }
+
+/* ── Papan Juara Yantek ───────────────────────────────────────────────────────
+   Panggung kompetisi petugas. Semua gerakan murni CSS supaya tidak ada
+   library animasi baru; angka besar saja yang dihitung rAF di React.
+   Aturan yang dipegang: gerakan hanya untuk MENGANTAR mata (podium naik dari
+   bawah, juara muncul terakhir), bukan hiasan yang berulang tanpa henti —
+   kecuali kilau emas yang sengaja lambat & samar sebagai penanda peringkat 1. */
+
+/* Balok podium tumbuh dari lantai. Tinggi finalnya lewat --podium-h supaya
+   satu keyframe melayani tiga ketinggian yang berbeda. */
+@keyframes smt-podium-rise {
+  from { height: 0; opacity: 0; }
+  to   { height: var(--podium-h); opacity: 1; }
+}
+
+/* Kartu/baris juara: naik pelan sambil membesar sedikit. */
+@keyframes smt-juara-pop {
+  from { opacity: 0; transform: translateY(18px) scale(0.94); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Mahkota juara 1 mengambang halus. */
+@keyframes smt-juara-float {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-5px); }
+}
+
+/* Kilau diagonal menyapu kartu emas. Jeda panjang di akhir siklus supaya
+   terasa sebagai kilatan sesekali, bukan animasi berputar. */
+@keyframes smt-juara-shine {
+  0%        { transform: translateX(-140%) skewX(-18deg); opacity: 0; }
+  8%        { opacity: 0.9; }
+  26%       { transform: translateX(240%) skewX(-18deg); opacity: 0; }
+  100%      { transform: translateX(240%) skewX(-18deg); opacity: 0; }
+}
+
+/* Titik cahaya di sekitar avatar juara 1. */
+@keyframes smt-juara-sparkle {
+  0%, 100% { opacity: 0; transform: scale(0.4); }
+  50%      { opacity: 1; transform: scale(1); }
+}
+
+/* Cincin denyut di belakang avatar juara 1. */
+@keyframes smt-juara-halo {
+  0%   { opacity: 0.55; transform: scale(0.9); }
+  70%  { opacity: 0;    transform: scale(1.5); }
+  100% { opacity: 0;    transform: scale(1.5); }
+}
+
+/* Bilah skor terisi dari kiri. Lebar akhir lewat --bar-w. */
+@keyframes smt-bar-fill {
+  from { width: 0; }
+  to   { width: var(--bar-w); }
+}
+
+.animate-podium-rise  { animation: smt-podium-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-juara-pop    { animation: smt-juara-pop 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.animate-juara-float  { animation: smt-juara-float 3.2s ease-in-out infinite; }
+.animate-juara-shine  { animation: smt-juara-shine 5.5s ease-in-out 1.2s infinite; }
+.animate-juara-sparkle { animation: smt-juara-sparkle 2.4s ease-in-out infinite; }
+.animate-juara-halo   { animation: smt-juara-halo 2.6s ease-out infinite; }
+.animate-bar-fill     { animation: smt-bar-fill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-juara-float,
+  .animate-juara-shine,
+  .animate-juara-sparkle,
+  .animate-juara-halo { animation: none; }
+  .animate-podium-rise { animation: none; height: var(--podium-h); opacity: 1; }
+  .animate-juara-pop   { animation: none; opacity: 1; transform: none; }
+  .animate-bar-fill    { animation: none; width: var(--bar-w); }
+}

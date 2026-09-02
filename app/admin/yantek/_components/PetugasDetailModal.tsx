@@ -23,17 +23,23 @@ interface PetugasDetailModalProps {
   sla: SlaAktif;
   /** "YYYY-MM" — menentukan panjang sumbu tanggal pada grafik. */
   bulanKey: string;
+  /** Saringan awal daftar WO. Dari tabel pelanggar yang dicari memang WO yang
+   *  melanggar; dari papan juara justru sebaliknya — membuka profil pemenang
+   *  langsung pada daftar pelanggarannya terbaca seperti tuduhan. */
+  awalHanyaLanggar?: boolean;
   onClose: () => void;
 }
 
 const num = (v: unknown) =>
   typeof v === "number" && Number.isFinite(v) ? String(Math.round(v)) : "—";
 
-export default function PetugasDetailModal({ nama, rows, sla, bulanKey, onClose }: PetugasDetailModalProps) {
+export default function PetugasDetailModal({
+  nama, rows, sla, bulanKey, awalHanyaLanggar = true, onClose,
+}: PetugasDetailModalProps) {
   const [tab, setTab] = useState<"detail" | "grafik">("detail");
-  // Dibuka dari tabel pelanggar, jadi yang relevan lebih dulu — tapi seluruh WO
-  // tetap bisa dilihat supaya angkanya punya konteks, bukan cuma daftar hukuman.
-  const [hanyaLanggar, setHanyaLanggar] = useState(true);
+  // Seluruh WO selalu bisa dilihat lewat chip di atas tabel — saringan awal ini
+  // hanya menentukan mana yang tampil lebih dulu.
+  const [hanyaLanggar, setHanyaLanggar] = useState(awalHanyaLanggar);
 
   const jumlahHari = bulanKey ? hariDalamBulan(bulanKey) : 31;
 

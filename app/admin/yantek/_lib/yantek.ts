@@ -48,7 +48,7 @@ export interface PetugasStat {
 }
 
 export type SortDir = "asc" | "desc";
-export type Tab = "rekap" | "sla" | "warning" | "detail" | "database";
+export type Tab = "juara" | "sla" | "rekap" | "warning" | "detail" | "database" | "ambil";
 
 // ── Konstanta ─────────────────────────────────────────────────────────────────
 

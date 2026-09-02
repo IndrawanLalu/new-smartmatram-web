@@ -2,28 +2,26 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import {
-  Wrench, FileJson, X, Save, Users, List, AlertCircle, CalendarDays,
-  Loader2, Download, TriangleAlert, Timer,
+  Wrench, Users, List, CalendarDays, Loader2, Download, TriangleAlert, Timer,
+  Trophy, Terminal, FileJson,
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canManageSettings, canSeeAllUnits } from "@/lib/roles";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import {
-  buildDurasiPerPetugas, buildStats, durasiSah, extractPrefix, fmtDateLabel,
-  hariDalamBulan, jumlahHariBerdata, median, medianPerHari, MONTHS_ID, parseInput,
-  POSKO_MAP, toDateStr,
+  buildDurasiPerPetugas, buildStats, durasiSah, extractPrefix, hariDalamBulan,
+  jumlahHariBerdata, median, medianPerHari, MONTHS_ID, POSKO_MAP, toDateStr,
   type DateSummary, type Tab, type YantekRow,
 } from "./_lib/yantek";
 import { useYantekSla } from "./_hooks/useYantekSla";
 import RekapTab from "./_components/RekapTab";
 import SlaTab from "./_components/SlaTab";
+import JuaraTab from "./_components/JuaraTab";
 import LowRatingTab from "./_components/LowRatingTab";
 import DetailTable from "./_components/DetailTable";
 import DatabaseTab from "./_components/DatabaseTab";
-import KonsolPanel from "./_components/KonsolPanel";
+import AmbilDataTab from "./_components/AmbilDataTab";
 import SlaSettingsModal from "./_components/SlaSettingsModal";
-
-const PLACEHOLDER = `[ { "personil_yantek": "44150_NAMA", "rating": 5, "no_laporan": "G...", "waktu_lapor": "29/05/2026 10:00:00" }, ... ]`;
 
 /** "2026-05" → "2026-04". Dipakai untuk garis pembanding di tab SLA. */
 function bulanSebelumnya(key: string): string {
@@ -35,20 +33,15 @@ function bulanSebelumnya(key: string): string {
 export default function YantekPage() {
   const user = useCurrentUser();
 
-  const [input, setInput] = useState("");
   const [dates, setDates] = useState<DateSummary[]>([]);
   const [rowCache, setRowCache] = useState<Record<string, YantekRow[]>>({});
   const [filterYear, setFilterYear] = useState("");
   const [filterMonth, setFilterMonth] = useState("");
   const [filterPosko, setFilterPosko] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("sla");
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
+  const [tab, setTab] = useState<Tab>("juara");
+  const [loading, setLoading] = useState(true);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [aturSla, setAturSla] = useState(false);
-
-  const { rows: inputRows, error } = useMemo(() => parseInput(input), [input]);
 
   /** ULP efektif untuk ambang SLA — mengikuti filter posko kalau dipilih,
    *  kalau tidak jatuh ke unit user (UP3 tanpa filter = ambang 'ALL'). */
@@ -91,6 +84,9 @@ export default function YantekPage() {
           const [y, m] = latestDate.split("-");
           setFilterYear(y);
           setFilterMonth(m);
+        } else {
+          // Belum ada apa-apa untuk dilihat — langsung antar ke cara mengisinya.
+          setTab("ambil");
         }
       } finally {
         setLoading(false);
@@ -166,6 +162,15 @@ export default function YantekPage() {
     return { totalWO, rTotals, avgRating: adaRating > 0 ? sumStars / adaRating : null };
   }, [stats]);
 
+  /** Label periode & cakupan — dipakai judul PDF dan panggung juara, supaya
+   *  keduanya menyebut rentang yang sama persis. */
+  const poskoLabel = filterPosko
+    ? `ULP ${POSKO_MAP.find((p) => p.kode === filterPosko)?.label ?? filterPosko}`
+    : "Semua ULP";
+  const periodeLabel = filterMonth && filterYear
+    ? `${MONTHS_ID[parseInt(filterMonth) - 1]} ${filterYear}`
+    : filterYear || "Semua Data";
+
   /** Ringkasan & grafik untuk PDF — dihitung dari baris yang sedang tampil,
    *  memakai helper yang sama dengan tab SLA supaya angkanya tidak berbeda. */
   const ringkasPdf = useMemo(() => {
@@ -193,47 +198,20 @@ export default function YantekPage() {
 
   // ── Aksi ──────────────────────────────────────────────────────────────────
 
-  const inputDates = useMemo(
-    () => [...new Set(inputRows.flatMap((r) => (r.waktu_lapor ? [toDateStr(r.waktu_lapor)] : [])))].sort(),
-    [inputRows],
+  /** Dipanggil tab Ambil Data setelah POST selesai — halaman yang memegang
+   *  cache & filter, jadi pemuatan ulangnya dikerjakan di sini. */
+  const handleTersimpan = useCallback(
+    async (tanggalTerakhir: string | null) => {
+      const [, grouped] = await Promise.all([refreshDates(), loadAllIntoCache()]);
+      setRowCache(grouped);
+      if (tanggalTerakhir) {
+        setFilterYear(tanggalTerakhir.slice(0, 4));
+        setFilterMonth(tanggalTerakhir.slice(5, 7));
+        setTab("juara");
+      }
+    },
+    [refreshDates, loadAllIntoCache],
   );
-  const canSave = inputRows.length > 0 && !error;
-  const saveBtnLabel = inputDates.length === 1
-    ? `Simpan ${fmtDateLabel(inputDates[0])}`
-    : inputDates.length > 1 ? `Simpan ${inputDates.length} tanggal` : "Simpan";
-
-  async function handleSave() {
-    if (!canSave) return;
-    setSaving(true); setSaveError(null);
-    const grouped: Record<string, YantekRow[]> = {};
-    for (const row of inputRows) {
-      const d = row.waktu_lapor ? toDateStr(row.waktu_lapor) : "unknown";
-      if (!grouped[d]) grouped[d] = [];
-      grouped[d].push(row);
-    }
-    try {
-      for (const [date, rows] of Object.entries(grouped)) {
-        const label = date !== "unknown" ? fmtDateLabel(date) : "Data manual";
-        const res = await fetch("/api/yantek", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ date, label, rows }),
-        });
-        if (!res.ok) throw new Error(`Gagal menyimpan ${date}`);
-      }
-      setInput("");
-      const [, grouped2] = await Promise.all([refreshDates(), loadAllIntoCache()]);
-      setRowCache(grouped2);
-      const latest = Object.keys(grouped).sort().pop();
-      if (latest && latest !== "unknown") {
-        setFilterYear(latest.slice(0, 4));
-        setFilterMonth(latest.slice(5, 7));
-      }
-    } catch (e) {
-      setSaveError((e as Error).message);
-    } finally {
-      setSaving(false);
-    }
-  }
 
   async function handleDelete(date: string) {
     await fetch(`/api/yantek?date=${date}`, { method: "DELETE" });
@@ -249,12 +227,6 @@ export default function YantekPage() {
         import("@react-pdf/renderer"),
         import("./_YantekPdf"),
       ]);
-      const poskoLabel = filterPosko
-        ? `ULP ${POSKO_MAP.find((p) => p.kode === filterPosko)?.label ?? filterPosko}`
-        : "Semua ULP";
-      const dateLabel = filterMonth && filterYear
-        ? `${MONTHS_ID[parseInt(filterMonth) - 1]} ${filterYear}`
-        : filterYear || "Semua Data";
 
       // Rating dan durasi digabung jadi SATU tabel — PDF-nya hanya satu berkas.
       const durasi = buildDurasiPerPetugas(poskoRows, sla);
@@ -277,7 +249,7 @@ export default function YantekPage() {
         <YantekPdfDoc
           stats={statsPdf}
           grandTotal={grandTotal}
-          dateLabel={dateLabel}
+          dateLabel={periodeLabel}
           filterLabel={poskoLabel}
           sla={{ response: sla.response, recovery: sla.recovery }}
           chart={chartPdf}
@@ -298,65 +270,23 @@ export default function YantekPage() {
   }
 
   const TABS: { key: Tab; label: string; icon: typeof Users; badge?: number; tone?: "merah" }[] = [
+    { key: "juara",    label: "Papan Juara",    icon: Trophy },
     { key: "sla",      label: "SLA & Durasi",   icon: Timer },
     { key: "rekap",    label: "Rekap Petugas",  icon: Users },
     { key: "warning",  label: "Rating ★1 & ★2", icon: TriangleAlert, badge: lowRatingRows.length, tone: "merah" },
     { key: "detail",   label: "Data Detail",    icon: List },
     { key: "database", label: "Database",       icon: FileJson, badge: dates.length },
+    { key: "ambil",    label: "Ambil Data",     icon: Terminal },
   ];
+
+  /** Selain tab Ambil Data, semua tab bergantung pada data tersimpan. */
+  const butuhData = tab !== "ambil";
 
   return (
     // Judul halaman ada di topbar (PageTitle), jadi halaman ini langsung isi.
     <div className="space-y-3 text-ink">
-      <KonsolPanel unit={canSeeAllUnits(user.role) ? null : user.unit} />
-
-      {/* Paste JSON */}
-      <div className={`${CARD} p-4`}>
-        <div className="flex items-center justify-between mb-3 gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <FileJson className="w-4 h-4 text-navy-600" />
-            <span className="text-sm font-semibold text-ink">Paste JSON</span>
-            {canSave && (
-              <span className="text-xs text-green-700">
-                ✓ {inputRows.length} baris
-                {inputDates.length === 1 ? ` — ${fmtDateLabel(inputDates[0])}` : ` — ${inputDates.length} tanggal`}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {canSave && (
-              <button onClick={handleSave} disabled={saving} className={BTN_GHOST}>
-                {saving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
-                {saving ? "Menyimpan..." : saveBtnLabel}
-              </button>
-            )}
-            {input && (
-              <button onClick={() => setInput("")} className="p-1 rounded-lg text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors">
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-        </div>
-
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={PLACEHOLDER}
-          rows={3}
-          className="w-full rounded-xl border border-line bg-surface p-3 font-mono text-xs text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 resize-y"
-          spellCheck={false}
-        />
-
-        {(saveError || error) && (
-          <div className="mt-2 flex items-center gap-2 px-3 py-2 bg-red-50 border border-red-200 rounded-xl">
-            <AlertCircle className="w-3.5 h-3.5 text-red-600 shrink-0" />
-            <p className="text-[11px] text-red-700 font-mono">{saveError ?? error}</p>
-          </div>
-        )}
-      </div>
-
       {/* Filter periode + ULP */}
-      {dates.length > 0 && (
+      {dates.length > 0 && butuhData && (
         <div className={`${CARD} p-4 space-y-3`}>
           <div className="flex items-center gap-3 flex-wrap">
             <span className="text-xs font-semibold text-ink-soft shrink-0 flex items-center gap-1.5">
@@ -414,14 +344,12 @@ export default function YantekPage() {
         </div>
       )}
 
-      {loading && (
+      {loading ? (
         <div className="flex items-center justify-center py-12 gap-3 text-ink-muted">
           <Loader2 className="w-5 h-5 animate-spin text-navy-600" />
           <span className="text-sm">Memuat data...</span>
         </div>
-      )}
-
-      {!loading && dates.length > 0 && (
+      ) : (
         <>
           <div className="flex items-center gap-1.5 flex-wrap">
             {TABS.map(({ key, label, icon: Icon, badge, tone }) => (
@@ -442,52 +370,77 @@ export default function YantekPage() {
               </button>
             ))}
             <div className="flex-1" />
-            <button onClick={handleDownloadPdf} disabled={pdfLoading || stats.length === 0} className={BTN_GHOST}>
-              {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-              {pdfLoading ? "Membuat PDF..." : "Download PDF"}
-            </button>
+            {butuhData && dates.length > 0 && (
+              <button onClick={handleDownloadPdf} disabled={pdfLoading || stats.length === 0} className={BTN_GHOST}>
+                {pdfLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                {pdfLoading ? "Membuat PDF..." : "Download PDF"}
+              </button>
+            )}
           </div>
 
-          {tab === "sla" && (
-            bulanKey ? (
-              <SlaTab
-                rows={poskoRows}
-                rowsLalu={rowsBulanLalu}
-                bulanKey={bulanKey}
-                sla={sla}
-                bisaAtur={canManageSettings(user.role)}
-                onAturSla={() => setAturSla(true)}
-              />
-            ) : (
-              <div className={`${CARD} py-12 flex flex-col items-center gap-2 text-ink-muted`}>
-                <Timer className="w-9 h-9 opacity-25" />
-                <p className="text-sm">Pilih tahun dan bulan dulu untuk melihat dashboard SLA</p>
-              </div>
-            )
-          )}
-
-          {tab === "rekap" && <RekapTab stats={stats} grandTotal={grandTotal} />}
-          {tab === "warning" && <LowRatingTab rows={lowRatingRows} />}
-          {tab === "detail" && <DetailTable rows={poskoRows} />}
-          {tab === "database" && (
-            <DatabaseTab
-              dates={dates}
-              rowCache={rowCache}
-              filterYear={filterYear}
-              filterMonth={filterMonth}
-              onDelete={handleDelete}
-              onSelectMonth={(y, m) => { setFilterYear(y); setFilterMonth(m); setTab("sla"); }}
+          {tab === "ambil" && (
+            <AmbilDataTab
+              unit={canSeeAllUnits(user.role) ? null : user.unit}
+              onTersimpan={handleTersimpan}
             />
           )}
-        </>
-      )}
 
-      {!loading && dates.length === 0 && (
-        <div className={`${CARD} py-16 flex flex-col items-center gap-3 text-ink-muted`}>
-          <Wrench className="w-10 h-10 opacity-30" />
-          <p className="text-sm font-medium">Jalankan perintah console di atas, lalu tempel hasilnya</p>
-          <p className="text-xs opacity-70">Data tersimpan sebagai berkas di server VPS · tidak hilang walau refresh</p>
-        </div>
+          {butuhData && dates.length === 0 && (
+            <div className={`${CARD} py-16 flex flex-col items-center gap-3 text-ink-muted`}>
+              <Wrench className="w-10 h-10 opacity-30" />
+              <p className="text-sm font-medium">Belum ada data tersimpan</p>
+              <button onClick={() => setTab("ambil")} className={BTN_GHOST}>
+                <Terminal className="w-4 h-4" /> Buka tab Ambil Data
+              </button>
+            </div>
+          )}
+
+          {butuhData && dates.length > 0 && (
+            <>
+              {tab === "juara" && (
+                <JuaraTab
+                  rows={poskoRows}
+                  sla={sla}
+                  bulanKey={bulanKey}
+                  periode={periodeLabel}
+                  cakupan={poskoLabel}
+                />
+              )}
+
+              {tab === "sla" && (
+                bulanKey ? (
+                  <SlaTab
+                    rows={poskoRows}
+                    rowsLalu={rowsBulanLalu}
+                    bulanKey={bulanKey}
+                    sla={sla}
+                    bisaAtur={canManageSettings(user.role)}
+                    onAturSla={() => setAturSla(true)}
+                  />
+                ) : (
+                  <div className={`${CARD} py-12 flex flex-col items-center gap-2 text-ink-muted`}>
+                    <Timer className="w-9 h-9 opacity-25" />
+                    <p className="text-sm">Pilih tahun dan bulan dulu untuk melihat dashboard SLA</p>
+                  </div>
+                )
+              )}
+
+              {tab === "rekap" && <RekapTab stats={stats} grandTotal={grandTotal} />}
+              {tab === "warning" && <LowRatingTab rows={lowRatingRows} />}
+              {tab === "detail" && <DetailTable rows={poskoRows} />}
+              {tab === "database" && (
+                <DatabaseTab
+                  dates={dates}
+                  rowCache={rowCache}
+                  filterYear={filterYear}
+                  filterMonth={filterMonth}
+                  onDelete={handleDelete}
+                  onSelectMonth={(y, m) => { setFilterYear(y); setFilterMonth(m); setTab("juara"); }}
+                />
+              )}
+            </>
+          )}
+        </>
       )}
 
       {aturSla && (
