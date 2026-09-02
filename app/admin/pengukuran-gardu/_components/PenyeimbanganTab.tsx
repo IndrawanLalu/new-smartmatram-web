@@ -220,29 +220,28 @@ export default function PenyeimbanganTab({
   // Inline jenis cell (dipakai di kedua tabel anomali)
   /** Status pengiriman AMG untuk hasil pemerataan.
    *
-   *  Yang dikirim adalah baris pengukuran "setelah" yang dibuat aplikasi mobile,
-   *  bukan rekap ini — AMG hanya menerima bentuk satu baris pengukuran. Rekap
-   *  yang diinput manual lewat web tidak punya baris itu, jadi tombolnya absen
-   *  ketimbang tampil mati tanpa penjelasan. */
+   *  Yang dikirim adalah baris pengukuran "setelah", bukan rekap ini — AMG hanya
+   *  menerima bentuk satu baris pengukuran. Rekap yang belum punya baris itu
+   *  (input web sebelum jalur ini dibuka) tetap menampilkan tombolnya: barisnya
+   *  dibentuk `kirimKeAmg` saat tombol ditekan. */
   function AmgCell({ row }: { row: PenyeimbanganGardu }) {
     const after = row.pengukuran_after?.[0];
-    if (!after) return null;
 
-    if (after.amg_sent_at) {
+    if (after?.amg_sent_at) {
       return (
         <span className="text-[10px] font-semibold text-emerald-600" title={`Terkirim ${fmtTanggal(after.amg_sent_at.split("T")[0])}`}>
           AMG ✓
         </span>
       );
     }
-    if (after.amg_queued_at) {
+    if (after?.amg_queued_at) {
       return (
         <span className="text-[10px] font-semibold text-navy-500" title="Menunggu dikirim agen lokal">
           ANTRE
         </span>
       );
     }
-    if (after.amg_error) {
+    if (after?.amg_error) {
       return (
         <button
           onClick={() => handleKirimAmg(row)}

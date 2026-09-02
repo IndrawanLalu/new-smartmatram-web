@@ -305,7 +305,10 @@ function FotoFasaGrid({ judul, foto }: { judul: string; foto: FotoFasa }) {
 }
 
 /** Status & aksi AMG dijadikan footer modal supaya keputusan "kirim" diambil
- *  setelah orang melihat angka dan fotonya, bukan dari baris tabel. */
+ *  setelah orang melihat angka dan fotonya, bukan dari baris tabel.
+ *
+ *  `after` boleh belum ada: rekap yang diinput lewat web sebelum jalur ini
+ *  dibuka baru dibuatkan baris pembawanya saat tombol ini ditekan. */
 function AmgFooter({
   record, busy, onKirim,
 }: {
@@ -315,28 +318,20 @@ function AmgFooter({
 }) {
   const after = record.pengukuran_after?.[0];
 
-  if (!after) {
-    return (
-      <p className="text-xs text-ink-muted">
-        Belum ada baris pengukuran untuk AMG. Akan terbentuk sendiri saat rekap ini
-        dikoreksi lewat aplikasi lapangan.
-      </p>
-    );
-  }
-  if (after.amg_sent_at) {
+  if (after?.amg_sent_at) {
     return (
       <p className="text-xs font-semibold text-emerald-600">
         Sudah terkirim ke AMG · {fmtTanggal(after.amg_sent_at.split("T")[0])}
       </p>
     );
   }
-  if (after.amg_queued_at) {
+  if (after?.amg_queued_at) {
     return <p className="text-xs font-semibold text-navy-600">Dalam antrean — menunggu dikirim agen lokal</p>;
   }
 
   return (
     <div className="flex items-center gap-3">
-      {after.amg_error && (
+      {after?.amg_error && (
         <span className="text-xs text-red-600" title={after.amg_error}>
           Gagal{after.amg_attempts >= 3 ? " 3× — berhenti dicoba" : ""}
         </span>
@@ -347,7 +342,7 @@ function AmgFooter({
         className="ml-auto flex items-center gap-1.5 rounded-lg bg-navy-600 px-3 py-1.5 text-sm text-white transition-opacity hover:opacity-90 disabled:opacity-40"
       >
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Radio size={14} />}
-        {busy ? "Mengantre…" : after.amg_error ? "Coba kirim lagi" : "Kirim ke AMG"}
+        {busy ? "Mengantre…" : after?.amg_error ? "Coba kirim lagi" : "Kirim ke AMG"}
       </button>
     </div>
   );

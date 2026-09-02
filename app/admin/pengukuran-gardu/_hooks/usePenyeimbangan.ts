@@ -83,6 +83,111 @@ export const waktuFoto = (v?: FotoSlot | string): string | undefined =>
 export const sumberWaktuFoto = (v?: FotoSlot | string): string | undefined =>
   typeof v === "string" ? undefined : v?.sumber_waktu;
 
+/** Kolom baris pembawa yang ditulis ulang tiap kali rekap dikoreksi. */
+interface NilaiAfter {
+  tanggal_pengukuran: string;
+  total_arus_r: number;
+  total_arus_s: number;
+  total_arus_t: number;
+  total_arus_n: number;
+  total_teg_rn: number;
+  total_teg_sn: number;
+  total_teg_tn: number;
+  perjurusan: Record<string, JurusanData>;
+  beban_kva: number;
+  persen_beban: number;
+}
+
+/** Kolom baris pembawa yang hanya ditulis sekali, saat barisnya dibuat. */
+interface IdentitasAfter {
+  no_gardu: string;
+  alamat: string | null;
+  penyulang: string | null;
+  kva_trafo: number;
+  suhu_trafo: number;
+  petugas_nama: string | null;
+  petugas_unit: string;
+}
+
+/**
+ * Pastikan sebuah rekap punya baris pengukuran "setelah", lalu kembalikan id-nya.
+ *
+ * AMG hanya menerima bentuk SATU BARIS PENGUKURAN, jadi baris inilah pembawa
+ * hasil pemerataan ke sana — bukan rekapnya. Agen lokal membaca kolomnya apa
+ * adanya (`buildBody` di `smart-agent/index.js`, repo terpisah).
+ *
+ * Barisnya bertanda `hasil_penyeimbangan_id`, dan seluruh query rekap serta
+ * riwayat menyaring `IS NULL` dari sisi itu — jadi menambah baris ini tidak
+ * membuat satu pekerjaan terhitung dua kali sebagai pengukuran rutin.
+ *
+ * Perbarui-dulu-baru-insert, pola yang sama dengan aplikasi mobile: memanggilnya
+ * dua kali untuk rekap yang sama tidak melahirkan baris kembar.
+ */
+async function pastikanBarisAmg(
+  penyeimbanganId: string,
+  identitas: IdentitasAfter,
+  nilai: NilaiAfter,
+): Promise<{ id?: string; error?: string }> {
+  // Penjaga, bukan basa-basi: bila RLS menahan nilai balik `.select()`, id-nya
+  // kosong dan `.eq()` di bawah akan menyapu SELURUH tabel tanpa penyaring.
+  if (!penyeimbanganId) return { error: "id rekap tidak dikembalikan database" };
+
+  const { data: terupdate, error: errUpdate } = await supabaseBrowser
+    .from("pengukuran_gardu")
+    .update(nilai)
+    .eq("hasil_penyeimbangan_id", penyeimbanganId)
+    .select("id");
+
+  if (errUpdate) return { error: errUpdate.message };
+  if (terupdate?.length) return { id: terupdate[0].id as string };
+
+  const { data: baru, error: errInsert } = await supabaseBrowser
+    .from("pengukuran_gardu")
+    .insert({
+      ...identitas,
+      ...nilai,
+      jam_pengukuran: new Date().toTimeString().slice(0, 8),
+      // Dibiarkan NULL: penghitung "sudah di-WO" membaca kolom ini, dan hasil
+      // kerja tidak boleh terbaca sebagai perintah kerja baru.
+      jenis_pemeliharaan: null,
+      hasil_penyeimbangan_id: penyeimbanganId,
+    })
+    .select("id")
+    .single();
+
+  if (errInsert) return { error: errInsert.message };
+  return { id: baru?.id as string };
+}
+
+/**
+ * Tegangan & suhu dari pengukuran ASAL — bekal untuk rekap web lama yang belum
+ * punya baris pembawa.
+ *
+ * `penyeimbangan_gardu` tidak menyimpan tegangan sama sekali; yang tercatat
+ * hanya arus dan beban. Untuk rekap yang baru disimpan hal itu tidak jadi soal
+ * — angkanya diambil langsung dari formulir. Untuk rekap lama tidak ada sumber
+ * lain, dan mengirim 0 ke AMG berarti menanam angka yang salah. Mewarisi dari
+ * pengukuran asal jauh lebih dekat ke kenyataan: pemerataan memindah arus antar
+ * fasa dan nyaris tidak menggeser tegangan sekunder. Pola yang sama sudah
+ * dipakai aplikasi mobile untuk suhu trafo.
+ */
+async function kondisiAsal(pengukuranId: string | null) {
+  const { data } = pengukuranId
+    ? await supabaseBrowser
+        .from("pengukuran_gardu")
+        .select("total_teg_rn,total_teg_sn,total_teg_tn,suhu_trafo")
+        .eq("id", pengukuranId)
+        .maybeSingle()
+    : { data: null };
+
+  return {
+    total_teg_rn: Number(data?.total_teg_rn ?? 0),
+    total_teg_sn: Number(data?.total_teg_sn ?? 0),
+    total_teg_tn: Number(data?.total_teg_tn ?? 0),
+    suhu_trafo:   Number(data?.suhu_trafo ?? 0),
+  };
+}
+
 export interface SavePenyeimbanganInput {
   pengukuranRow: PengukuranGardu;
   perjurusanAfter: Record<string, JurusanData>;
@@ -284,7 +389,7 @@ export function usePenyeimbangan(ulp: string) {
 
     try {
       // 1. Insert rekap penyeimbangan
-      const { error: insertErr } = await supabaseBrowser
+      const { data: rekap, error: insertErr } = await supabaseBrowser
         .from("penyeimbangan_gardu")
         .insert({
           pengukuran_id:      row.id,
@@ -316,12 +421,59 @@ export function usePenyeimbangan(ulp: string) {
           petugas_penyeimbang: input.petugasPenyeimbang || null,
           catatan:             input.catatan || null,
           jenis_pemeliharaan:  input.jenisPemeliharaan || null,
-        });
+        })
+        .select("id")
+        .single();
 
       if (insertErr) throw insertErr;
 
-      // pengukuran_gardu TIDAK di-update — data historis pengukuran harus immutable.
-      // Kondisi terkini gardu dibaca dari gardu_latest_state view (merge pengukuran + penyeimbangan).
+      // 2. Baris pengukuran "setelah" — pembawa hasil ini ke AMG.
+      //
+      // Dibuat SEKARANG, bukan menunggu tombol Kirim ditekan, karena tegangan
+      // sesudah hanya ada di formulir ini: `penyeimbangan_gardu` tidak punya
+      // kolomnya. Menundanya berarti angka yang dikirim ke AMG terpaksa diambil
+      // dari kondisi SEBELUM — persis yang tidak diinginkan.
+      //
+      // Gagalnya tidak membatalkan penyimpanan: rekap sudah aman, dan tombol
+      // "Kirim ke AMG" akan membuatkan barisnya belakangan.
+      const hasilAmg = await pastikanBarisAmg(
+        String(rekap?.id ?? ""),
+        {
+          no_gardu:     row.no_gardu,
+          alamat:       row.alamat,
+          penyulang:    row.penyulang,
+          // kVA yang sama dengan penyebut persentase di atas. Agen membandingkan
+          // angka ini dengan master AMG sebelum mengirim — kalau beda, kiriman
+          // ditolak dengan pesan jelas, bukan diam-diam masuk dengan angka salah.
+          kva_trafo:    kvaDipakai,
+          // Pemerataan tidak mengukur suhu — diwarisi dari pengukuran asal supaya
+          // AMG tidak menerima 0 yang menyesatkan.
+          suhu_trafo:   row.suhu_trafo,
+          petugas_nama: input.petugasPenyeimbang || row.petugas_nama,
+          petugas_unit: row.petugas_unit,
+        },
+        {
+          tanggal_pengukuran: input.tglPenyeimbangan,
+          total_arus_r: input.arusRAfter,
+          total_arus_s: input.arusSAfter,
+          total_arus_t: input.arusTAfter,
+          total_arus_n: input.arusNAfter,
+          total_teg_rn: input.tegRNAfter,
+          total_teg_sn: input.tegSNAfter,
+          total_teg_tn: input.tegTNAfter,
+          perjurusan:   input.perjurusanAfter,
+          beban_kva:    bebanKvaAfter,
+          persen_beban: bebanPctAfter,
+        },
+      );
+      if (hasilAmg.error) {
+        console.error("Baris pengukuran untuk AMG gagal dibuat:", hasilAmg.error);
+      }
+
+      // Pengukuran ASAL tetap tidak disentuh — bukti kondisi sebelum harus utuh.
+      // Yang ditambahkan di atas adalah baris BARU bertanda hasil_penyeimbangan_id,
+      // yang disaring keluar dari semua query rekap. Kondisi terkini gardu tetap
+      // dibaca dari view gardu_latest_state (merge pengukuran + penyeimbangan).
 
       // Daftar "sudah seimbang" ikut disegarkan: rekap baru harus langsung
       // terlihat di tabel Gardu Sudah di-WO, apa pun bulan yang sedang dipilih.
@@ -393,13 +545,52 @@ export function usePenyeimbangan(ulp: string) {
 
   /** Antrekan hasil pemerataan ke AMG lewat baris pengukuran "setelah".
    *  Memakai endpoint yang sama dengan pengukuran biasa — agen lokal yang
-   *  mengirim, karena AMG hanya bisa dijangkau dari jaringan intranet PLN. */
+   *  mengirim, karena AMG hanya bisa dijangkau dari jaringan intranet PLN.
+   *
+   *  Rekap web yang tersimpan sebelum jalur ini dibuka belum punya baris pembawa.
+   *  Barisnya dibentuk di sini — sekali, saat orang benar-benar memutuskan
+   *  mengirim — dengan tegangan warisan dari pengukuran asal (lihat `kondisiAsal`).
+   *  Rekap web yang baru tidak melewati cabang ini: barisnya sudah dibuat waktu
+   *  disimpan, lengkap dengan tegangan yang sebenarnya diketik. */
   const kirimKeAmg = useCallback(async (row: PenyeimbanganGardu): Promise<string | null> => {
-    const after = row.pengukuran_after?.[0];
-    if (!after) {
-      return "Hasil ini belum punya baris pengukuran untuk AMG. Hanya pekerjaan yang dicatat lewat aplikasi mobile yang bisa dikirim.";
+    let idPengukuran: string | null = row.pengukuran_after?.[0]?.id ?? null;
+
+    if (!idPengukuran) {
+      // Kredensial AMG dipilih agen berdasarkan ULP. Tanpa itu barisnya pasti
+      // gagal tiga kali di agen — lebih baik ditolak di sini, dengan sebabnya.
+      if (!row.ulp) return "Rekap ini tidak punya ULP, sedangkan kredensial AMG dipilih per ULP.";
+
+      const asal = await kondisiAsal(row.pengukuran_id);
+      const hasil = await pastikanBarisAmg(
+        row.id,
+        {
+          no_gardu:     row.no_gardu,
+          alamat:       row.alamat,
+          penyulang:    row.penyulang,
+          kva_trafo:    row.kva_trafo,
+          suhu_trafo:   asal.suhu_trafo,
+          petugas_nama: row.petugas_penyeimbang,
+          petugas_unit: row.ulp,
+        },
+        {
+          tanggal_pengukuran: row.tgl_penyeimbangan,
+          total_arus_r: row.arus_r_after,
+          total_arus_s: row.arus_s_after,
+          total_arus_t: row.arus_t_after,
+          total_arus_n: row.arus_n_after,
+          total_teg_rn: asal.total_teg_rn,
+          total_teg_sn: asal.total_teg_sn,
+          total_teg_tn: asal.total_teg_tn,
+          perjurusan:   row.perjurusan_after ?? {},
+          beban_kva:    row.beban_kva_after,
+          persen_beban: row.beban_pct_after,
+        },
+      );
+      if (!hasil.id) return `Gagal menyiapkan baris untuk AMG: ${hasil.error ?? "id tidak dikembalikan"}`;
+      idPengukuran = hasil.id;
     }
-    const err = await antreKeAmg(after.id);
+
+    const err = await antreKeAmg(idPengukuran);
     if (err) return err;
     await fetchData();
     return null;
