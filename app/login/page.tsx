@@ -80,12 +80,15 @@ export default function LoginPage() {
             className="lg-rise mb-6 flex justify-center"
             style={{ animationDelay: "80ms" }}
           >
+            {/* 64px, bukan 56px seperti logo lama: isi PNG lencana hanya mengisi
+                ~63% lebar kanvasnya, jadi pada angka yang sama ia terbaca lebih
+                kecil di dalam kotak kaca. */}
             <div className="rounded-2xl border border-white/15 bg-white/10 p-3.5">
               <Image
-                src="/logsmart.png"
+                src="/smarbg.png"
                 alt="SMART Mataram"
-                width={56}
-                height={56}
+                width={64}
+                height={64}
                 className="object-contain"
                 priority
               />

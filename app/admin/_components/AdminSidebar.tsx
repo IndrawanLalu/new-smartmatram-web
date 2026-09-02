@@ -1,9 +1,10 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { Zap, ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
 import { NAV_GROUPS } from "@/app/admin/_nav";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -64,9 +65,18 @@ export default function AdminSidebar({ userUnit }: AdminSidebarProps) {
           lagi: begitu keduanya dihitung terpisah, tingginya pasti melenceng. */}
       <div className="h-[var(--topbar-h)] shrink-0 px-3 flex items-center justify-between gap-2 border-b border-sidebar-line">
         <div className="flex items-center gap-2.5 overflow-hidden">
-          <div className="w-9 h-9 bg-navy-600 rounded-xl grid place-items-center shrink-0">
-            <Zap size={18} className="text-white" />
-          </div>
+          {/* Lencana-S dipakai polos tanpa kotak: bentuk heksagonnya sudah
+              bertinta navy sendiri, ditumpuk di atas kotak navy-600 keduanya
+              saling menelan. Ukuran 40px mengimbangi ~18% ruang kosong di
+              kiri-kanan isi PNG-nya. */}
+          <Image
+            src="/smarbg.png"
+            alt=""
+            width={40}
+            height={40}
+            className="w-10 h-10 shrink-0 object-contain"
+            priority
+          />
           {!collapsed && (
             <div className="whitespace-nowrap min-w-0">
               <p className="font-display font-extrabold text-[13px] leading-tight text-ink tracking-tight">
