@@ -198,6 +198,101 @@ export async function buatTemplateMaster(): Promise<Blob> {
   });
 }
 
+// ── Ekspor isi master ─────────────────────────────────────────────────────────
+
+/**
+ * Kolom keterangan yang ikut diekspor tapi TIDAK dibaca saat diunggah kembali.
+ *
+ * Aman karena pembaca template mencari judul lewat `HEADER_INDEX` dan melewati
+ * judul yang tidak dikenalnya. Jadi berkas hasil ekspor bisa disunting lalu
+ * langsung diunggah lagi tanpa menghapus kolom apa pun dulu — dan kolom ini
+ * tetap berguna sebagai laporan kondisi.
+ */
+const KOLOM_KETERANGAN = [
+  { header: "TERAKHIR_DIUKUR", lebar: 16 },
+  { header: "BEBAN_PERSEN", lebar: 14 },
+  { header: "STATUS_UKUR", lebar: 20 },
+] as const;
+
+/** Satu gardu untuk diekspor. Kunci sebelas kolom pertama sengaja sama dengan
+ *  `KolomMaster.field`, supaya barisnya bisa diambil lewat nama kolom. */
+export interface BarisEksporMaster {
+  kode: string;
+  ulp: string;
+  daya: number | null;
+  nama: string | null;
+  alamat: string | null;
+  feeder: string | null;
+  merk: string | null;
+  status: string | null;
+  kode_amg: string | null;
+  lat: number | null;
+  lng: number | null;
+  /** Keterangan — tidak ikut terbaca saat diunggah kembali. */
+  tgl_ukur_terakhir: string | null;
+  persen_beban: number | null;
+}
+
+/**
+ * Susun berkas .xlsx berisi isi master gardu.
+ *
+ * Sebelas kolom pertamanya PERSIS template unggahan, dari definisi yang sama
+ * (`KOLOM_MASTER`). Itu yang membuat berkas ini bolak-balik: unduh → sunting di
+ * Excel → unggah lagi, tanpa perlu menyalin ke template lain. Menyalin manual
+ * adalah langkah yang paling mudah salah, dan di sinilah ia dihilangkan.
+ */
+export async function buatBerkasEksporMaster(rows: BarisEksporMaster[]): Promise<Blob> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "SMART Mataram";
+
+  const ws = wb.addWorksheet("Master Gardu", { views: [{ state: "frozen", ySplit: 1 }] });
+
+  const semuaKolom = [
+    ...KOLOM_MASTER.map((k) => ({ header: k.header, lebar: k.lebar })),
+    ...KOLOM_KETERANGAN,
+  ];
+  ws.columns = semuaKolom.map((k) => ({ header: k.header, width: k.lebar }));
+
+  const head = ws.getRow(1);
+  head.height = 22;
+  semuaKolom.forEach((k, i) => {
+    const c = head.getCell(i + 1);
+    const keterangan = i >= KOLOM_MASTER.length;
+    c.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
+    c.fill = {
+      type: "pattern", pattern: "solid",
+      // Blok keterangan diberi warna berbeda supaya terlihat bahwa ia bukan
+      // bagian yang akan terbaca saat berkas ini diunggah kembali.
+      fgColor: { argb: "FF" + (keterangan ? "6B7280" : WARNA_HEADER) },
+    };
+    c.alignment = { horizontal: "center", vertical: "middle" };
+    if (keterangan) c.note = "Kolom keterangan — diabaikan saat berkas diunggah kembali.";
+    else c.note = KOLOM_MASTER[i].petunjuk;
+  });
+
+  rows.forEach((r, idx) => {
+    const baris = ws.getRow(idx + 2);
+    KOLOM_MASTER.forEach((k, i) => {
+      const v = r[k.field as keyof BarisEksporMaster];
+      baris.getCell(i + 1).value = v === null || v === undefined ? "" : (v as string | number);
+    });
+    const dasar = KOLOM_MASTER.length;
+    baris.getCell(dasar + 1).value = r.tgl_ukur_terakhir ?? "";
+    baris.getCell(dasar + 2).value = r.persen_beban ?? "";
+    baris.getCell(dasar + 3).value = r.tgl_ukur_terakhir ? "Sudah diukur" : "Belum pernah diukur";
+  });
+
+  ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: rows.length + 1, column: semuaKolom.length } };
+
+  const buf = await wb.xlsx.writeBuffer();
+  return new Blob([buf], {
+    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  });
+}
+
+export const namaBerkasEkspor = (ulp: string) =>
+  `master-gardu-${(ulp || "semua-ulp").toLowerCase()}-${new Date().toISOString().slice(0, 10)}.xlsx`;
+
 // ── Pembacaan unggahan ────────────────────────────────────────────────────────
 
 export interface BarisMaster {

@@ -96,29 +96,59 @@ export default function ImportMasterGarduModal({ onClose, onSelesai }: Props) {
     let pesanGalat: string | undefined;
 
     const siap = sah.filter((b) => !baruKurang.includes(b));
-    for (let i = 0; i < siap.length; i += BATCH) {
-      const potongan = siap.slice(i, i + BATCH).map((b) => ({
-        kode: b.kode,
-        ulp: b.ulp,
-        // `id` SENGAJA tidak dikirim. Kolomnya NOT NULL tanpa bawaan sampai
-        // scripts/gardu-id-default.sql dijalankan; setelah itu INSERT mengisi
-        // sendiri dan UPDATE tidak menyentuhnya. Mengirim id dari sini justru
-        // berbahaya — pada baris yang diperbarui ia akan menimpa primary key
-        // gardu yang sudah ada.
-        //
-        // `status` awal hanya untuk gardu BARU, supaya impor ulang tidak
-        // menghidupkan kembali gardu yang sudah ditandai Nonaktif.
-        ...(kunciAda.has(kunci(b)) ? {} : { status: "Aktif" }),
-        ...b.nilai,
-      }));
-      const { error } = await supabaseBrowser
-        .from("gardu")
-        .upsert(potongan, { onConflict: "kode,ulp" });
-      if (error) {
-        gagal += potongan.length;
-        pesanGalat ??= error.message;
+
+    const muatan = siap.map((b) => ({
+      kode: b.kode,
+      ulp: b.ulp,
+      // `id` SENGAJA tidak dikirim. Kolomnya NOT NULL tanpa bawaan sampai
+      // scripts/gardu-id-default.sql dijalankan; setelah itu INSERT mengisi
+      // sendiri dan UPDATE tidak menyentuhnya. Mengirim id dari sini justru
+      // berbahaya — pada baris yang diperbarui ia akan menimpa primary key
+      // gardu yang sudah ada.
+      //
+      // `status` awal hanya untuk gardu BARU, supaya impor ulang tidak
+      // menghidupkan kembali gardu yang sudah ditandai Nonaktif.
+      ...(kunciAda.has(kunci(b)) ? {} : { status: "Aktif" }),
+      ...b.nilai,
+    }));
+
+    /**
+     * Dikelompokkan menurut SUSUNAN KOLOM, baru dipotong per batch.
+     *
+     * supabase-js menyusun daftar kolom dari GABUNGAN kunci seluruh objek dalam
+     * satu panggilan (`PostgrestQueryBuilder.ts`: `values.reduce(...Object.keys)`),
+     * lalu baris yang tidak punya kunci itu dikirim sebagai NULL — dan
+     * `ON CONFLICT DO UPDATE` menimpanya. Tanpa pengelompokan ini, "sel kosong =
+     * jangan ubah" berubah jadi "sel kosong = kosongkan", asal ada baris LAIN di
+     * batch yang sama yang mengisi kolom itu.
+     *
+     * Dua kerusakan yang dicegah: berkas dengan isian tidak rata menghapus
+     * alamat/merk/koordinat gardu lain, dan batch berisi campuran gardu baru +
+     * lama menghapus kolom `status` gardu lama (karena `status` hanya
+     * ditambahkan untuk yang baru).
+     */
+    const perSusunan = new Map<string, typeof muatan>();
+    for (const m of muatan) {
+      const tanda = Object.keys(m).sort().join("|");
+      const daftar = perSusunan.get(tanda);
+      if (daftar) daftar.push(m);
+      else perSusunan.set(tanda, [m]);
+    }
+
+    let terkirim = 0;
+    for (const kelompok of perSusunan.values()) {
+      for (let i = 0; i < kelompok.length; i += BATCH) {
+        const potongan = kelompok.slice(i, i + BATCH);
+        const { error } = await supabaseBrowser
+          .from("gardu")
+          .upsert(potongan, { onConflict: "kode,ulp" });
+        if (error) {
+          gagal += potongan.length;
+          pesanGalat ??= error.message;
+        }
+        terkirim += potongan.length;
+        setProgres(terkirim);
       }
-      setProgres(Math.min(i + BATCH, siap.length));
     }
 
     const berhasil = siap.length - gagal;

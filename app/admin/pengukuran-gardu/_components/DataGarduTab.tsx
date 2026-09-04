@@ -3,11 +3,14 @@
 import { useState, useMemo } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
-  Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet,
+  Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet, Download, Loader2,
   CircleDashed, CalendarClock,
 } from "lucide-react";
 import { canManageSettings, type CurrentUser } from "@/lib/roles";
 import ImportMasterGarduModal from "./ImportMasterGarduModal";
+import {
+  buatBerkasEksporMaster, namaBerkasEkspor, type BarisEksporMaster,
+} from "../_lib/garduMaster";
 import {
   useGarduStatus, kunciGardu, AMBANG_BASI,
   type GarduMasterState, type StatusUkur,
@@ -168,6 +171,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
 
   const [selectedGardu, setSelectedGardu] = useState<GarduMasterState | null>(null);
   const [imporTerbuka, setImporTerbuka] = useState(false);
+  const [mengunduh, setMengunduh] = useState(false);
   /** Master gardu menentukan acuan kVA seluruh pengukuran — perubahannya
    *  berdampak ke semua ULP, jadi dibatasi ke yang boleh mengatur setelan. */
   const bisaImpor = canManageSettings(user.role);
@@ -180,6 +184,44 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
 
   /** Angka KPI baru boleh dipercaya setelah datanya benar-benar ditarik. */
   const siap = showTable && !loading;
+
+  /**
+   * Unduh isi master sebagai .xlsx.
+   *
+   * Yang diekspor adalah `allData` — hasil saringan yang sedang aktif, bukan
+   * seluruh master. Jadi "Belum pernah diukur + ULP Gerung" bisa langsung jadi
+   * berkas kerja, dan berkas yang sama bisa disunting lalu diunggah kembali
+   * lewat Impor Master tanpa disalin ke template dulu.
+   */
+  async function unduhMaster() {
+    setMengunduh(true);
+    try {
+      const rows: BarisEksporMaster[] = allData.map((d) => ({
+        kode: d.kode,
+        ulp: d.ulp,
+        daya: d.kva_master,
+        nama: d.nama,
+        alamat: d.alamat,
+        feeder: d.penyulang,
+        merk: d.merk,
+        status: d.status,
+        kode_amg: d.kode_amg,
+        lat: d.lat,
+        lng: d.lng,
+        tgl_ukur_terakhir: d.event_date,
+        persen_beban: d.persen_beban,
+      }));
+      const blob = await buatBerkasEksporMaster(rows);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = namaBerkasEkspor(ulp);
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setMengunduh(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -295,6 +337,17 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
               className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-line text-ink-soft hover:text-navy-600 hover:border-navy-300 transition-colors"
             >
               <FileSpreadsheet size={12} /> Impor Master
+            </button>
+          )}
+          {showTable && (
+            <button
+              onClick={unduhMaster}
+              disabled={mengunduh || allData.length === 0}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-line text-ink-soft hover:text-navy-600 hover:border-navy-300 transition-colors disabled:opacity-40"
+              title="Unduh gardu yang sedang tampil — bisa disunting lalu diunggah kembali"
+            >
+              {mengunduh ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+              Ekspor Master
             </button>
           )}
           {showTable && (
