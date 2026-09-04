@@ -3,11 +3,12 @@
 import { useState, useMemo } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
-  Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet, Download, Loader2,
+  Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet, Download, Loader2, Plus,
   CircleDashed, CalendarClock,
 } from "lucide-react";
 import { canManageSettings, type CurrentUser } from "@/lib/roles";
 import ImportMasterGarduModal from "./ImportMasterGarduModal";
+import TambahGarduModal from "./TambahGarduModal";
 import {
   buatBerkasEksporMaster, namaBerkasEkspor, type BarisEksporMaster,
 } from "../_lib/garduMaster";
@@ -171,6 +172,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
 
   const [selectedGardu, setSelectedGardu] = useState<GarduMasterState | null>(null);
   const [imporTerbuka, setImporTerbuka] = useState(false);
+  const [tambahTerbuka, setTambahTerbuka] = useState(false);
   const [mengunduh, setMengunduh] = useState(false);
   /** Master gardu menentukan acuan kVA seluruh pengukuran — perubahannya
    *  berdampak ke semua ULP, jadi dibatasi ke yang boleh mengatur setelan. */
@@ -331,6 +333,14 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
         </label>
 
         <div className="flex items-center gap-2 ml-auto">
+          {bisaImpor && (
+            <button
+              onClick={() => setTambahTerbuka(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-lg border border-line text-ink-soft hover:text-navy-600 hover:border-navy-300 transition-colors"
+            >
+              <Plus size={12} /> Tambah Gardu
+            </button>
+          )}
           {bisaImpor && (
             <button
               onClick={() => setImporTerbuka(true)}
@@ -521,6 +531,14 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
       {imporTerbuka && (
         <ImportMasterGarduModal
           onClose={() => setImporTerbuka(false)}
+          onSelesai={refresh}
+        />
+      )}
+
+      {tambahTerbuka && (
+        <TambahGarduModal
+          ulpAwal={ulp}
+          onClose={() => setTambahTerbuka(false)}
           onSelesai={refresh}
         />
       )}
