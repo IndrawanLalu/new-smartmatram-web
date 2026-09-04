@@ -33,6 +33,7 @@ import {
   SlidersHorizontal,
   Scale,
   Database,
+  ClipboardList,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
@@ -40,6 +41,7 @@ import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import DataGarduTab from "./_components/DataGarduTab";
+import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
@@ -64,6 +66,7 @@ const TABS = [
   { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
+  { key: "wo-pengukuran",  label: "WO Pengukuran",        icon: ClipboardList },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -766,6 +769,16 @@ export default function PengukuranGarduPage() {
           user={user}
           ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
           settings={anomalySettings}
+        />
+      )}
+
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* TAB: WO PENGUKURAN                                                  */}
+      {/* ════════════════════════════════════════════════════════════════════ */}
+      {activeTab === "wo-pengukuran" && (
+        <WoPengukuranTab
+          user={user}
+          ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
         />
       )}
 
