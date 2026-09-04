@@ -56,6 +56,11 @@ export interface BarisMasterUntukWo {
   belum_diukur: boolean;
   event_date: string | null;
   persen_beban: number | null;
+  /** Koordinat gardu dari master. Tipe kolomnya di tabel `gardu` warisan
+   *  migrasi Firebase dan tidak dipatok skrip mana pun — bisa datang sebagai
+   *  angka ATAU teks, jadi dilonggarkan di sini lalu dibereskan `koordinat()`. */
+  lat: number | string | null;
+  lng: number | string | null;
 }
 
 export type AlasanWo = "belum_pernah" | "kedaluwarsa";
@@ -73,6 +78,9 @@ export interface KandidatWo {
   umur_bulan: number | null;
   /** Beban terakhir — dipakai mengurutkan, tidak disimpan ke tabel. */
   persen_beban: number | null;
+  /** Titik gardu, sudah dibereskan jadi angka. NULL = master belum punya. */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface RingkasKandidat {
@@ -86,6 +94,21 @@ export interface RingkasKandidat {
 /** Tanggal 1 bulan tersebut, sebagai YYYY-MM-DD. Bulan 1–12. */
 export const tanggalWo = (tahun: number, bulan: number): string =>
   `${tahun}-${String(bulan).padStart(2, "0")}-01`;
+
+/**
+ * Jendela satu bulan WO: `awal` inklusif, `akhir` eksklusif.
+ *
+ * Batas yang sama dipakai view realisasi di database. Dibuat satu tempat supaya
+ * penyaringan di sisi aplikasi tidak bisa bergeser sehari dari yang di SQL —
+ * kalau bergeser, "sudah di-WO" dan "di luar WO" akan menghitung baris yang
+ * sama dua kali atau melewatkannya sama sekali.
+ */
+export function batasBulanWo(tahun: number, bulan: number): { awal: string; akhir: string } {
+  return {
+    awal: tanggalWo(tahun, bulan),
+    akhir: bulan === 12 ? tanggalWo(tahun + 1, 1) : tanggalWo(tahun, bulan + 1),
+  };
+}
 
 /**
  * Selisih bulan penuh antara dua tanggal YYYY-MM-DD.
@@ -105,6 +128,21 @@ export function umurBulan(dari: string, sampai: string): number {
 /** Gardu tanpa status dianggap Aktif — master lama banyak yang kolomnya kosong,
  *  dan template impor pun menyatakan kosong = Aktif. */
 const aktif = (status: string | null) => !status || status.toUpperCase() === "AKTIF";
+
+/**
+ * Satu koordinat jadi angka, atau NULL kalau tidak ada yang bisa dipakai.
+ *
+ * `Number("")` bernilai 0 — dan 0 adalah koordinat yang SAH secara tipe tapi
+ * menunjuk ke tengah Samudra Atlantik. Tanpa penjaga ini, gardu yang koordinat
+ * masternya kosong akan tampil punya titik di mobile, lengkap dengan hitungan
+ * jarak ribuan kilometer.
+ */
+export function koordinat(v: number | string | null | undefined): number | null {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(",", "."));
+  if (!Number.isFinite(n) || n === 0) return null;
+  return n;
+}
 
 // ── Seleksi ───────────────────────────────────────────────────────────────────
 
@@ -138,6 +176,8 @@ export function susunKandidat(
       penyulang: r.penyulang,
       kva_master: r.kva_master,
       persen_beban: r.persen_beban,
+      lat: koordinat(r.lat),
+      lng: koordinat(r.lng),
     };
 
     if (r.belum_diukur || !r.event_date) {

@@ -5,6 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import {
+  batasBulanWo,
   tanggalWo,
   type AlasanWo,
   type BarisMasterUntukWo,
@@ -41,6 +42,9 @@ export interface BarisWo {
   alamat: string | null;
   penyulang: string | null;
   kva_master: number | null;
+  /** Titik gardu, potret saat WO terbit. NULL = master belum punya koordinat. */
+  lat: number | null;
+  lng: number | null;
   alasan: AlasanWo;
   tgl_ukur_terakhir: string | null;
   umur_bulan: number | null;
@@ -61,7 +65,30 @@ export interface BarisWo {
 // dari string ini, dan sambungan membuatnya melebar jadi `string` sehingga
 // seluruh baris kehilangan tipenya.
 const KOLOM_BARIS =
-  "id,wo_id,kode_gardu,ulp,nama,alamat,penyulang,kva_master,alasan,tgl_ukur_terakhir,umur_bulan,urutan,bulan,tahun,tgl_wo,pengukuran_id,tgl_realisasi,petugas_nama,persen_beban,beban_kva,kva_pengukuran,terealisasi";
+  "id,wo_id,kode_gardu,ulp,nama,alamat,penyulang,kva_master,lat,lng,alasan,tgl_ukur_terakhir,umur_bulan,urutan,bulan,tahun,tgl_wo,pengukuran_id,tgl_realisasi,petugas_nama,persen_beban,beban_kva,kva_pengukuran,terealisasi";
+
+/**
+ * Satu pengukuran di bulan WO — hanya kolom yang dibutuhkan untuk memisahkan
+ * mana yang di dalam WO dan mana yang di luar.
+ */
+export interface PengukuranBulan {
+  /** Ikut ditarik semata sebagai kunci urut yang pasti unik untuk paginasi. */
+  id: string;
+  no_gardu: string;
+  petugas_unit: string;
+  tanggal_pengukuran: string;
+  petugas_nama: string | null;
+}
+
+const KOLOM_PENGUKURAN_BULAN = "no_gardu,petugas_unit,tanggal_pengukuran,petugas_nama,id";
+
+/** Gardu yang diukur bulan ini tapi tidak ada di WO. */
+export interface GarduLuarWo {
+  kode_gardu: string;
+  ulp: string;
+  tanggal: string;
+  petugas_nama: string | null;
+}
 
 /** Satu WO yang akan diterbitkan. */
 export interface RencanaTerbit {
@@ -85,6 +112,7 @@ const UKURAN_BATCH = 500;
 export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, bulan: number) {
   const [headers, setHeaders] = useState<WoHeader[]>([]);
   const [rows, setRows] = useState<BarisWo[]>([]);
+  const [pengukuranBulan, setPengukuranBulan] = useState<PengukuranBulan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -120,12 +148,33 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
         return unit ? q.eq("ulp", unit) : q;
       });
 
+      // Seluruh pengukuran di bulan yang sama — dipakai menghitung gardu yang
+      // diukur DI LUAR WO. Batas tanggalnya dari `batasBulanWo` supaya persis
+      // sama dengan jendela yang dipakai view realisasi di database.
+      //
+      // `hasil_penyeimbangan_id IS NULL` wajib, sama seperti di view: baris
+      // pembawa data ke AMG bukan pengukuran rutin, dan tanpa saringan ini tiap
+      // pemerataan beban akan terhitung sebagai "diukur di luar WO".
+      const { awal, akhir } = batasBulanWo(tahun, bulan);
+      const pg = await fetchAllRows<PengukuranBulan>(() => {
+        const q = supabaseBrowser
+          .from("pengukuran_gardu")
+          .select(KOLOM_PENGUKURAN_BULAN)
+          .gte("tanggal_pengukuran", awal)
+          .lt("tanggal_pengukuran", akhir)
+          .is("hasil_penyeimbangan_id", null)
+          .order("id");
+        return unit ? q.eq("petugas_unit", unit) : q;
+      });
+
       setHeaders((h ?? []) as WoHeader[]);
       setRows(r);
+      setPengukuranBulan(pg);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data WO");
       setHeaders([]);
       setRows([]);
+      setPengukuranBulan([]);
     } finally {
       setLoading(false);
     }
@@ -135,6 +184,34 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
 
   /** ULP yang WO bulan ini sudah terbit — dipakai menolak penerbitan ulang. */
   const ulpSudahTerbit = useMemo(() => new Set(headers.map((h) => h.ulp)), [headers]);
+
+  /**
+   * Gardu yang diukur bulan ini tapi tidak ada di WO mana pun.
+   *
+   * Bukan pelanggaran — mengukur di luar WO memang diperbolehkan, dan angka ini
+   * ada supaya kerja itu tetap terlihat alih-alih hilang dari rekap. Yang
+   * dihitung GARDU, bukan jumlah pengukuran: satu gardu yang diukur dua kali
+   * dalam sebulan tetap satu gardu.
+   *
+   * Dikunci pada `kode|ulp` karena kode gardu tidak unik lintas ULP — memakai
+   * kode saja akan menganggap gardu Gerung sudah tercakup WO Cakranegara.
+   */
+  const luarWo = useMemo<GarduLuarWo[]>(() => {
+    const diWo = new Set(rows.map((r) => `${r.kode_gardu.toUpperCase()}|${r.ulp.toUpperCase()}`));
+    const terlihat = new Map<string, GarduLuarWo>();
+
+    for (const p of pengukuranBulan) {
+      const kunci = `${(p.no_gardu ?? "").toUpperCase()}|${(p.petugas_unit ?? "").toUpperCase()}`;
+      if (!p.no_gardu || diWo.has(kunci) || terlihat.has(kunci)) continue;
+      terlihat.set(kunci, {
+        kode_gardu: p.no_gardu,
+        ulp: p.petugas_unit,
+        tanggal: p.tanggal_pengukuran,
+        petugas_nama: p.petugas_nama,
+      });
+    }
+    return [...terlihat.values()].sort((a, b) => a.kode_gardu.localeCompare(b.kode_gardu));
+  }, [rows, pengukuranBulan]);
 
   /**
    * Terbitkan WO untuk tiap rencana yang ULP-nya belum punya WO bulan ini.
@@ -181,6 +258,8 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
           alamat: k.alamat,
           penyulang: k.penyulang,
           kva_master: k.kva_master,
+          lat: k.lat,
+          lng: k.lng,
           alasan: k.alasan,
           tgl_ukur_terakhir: k.tgl_ukur_terakhir,
           umur_bulan: k.umur_bulan,
@@ -219,13 +298,13 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     [muat],
   );
 
-  return { headers, rows, loading, error, unit, ulpSudahTerbit, terbitkan, hapus, refresh: muat };
+  return { headers, rows, luarWo, loading, error, unit, ulpSudahTerbit, terbitkan, hapus, refresh: muat };
 }
 
 // ── Hook: master gardu untuk penyusunan kandidat ──────────────────────────────
 
 const KOLOM_MASTER =
-  "kode,ulp,nama,alamat,penyulang,kva_master,status,belum_diukur,event_date,persen_beban";
+  "kode,ulp,nama,alamat,penyulang,kva_master,status,belum_diukur,event_date,persen_beban,lat,lng";
 
 /**
  * Baris master + kondisi terakhir, seperlunya untuk menyusun kandidat WO.

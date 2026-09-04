@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import {
   ClipboardList, Download, Loader2, Search, Trash2, FilePlus2, RefreshCw, CheckCircle2,
+  ListPlus, ChevronDown,
 } from "lucide-react";
 import { canManageSettings, type CurrentUser } from "@/lib/roles";
 import StatTile from "@/app/admin/_components/StatTile";
@@ -33,6 +34,12 @@ type Saringan = (typeof SARINGAN)[number]["nilai"];
 
 const INPUT =
   "h-9 border border-line rounded-lg px-3 text-sm text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15";
+
+/** YYYY-MM-DD → DD-MM-YYYY. */
+function fmtTanggal(v: string): string {
+  const [y, m, d] = v.slice(0, 10).split("-");
+  return `${d}-${m}-${y}`;
+}
 
 /** Kuota diabaikan saat menghitung tunggakan — angka itu menjawab "berapa yang
  *  sebenarnya menunggu", bukan "berapa yang muat bulan ini". */
@@ -94,6 +101,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
   const [bulan, setBulan] = useState(sekarang.getMonth() + 1);
   const [cari, setCari] = useState("");
   const [saring, setSaring] = useState<Saringan>("");
+  const [bukaLuarWo, setBukaLuarWo] = useState(false);
   const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null);
   const [pesan, setPesan] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
@@ -103,7 +111,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
   } = useWoPengukuranSettings(ulp);
 
   const {
-    headers, rows, loading, error, ulpSudahTerbit, terbitkan, hapus, refresh,
+    headers, rows, luarWo, loading, error, ulpSudahTerbit, terbitkan, hapus, refresh,
   } = useWoPengukuran(user, ulp, tahun, bulan);
 
   const { master, loading: loadingMaster, error: errorMaster } = useMasterUntukWo(user, ulp);
@@ -366,7 +374,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
       )}
 
       {/* ── Ringkasan ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatTile
           label="Tunggakan"
           value={memuat ? "—" : tunggakan}
@@ -391,7 +399,54 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
           tone="green"
           hint={`${persenRealisasi}% terukur`}
         />
+        <StatTile
+          label="Di Luar WO"
+          value={memuat ? "—" : luarWo.length}
+          tone="navy"
+          hint="gardu diukur tanpa masuk WO"
+        />
       </div>
+
+      {/* ── Rincian di luar WO ── */}
+      {/* Mengukur di luar WO diperbolehkan — daftar ini ada supaya kerjanya
+          tetap terlihat, bukan sebagai teguran. */}
+      {!memuat && luarWo.length > 0 && (
+        <div className="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setBukaLuarWo((v) => !v)}
+            className="w-full flex items-center gap-2.5 px-4 py-3 hover:bg-surface transition-colors"
+          >
+            <ListPlus size={15} className="text-navy-600 shrink-0" />
+            <span className="text-sm font-semibold text-ink">
+              {luarWo.length} gardu diukur di luar WO {namaPeriode}
+            </span>
+            <ChevronDown
+              size={16}
+              className={`ml-auto text-ink-muted transition-transform ${bukaLuarWo ? "rotate-180" : ""}`}
+            />
+          </button>
+
+          {bukaLuarWo && (
+            <div className="border-t border-line max-h-64 overflow-y-auto">
+              <table className="w-full">
+                <tbody className="divide-y divide-line">
+                  {luarWo.map((g) => (
+                    <tr key={`${g.ulp}|${g.kode_gardu}`} className="text-sm">
+                      <td className="px-4 py-2 font-semibold text-ink whitespace-nowrap">{g.kode_gardu}</td>
+                      {!ulp && <td className="px-3 py-2 text-ink-soft whitespace-nowrap">{g.ulp}</td>}
+                      <td className="px-3 py-2 text-ink-soft whitespace-nowrap tabular-nums">
+                        {fmtTanggal(g.tanggal)}
+                      </td>
+                      <td className="px-4 py-2 text-ink-soft truncate">{g.petugas_nama ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── WO yang sudah terbit ── */}
       {headers.length > 0 && (

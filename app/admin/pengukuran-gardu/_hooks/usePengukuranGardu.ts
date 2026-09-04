@@ -43,7 +43,7 @@ export const HIGH_TEMP_C = 60;
  * adalah cara termudah membuatnya melenceng.
  */
 export const KOLOM_PENGUKURAN =
-  "id,no_gardu,alamat,penyulang,kva_trafo,tanggal_pengukuran,jam_pengukuran,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,total_teg_rs,total_teg_st,total_teg_rt,perjurusan,beban_kva,persen_beban,suhu_trafo,petugas_nama,petugas_unit,created_at,wo_sent_at,jenis_pemeliharaan,amg_sent_at,amg_queued_at,amg_error,amg_attempts";
+  "id,no_gardu,alamat,penyulang,kva_trafo,tanggal_pengukuran,jam_pengukuran,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,total_teg_rs,total_teg_st,total_teg_rt,perjurusan,beban_kva,persen_beban,suhu_trafo,petugas_nama,petugas_unit,created_at,wo_sent_at,jenis_pemeliharaan,amg_sent_at,amg_queued_at,amg_error,amg_attempts,lokasi_lat,lokasi_lng,lokasi_akurasi";
 
 export const bebanTampil = (v: number | null | undefined) => Math.round(v ?? 0);
 
@@ -91,6 +91,14 @@ export interface PengukuranGardu {
   amg_queued_at: string | null;
   amg_error: string | null;
   amg_attempts: number | null;
+  /** Titik tempat petugas berdiri saat menyimpan pengukuran. NULL = GPS tidak
+   *  tersedia — sengaja tidak diwajibkan, sebab gardu di dalam gedung sering
+   *  tidak dapat sinyal dan pengukurannya tetap harus bisa tersimpan. */
+  lokasi_lat: number | null;
+  lokasi_lng: number | null;
+  /** Akurasi GPS dalam meter. Titik berakurasi 500 m tidak bisa dipakai menilai
+   *  apa pun, dan tanpa angka ini ia tak terbedakan dari titik yang presisi. */
+  lokasi_akurasi: number | null;
   /** Baris ini sebenarnya hasil PEMERATAAN BEBAN, bukan pengukuran rutin.
    *  Kondisinya tetap kondisi nyata gardu, jadi ia ikut semua perhitungan —
    *  tapi tidak boleh masuk tabel Realisasi maupun antrean kirim AMG, karena
@@ -157,6 +165,8 @@ function dariPenyeimbangan(r: PenyeimbanganRow): PengukuranGardu {
     wo_sent_at: null,
     jenis_pemeliharaan: r.jenis_pemeliharaan ?? "PEMERATAAN BEBAN",
     amg_sent_at: null, amg_queued_at: null, amg_error: null, amg_attempts: null,
+    // Pemerataan beban dicatat lewat jalurnya sendiri dan tidak merekam titik.
+    lokasi_lat: null, lokasi_lng: null, lokasi_akurasi: null,
     dari_penyeimbangan: true,
   };
 }

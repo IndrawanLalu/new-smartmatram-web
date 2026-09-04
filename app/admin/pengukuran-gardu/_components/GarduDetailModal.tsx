@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   X,
   AlertTriangle,
@@ -13,10 +13,13 @@ import {
   MessageCircle,
   CheckCircle2,
   Trash2,
+  MapPin,
 } from "lucide-react";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
 import { antreKeAmg } from "../_lib/amgQueue";
+import { koordinat } from "../_lib/kandidatWo";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   type PengukuranGardu,
   HIGH_CURRENT_A,
@@ -35,6 +38,25 @@ function fmtTanggal(s: string): string {
   const [y, m, d] = s.split("-");
   return `${d}-${m}-${y}`;
 }
+
+/** Jarak dua titik di permukaan bumi, dalam meter. */
+function jarakMeter(aLat: number, aLng: number, bLat: number, bLng: number): number {
+  const R = 6371000;
+  const rad = (d: number) => (d * Math.PI) / 180;
+  const dLat = rad(bLat - aLat);
+  const dLng = rad(bLng - aLng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(rad(aLat)) * Math.cos(rad(bLat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/** Di atas jarak ini, titik pengukuran patut ditengok — bukan berarti salah,
+ *  tapi cukup jauh dari gardunya untuk layak dilihat orang. */
+const JARAK_WAJAR_M = 500;
+
+const fmtJarak = (m: number) =>
+  m < 1000 ? `${Math.round(m)} m` : `${(m / 1000).toFixed(1).replace(".", ",")} km`;
 
 function ArusHighlight({
   v,
@@ -133,7 +155,48 @@ export default function GarduDetailModal({
   const [amgSuccess, setAmgSuccess] = useState(false);
   const [amgError, setAmgError] = useState<string | null>(null);
 
+  /**
+   * Titik gardu menurut master — pembanding untuk titik tempat pengukuran
+   * diambil. Diambil di sini, bukan ikut dibawa `PengukuranGardu`: baris
+   * pengukuran tidak menyimpan koordinat gardu, dan menambahkannya ke seluruh
+   * daftar berarti menyeret dua kolom untuk ribuan baris demi satu modal.
+   */
+  const [titikGardu, setTitikGardu] = useState<{ lat: number; lng: number } | null>(null);
+
+  useEffect(() => {
+    if (!row?.no_gardu) { setTitikGardu(null); return; }
+    let batal = false;
+
+    supabaseBrowser
+      .from("gardu")
+      .select("lat,lng")
+      .eq("kode", row.no_gardu)
+      .eq("ulp", row.petugas_unit)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (batal) return;
+        // `koordinat()` yang membereskan: kolom lat/lng di tabel `gardu` warisan
+        // migrasi Firebase dan tipenya tidak dipatok skrip mana pun, jadi bisa
+        // datang sebagai teks — dan "" akan jadi 0 kalau dipaksa Number().
+        const lat = koordinat(data?.lat);
+        const lng = koordinat(data?.lng);
+        setTitikGardu(lat !== null && lng !== null ? { lat, lng } : null);
+      });
+
+    return () => { batal = true; };
+  }, [row?.no_gardu, row?.petugas_unit]);
+
   if (!row) return null;
+
+  const titikUkur =
+    koordinat(row.lokasi_lat) !== null && koordinat(row.lokasi_lng) !== null
+      ? { lat: koordinat(row.lokasi_lat)!, lng: koordinat(row.lokasi_lng)! }
+      : null;
+
+  const jarakKeGardu =
+    titikUkur && titikGardu
+      ? jarakMeter(titikUkur.lat, titikUkur.lng, titikGardu.lat, titikGardu.lng)
+      : null;
 
   const isSent = !amgReset && !!row.amg_sent_at;
   const isQueued = !amgReset && !isSent && (amgMarked || !!row.amg_queued_at);
@@ -367,6 +430,61 @@ export default function GarduDetailModal({
                   {row.petugas_nama ?? "—"}
                 </p>
               </div>
+            </div>
+          </section>
+
+          {/* Lokasi Pengukuran */}
+          <section>
+            <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
+              Lokasi Pengukuran
+            </h3>
+            <div className="bg-white border border-line rounded-xl p-4">
+              {!titikUkur ? (
+                <p className="text-sm text-ink-muted">
+                  Titik pengukuran tidak terekam
+                  {row.dari_penyeimbangan
+                    ? " — baris ini hasil pemerataan beban, bukan pengukuran rutin."
+                    : ". Pengukuran lama belum merekam lokasi, atau GPS petugas tidak tersedia saat menyimpan."}
+                </p>
+              ) : (
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5 text-sm text-ink">
+                      <MapPin size={14} className="text-navy-600 shrink-0" />
+                      <span className="font-mono font-medium">
+                        {titikUkur.lat.toFixed(6)}, {titikUkur.lng.toFixed(6)}
+                      </span>
+                      {row.lokasi_akurasi != null && (
+                        <span className="text-xs text-ink-muted">
+                          ±{Math.round(row.lokasi_akurasi)} m
+                        </span>
+                      )}
+                    </p>
+                    {jarakKeGardu === null ? (
+                      <p className="text-xs text-ink-muted mt-1">
+                        Jarak tidak bisa dihitung — titik gardu belum ada di master.
+                      </p>
+                    ) : (
+                      <p
+                        className={`text-xs mt-1 ${
+                          jarakKeGardu > JARAK_WAJAR_M ? "text-amber-700 font-medium" : "text-ink-soft"
+                        }`}
+                      >
+                        {fmtJarak(jarakKeGardu)} dari titik gardu
+                        {jarakKeGardu > JARAK_WAJAR_M && " — cukup jauh, perlu ditengok"}
+                      </p>
+                    )}
+                  </div>
+                  <a
+                    href={`https://www.google.com/maps?q=${titikUkur.lat},${titikUkur.lng}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="shrink-0 text-xs font-medium px-3 py-1.5 rounded-lg border border-line text-ink-soft hover:text-navy-600 hover:border-navy-300 transition-colors"
+                  >
+                    Buka di Peta
+                  </a>
+                </div>
+              )}
             </div>
           </section>
 
