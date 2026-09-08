@@ -73,15 +73,32 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ success: true });
 }
 
+/**
+ * Cari role menurut kodenya, TANPA memedulikan besar-kecil huruf.
+ *
+ * Kode role di database tidak seragam — `admin`, `inspektor`, dan `manager`
+ * huruf kecil, sisanya huruf besar. PATCH dan DELETE dulu membesarkan kodenya
+ * sebelum mencari, jadi ketiga role itu SELALU berbunyi "Role tidak ditemukan"
+ * dan menunya tidak pernah bisa diubah dari halaman Kelola Role.
+ *
+ * Tidak memakai `ilike`: kode seperti `INSPEKSI_JTM` mengandung garis bawah,
+ * dan garis bawah itu wildcard di LIKE — bisa mencocoki role yang salah.
+ * Tabelnya belasan baris, jadi mencocokkan di sini lebih aman dan tetap murah.
+ */
+async function cariRole(kode: string) {
+  const { data } = await supabaseAdmin.from("roles").select("code,is_system");
+  return (data ?? []).find((r) => r.code.toLowerCase() === kode.toLowerCase()) ?? null;
+}
+
 // ── PATCH /api/roles — ubah role ─────────────────────────────────────────────
 export async function PATCH(req: NextRequest) {
   if (!(await verifyUP3(req))) return NextResponse.json({ error: "Hanya UP3 yang boleh mengelola role" }, { status: 401 });
 
   const body = (await req.json()) as RolePayload;
-  const code = (body.code ?? "").trim().toUpperCase();
+  const code = (body.code ?? "").trim();
   if (!code) return NextResponse.json({ error: "code wajib diisi" }, { status: 400 });
 
-  const { data: existing } = await supabaseAdmin.from("roles").select("is_system").eq("code", code).single();
+  const existing = await cariRole(code);
   if (!existing) return NextResponse.json({ error: "Role tidak ditemukan" }, { status: 404 });
 
   // Partial-tolerant: hanya field yang dikirim yang diubah (mendukung save menus-only dari matriks).
@@ -101,7 +118,7 @@ export async function PATCH(req: NextRequest) {
     if (typeof body.can_approve_wo === "boolean") patch.can_approve_wo = body.can_approve_wo;
   }
 
-  const { error } = await supabaseAdmin.from("roles").update(patch).eq("code", code);
+  const { error } = await supabaseAdmin.from("roles").update(patch).eq("code", existing.code);
   if (error) return NextResponse.json({ error: error.message }, { status: 400 });
   return NextResponse.json({ success: true });
 }
@@ -113,11 +130,11 @@ export async function DELETE(req: NextRequest) {
   const { code } = await req.json();
   if (!code) return NextResponse.json({ error: "code wajib diisi" }, { status: 400 });
 
-  const { data: existing } = await supabaseAdmin.from("roles").select("is_system").eq("code", code).single();
+  const existing = await cariRole(String(code).trim());
   if (!existing) return NextResponse.json({ error: "Role tidak ditemukan" }, { status: 404 });
   if (existing.is_system) return NextResponse.json({ error: "Role sistem tidak bisa dihapus" }, { status: 400 });
 
-  const { error } = await supabaseAdmin.from("roles").delete().eq("code", code);
+  const { error } = await supabaseAdmin.from("roles").delete().eq("code", existing.code);
   if (error) {
     // 23503 = FK violation → masih dipakai user
     const msg = error.code === "23503" ? "Role sedang dipakai user — pindahkan user itu dulu" : error.message;
