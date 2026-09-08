@@ -223,8 +223,16 @@ SELECT
   g.daya   AS daya_master,
   (SELECT count(*) FROM public.pemeliharaan_gardu_periksa p
     WHERE p.pemeliharaan_id = m.id)                       AS item_terisi,
-  (SELECT count(*) FROM public.gardu_kondisi_terakhir k
-    WHERE k.pemeliharaan_id = m.id AND NOT k.normal)      AS item_tidak_normal,
+  -- Dihitung LANGSUNG dari jawaban pemeriksaan, bukan lewat
+  -- `gardu_kondisi_terakhir`. View itu hanya memuat pemeliharaan yang sudah
+  -- DIVERIFIKASI — padahal baris ini justru dipakai layar persetujuan, saat
+  -- statusnya masih 'Selesai'. Lewat sana, angkanya akan selalu 0 tepat pada
+  -- pekerjaan yang sedang diperiksa admin: bukan galat, cuma bohong yang rapi.
+  (SELECT count(*)
+     FROM public.pemeliharaan_gardu_periksa p
+     JOIN public.hargardu_opsi_ref o
+       ON o.item_kode = p.item_kode AND o.kode = p.nilai
+    WHERE p.pemeliharaan_id = m.id AND NOT o.normal)      AS item_tidak_normal,
   (SELECT count(*) FROM public.pemeliharaan_gardu_foto f
     WHERE f.pemeliharaan_id = m.id)                       AS jumlah_foto,
   (SELECT count(*) FROM public.hargardu_foto_ref r

@@ -49,6 +49,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
       { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },
       { href: "/admin/jtr",                 label: "Inspeksi JTR",         icon: Network },
+      { href: "/admin/hargardu",            label: "Pemeliharaan Gardu",   icon: Wrench },
     ],
   },
   {
