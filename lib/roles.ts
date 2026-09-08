@@ -152,7 +152,12 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "scanMeter",       label: "Scan Meter" },
   { id: "penyeimbangan",   label: "Penyeimbangan Beban" },
   { id: "jtr",             label: "Inspeksi JTR" },
+  { id: "hargardu",        label: "Pemeliharaan Gardu" },
 ];
+// ⚠ Daftar ini HARUS sejalan dengan `menuConfig.ts` di repo mobile. Menambah
+// menu di sana saja tidak cukup: menu yang tidak terdaftar di sini tidak bisa
+// dicentang di Kelola Role, jadi tidak ada satu role pun yang bisa memilikinya —
+// dan menunya tidak akan pernah muncul di HP siapa pun, tanpa pesan galat apa pun.
 
 const ALL_MENU_IDS = MOBILE_MENUS.map((m) => m.id);
 const FIELD_MENU_IDS = ALL_MENU_IDS.filter((id) => id !== "inspeksi");
