@@ -92,13 +92,23 @@ export interface Rincian {
   retingFuse: Record<string, Record<string, string>>;
 }
 
-export function useHargarduApproval(user: CurrentUser) {
+export interface SaringDaftar {
+  /** "YYYY-MM", atau kosong = semua bulan. */
+  bulan: string;
+  /** Hanya untuk UP3; role lain terkunci ke unitnya sendiri. */
+  ulp: string;
+  /** Kode atau nama gardu. */
+  cari: string;
+}
+
+export function useHargarduApproval(user: CurrentUser, saring: SaringDaftar) {
   const [daftar, setDaftar] = useState<PemeliharaanMenunggu[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [memproses, setMemproses] = useState<string | null>(null);
 
-  const unit = canSeeAllUnits(user.role) ? null : (user.unit ?? null);
+  const unit = canSeeAllUnits(user.role) ? (saring.ulp || null) : (user.unit ?? null);
+  const cari = saring.cari.trim();
 
   const muat = useCallback(async () => {
     setLoading(true);
@@ -107,9 +117,24 @@ export function useHargarduApproval(user: CurrentUser) {
       let q = supabaseBrowser
         .from("pemeliharaan_gardu_ringkas")
         .select("*")
-        .in("status", ["Selesai", "Ditolak"])
-        .order("tgl_selesai", { ascending: true, nullsFirst: false });
+        .order("tgl_selesai", { ascending: false, nullsFirst: false });
+
       if (unit) q = q.eq("ulp", unit);
+
+      // PENCARIAN GARDU MENGABAIKAN SARINGAN BULAN, dan itu disengaja.
+      // Yang dicari orang saat mengetik kode gardu adalah "gardu ini pernah
+      // dipelihara kapan saja" — bukan "pernah dipelihara bulan ini". Menahannya
+      // di bulan berjalan membuat pencarian menjawab "tidak ada" untuk gardu
+      // yang sebenarnya punya riwayat panjang.
+      if (cari) {
+        q = q.or(`gardu_kode.ilike.%${cari}%,gardu_nama.ilike.%${cari}%`);
+      } else if (saring.bulan) {
+        const [th, bl] = saring.bulan.split("-").map(Number);
+        const awal = new Date(Date.UTC(th, bl - 1, 1)).toISOString();
+        const akhir = new Date(Date.UTC(th, bl, 1)).toISOString();
+        q = q.gte("tgl_selesai", awal).lt("tgl_selesai", akhir);
+      }
+
       const { data, error: e } = await q;
       if (e) throw new Error(e.message);
       setDaftar((data ?? []) as unknown as PemeliharaanMenunggu[]);
@@ -118,7 +143,7 @@ export function useHargarduApproval(user: CurrentUser) {
     } finally {
       setLoading(false);
     }
-  }, [unit]);
+  }, [unit, cari, saring.bulan]);
 
   useEffect(() => {
     void muat();
@@ -135,7 +160,15 @@ export function useHargarduApproval(user: CurrentUser) {
           p_catatan: catatan ?? null,
         });
         if (e) throw new Error(e.message);
-        setDaftar((s) => s.filter((x) => x.id !== id));
+        // Barisnya TIDAK dibuang: daftar ini memuat seluruh riwayat, bukan cuma
+        // yang menunggu. Yang berubah statusnya, dan itu yang perlu terlihat.
+        setDaftar((s) =>
+          s.map((x) =>
+            x.id === id
+              ? { ...x, status: setuju ? "Diverifikasi" : "Ditolak", verified_note: catatan ?? null }
+              : x,
+          ),
+        );
         return true;
       } catch (e) {
         setError(e instanceof Error ? e.message : "Gagal menyimpan keputusan");
