@@ -16,6 +16,7 @@ export interface PemeliharaanMenunggu {
   sumber: string;
   tgl_padam: string | null;
   tgl_selesai: string | null;
+  tgl_acuan: string | null;
   regu_1: string[] | null;
   regu_2: string[] | null;
   petugas_nama: string | null;
@@ -118,7 +119,7 @@ export function useHargarduApproval(user: CurrentUser, saring: SaringDaftar) {
       let q = supabaseBrowser
         .from("pemeliharaan_gardu_ringkas")
         .select("*")
-        .order("tgl_selesai", { ascending: false, nullsFirst: false });
+        .order("tgl_acuan", { ascending: false, nullsFirst: false });
 
       if (unit) q = q.eq("ulp", unit);
 
@@ -133,7 +134,11 @@ export function useHargarduApproval(user: CurrentUser, saring: SaringDaftar) {
         const [th, bl] = saring.bulan.split("-").map(Number);
         const awal = new Date(Date.UTC(th, bl - 1, 1)).toISOString();
         const akhir = new Date(Date.UTC(th, bl, 1)).toISOString();
-        q = q.gte("tgl_selesai", awal).lt("tgl_selesai", akhir);
+        // `tgl_acuan` = tgl_selesai, atau tgl_padam, atau kapan dibuat.
+        // Menyaring `tgl_selesai` saja membuat pekerjaan yang masih berjalan
+        // tidak pernah muncul di bulan mana pun — hilang dari daftar justru
+        // selagi dikerjakan.
+        q = q.gte("tgl_acuan", awal).lt("tgl_acuan", akhir);
       }
 
       const { data, error: e } = await q;

@@ -215,6 +215,10 @@ CREATE VIEW public.pemeliharaan_gardu_ringkas AS
 SELECT
   m.id, m.gardu_kode, m.ulp, m.penyulang, m.status, m.sumber,
   m.tgl_rencana, m.tgl_padam, m.tgl_selesai,
+  -- Tanggal untuk MENYARING dan MENGURUTKAN. Memakai `tgl_selesai` saja
+  -- membuat pekerjaan yang masih berjalan tidak pernah muncul di saringan
+  -- bulan mana pun — hilang dari daftar justru selagi dikerjakan.
+  COALESCE(m.tgl_selesai, m.tgl_padam, m.created_at) AS tgl_acuan,
   m.regu_1, m.regu_2, m.petugas_nama,
   m.catatan_perbaikan, m.pr_keterangan,
   m.verified_at, m.verified_by, m.verified_note,

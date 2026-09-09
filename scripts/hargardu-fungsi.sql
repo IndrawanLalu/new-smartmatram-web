@@ -31,6 +31,21 @@ BEGIN
     RAISE EXCEPTION 'Pemeliharaan % sudah diverifikasi dan tidak bisa diubah lagi', m.gardu_kode;
   END IF;
 
+  -- Daftar kosong TIDAK boleh menghapus jawaban yang sudah ada.
+  --
+  -- Penghapusan di bawah memang disengaja — item yang dihilangkan di layar
+  -- harus ikut hilang di sini. Tapi daftar yang kosong hampir tidak pernah
+  -- berarti "hapus semuanya"; jauh lebih sering berarti aplikasinya membuka
+  -- formulir kosong karena gagal memuat isian tersimpan, lalu menekan Simpan.
+  -- Tanpa penjaga ini, satu ketukan menghapus seluruh pemeriksaan satu gardu
+  -- tanpa peringatan apa pun.
+  IF jsonb_array_length(COALESCE(p_daftar, '[]'::jsonb)) = 0
+     AND EXISTS (SELECT 1 FROM public.pemeliharaan_gardu_periksa WHERE pemeliharaan_id = p_id) THEN
+    RAISE EXCEPTION
+      'Menolak menyimpan daftar pemeriksaan kosong untuk % — gardu ini sudah punya jawaban tersimpan, dan menyimpannya akan menghapus semuanya.',
+      m.gardu_kode;
+  END IF;
+
   FOR r IN SELECT * FROM jsonb_array_elements(COALESCE(p_daftar, '[]'::jsonb)) LOOP
     INSERT INTO public.pemeliharaan_gardu_periksa
       (pemeliharaan_id, item_kode, bagian, nilai, nilai_angka, catatan)
@@ -211,22 +226,37 @@ BEGIN
 
   -- Item wajib yang belum terisi, per fasa kalau memang dinilai per fasa.
   FOR s IN
-    SELECT i.nama || CASE WHEN i.dimensi = 'fasa'    THEN ' (fasa ' || b.bagian || ')'
-                          WHEN i.dimensi = 'jurusan' THEN ' (jurusan ' || b.bagian || ')'
-                          ELSE '' END
+    -- Item per FASA harus lengkap R/S/T: ketiganya selalu ada di gardu mana pun.
+    --
+    -- Item per JURUSAN cukup SATU terisi. Gardu berjurusan dua tidak punya
+    -- jurusan C dan D, dan memaksa regu mengisi jurusan yang tidak ada cuma
+    -- melahirkan angka karangan supaya tombolnya mau ditekan.
+    SELECT i.nama || CASE WHEN i.dimensi = 'fasa' THEN ' (fasa ' || b.bagian || ')' ELSE '' END
     FROM public.hargardu_item_ref i
     CROSS JOIN LATERAL (
       SELECT unnest(CASE i.dimensi
-                      WHEN 'fasa'    THEN ARRAY['R','S','T']
-                      WHEN 'jurusan' THEN ARRAY['A','B','C','D']
+                      WHEN 'fasa' THEN ARRAY['R','S','T']
                       ELSE ARRAY['-'] END) AS bagian
     ) b
-    WHERE i.aktif AND i.wajib
+    WHERE i.aktif AND i.wajib AND i.dimensi <> 'jurusan'
       AND NOT EXISTS (
         SELECT 1 FROM public.pemeliharaan_gardu_periksa p
         WHERE p.pemeliharaan_id = p_id AND p.item_kode = i.kode AND p.bagian = b.bagian
           AND (p.nilai IS NOT NULL OR p.nilai_angka IS NOT NULL))
     ORDER BY i.urutan, b.bagian
+  LOOP
+    kurang := kurang || s;
+  END LOOP;
+
+  FOR s IN
+    SELECT i.nama || ' (minimal satu jurusan)'
+    FROM public.hargardu_item_ref i
+    WHERE i.aktif AND i.wajib AND i.dimensi = 'jurusan'
+      AND NOT EXISTS (
+        SELECT 1 FROM public.pemeliharaan_gardu_periksa p
+        WHERE p.pemeliharaan_id = p_id AND p.item_kode = i.kode
+          AND (p.nilai IS NOT NULL OR p.nilai_angka IS NOT NULL))
+    ORDER BY i.urutan
   LOOP
     kurang := kurang || s;
   END LOOP;
