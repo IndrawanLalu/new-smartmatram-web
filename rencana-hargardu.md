@@ -373,3 +373,107 @@ diambil.
 **Daftar item dan pilihannya: satu untuk semua ULP, hanya UP3 yang bisa
 mengubah.** Bukan per-ULP — kalau tiap unit mengarang kosakatanya sendiri, angka
 se-UP3 tidak bisa dijumlahkan lagi.
+
+---
+
+# 7. Urutan rincian — mengikuti bentuk fisik gardu
+
+> Ditetapkan pemilik pekerjaan 9 September 2026. **Urutan ini berlaku di web
+> maupun di mobile**, jadi ditulis sekali di sini dan dipakai dua tempat.
+
+Rincian dibaca dari ATAS TRAFO KE BAWAH, urut seperti orang memeriksa gardu
+sungguhan. Di web: **data di kiri, foto di kanan**, satu bagian satu baris.
+
+| # | Bagian | Isinya | Foto |
+|---|---|---|---|
+| 1 | **Data Gardu** | kVA, nomor seri, merk, tahun, phase, tegangan, arus, vector, minyak, berat, tapping, pendingin | nama plat |
+| 2 | **FCO** | cut out R/S/T (kondisi, jenis, ukuran fuse link) + **tekep FCO** | fco |
+| 3 | **Arrester** | arrester R/S/T (kondisi, jenis) + **tekep arrester** | arrester |
+| 4 | **Jumperan** | jumperan trafo (A3C / A3Cs) | — |
+| 5 | **Bushing** | bushing primer R/S/T, bushing sekunder R/S/T + **tekep bushing** | bushing primer, bushing sekunder |
+| 6 | **Trafo & fisik** | kondisi trafo, minyak trafo, papan injak, yzer werk, lantai kerja | trafo |
+| 7 | **PHB TR** | LV board, dudukan fuse, busbar, helbom saklar, HS rating, reting fuse per jurusan, **beban per jurusan**, **jurusan tersedia**, **jurusan terpakai** | PHB TR, isi PHB TR, helbom, NH fuse, beban R/S/T/N |
+| 8 | **Inlet** | ukuran kabel, **jenis kabel**, ukuran schoen, **jenis schoen** | — |
+| 9 | **Outlet** | sama seperti inlet | — |
+| 10 | **Sambungan Outlet Gardu** | **per jurusan A/B/C/D** — joint press / konektor | — |
+| 11 | **Pentanahan** | nilai arrester / trafo / netral + **jenis kabel pentanahan** | — |
+
+Foto pekerjaan (sebelum, proses, sesudah, keseluruhan gardu) berdiri sendiri di
+atas sebagai bukti pekerjaannya terjadi — bukan milik salah satu bagian.
+
+---
+
+## 7.1 Tiga hal yang tidak bisa diwakili bentuk data sekarang
+
+### a. Sambungan outlet harus PER JURUSAN
+
+Sekarang satu gardu satu nilai. Kata pemilik pekerjaan: *"perjurusan ya bukan
+hanya satu, karena bisa berbeda"* — dan memang begitu: jurusan A bisa joint
+press sementara jurusan C masih konektor. Satu nilai memaksa regu memilih salah
+satu, dan angka dashboard "berapa gardu masih pakai konektor" jadi tidak bisa
+dipercaya.
+
+Kolom `fasa` di `pemeliharaan_gardu_periksa` hanya menerima R/S/T. Yang
+dibutuhkan bukan kolom baru, melainkan **kolomnya digeneralisasi**:
+
+```
+hargardu_item_ref.per_fasa (BOOLEAN)  →  dimensi TEXT: tunggal | fasa | jurusan
+pemeliharaan_gardu_periksa.fasa       →  bagian TEXT: R S T | A B C D | -
+```
+
+Sekali diganti, item apa pun bisa dinilai per fasa ATAU per jurusan tanpa
+skema disentuh lagi — termasuk item yang belum terpikirkan hari ini.
+
+### b. Tujuh isian belum ada
+
+| Isian | Bagian | Bentuk |
+|---|---|---|
+| `jurusan_tersedia` | PHB TR | angka |
+| `jurusan_terpakai` | PHB TR | angka |
+| `kabel_inlet_jenis` | Inlet | pilihan |
+| `schoen_inlet_jenis` | Inlet | pilihan |
+| `kabel_outlet_jenis` | Outlet | pilihan |
+| `schoen_outlet_jenis` | Outlet | pilihan |
+| `pentanahan_jenis_kabel` | Pentanahan | pilihan |
+
+Kosakata pilihannya **belum boleh saya karang**: dari kosakata itulah saringan
+dan angka dashboard diambil, dan pilihan yang salah membuat pertanyaan tidak
+bisa dijawab — tanpa galat, cuma tidak ketemu.
+
+### c. Kelompok item ditata ulang
+
+Tujuh kelompok sekarang (Pengaman, Tekep, Bushing, Trafo, PHB TR, Sambungan,
+Fisik) disusun menurut jenis barangnya. Yang diminta disusun menurut **urutan
+memeriksanya**, dan tekep pecah masuk ke bagiannya masing-masing — tekep FCO
+bersama FCO, bukan berkumpul dengan tekep lain.
+
+Ini murni memindahkan `kelompok` dan `urutan` di tabel acuan. Kode item tidak
+berubah, jadi catatan pemeliharaan yang sudah ada tetap terbaca.
+
+---
+
+## 7.2 Akibatnya pada data yang sudah ada
+
+Ada **satu** pemeliharaan sungguhan (AM251, 40 jawaban, 14 foto). Penggantian
+nama kolom `fasa` → `bagian` memakai `ALTER TABLE ... RENAME`, jadi datanya ikut
+pindah utuh — tidak ada yang perlu diketik ulang.
+
+Yang berubah artinya cuma `sambungan_outlet`: yang tercatat sekarang satu nilai
+tanpa jurusan. Dia tetap tersimpan sebagai `bagian = '-'` dan akan terbaca
+sebagai "belum dirinci per jurusan" sampai gardu itu dipelihara lagi.
+
+---
+
+## 7.3 Urutan pengerjaan
+
+| # | Pekerjaan |
+|---|---|
+| 1 | SQL: generalisasi `fasa` → `bagian`, `per_fasa` → `dimensi` |
+| 2 | SQL: tujuh isian baru + penataan ulang kelompok & urutan + pemetaan foto ke bagiannya |
+| 3 | Web: rincian dua kolom — data kiri, foto kanan, urut 1–11 |
+| 4 | Mobile: langkah mengikuti urutan yang sama (otomatis, karena langkah dibuat dari kelompok) |
+
+Mobile hampir tidak perlu disentuh: langkahnya sudah dibuat dari daftar
+kelompok di database, jadi menata ulang kelompok akan menata ulang langkahnya
+sendiri. Yang perlu ditambah cuma kemampuan menilai per JURUSAN, bukan cuma
+per fasa.
