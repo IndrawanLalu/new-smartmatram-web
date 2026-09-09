@@ -244,7 +244,7 @@ export default function DetailPemeliharaan({
                 {temuan.map((t, i) => (
                   <p key={i} className="text-sm text-ink">
                     <b>{t.itemNama}</b>
-                    {t.fasa !== "-" ? ` fasa ${t.fasa}` : ""}: {t.nilaiLabel}
+                    {t.bagian !== "-" ? ` ${t.bagian}` : ""}: {t.nilaiLabel}
                     {t.catatan ? ` — ${t.catatan}` : ""}
                   </p>
                 ))}
@@ -309,64 +309,74 @@ export default function DetailPemeliharaan({
             </p>
           </section>
 
-          {/* ── Hasil pemeriksaan lengkap ── */}
-          <section>
-            <p className={EYEBROW}>Hasil pemeriksaan</p>
-            <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-3">
-              {perKelompok.map(([kel, isi]) => (
-                <div key={kel} className="rounded-xl border border-line p-3">
-                  <p className="text-xs font-semibold text-navy-600">{kel}</p>
-                  <div className="mt-1.5 space-y-0.5">
-                    {isi.map((p, i) => (
-                      <p
-                        key={i}
-                        className={`text-sm ${p.normal ? "text-ink-soft" : "text-attention font-semibold"}`}
-                      >
-                        {p.itemNama}
-                        {p.fasa !== "-" ? ` ${p.fasa}` : ""}:{" "}
-                        {p.nilaiLabel ??
-                          (p.nilaiAngka !== null
-                            ? `${p.nilaiAngka}${p.satuan ? ` ${p.satuan}` : ""}`
-                            : "—")}
-                      </p>
-                    ))}
-                  </div>
-                </div>
+      {/* ── Rincian berurutan: dari atas trafo ke bawah ──────────────────
+           Urutannya BUKAN pengelompokan menurut jenis barang, melainkan urutan
+           orang memeriksa gardu sungguhan. Datang dari kolom `urutan` di tabel
+           acuan, jadi menata ulang di database menata ulang tampilan ini — dan
+           langkah di aplikasi HP — tanpa menyentuh kode.
+
+           Data di KIRI, foto di KANAN: mata yang membaca angka tidak perlu
+           berpindah jauh untuk memastikannya di foto. */}
+      <section className="space-y-3">
+        <p className={EYEBROW}>Rincian pemeriksaan</p>
+
+        {/* Data gardu dibaca dari NAMA PLAT hari itu, bukan dari master. Yang
+            berbeda dari master sudah muncul sebagai usulan koreksi di atas. */}
+        <Bagian judul="Data Gardu" foto={rincian.foto.filter((f) => f.kelompok === "Data Gardu")}>
+          {Object.keys(rincian.spek).length > 0 ? (
+            <Grid>
+              {Object.entries(rincian.spek).map(([k, v]) => (
+                <Nilai key={k} label={NAMA_FIELD[k] ?? k} nilai={String(v)} />
               ))}
-            </div>
-          </section>
-
-          {/* ── Foto ── */}
-          {rincian.foto.length > 0 && (
-            <section>
-              <p className={EYEBROW}>Foto bukti</p>
-              <div className="mt-2 grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {rincian.foto.map((f) => (
-                  <a
-                    key={f.slot}
-                    href={f.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="group rounded-lg overflow-hidden border border-line"
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={kecilkan(f.url, 240)}
-                      alt={f.nama}
-                      width={240}
-                      height={180}
-                      loading="lazy"
-                      decoding="async"
-                      className="w-full h-20 object-cover group-hover:opacity-85 transition-opacity"
-                    />
-                    <p className="text-[10px] text-ink-soft px-1.5 py-1 truncate">{f.nama}</p>
-                  </a>
-                ))}
-              </div>
-            </section>
+            </Grid>
+          ) : (
+            <p className="text-sm text-ink-muted">Nama plat belum dibaca pada pemeliharaan ini.</p>
           )}
+        </Bagian>
 
-          {(aktif.catatan_perbaikan || aktif.pr_keterangan) && (
+        {perKelompok.map(([kel, isi]) => (
+          <Bagian key={kel} judul={kel} foto={rincian.foto.filter((f) => f.kelompok === kel)}>
+            <Grid>
+              {isi.map((x, i) => (
+                <Nilai
+                  key={i}
+                  label={x.itemNama + (x.bagian !== "-" ? ` ${x.bagian}` : "")}
+                  nilai={
+                    x.nilaiLabel ??
+                    (x.nilaiAngka !== null
+                      ? `${x.nilaiAngka}${x.satuan ? ` ${x.satuan}` : ""}`
+                      : "\u2014")
+                  }
+                  perhatian={!x.normal}
+                />
+              ))}
+            </Grid>
+
+            {/* Beban dan reting fuse tinggal di PHB TR karena di situlah
+                barangnya — bukan di bagian pengukuran tersendiri. */}
+            {kel === "PHB TR" && <TabelJurusan ukur={sebelum} reting={rincian.retingFuse} />}
+
+            {kel === "Pentanahan" && (
+              <div className="mt-3">
+                <Grid>
+                  <Nilai label="Arrester" nilai={ohm(sebelum?.pertanahan_arrester)} />
+                  <Nilai label="Trafo" nilai={ohm(sebelum?.pertanahan_trafo)} />
+                  <Nilai label="Netral" nilai={ohm(sebelum?.pertanahan_netral)} />
+                </Grid>
+              </div>
+            )}
+          </Bagian>
+        ))}
+
+        {/* Foto pekerjaan berdiri sendiri: dia bukti bahwa pekerjaannya
+            terjadi, bukan milik salah satu bagian gardu. */}
+        <Bagian judul="Bukti pekerjaan" foto={rincian.foto.filter((f) => f.kelompok === "Pekerjaan")}>
+          <p className="text-sm text-ink-soft">Sebelum, proses, sesudah, dan keseluruhan gardu.</p>
+        </Bagian>
+      </section>
+
+
+      {(aktif.catatan_perbaikan || aktif.pr_keterangan) && (
             <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {aktif.catatan_perbaikan && (
                 <div className="rounded-xl border border-line p-3">
@@ -464,6 +474,119 @@ function Fakta({
       <p className="text-sm font-semibold text-ink mt-1 truncate" title={nilai}>
         {nilai}
       </p>
+    </div>
+  );
+}
+
+const ohm = (v: number | null | undefined) =>
+  v === null || v === undefined ? "\u2014" : `${v} \u03a9`;
+
+/** Satu bagian rincian: data di kiri, foto miliknya sendiri di kanan. */
+function Bagian({
+  judul,
+  foto,
+  children,
+}: {
+  judul: string;
+  foto: { slot: string; nama: string; url: string }[];
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-xl border border-line overflow-hidden">
+      <div className="bg-surface px-4 py-2">
+        <p className="text-sm font-semibold text-navy-600">{judul}</p>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_260px] gap-4 p-4">
+        <div>{children}</div>
+        {foto.length > 0 ? (
+          <div className="grid grid-cols-2 gap-2 content-start">
+            {foto.map((f) => (
+              <a key={f.slot} href={f.url} target="_blank" rel="noreferrer" title={f.nama}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={kecilkan(f.url, 240)}
+                  alt={f.nama}
+                  width={240}
+                  height={180}
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-20 object-cover rounded-lg border border-line hover:opacity-85 transition-opacity"
+                />
+                <p className="text-[10px] text-ink-muted mt-0.5 truncate">{f.nama}</p>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-ink-muted hidden lg:block">tidak ada foto</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const Grid = ({ children }: { children: React.ReactNode }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">{children}</div>
+);
+
+function Nilai({
+  label,
+  nilai,
+  perhatian,
+}: {
+  label: string;
+  nilai: string;
+  perhatian?: boolean;
+}) {
+  return (
+    <div>
+      <p className="text-[11px] text-ink-muted">{label}</p>
+      <p className={`text-sm ${perhatian ? "text-attention font-semibold" : "text-ink"}`}>
+        {nilai}
+      </p>
+    </div>
+  );
+}
+
+/** Beban dan reting fuse per jurusan — keduanya milik PHB TR. */
+function TabelJurusan({
+  ukur,
+  reting,
+}: {
+  ukur?: { perjurusan: Record<string, { arus?: Record<string, number | null> }> | null };
+  reting: Record<string, Record<string, string>>;
+}) {
+  return (
+    <div className="mt-3 rounded-lg border border-line overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-surface text-left text-ink-soft">
+            <th className="px-3 py-1.5 font-semibold">Jurusan</th>
+            <th className="px-3 py-1.5 font-semibold text-right">Beban R</th>
+            <th className="px-3 py-1.5 font-semibold text-right">S</th>
+            <th className="px-3 py-1.5 font-semibold text-right">T</th>
+            <th className="px-3 py-1.5 font-semibold text-right">N</th>
+            <th className="px-3 py-1.5 font-semibold text-right">Reting fuse</th>
+          </tr>
+        </thead>
+        <tbody>
+          {["A", "B", "C", "D"].map((j) => {
+            const a = ukur?.perjurusan?.[j]?.arus ?? {};
+            const r = reting?.[j] ?? {};
+            const fuse = ["R", "S", "T"].map((f) => r[f]).filter(Boolean).join(" / ");
+            return (
+              <tr key={j} className="border-t border-line">
+                <td className="px-3 py-1.5 text-ink">{j}</td>
+                {["R", "S", "T", "N"].map((f) => (
+                  <td key={f} className="px-3 py-1.5 text-right tabular-nums text-ink-soft">
+                    {a[f] ?? "\u2014"}
+                  </td>
+                ))}
+                <td className="px-3 py-1.5 text-right text-ink-soft">{fuse || "\u2014"}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

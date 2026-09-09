@@ -34,7 +34,7 @@ export interface Periksa {
   itemKode: string;
   itemNama: string;
   kelompok: string;
-  fasa: string;
+  bagian: string;
   nilai: string | null;
   nilaiLabel: string | null;
   nilaiAngka: number | null;
@@ -67,6 +67,7 @@ export interface Ukuran {
 export interface FotoBukti {
   slot: string;
   nama: string;
+  kelompok: string;
   wajib: boolean;
   url: string;
 }
@@ -225,11 +226,11 @@ export async function ambilRincian(id: string): Promise<Rincian> {
     await Promise.all([
       supabaseBrowser
         .from("pemeliharaan_gardu_periksa")
-        .select("item_kode,fasa,nilai,nilai_angka,catatan")
+        .select("item_kode,bagian,nilai,nilai_angka,catatan")
         .eq("pemeliharaan_id", id),
       supabaseBrowser
         .from("hargardu_item_ref")
-        .select("kode,nama,kelompok,satuan,urutan,per_fasa"),
+        .select("kode,nama,kelompok,satuan,urutan,dimensi"),
       supabaseBrowser.from("hargardu_opsi_ref").select("item_kode,kode,label,normal"),
       supabaseBrowser
         .from("pemeliharaan_gardu_ukur")
@@ -242,7 +243,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
         .from("pemeliharaan_gardu_foto")
         .select("slot,url")
         .eq("pemeliharaan_id", id),
-      supabaseBrowser.from("hargardu_foto_ref").select("kode,nama,wajib,urutan"),
+      supabaseBrowser.from("hargardu_foto_ref").select("kode,nama,kelompok,wajib,urutan"),
       supabaseBrowser
         .from("master_usulan")
         .select("id,field,nilai_lama,nilai_baru,bukti_foto,status,diusulkan_at,pengusul_nama")
@@ -271,7 +272,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
         itemKode: p.item_kode,
         itemNama: i?.nama ?? p.item_kode,
         kelompok: i?.kelompok ?? "Lainnya",
-        fasa: p.fasa,
+        bagian: p.bagian,
         nilai: p.nilai ?? null,
         nilaiLabel: o?.label ?? null,
         nilaiAngka: p.nilai_angka ?? null,
@@ -281,7 +282,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
         _urutan: i?.urutan ?? 999,
       };
     })
-    .sort((a: any, b: any) => a._urutan - b._urutan || a.fasa.localeCompare(b.fasa))
+    .sort((a: any, b: any) => a._urutan - b._urutan || a.bagian.localeCompare(b.bagian))
     .map(({ _urutan, ...r }: any) => r as Periksa);
 
   const fotoRef = new Map((fotoRefRes.data ?? []).map((f: any) => [f.kode, f]));
@@ -289,6 +290,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
     .map((f: any) => ({
       slot: f.slot,
       nama: fotoRef.get(f.slot)?.nama ?? f.slot,
+      kelompok: fotoRef.get(f.slot)?.kelompok ?? "Pekerjaan",
       wajib: !!fotoRef.get(f.slot)?.wajib,
       url: f.url,
       _urutan: fotoRef.get(f.slot)?.urutan ?? 999,
