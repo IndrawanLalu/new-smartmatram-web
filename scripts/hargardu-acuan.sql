@@ -207,12 +207,12 @@ VALUES
   ('isi_phb_tr', 'Isi PHB TR', 'PHB TR', false, 71),
   ('helbom', 'Helbom Saklar', 'PHB TR', false, 72),
   ('nh_fuse', 'Keseluruhan NH Fuse', 'PHB TR', false, 73),
-  ('beban_r', 'Berat Total R', 'PHB TR', true, 74),
-  ('beban_s', 'Berat Total S', 'PHB TR', true, 75),
-  ('beban_t', 'Berat Total T', 'PHB TR', true, 76),
-  ('beban_n', 'Berat Total N', 'PHB TR', true, 77),
-  ('tegangan_rn', 'Tegangan R-N', 'PHB TR', true, 78),
-  ('tegangan_rs', 'Tegangan R-S', 'PHB TR', true, 79)
+  ('beban_r', 'Berat Total R', 'Pengukuran', true, 74),
+  ('beban_s', 'Berat Total S', 'Pengukuran', true, 75),
+  ('beban_t', 'Berat Total T', 'Pengukuran', true, 76),
+  ('beban_n', 'Berat Total N', 'Pengukuran', true, 77),
+  ('tegangan_rn', 'Tegangan R-N', 'Pengukuran', true, 78),
+  ('tegangan_rs', 'Tegangan R-S', 'Pengukuran', true, 79)
 ON CONFLICT (kode) DO UPDATE SET
   nama = EXCLUDED.nama,
   kelompok = EXCLUDED.kelompok,
