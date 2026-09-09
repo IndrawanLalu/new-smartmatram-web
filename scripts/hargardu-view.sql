@@ -43,7 +43,7 @@ SELECT
   i.nama          AS item_nama,
   i.kelompok,
   i.tampil_dashboard,
-  p.fasa,
+  p.bagian,
   p.nilai,
   o.label         AS nilai_label,
   p.nilai_angka,
@@ -75,7 +75,7 @@ SELECT
   k.item_kode,
   k.item_nama,
   k.kelompok,
-  k.fasa,
+  k.bagian,
   k.nilai,
   k.nilai_label,
   k.catatan,
@@ -94,7 +94,7 @@ LEFT JOIN public.tindak_lanjut_gardu tl
   ON upper(tl.gardu_kode) = upper(k.gardu_kode)
  AND upper(tl.ulp) = upper(k.ulp)
  AND tl.item_kode = k.item_kode
- AND tl.fasa = k.fasa
+ AND tl.bagian = k.bagian
 WHERE NOT k.normal;
 
 COMMENT ON VIEW public.gardu_perlu_perbaikan IS

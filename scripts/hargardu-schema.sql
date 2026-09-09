@@ -32,8 +32,14 @@ CREATE TABLE IF NOT EXISTS public.hargardu_item_ref (
   nama        TEXT NOT NULL,
   kelompok    TEXT NOT NULL,
 
-  -- Cut out dan arrester dinilai per fasa; papan injak tidak.
-  per_fasa    BOOLEAN NOT NULL DEFAULT false,
+  -- Sebuah item dinilai sekali, per FASA (R/S/T), atau per JURUSAN (A/B/C/D).
+  --
+  -- Dulu ini boolean `per_fasa`, dan itu ternyata terlalu sempit: sambungan
+  -- outlet gardu berbeda-beda PER JURUSAN — jurusan A sudah joint press
+  -- sementara jurusan C masih konektor — dan satu nilai memaksa regu memilih
+  -- salah satu. Angka "berapa gardu masih pakai konektor" jadi tidak bisa
+  -- dipercaya justru karena bentuk datanya, bukan karena datanya kurang.
+  dimensi     TEXT NOT NULL DEFAULT 'tunggal',
 
   tipe        TEXT NOT NULL DEFAULT 'pilihan',
   satuan      TEXT,                       -- untuk tipe angka: A, mm2, ohm
@@ -50,6 +56,23 @@ CREATE TABLE IF NOT EXISTS public.hargardu_item_ref (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Untuk basis data yang masih memakai kolom lama.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'hargardu_item_ref'
+               AND column_name = 'per_fasa') THEN
+    ALTER TABLE public.hargardu_item_ref ADD COLUMN IF NOT EXISTS dimensi TEXT NOT NULL DEFAULT 'tunggal';
+    UPDATE public.hargardu_item_ref
+    SET dimensi = CASE WHEN per_fasa THEN 'fasa' ELSE 'tunggal' END;
+    ALTER TABLE public.hargardu_item_ref DROP COLUMN per_fasa;
+  END IF;
+END $$;
+
+ALTER TABLE public.hargardu_item_ref DROP CONSTRAINT IF EXISTS hargardu_item_dimensi_valid;
+ALTER TABLE public.hargardu_item_ref ADD CONSTRAINT hargardu_item_dimensi_valid
+  CHECK (dimensi IN ('tunggal', 'fasa', 'jurusan'));
 
 ALTER TABLE public.hargardu_item_ref DROP CONSTRAINT IF EXISTS hargardu_item_tipe_valid;
 ALTER TABLE public.hargardu_item_ref ADD CONSTRAINT hargardu_item_tipe_valid
@@ -213,10 +236,11 @@ CREATE TABLE IF NOT EXISTS public.pemeliharaan_gardu_periksa (
 
   item_kode TEXT NOT NULL REFERENCES public.hargardu_item_ref(kode),
 
-  -- '-' untuk item yang bukan per-fasa, BUKAN NULL. Di Postgres dua NULL
-  -- dianggap berbeda, jadi kunci unik dengan NULL tidak mencegah baris kembar —
-  -- jebakan yang sudah pernah kena di modul JTR.
-  fasa TEXT NOT NULL DEFAULT '-',
+  -- Bagian yang dinilai: fasa R/S/T, jurusan A/B/C/D, atau '-' untuk item yang
+  -- dinilai sekali. '-' BUKAN NULL: di Postgres dua NULL dianggap berbeda, jadi
+  -- kunci unik dengan NULL tidak mencegah baris kembar — jebakan yang sudah
+  -- pernah kena di modul JTR.
+  bagian TEXT NOT NULL DEFAULT '-',
 
   nilai       TEXT,      -- kode opsi, untuk tipe pilihan
   nilai_angka NUMERIC,   -- untuk tipe angka
@@ -224,12 +248,24 @@ CREATE TABLE IF NOT EXISTS public.pemeliharaan_gardu_periksa (
 
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (pemeliharaan_id, item_kode, fasa)
+  UNIQUE (pemeliharaan_id, item_kode, bagian)
 );
 
+-- Basis data lama memakai nama `fasa`. Diganti nama, BUKAN dibuat kolom baru:
+-- datanya ikut pindah utuh dan tidak ada yang perlu diketik ulang.
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'pemeliharaan_gardu_periksa'
+               AND column_name = 'fasa') THEN
+    ALTER TABLE public.pemeliharaan_gardu_periksa RENAME COLUMN fasa TO bagian;
+  END IF;
+END $$;
+
 ALTER TABLE public.pemeliharaan_gardu_periksa DROP CONSTRAINT IF EXISTS periksa_fasa_valid;
-ALTER TABLE public.pemeliharaan_gardu_periksa ADD CONSTRAINT periksa_fasa_valid
-  CHECK (fasa IN ('R', 'S', 'T', '-'));
+ALTER TABLE public.pemeliharaan_gardu_periksa DROP CONSTRAINT IF EXISTS periksa_bagian_valid;
+ALTER TABLE public.pemeliharaan_gardu_periksa ADD CONSTRAINT periksa_bagian_valid
+  CHECK (bagian IN ('R', 'S', 'T', 'A', 'B', 'C', 'D', '-'));
 
 CREATE INDEX IF NOT EXISTS periksa_item_idx
   ON public.pemeliharaan_gardu_periksa (item_kode, nilai);
@@ -293,7 +329,7 @@ CREATE TABLE IF NOT EXISTS public.tindak_lanjut_gardu (
   gardu_kode TEXT NOT NULL,
   ulp        TEXT NOT NULL,
   item_kode  TEXT NOT NULL REFERENCES public.hargardu_item_ref(kode),
-  fasa       TEXT NOT NULL DEFAULT '-',
+  bagian     TEXT NOT NULL DEFAULT '-',
 
   -- Kunci asingnya dipasang terpisah di bawah: modul Work Order berdiri sendiri,
   -- dan skrip ini harus tetap bisa dijalankan di basis data yang belum punya
@@ -303,8 +339,17 @@ CREATE TABLE IF NOT EXISTS public.tindak_lanjut_gardu (
   ditugaskan_pada TIMESTAMPTZ NOT NULL DEFAULT now(),
   ditugaskan_oleh TEXT,
   catatan         TEXT,
-  UNIQUE (gardu_kode, ulp, item_kode, fasa)
+  UNIQUE (gardu_kode, ulp, item_kode, bagian)
 );
+
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_schema = 'public' AND table_name = 'tindak_lanjut_gardu'
+               AND column_name = 'fasa') THEN
+    ALTER TABLE public.tindak_lanjut_gardu RENAME COLUMN fasa TO bagian;
+  END IF;
+END $$;
 
 DO $$
 BEGIN
@@ -409,8 +454,17 @@ BEGIN
     END IF;
   END IF;
 
-  IF NOT it.per_fasa AND NEW.fasa <> '-' THEN
-    RAISE EXCEPTION 'Item % tidak dinilai per fasa', NEW.item_kode;
+  -- Bagian yang diisi harus cocok dengan dimensi itemnya. Tanpa penjaga ini,
+  -- 'A' pada item per-fasa (atau 'R' pada item per-jurusan) tersimpan diam-diam
+  -- dan tidak pernah cocok dengan apa pun saat direkap — hilang tanpa jejak.
+  IF it.dimensi = 'tunggal' AND NEW.bagian <> '-' THEN
+    RAISE EXCEPTION 'Item % dinilai sekali saja, bukan per bagian', NEW.item_kode;
+  END IF;
+  IF it.dimensi = 'fasa' AND NEW.bagian NOT IN ('R', 'S', 'T') THEN
+    RAISE EXCEPTION 'Item % dinilai per fasa (R/S/T), bukan "%"', NEW.item_kode, NEW.bagian;
+  END IF;
+  IF it.dimensi = 'jurusan' AND NEW.bagian NOT IN ('A', 'B', 'C', 'D') THEN
+    RAISE EXCEPTION 'Item % dinilai per jurusan (A/B/C/D), bukan "%"', NEW.item_kode, NEW.bagian;
   END IF;
 
   RETURN NEW;

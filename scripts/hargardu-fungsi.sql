@@ -33,27 +33,27 @@ BEGIN
 
   FOR r IN SELECT * FROM jsonb_array_elements(COALESCE(p_daftar, '[]'::jsonb)) LOOP
     INSERT INTO public.pemeliharaan_gardu_periksa
-      (pemeliharaan_id, item_kode, fasa, nilai, nilai_angka, catatan)
+      (pemeliharaan_id, item_kode, bagian, nilai, nilai_angka, catatan)
     VALUES (
       p_id,
       r->>'item_kode',
-      COALESCE(NULLIF(r->>'fasa', ''), '-'),
+      COALESCE(NULLIF(r->>'bagian', ''), '-'),
       NULLIF(r->>'nilai', ''),
       NULLIF(r->>'nilai_angka', '')::numeric,
       NULLIF(r->>'catatan', ''))
-    ON CONFLICT (pemeliharaan_id, item_kode, fasa) DO UPDATE
+    ON CONFLICT (pemeliharaan_id, item_kode, bagian) DO UPDATE
       SET nilai       = EXCLUDED.nilai,
           nilai_angka = EXCLUDED.nilai_angka,
           catatan     = EXCLUDED.catatan,
           updated_at  = now();
 
-    kunci := kunci || ((r->>'item_kode') || '|' || COALESCE(NULLIF(r->>'fasa', ''), '-'));
+    kunci := kunci || ((r->>'item_kode') || '|' || COALESCE(NULLIF(r->>'bagian', ''), '-'));
     jml := jml + 1;
   END LOOP;
 
   DELETE FROM public.pemeliharaan_gardu_periksa
   WHERE pemeliharaan_id = p_id
-    AND NOT ((item_kode || '|' || fasa) = ANY (kunci));
+    AND NOT ((item_kode || '|' || bagian) = ANY (kunci));
 
   UPDATE public.pemeliharaan_gardu
   SET status = CASE WHEN status = 'Dijadwalkan' THEN 'Dalam Proses' ELSE status END,
@@ -211,17 +211,22 @@ BEGIN
 
   -- Item wajib yang belum terisi, per fasa kalau memang dinilai per fasa.
   FOR s IN
-    SELECT i.nama || CASE WHEN i.per_fasa THEN ' (fasa ' || f.fasa || ')' ELSE '' END
+    SELECT i.nama || CASE WHEN i.dimensi = 'fasa'    THEN ' (fasa ' || b.bagian || ')'
+                          WHEN i.dimensi = 'jurusan' THEN ' (jurusan ' || b.bagian || ')'
+                          ELSE '' END
     FROM public.hargardu_item_ref i
     CROSS JOIN LATERAL (
-      SELECT unnest(CASE WHEN i.per_fasa THEN ARRAY['R','S','T'] ELSE ARRAY['-'] END) AS fasa
-    ) f
+      SELECT unnest(CASE i.dimensi
+                      WHEN 'fasa'    THEN ARRAY['R','S','T']
+                      WHEN 'jurusan' THEN ARRAY['A','B','C','D']
+                      ELSE ARRAY['-'] END) AS bagian
+    ) b
     WHERE i.aktif AND i.wajib
       AND NOT EXISTS (
         SELECT 1 FROM public.pemeliharaan_gardu_periksa p
-        WHERE p.pemeliharaan_id = p_id AND p.item_kode = i.kode AND p.fasa = f.fasa
+        WHERE p.pemeliharaan_id = p_id AND p.item_kode = i.kode AND p.bagian = b.bagian
           AND (p.nilai IS NOT NULL OR p.nilai_angka IS NOT NULL))
-    ORDER BY i.urutan, f.fasa
+    ORDER BY i.urutan, b.bagian
   LOOP
     kurang := kurang || s;
   END LOOP;
@@ -325,11 +330,16 @@ END $$;
 -- pemeliharaan berikutnya mencatat itemnya normal, dia hilang dari daftar
 -- dengan sendirinya, tanpa ada yang perlu menutup apa pun.
 
+-- Dibuang dulu: Postgres menolak mengganti NAMA parameter lewat CREATE OR
+-- REPLACE, dan `p_fasa` berganti jadi `p_bagian` ketika item bisa dinilai
+-- per jurusan, bukan cuma per fasa.
+DROP FUNCTION IF EXISTS public.tandai_tindak_lanjut(TEXT, TEXT, TEXT, TEXT, UUID, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.tandai_tindak_lanjut(
   p_gardu   TEXT,
   p_ulp     TEXT,
   p_item    TEXT,
-  p_fasa    TEXT DEFAULT '-',
+  p_bagian  TEXT DEFAULT '-',
   p_wo_item UUID DEFAULT NULL,
   p_nama    TEXT DEFAULT NULL,
   p_catatan TEXT DEFAULT NULL
@@ -337,10 +347,10 @@ CREATE OR REPLACE FUNCTION public.tandai_tindak_lanjut(
 LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 BEGIN
   INSERT INTO public.tindak_lanjut_gardu
-    (gardu_kode, ulp, item_kode, fasa, wo_item_id, ditugaskan_oleh, catatan)
-  VALUES (p_gardu, p_ulp, p_item, COALESCE(NULLIF(p_fasa, ''), '-'),
+    (gardu_kode, ulp, item_kode, bagian, wo_item_id, ditugaskan_oleh, catatan)
+  VALUES (p_gardu, p_ulp, p_item, COALESCE(NULLIF(p_bagian, ''), '-'),
           p_wo_item, p_nama, p_catatan)
-  ON CONFLICT (gardu_kode, ulp, item_kode, fasa) DO UPDATE
+  ON CONFLICT (gardu_kode, ulp, item_kode, bagian) DO UPDATE
     SET wo_item_id = EXCLUDED.wo_item_id,
         ditugaskan_pada = now(),
         ditugaskan_oleh = EXCLUDED.ditugaskan_oleh,
