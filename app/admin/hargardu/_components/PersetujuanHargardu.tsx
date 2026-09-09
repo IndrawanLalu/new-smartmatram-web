@@ -23,6 +23,25 @@ const tgl = (iso: string | null) =>
       })
     : "—";
 
+/**
+ * Minta Supabase memperkecil gambarnya SEBELUM dikirim ke browser.
+ *
+ * Foto lapangan berukuran 3072x4096 — 12,6 megapiksel. Dikompres, ya, tapi
+ * kompresi cuma menekan ukuran BERKAS; yang membuat browser berat adalah jumlah
+ * PIKSEL yang harus dibongkar. Empat belas foto berarti 176 megapiksel dan
+ * sekitar 700 MB bitmap di memori, hanya untuk digambar setinggi 80 piksel —
+ * itulah yang membuat menggulir terasa tersendat.
+ *
+ * Menukar `/object/public/` jadi `/render/image/public/` membuat Supabase yang
+ * mengecilkannya: 1.135 KB jadi 95 KB, dan pikselnya turun ratusan kali.
+ * Tautan "buka" tetap menunjuk berkas aslinya — admin yang ingin membaca nomor
+ * seri di nama plat butuh ketelitian penuh.
+ */
+const kecilkan = (url: string, lebar: number) =>
+  url.includes("/object/public/")
+    ? `${url.replace("/object/public/", "/render/image/public/")}?width=${lebar}&quality=65`
+    : url;
+
 const NAMA_FIELD: Record<string, string> = {
   daya: "Daya (kVA)", merk: "Merk", no_seri: "Nomor seri",
   tahun_pembuatan: "Tahun", jenis_gardu: "Jenis gardu", phase: "Phase",
@@ -245,13 +264,17 @@ export default function PersetujuanHargardu({ user }: { user: CurrentUser }) {
                           </p>
                         </div>
                         {u.bukti_foto.length > 0 && (
-                          <a
-                            href={u.bukti_foto[0]}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="text-xs font-semibold text-navy-600 underline"
-                          >
-                            lihat nama plat
+                          <a href={u.bukti_foto[0]} target="_blank" rel="noreferrer" title="Buka ukuran penuh">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={kecilkan(u.bukti_foto[0], 160)}
+                              alt="Nama plat"
+                              width={160}
+                              height={120}
+                              loading="lazy"
+                              decoding="async"
+                              className="w-20 h-16 object-cover rounded-md border border-line"
+                            />
                           </a>
                         )}
                         <div className="flex gap-2">
@@ -403,8 +426,12 @@ export default function PersetujuanHargardu({ user }: { user: CurrentUser }) {
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={f.url}
+                          src={kecilkan(f.url, 240)}
                           alt={f.nama}
+                          width={240}
+                          height={180}
+                          loading="lazy"
+                          decoding="async"
                           className="w-full h-20 object-cover group-hover:opacity-85 transition-opacity"
                         />
                         <p className="text-[10px] text-ink-soft px-1.5 py-1 truncate">{f.nama}</p>
