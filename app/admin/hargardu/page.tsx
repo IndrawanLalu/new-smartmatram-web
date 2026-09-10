@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { BadgeCheck, LayoutDashboard, Wrench } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BadgeCheck, LayoutDashboard, SlidersHorizontal, Wrench } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import PersetujuanHargardu from "./_components/PersetujuanHargardu";
 import DashboardHargardu from "./_components/DashboardHargardu";
 import PerluPerbaikan from "./_components/PerluPerbaikan";
+import PengaturanItem from "./_components/PengaturanItem";
 
 const TABS = [
-  { key: "persetujuan", label: "Persetujuan", icon: BadgeCheck },
-  { key: "perbaikan", label: "Perlu Perbaikan", icon: Wrench },
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "persetujuan", label: "Persetujuan", icon: BadgeCheck, hanyaUp3: false },
+  { key: "perbaikan", label: "Perlu Perbaikan", icon: Wrench, hanyaUp3: false },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, hanyaUp3: false },
+  // Daftar isian berlaku untuk SEMUA ULP, jadi penanya cuma satu. ULP mengisi,
+  // tidak bisa mengarang — kalau tiap unit menyusun kosakatanya sendiri, angka
+  // se-UP3 tidak bisa dijumlahkan lagi.
+  { key: "pengaturan", label: "Pengaturan", icon: SlidersHorizontal, hanyaUp3: true },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -19,10 +24,13 @@ export default function HargarduPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("persetujuan");
 
+  const up3 = user.role === "UP3";
+  const tabs = useMemo(() => TABS.filter((t) => !t.hanyaUp3 || up3), [up3]);
+
   return (
     <div className="text-ink flex flex-col gap-4">
       <div className="flex flex-wrap gap-2 shrink-0">
-        {TABS.map(({ key, label, icon: Icon }) => {
+        {tabs.map(({ key, label, icon: Icon }) => {
           const aktif = tab === key;
           return (
             <button
@@ -44,6 +52,7 @@ export default function HargarduPage() {
       {tab === "persetujuan" && <PersetujuanHargardu user={user} />}
       {tab === "perbaikan" && <PerluPerbaikan user={user} />}
       {tab === "dashboard" && <DashboardHargardu user={user} />}
+      {tab === "pengaturan" && up3 && <PengaturanItem user={user} />}
     </div>
   );
 }

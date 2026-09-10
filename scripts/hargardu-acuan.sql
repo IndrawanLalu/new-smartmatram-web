@@ -33,6 +33,12 @@
 -- mengembalikan daftar ke keadaan bakunya. Yang TIDAK disentuh `aktif` — item
 -- yang sengaja dinonaktifkan UP3 tidak boleh hidup lagi cuma karena skrip
 -- dijalankan ulang.
+--
+-- ...KECUALI yang sudah pernah disunting UP3 dari halaman Pengaturan. Sejak
+-- daftar ini bisa diubah dari aplikasi, "mengembalikan ke keadaan baku" berarti
+-- MENGHAPUS keputusan orang — diam-diam, karena tidak ada galat saat sebuah
+-- label kembali ke tebakan awal saya. Yang pernah disunting dikenali dari
+-- `hargardu_ref_audit`: itu memang gunanya jejak audit disimpan.
 
 INSERT INTO public.hargardu_item_ref
   (kode, nama, kelompok, dimensi, tipe, satuan, wajib, urutan, tampil_dashboard)
@@ -79,7 +85,11 @@ ON CONFLICT (kode) DO UPDATE SET
   wajib = EXCLUDED.wajib,
   urutan = EXCLUDED.urutan,
   tampil_dashboard = EXCLUDED.tampil_dashboard,
-  updated_at = now();
+  updated_at = now()
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.hargardu_ref_audit a
+  WHERE a.tabel = 'item' AND a.kunci = hargardu_item_ref.kode
+);
 
 -- ── 2. Pilihan jawaban ──────────────────────────────────────
 -- `normal` sengaja TIDAK ditimpa saat dijalankan ulang. Kalau UP3 sudah
@@ -179,7 +189,12 @@ VALUES
   ('pentanahan_jenis_kabel', 'aluminium', 'Aluminium', true, 20)
 ON CONFLICT (item_kode, kode) DO UPDATE SET
   label = EXCLUDED.label,
-  urutan = EXCLUDED.urutan;
+  urutan = EXCLUDED.urutan
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.hargardu_ref_audit a
+  WHERE a.tabel = 'opsi'
+    AND a.kunci = hargardu_opsi_ref.item_kode || '/' || hargardu_opsi_ref.kode
+);
 
 -- ── 3. Slot foto ──────────────────────────────────────────
 -- `kelompok` foto SENGAJA memakai nama yang sama dengan kelompok item. Itulah

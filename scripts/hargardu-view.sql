@@ -13,6 +13,8 @@
 -- membuat Postgres menolak dengan "other objects depend on it" — galat yang cuma
 -- muncul saat skrip dijalankan ULANG, bukan saat pertama kali dipasang.
 DROP VIEW IF EXISTS public.pemeliharaan_gardu_ringkas;
+DROP VIEW IF EXISTS public.hargardu_opsi_pemakaian;
+DROP VIEW IF EXISTS public.hargardu_item_pemakaian;
 DROP VIEW IF EXISTS public.hargardu_rekap_opsi;
 DROP VIEW IF EXISTS public.hargardu_rekap_item;
 DROP VIEW IF EXISTS public.gardu_perlu_perbaikan;
@@ -253,7 +255,40 @@ FROM public.pemeliharaan_gardu m
 LEFT JOIN public.gardu g
   ON upper(g.kode) = upper(m.gardu_kode) AND upper(g.ulp) = upper(m.ulp);
 
--- ── 7. Hak akses ─────────────────────────────────────────
+-- ── 7. Berapa kali sebuah item / pilihan sudah terpakai ──────────────
+-- Bahan halaman Pengaturan. Yang menentukan boleh-tidaknya sesuatu DIHAPUS
+-- adalah pemakaiannya, dan angka itu harus datang dari basis data — bukan
+-- dari tebakan layar.
+--
+-- Tanpa ini, halaman pengaturan cuma bisa menawarkan tombol Hapus kepada semua
+-- baris dan membiarkan penjaga di database yang menolak belakangan. Orang
+-- terlanjur menekan, galatnya panjang, dan yang terbaca cuma "gagal". Angka di
+-- depan mata membuat pilihannya jelas SEBELUM ditekan: yang sudah dipakai
+-- dinonaktifkan, bukan dihapus.
+
+CREATE VIEW public.hargardu_item_pemakaian AS
+SELECT
+  i.kode AS item_kode,
+  count(p.id)                       AS dipakai,
+  count(DISTINCT p.pemeliharaan_id) AS pemeliharaan
+FROM public.hargardu_item_ref i
+LEFT JOIN public.pemeliharaan_gardu_periksa p ON p.item_kode = i.kode
+GROUP BY i.kode;
+
+CREATE VIEW public.hargardu_opsi_pemakaian AS
+SELECT
+  o.item_kode,
+  o.kode AS opsi_kode,
+  count(p.id) AS dipakai
+FROM public.hargardu_opsi_ref o
+LEFT JOIN public.pemeliharaan_gardu_periksa p
+  ON p.item_kode = o.item_kode AND p.nilai = o.kode
+GROUP BY o.item_kode, o.kode;
+
+COMMENT ON VIEW public.hargardu_item_pemakaian IS
+  'Berapa catatan pemeriksaan memakai tiap item. Yang sudah dipakai hanya boleh dinonaktifkan, tidak dihapus.';
+
+-- ── 8. Hak akses ─────────────────────────────────────────
 
 GRANT SELECT ON public.gardu_kondisi_terakhir     TO authenticated;
 GRANT SELECT ON public.gardu_perlu_perbaikan      TO authenticated;
@@ -261,6 +296,8 @@ GRANT SELECT ON public.hargardu_rekap_item        TO authenticated;
 GRANT SELECT ON public.hargardu_rekap_opsi        TO authenticated;
 GRANT SELECT ON public.hargardu_cakupan           TO authenticated;
 GRANT SELECT ON public.pemeliharaan_gardu_ringkas TO authenticated;
+GRANT SELECT ON public.hargardu_item_pemakaian    TO authenticated;
+GRANT SELECT ON public.hargardu_opsi_pemakaian    TO authenticated;
 
 -- =============================================================================
 -- Periksa hasilnya
