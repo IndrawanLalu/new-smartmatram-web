@@ -37,16 +37,6 @@ export interface Cakupan {
   terakhir: string | null;
 }
 
-export interface PerluPerbaikan {
-  gardu_kode: string;
-  ulp: string;
-  item_nama: string;
-  bagian: string;
-  nilai_label: string | null;
-  ditemukan_pada: string | null;
-  sudah_di_wo: boolean;
-}
-
 /**
  * Satu item, siap digambar sebagai satu batang.
  *
@@ -71,7 +61,6 @@ export function useHargarduRekap(user: CurrentUser, ulpPilihan: string) {
   const [item, setItem] = useState<RekapItem[]>([]);
   const [opsi, setOpsi] = useState<RekapOpsi[]>([]);
   const [cakupan, setCakupan] = useState<Cakupan[]>([]);
-  const [perbaikan, setPerbaikan] = useState<PerluPerbaikan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,23 +72,16 @@ export function useHargarduRekap(user: CurrentUser, ulpPilihan: string) {
     try {
       const saring = <T,>(q: any) => (unit ? q.eq("ulp", unit) : q);
 
-      const [i, o, c, p] = await Promise.all([
+      const [i, o, c] = await Promise.all([
         saring(supabaseBrowser.from("hargardu_rekap_item").select("*")),
         saring(supabaseBrowser.from("hargardu_rekap_opsi").select("*")),
         saring(supabaseBrowser.from("hargardu_cakupan").select("*")),
-        saring(
-          supabaseBrowser
-            .from("gardu_perlu_perbaikan")
-            .select("gardu_kode,ulp,item_nama,bagian,nilai_label,ditemukan_pada,sudah_di_wo")
-            .order("ditemukan_pada", { ascending: true, nullsFirst: false }),
-        ),
       ]);
       if (i.error) throw new Error(i.error.message);
 
       setItem((i.data ?? []) as unknown as RekapItem[]);
       setOpsi((o.data ?? []) as unknown as RekapOpsi[]);
       setCakupan((c.data ?? []) as unknown as Cakupan[]);
-      setPerbaikan((p.data ?? []) as unknown as PerluPerbaikan[]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat rekap");
     } finally {
@@ -183,5 +165,5 @@ export function useHargarduRekap(user: CurrentUser, ulpPilihan: string) {
       .sort((a, b) => a.itemNama.localeCompare(b.itemNama));
   }, [item, opsi]);
 
-  return { batang, cakupanTotal, cakupan, perbaikan, loading, error, muat };
+  return { batang, cakupanTotal, cakupan, loading, error, muat };
 }

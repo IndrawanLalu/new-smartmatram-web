@@ -81,7 +81,12 @@ SELECT
   k.catatan,
   k.tgl_selesai AS ditemukan_pada,
   k.pemeliharaan_id,
+  -- Dua keterangan bebas dari regu. Keduanya ikut dicari sebagai TEKS, karena
+  -- ada hal yang tidak akan pernah bisa dibakukan jadi pilihan — "menunggu
+  -- material", "perlu padam terjadwal". Saringan per item menjawab pertanyaan
+  -- yang berangka; pencarian teks menjawab sisanya.
   m.pr_keterangan,
+  m.catatan_perbaikan,
   -- Sudah dijadikan Work Order atau masih menganggur.
   (tl.wo_item_id IS NOT NULL) AS sudah_di_wo,
   tl.wo_item_id,

@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { BadgeCheck, LayoutDashboard } from "lucide-react";
+import { BadgeCheck, LayoutDashboard, Wrench } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import PersetujuanHargardu from "./_components/PersetujuanHargardu";
 import DashboardHargardu from "./_components/DashboardHargardu";
+import PerluPerbaikan from "./_components/PerluPerbaikan";
 
 const TABS = [
   { key: "persetujuan", label: "Persetujuan", icon: BadgeCheck },
+  { key: "perbaikan", label: "Perlu Perbaikan", icon: Wrench },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
 ] as const;
 
@@ -40,6 +42,7 @@ export default function HargarduPage() {
       </div>
 
       {tab === "persetujuan" && <PersetujuanHargardu user={user} />}
+      {tab === "perbaikan" && <PerluPerbaikan user={user} />}
       {tab === "dashboard" && <DashboardHargardu user={user} />}
     </div>
   );

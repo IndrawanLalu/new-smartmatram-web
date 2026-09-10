@@ -7,6 +7,7 @@ import {
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { CARD, FIELD, EYEBROW, BTN_GHOST } from "@/app/admin/_ui";
 import { useHargarduRekap, type Batang } from "../_hooks/useHargarduRekap";
+import { usePerluPerbaikan } from "../_hooks/usePerluPerbaikan";
 
 const tgl = (iso: string | null) =>
   iso
@@ -25,7 +26,19 @@ const WARNA_TIDAK = ["#C77700", "#C62828", "#8E24AA", "#00695C"];
 
 export default function DashboardHargardu({ user }: { user: CurrentUser }) {
   const [ulp, setUlp] = useState("");
-  const { batang, cakupanTotal, perbaikan, loading, error, muat } = useHargarduRekap(user, ulp);
+  const { batang, cakupanTotal, loading, error, muat } = useHargarduRekap(user, ulp);
+
+  // Temuan menggantung dibaca dari hook yang sama dengan tab Perlu Perbaikan —
+  // satu daftar, dua tampilan. Di sini cuma ringkasannya.
+  const saringPerbaikan = useMemo(
+    () => ({ ulp, item: "", wo: "semua" as const, cari: "" }),
+    [ulp],
+  );
+  const {
+    semua: perbaikan,
+    loading: memuatPerbaikan,
+    muat: muatPerbaikan,
+  } = usePerluPerbaikan(user, saringPerbaikan);
 
   const perbaikanTeratas = useMemo(() => {
     const m = new Map<string, { nama: string; jumlah: number; belumWo: number }>();
@@ -39,7 +52,7 @@ export default function DashboardHargardu({ user }: { user: CurrentUser }) {
     return [...m.values()].sort((a, b) => b.jumlah - a.jumlah).slice(0, 8);
   }, [perbaikan]);
 
-  if (loading) {
+  if (loading || memuatPerbaikan) {
     return (
       <div className="flex items-center justify-center py-24 gap-2 text-ink-soft text-sm">
         <Loader2 size={18} className="animate-spin" /> Memuat rekap…
@@ -66,7 +79,13 @@ export default function DashboardHargardu({ user }: { user: CurrentUser }) {
               ))}
             </select>
           </div>
-          <button onClick={() => void muat()} className={BTN_GHOST}>
+          <button
+            onClick={() => {
+              void muat();
+              void muatPerbaikan();
+            }}
+            className={BTN_GHOST}
+          >
             Muat ulang
           </button>
         </div>
@@ -130,7 +149,8 @@ export default function DashboardHargardu({ user }: { user: CurrentUser }) {
         <p className={EYEBROW}>Perlu perbaikan</p>
         <p className="text-xs text-ink-soft mt-1">
           Diturunkan dari kondisi terakhir tiap gardu — hilang sendiri begitu pemeliharaan
-          berikutnya mencatatnya normal. Tidak ada yang perlu menutupnya manual.
+          berikutnya mencatatnya normal. Tidak ada yang perlu menutupnya manual. Rincian per
+          gardu dan tombol jadikan WO ada di tab <b>Perlu Perbaikan</b>.
         </p>
 
         {perbaikanTeratas.length === 0 ? (
