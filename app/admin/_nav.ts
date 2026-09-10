@@ -1,7 +1,7 @@
 import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
-  TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network,
+  TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database,
   type LucideIcon,
 } from "lucide-react";
 
@@ -45,6 +45,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Monitoring",
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck },
+      { href: "/admin/master-gardu",        label: "Master Gardu",         icon: Database },
       { href: "/admin/pengukuran-gardu",    label: "Pengukuran Gardu",     icon: Gauge },
       { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
       { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },

@@ -1,4 +1,4 @@
-import type { JurusanData } from "../_hooks/usePengukuranGardu";
+import type { JurusanData } from "@/lib/garduAmbang";
 
 // Kolom minimum yang dibutuhkan detectAnomali — superset PengukuranGardu tetap kompatibel
 export interface AnomalyRow {

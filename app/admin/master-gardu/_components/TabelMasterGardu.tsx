@@ -15,9 +15,9 @@ import {
 import {
   useGarduStatus, kunciGardu, AMBANG_BASI,
   type GarduMasterState, type StatusUkur,
-} from "../_hooks/useGarduStatus";
-import { type AnomalySettings } from "../_utils/detectAnomali";
-import { OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
+} from "@/app/admin/_hooks/useGarduStatus";
+import { type AnomalySettings } from "@/lib/anomaliGardu";
+import { OVERLOAD_PCT } from "@/lib/garduAmbang";
 import GarduTimelineModal from "./GarduTimelineModal";
 
 // ── Constants ─────────────────────────────────────────────────────────────────

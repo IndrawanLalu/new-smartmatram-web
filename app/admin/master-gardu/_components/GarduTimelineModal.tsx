@@ -3,11 +3,11 @@
 import { useEffect, useState } from "react";
 import { X, Zap, Wrench, AlertTriangle, CheckCircle2, FileText, History } from "lucide-react";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
-import { useGarduTimeline, type GarduMasterState, type TimelineEvent } from "../_hooks/useGarduStatus";
+import { useGarduTimeline, type GarduMasterState, type TimelineEvent } from "@/app/admin/_hooks/useGarduStatus";
 import DataGarduPanel from "./DataGarduPanel";
-import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
-import { HIGH_TEMP_C, OVERLOAD_PCT } from "../_hooks/usePengukuranGardu";
-import type { JurusanData } from "../_hooks/usePengukuranGardu";
+import { detectAnomali, type AnomalySettings } from "@/lib/anomaliGardu";
+import { HIGH_TEMP_C, OVERLOAD_PCT } from "@/lib/garduAmbang";
+import type { JurusanData } from "@/lib/garduAmbang";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

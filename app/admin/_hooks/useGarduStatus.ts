@@ -4,8 +4,8 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { detectAnomali, type AnomalyRow, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
-import type { JurusanData } from "./usePengukuranGardu";
+import { detectAnomali, type AnomalyRow, type AnomalySettings, DEFAULT_SETTINGS } from "@/lib/anomaliGardu";
+import type { JurusanData } from "@/lib/garduAmbang";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

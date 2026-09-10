@@ -1,6 +1,8 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import Link from "next/link";
+import { CARD, BTN_PRIMARY } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { antreKeAmg } from "./_lib/amgQueue";
@@ -40,13 +42,12 @@ import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
-import DataGarduTab from "./_components/DataGarduTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
-import { useAnomalySettings } from "./_hooks/useAnomalySettings";
-import { detectAnomali, hasThresholdCriteria } from "./_utils/detectAnomali";
+import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
+import { detectAnomali, hasThresholdCriteria } from "@/lib/anomaliGardu";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -62,7 +63,7 @@ const MONTHS = [
 
 const TABS = [
   { key: "dashboard",      label: "Dashboard",            icon: LayoutDashboard },
-  { key: "data-gardu",     label: "Data Gardu",           icon: Database },
+  { key: "data-gardu",     label: "Data Gardu → pindah",  icon: Database },
   { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
@@ -764,12 +765,22 @@ export default function PengukuranGarduPage() {
       {/* ════════════════════════════════════════════════════════════════════ */}
       {/* TAB: DATA GARDU                                                    */}
       {/* ════════════════════════════════════════════════════════════════════ */}
+      {/* Tab ini sengaja disisakan sebagai penunjuk jalan, bukan dihapus
+          begitu saja: orang yang sudah hafal Data Gardu ada di sini akan
+          mencarinya beberapa minggu lagi. Bisa dibuang kalau sudah terbiasa. */}
       {activeTab === "data-gardu" && (
-        <DataGarduTab
-          user={user}
-          ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
-          settings={anomalySettings}
-        />
+        <div className={`${CARD} p-10 flex flex-col items-center gap-3 text-center`}>
+          <Database size={34} className="text-ink-muted" />
+          <p className="text-ink font-semibold">Data Gardu pindah ke halaman sendiri</p>
+          <p className="text-sm text-ink-soft max-w-md">
+            Master gardu dipakai semua modul — pengukuran, inspeksi JTR, pemeliharaan
+            gardu — jadi dia bukan lagi bagian dari halaman pengukuran. Impor master,
+            tambah gardu, dan ekspornya semua pindah ke sana.
+          </p>
+          <Link href="/admin/master-gardu" className={BTN_PRIMARY}>
+            Buka Master Gardu
+          </Link>
+        </div>
       )}
 
       {/* ════════════════════════════════════════════════════════════════════ */}

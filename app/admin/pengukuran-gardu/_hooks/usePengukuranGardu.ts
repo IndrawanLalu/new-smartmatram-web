@@ -6,11 +6,18 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 
 // ── Thresholds ────────────────────────────────────────────────────────────────
+// Definisinya pindah ke `lib/garduAmbang.ts` karena kini dipakai tiga halaman.
+// Diekspor kembali dari sini supaya puluhan pemakainya tidak perlu diubah.
 
-export const OVERLOAD_PCT = 80;
-export const UNDERLOAD_PCT = 20;
-export const HIGH_CURRENT_A = 160;
-export const HIGH_TEMP_C = 60;
+export {
+  OVERLOAD_PCT, UNDERLOAD_PCT, HIGH_CURRENT_A, HIGH_TEMP_C,
+} from "@/lib/garduAmbang";
+export type { JurusanData } from "@/lib/garduAmbang";
+
+import {
+  OVERLOAD_PCT, UNDERLOAD_PCT, HIGH_CURRENT_A, HIGH_TEMP_C,
+  type JurusanData,
+} from "@/lib/garduAmbang";
 
 /**
  * Persen beban SEBAGAIMANA TAMPIL — semua tabel, kartu, dan grafik membulatkan
@@ -51,11 +58,6 @@ export const isOverload = (v: number | null | undefined) => bebanTampil(v) >= OV
 export const isUnderload = (v: number | null | undefined) => bebanTampil(v) < UNDERLOAD_PCT;
 
 // ── Types ─────────────────────────────────────────────────────────────────────
-
-export interface JurusanData {
-  arus: { R: number; S: number; T: number; N: number };
-  tegangan: { R: number; S: number; T: number };
-}
 
 export interface PengukuranGardu {
   id: string;

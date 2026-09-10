@@ -45,7 +45,7 @@ import { buildWoStats, type WoStats } from "@/app/admin/work-order/_lib/woStats"
 import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
 // Ambang "pengukuran sudah basi" diimpor, tidak disalin: kalau ULP mengubah
 // kebijakannya, dashboard dan halaman pengukuran-gardu harus ikut bersama.
-import { AMBANG_BASI } from "@/app/admin/pengukuran-gardu/_hooks/useGarduStatus";
+import { AMBANG_BASI } from "@/app/admin/_hooks/useGarduStatus";
 
 // ── Ambang ───────────────────────────────────────────────────────────────────
 // Sengaja tetap, bukan dari `anomali_settings`: ambang di tabel itu default-nya

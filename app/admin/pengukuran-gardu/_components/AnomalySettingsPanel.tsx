@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ChevronDown, SlidersHorizontal, Save, RotateCcw, CheckCircle2 } from "lucide-react";
-import type { AnomalySettings } from "../_utils/detectAnomali";
+import type { AnomalySettings } from "@/lib/anomaliGardu";
 
 // ── Slider ranges per kriteria ─────────────────────────────────────────────
 

@@ -14,7 +14,7 @@ import {
   type UpdatePenyeimbanganInput,
 } from "../_hooks/usePenyeimbangan";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
-import { detectAnomali, type AnomalySettings } from "../_utils/detectAnomali";
+import { detectAnomali, type AnomalySettings } from "@/lib/anomaliGardu";
 import PenyeimbanganModal from "./PenyeimbanganModal";
 import DetailPemerataanModal from "./DetailPemerataanModal";
 import GarduDetailModal from "./GarduDetailModal";

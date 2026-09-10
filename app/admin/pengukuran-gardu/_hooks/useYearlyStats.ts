@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 import { OVERLOAD_PCT, HIGH_TEMP_C } from "./usePengukuranGardu";
-import { detectAnomali, hasThresholdCriteria, type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
+import { detectAnomali, hasThresholdCriteria, type AnomalySettings, DEFAULT_SETTINGS } from "@/lib/anomaliGardu";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 
 // ── Types ─────────────────────────────────────────────────────────────────────

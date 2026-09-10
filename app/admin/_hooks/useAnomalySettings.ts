@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { type AnomalySettings, DEFAULT_SETTINGS } from "../_utils/detectAnomali";
+import { type AnomalySettings, DEFAULT_SETTINGS } from "@/lib/anomaliGardu";
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
 
