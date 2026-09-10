@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
   Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet, Download, Loader2, Plus,
@@ -19,6 +19,13 @@ import {
 import { type AnomalySettings } from "@/lib/anomaliGardu";
 import { OVERLOAD_PCT } from "@/lib/garduAmbang";
 import GarduTimelineModal from "./GarduTimelineModal";
+import SaringanKondisiGardu from "./SaringanKondisiGardu";
+import { useKondisiHargardu } from "../_hooks/useKondisiHargardu";
+import {
+  kunciKondisi, adaSaringanKondisi, lolosStatusHar,
+  type SaringanKondisi, type NilaiKondisi, type KeadaanHar,
+} from "../_lib/kondisiGardu";
+import type { StatusHar, SaringanUrl } from "../_lib/saringanUrl";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -33,6 +40,12 @@ const STATUS_UKUR_OPSI: { nilai: StatusUkur; label: string }[] = [
   { nilai: "belum",   label: "Belum pernah diukur" },
   { nilai: "basi",    label: "Perlu diukur ulang" },
   { nilai: "terukur", label: "Sudah pernah diukur" },
+];
+
+const STATUS_HAR_OPSI: { nilai: StatusHar; label: string }[] = [
+  { nilai: "",      label: "Semua Pemeliharaan" },
+  { nilai: "belum", label: "Belum pernah dipelihara" },
+  { nilai: "sudah", label: "Sudah pernah dipelihara" },
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -147,18 +160,126 @@ function KPICard({
   );
 }
 
+/**
+ * Nilai gardu ini untuk item yang sedang disaring.
+ *
+ * Ada supaya saringan tidak jadi kotak hitam: baris yang lolos harus bisa
+ * menunjukkan sendiri alasannya. Item per fasa/jurusan bisa punya beberapa nilai
+ * sekaligus — bagiannya ikut ditulis, karena "jurusan C konektor" dan "semua
+ * jurusan konektor" adalah dua pekerjaan yang sangat berbeda.
+ */
+function SelKondisi({
+  item, nilaiPerItem, kunci,
+}: {
+  item: string[];
+  nilaiPerItem: Map<string, Map<string, NilaiKondisi[]>>;
+  kunci: string;
+}) {
+  const isi = item.flatMap((kode) => {
+    const daftar = nilaiPerItem.get(kode)?.get(kunci);
+    if (!daftar) return [{ kode, teks: "belum diperiksa", normal: true, kosong: true }];
+    return daftar
+      .filter((d) => d.label || d.nilai)
+      .map((d) => ({
+        kode,
+        teks: (d.label ?? d.nilai ?? "") + (d.bagian !== "-" ? ` (${d.bagian})` : ""),
+        normal: d.normal,
+        kosong: false,
+      }));
+  });
+
+  if (isi.length === 0) return KOSONG;
+
+  return (
+    <div className="flex flex-wrap gap-1 max-w-64">
+      {isi.map((x, i) => (
+        <span
+          key={`${x.kode}-${i}`}
+          className={`text-[11px] px-1.5 py-0.5 rounded border whitespace-nowrap ${
+            x.kosong
+              ? "bg-surface text-ink-muted border-line border-dashed"
+              : x.normal
+                ? "bg-surface text-ink-soft border-line"
+                : "bg-amber-50 text-amber-700 border-amber-200 font-medium"
+          }`}
+        >
+          {x.teks}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Tanggal pemeliharaan terverifikasi terakhir.
+ *
+ * Gardu yang pekerjaannya sedang menunggu persetujuan tidak ditulis "Belum
+ * pernah" begitu saja — secara angka memang belum terhitung, tapi orang yang
+ * membaca kolom ini sedang memutuskan mau mengirim regu ke mana.
+ */
+function SelHar({ keadaan }: { keadaan: KeadaanHar | undefined }) {
+  if (keadaan?.pernah) {
+    // `tgl_selesai` bertipe timestamptz, bukan date seperti tanggal pengukuran —
+    // dipotong dulu ke YYYY-MM-DD, kalau tidak `fmtDate` akan mengeluarkan
+    // "01T00:00:00+08:00-08-2026".
+    return (
+      <span className="text-ink-soft">
+        {keadaan.tgl ? fmtDate(keadaan.tgl.slice(0, 10)) : "Disetujui"}
+      </span>
+    );
+  }
+  if (keadaan?.menunggu) {
+    return (
+      <span className="text-[11px] px-1.5 py-0.5 rounded border bg-blue-50 text-blue-700 border-blue-200 whitespace-nowrap">
+        Menunggu persetujuan
+      </span>
+    );
+  }
+  return <span className="text-[11px] text-ink-muted">Belum pernah</span>;
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
 interface Props {
   user: CurrentUser;
   ulp: string;
   settings: AnomalySettings;
+  /** Saringan yang dibawa dari alamat halaman — dipakai tautan dari dashboard. */
+  awal: SaringanUrl;
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DataGarduTab({ user, ulp, settings }: Props) {
-  const [showTable, setShowTable] = useState(false);
+export default function DataGarduTab({ user, ulp, settings, awal }: Props) {
+  const [saringanKondisi, setSaringanKondisi] = useState<SaringanKondisi>(awal.kondisi);
+  const [statusHar, setStatusHar] = useState<StatusHar>(awal.statusHar);
+
+  // Datang dari tautan yang sudah membawa saringan berarti orangnya sudah tahu
+  // apa yang dicari — menahannya di balik tombol "Tampilkan Data" cuma
+  // menyuruhnya menegaskan permintaan yang baru saja dia buat.
+  const [showTable, setShowTable] = useState(
+    () => adaSaringanKondisi(awal.kondisi) || awal.statusHar !== "",
+  );
+
+  const {
+    harTerakhir, nilaiPerItem, lolos,
+    memuat: memuatKondisi, galat: galatKondisi,
+  } = useKondisiHargardu(ulp, saringanKondisi, showTable);
+
+  /** Item yang sedang dipakai menyaring — kolom Kondisi menampilkan nilainya,
+   *  supaya alasan sebuah baris ikut tersaring terlihat di baris itu sendiri. */
+  const itemDisaring = useMemo(
+    () => Object.entries(saringanKondisi).filter(([, v]) => v.length > 0).map(([k]) => k),
+    [saringanKondisi],
+  );
+
+  const saringTambahan = useCallback(
+    (row: GarduMasterState) => {
+      const kunci = kunciKondisi(row.kode, row.ulp);
+      return lolosStatusHar(harTerakhir.get(kunci), statusHar) && lolos(kunci);
+    },
+    [statusHar, harTerakhir, lolos],
+  );
 
   const {
     data, allData, rawData,
@@ -168,7 +289,7 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
     penyulangOptions,
     anomaliMap, anomaliCount, penyeimbanganCount, avgBeban, cakupan, basiSet,
     refresh,
-  } = useGarduStatus(user, ulp, settings, showTable);
+  } = useGarduStatus(user, ulp, settings, showTable, saringTambahan);
 
   const [selectedGardu, setSelectedGardu] = useState<GarduMasterState | null>(null);
   const [imporTerbuka, setImporTerbuka] = useState(false);
@@ -322,6 +443,17 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           ))}
         </select>
 
+        <select
+          value={statusHar}
+          onChange={(e) => { setStatusHar(e.target.value as StatusHar); setPage(1); }}
+          className={INPUT_CLASS}
+          title="Menurut pemeliharaan gardu yang sudah disetujui"
+        >
+          {STATUS_HAR_OPSI.map((o) => (
+            <option key={o.nilai} value={o.nilai}>{o.label}</option>
+          ))}
+        </select>
+
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -369,7 +501,12 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
             </button>
           )}
           {showTable
-            ? <span className="text-sm font-medium text-ink-soft">{totalFiltered} gardu</span>
+            ? (
+              <span className="text-sm font-medium text-ink-soft flex items-center gap-1.5">
+                {memuatKondisi && <Loader2 size={12} className="animate-spin" />}
+                {totalFiltered} gardu
+              </span>
+            )
             : (
               <button
                 onClick={() => setShowTable(true)}
@@ -381,6 +518,18 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           }
         </div>
       </div>
+
+      <SaringanKondisiGardu
+        saringan={saringanKondisi}
+        onUbah={(v) => { setSaringanKondisi(v); setPage(1); }}
+        aktif={showTable}
+      />
+
+      {galatKondisi && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">
+          {galatKondisi}
+        </div>
+      )}
 
       {/* ── Table ─────────────────────────────────────────────────────────── */}
       <div className="bg-white rounded-xl border border-line overflow-hidden">
@@ -396,22 +545,28 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
           <div className="m-4 bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm">{error}</div>
         )}
 
-        {showTable && loading && (
+        {showTable && (loading || memuatKondisi) && (
           <div className="flex items-center justify-center py-14 gap-2 text-ink-soft text-sm">
             <div className="w-5 h-5 border-4 border-line border-t-navy-600 rounded-full animate-spin" />
-            Memuat data gardu...
+            {loading ? "Memuat data gardu..." : "Menyaring menurut kondisi pemeliharaan..."}
           </div>
         )}
 
-        {showTable && !loading && allData.length === 0 && !error && (
+        {showTable && !loading && !memuatKondisi && allData.length === 0 && !error && (
           <div className="flex flex-col items-center gap-2 py-14 text-ink-soft">
             <Gauge size={28} />
             <p className="text-sm font-medium">Tidak ada gardu yang cocok dengan filter.</p>
-            <p className="text-sm">Longgarkan filternya, atau impor master gardu kalau memang belum ada isinya.</p>
+            <p className="text-sm">
+              Longgarkan filternya, atau impor master gardu kalau memang belum ada isinya.
+            </p>
+            <p className="text-xs max-w-lg text-center text-ink-muted">
+              Saringan kondisi hanya menemukan gardu yang pemeliharaannya <b>sudah disetujui</b>.
+              Gardu yang belum pernah dipelihara dicari lewat pil <b>Belum diperiksa</b>.
+            </p>
           </div>
         )}
 
-        {showTable && !loading && allData.length > 0 && (
+        {showTable && !loading && !memuatKondisi && allData.length > 0 && (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
@@ -426,12 +581,18 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
                     <th className={`${TH} text-center`}>Suhu°C</th>
                     <th className={`${TH} text-center`}>Sumber</th>
                     <th className={`${TH} text-left`}>Tgl Ukur</th>
+                    {itemDisaring.length > 0 && <th className={`${TH} text-left`}>Kondisi</th>}
+                    <th className={`${TH} text-left`}>HAR Terakhir</th>
                     <th className={`${TH} text-center`}>Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
                   {data.map((row) => {
                     const kunci = kunciGardu(row);
+                    // Kunci kondisi HARGARDU dinormalkan huruf besarnya — catatan
+                    // pemeliharaan datang dari aplikasi lapangan, bukan dari
+                    // master, jadi tidak boleh diandaikan ejaannya sama persis.
+                    const kKondisi = kunciKondisi(row.kode, row.ulp);
                     return (
                       <tr
                         key={kunci}
@@ -476,6 +637,14 @@ export default function DataGarduTab({ user, ulp, settings }: Props) {
                         </td>
                         <td className="px-4 py-2.5 text-ink-soft">
                           {row.event_date ? fmtDate(row.event_date) : KOSONG}
+                        </td>
+                        {itemDisaring.length > 0 && (
+                          <td className="px-4 py-2.5">
+                            <SelKondisi item={itemDisaring} nilaiPerItem={nilaiPerItem} kunci={kKondisi} />
+                          </td>
+                        )}
+                        <td className="px-4 py-2.5">
+                          <SelHar keadaan={harTerakhir.get(kKondisi)} />
                         </td>
                         <td className="px-4 py-2.5 text-center">
                           <StatusBadge

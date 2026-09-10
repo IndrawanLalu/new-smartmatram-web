@@ -197,6 +197,19 @@ export function useGarduStatus(
   ulp: string,
   settings: AnomalySettings = DEFAULT_SETTINGS,
   enabled = true,
+  /**
+   * Saringan tambahan dari luar hook — dipakai halaman Master Gardu untuk
+   * menyaring menurut kondisi HARGARDU (tekep, kondisi trafo, sambungan outlet).
+   *
+   * Sengaja disuntikkan, bukan ditanam di sini: data kondisinya berasal dari
+   * view lain dan hanya ditarik untuk item yang sedang disaring. Hook ini tetap
+   * cuma tahu satu hal — master gardu beserta kondisi ukur terakhirnya.
+   *
+   * Ikut dipakai paginasi dan hitungan `totalFiltered`, jadi menyaring di sini
+   * bukan di komponen: menyaring sesudah `data` dipotong per halaman akan
+   * membuat halaman berisi tiga baris sementara nomor halamannya tetap sepuluh.
+   */
+  saringTambahan?: (row: GarduMasterState) => boolean,
 ) {
   const [rawData, setRawData] = useState<GarduMasterState[]>([]);
   const [loading, setLoading] = useState(false);
@@ -292,6 +305,9 @@ export function useGarduStatus(
     if (filter.anomaliOnly) {
       data = data.filter((d) => anomaliMap.get(kunciGardu(d))?.isAnomali);
     }
+    if (saringTambahan) {
+      data = data.filter(saringTambahan);
+    }
     if (filter.search) {
       const q = filter.search.toLowerCase();
       data = data.filter(
@@ -304,7 +320,7 @@ export function useGarduStatus(
     }
 
     return data;
-  }, [rawData, filter, anomaliMap, basiSet]);
+  }, [rawData, filter, anomaliMap, basiSet, saringTambahan]);
 
   const paginatedData = useMemo(
     () => filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),

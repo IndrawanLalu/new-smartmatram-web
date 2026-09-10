@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { FIELD, EYEBROW, CARD } from "@/app/admin/_ui";
 import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
 import TabelMasterGardu from "./_components/TabelMasterGardu";
+import { bacaSaringanUrl } from "./_lib/saringanUrl";
 
 /**
  * Master Gardu — daftar aset gardu, satu-satunya.
@@ -17,8 +19,23 @@ import TabelMasterGardu from "./_components/TabelMasterGardu";
  * adalah persis penyakit spreadsheet yang sedang kita berantas.
  */
 export default function MasterGarduPage() {
+  return (
+    <Suspense fallback={<div className="py-16 text-center text-sm text-ink-soft">Memuat…</div>}>
+      <IsiHalaman />
+    </Suspense>
+  );
+}
+
+function IsiHalaman() {
   const user = useCurrentUser();
-  const [ulp, setUlp] = useState("");
+  const sp = useSearchParams();
+
+  // Dibaca SEKALI saat halaman dibuka, lalu jadi milik tabel sepenuhnya.
+  // Terus-menerus menyetir keadaan dari alamat halaman akan membuat tiap
+  // ketukan pil saringan menambah satu entri riwayat browser — tombol Kembali
+  // lalu menyusuri belasan langkah yang tak seorang pun anggap sebagai langkah.
+  const [awal] = useState(() => bacaSaringanUrl(sp));
+  const [ulp, setUlp] = useState(awal.ulp);
 
   const unit = canSeeAllUnits(user.role) ? ulp : (user.unit ?? "");
   // Ambang anomali disetel per ULP, jadi ikut berubah saat ULP-nya diganti.
@@ -46,7 +63,7 @@ export default function MasterGarduPage() {
         </div>
       )}
 
-      <TabelMasterGardu user={user} ulp={unit} settings={settings} />
+      <TabelMasterGardu user={user} ulp={unit} settings={settings} awal={awal} />
     </div>
   );
 }
