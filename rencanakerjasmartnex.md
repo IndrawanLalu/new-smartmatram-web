@@ -295,6 +295,16 @@ JTR mendesak karena masih di luar SMART.
 - Tiang JTM memakai struktur siklus hidup yang sama dengan yang dibangun di Fase 1.
 
 ### 4.2 Inspeksi JTM tier 1 & 2 — dirapikan
+→ **Rencana rincinya di [rencana-inspeksi-jtm.md](rencana-inspeksi-jtm.md)** (disepakati 11 Sep 2026).
+
+- Penyapuan per **segmen**, bukan temuan titik lepas. Penyulang menjawab "dari mana",
+  segmen menjawab "ruas yang mana".
+- **Satu tiang bisa dipikul dua penyulang** (underbuild beda penyulang, nama segmennya
+  berbeda) — inilah satu-satunya tempat di SMART yang hubungan aset ↔ pemiliknya
+  banyak-ke-banyak. Tiga tabel: `tiang` · `segmen` · `segmen_tiang`.
+- Inspeksi lama **tetap hidup berdampingan**; temuannya bertemu di satu daftar Perlu
+  Perbaikan dengan penanda asal.
+
 ### 4.3 Pemeliharaan Jaringan — keluar dari WO kolom bebas
 ### 4.4 Perabasan — disambungkan ke master jaringan
 
