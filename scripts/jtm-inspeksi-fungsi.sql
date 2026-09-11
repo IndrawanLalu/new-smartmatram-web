@@ -304,6 +304,39 @@ BEGIN
   RETURN jsonb_build_object('id', id_baru, 'kode', kode_baru, 'induk_id', induk);
 END $$;
 
+-- ── 3b. Tiang di sekitar saya ────────────────────────────────────────────────
+-- Dipakai SEBELUM menambah tiang. Tanpa ini, satu-satunya cara petugas tahu
+-- bahwa di titik itu sudah ada tiang adalah ditolak setelah menekan simpan —
+-- dan penolakan yang datang belakangan selalu terbaca sebagai aplikasi rewel,
+-- bukan sebagai pertolongan.
+
+CREATE OR REPLACE FUNCTION public.tiang_terdekat_jtm(
+  p_ulp    TEXT,
+  p_lat    DOUBLE PRECISION,
+  p_lng    DOUBLE PRECISION,
+  p_radius DOUBLE PRECISION DEFAULT 30
+) RETURNS TABLE (
+  id UUID, kode TEXT, penyulang TEXT, jarak_m NUMERIC, dipikul TEXT[]
+)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT t.id, t.kode, t.penyulang,
+         round(public.jarak_meter(p_lat, p_lng, t.lat, t.lng)::numeric, 1) AS jarak_m,
+         ARRAY(
+           SELECT DISTINCT s.penyulang
+           FROM public.segmen_tiang st
+           JOIN public.segmen s ON s.id = st.segmen_id AND s.status = 'aktif'
+           WHERE st.tiang_id = t.id
+         ) AS dipikul
+  FROM public.tiang t
+  WHERE t.status_hidup = 'aktif'
+    AND t.penyulang IS NOT NULL
+    AND t.lat IS NOT NULL AND t.lng IS NOT NULL
+    AND upper(COALESCE(t.ulp, '')) = upper(COALESCE(p_ulp, ''))
+    AND public.jarak_meter(p_lat, p_lng, t.lat, t.lng) <= p_radius
+  ORDER BY public.jarak_meter(p_lat, p_lng, t.lat, t.lng)
+  LIMIT 10
+$$;
+
 -- ── 4. Menumpang tiang yang sudah ada ────────────────────────────────────────
 -- Underbuild: kabel penyulang ini lewat di tiang milik penyulang lain.
 
@@ -477,6 +510,7 @@ END $$;
 GRANT EXECUTE ON FUNCTION public.mulai_penyapuan_jtm      TO authenticated;
 GRANT EXECUTE ON FUNCTION public.nilai_tiang_jtm          TO authenticated;
 GRANT EXECUTE ON FUNCTION public.tambah_tiang_jtm         TO authenticated;
+GRANT EXECUTE ON FUNCTION public.tiang_terdekat_jtm       TO authenticated;
 GRANT EXECUTE ON FUNCTION public.tumpangi_tiang_jtm       TO authenticated;
 GRANT EXECUTE ON FUNCTION public.koreksi_titik_tiang_jtm  TO authenticated;
 GRANT EXECUTE ON FUNCTION public.selesaikan_penyapuan_jtm TO authenticated;
