@@ -320,25 +320,37 @@ CREATE TRIGGER trg_jaga_segmen_tiang
 -- separuhnya. Fungsi JTR sudah melepas tiang JTM ("gardu_kode NULL → dinamai di
 -- tempat lain"), dan urutan abjad nama trigger membuat dia jalan lebih dulu.
 --
---   a. Induk NULL                → pangkal penyulang          → MTR-001
---   b. Jalur lurus (belok ≤ 60°) → nomor lanjut               → MTR-006
---   c. Jalur berbelok / bercabang→ huruf arah, mulai 1        → MTR-005_B1
+--   a. Induk NULL                  → pangkal penyulang        → MTR-001
+--   b. Induk belum punya anak      → nomor lanjut             → MTR-006
+--   c. Induk SUDAH punya anak      → huruf arah, mulai 1      → MTR-005_B1
 --   d. Searah dengan anak yang ada → sisipan                  → MTR-005a
+--
+-- BEDA PENTING DARI JTR, dan ini ketahuan dari data sungguhan: JTR memulai
+-- huruf baru setiap kali jalurnya BERBELOK lebih dari 60°. Di JTR itu masuk
+-- akal — satu jurusan cuma belasan tiang. Di JTM satu penyulang menyusur jalan
+-- sepanjang kilometer, dan aturan yang sama membuat namanya menumpuk:
+-- pada impor 250 tiang GUNUNG SARI, nama terpanjang jadi 62 huruf
+-- (`GNN-002_D2_A37_D10_A15_A35_A7_B1_A3_A2_B22_B1`) padahal percabangan
+-- sungguhannya cuma 14. Nama sepanjang itu tidak bisa dibaca di HP, tidak bisa
+-- disebut lewat radio, dan tidak menerangkan apa pun.
+--
+-- Jadi di JTM huruf baru hanya lahir dari PERCABANGAN SUNGGUHAN — saat induknya
+-- memang sudah punya anak. Jalan yang menikung tetap satu deret nomor, persis
+-- seperti yang diminta pemilik pekerjaan: MTR-001…MTR-250, cabang MTR-005_B1.
 
 CREATE OR REPLACE FUNCTION public.tiang_buat_kode_jtm()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
   induk      RECORD;
-  hulu       RECORD;
+  naik       RECORD;
   anak       RECORD;
   ada_anak   BOOLEAN;
+  pokok_kode TEXT;
   prefiks    TEXT;
   singkat    TEXT;
   nomor_maks INT;
   arah_baru  DOUBLE PRECISION;
-  arah_lama  DOUBLE PRECISION;
   arah_anak  DOUBLE PRECISION;
-  belok      DOUBLE PRECISION;
   selisih    DOUBLE PRECISION;
   huruf      TEXT;
   pokok      BOOLEAN;
@@ -406,28 +418,49 @@ BEGIN
     END IF;
   END IF;
 
-  -- Belok diukur terhadap arah bentang SEBELUMNYA — itulah yang menangkap
-  -- "jalurnya berbelok" sebagaimana dilihat orang, bukan arah mutlak.
-  SELECT * INTO hulu FROM public.tiang WHERE id = induk.induk_id;
-  arah_lama := CASE WHEN FOUND
-    THEN public.arah_derajat(hulu.lat, hulu.lng, induk.lat, induk.lng)
-    ELSE NULL END;
-
-  belok := NULL;
-  IF arah_baru IS NOT NULL AND arah_lama IS NOT NULL THEN
-    belok := abs(arah_baru - arah_lama);
-    IF belok > 180 THEN belok := 360 - belok; END IF;
-  END IF;
-
-  IF (belok IS NULL OR belok <= 60) AND NOT ada_anak THEN
-    -- (b) Masih lurus → teruskan deret pada prefiks induknya.
-    --     'MTR-005' → prefiks 'MTR-' ; 'MTR-005_B1' → prefiks 'MTR-005_B'.
+  IF NOT ada_anak THEN
+    -- (b) Induknya belum punya anak → jalur yang sama diteruskan, berbelok pun
+    --     tetap satu deret. 'MTR-005' → prefiks 'MTR-' ;
+    --     'MTR-005_B1' → prefiks 'MTR-005_B'.
     prefiks := regexp_replace(induk.kode, '[0-9]+[a-z]?$', '');
   ELSE
-    -- (c) Berbelok, atau induknya sudah punya anak → cabang. Hurufnya dari
-    --     arah mata angin NYATA, bukan pilihan orang.
+    -- (c) Induknya sudah punya anak → di sinilah jalurnya benar-benar pecah.
+    --
+    --     CABANG HANYA SATU TINGKAT. Kalau cabang boleh bersarang, namanya
+    --     menumpuk sepanjang jalurnya: pada impor 250 tiang sungguhan muncul
+    --     `GNN-003_A47_A15_A35_A8_A3_A2_B22_A5_A10_A25_A3` — 46 huruf, tidak
+    --     bisa dibaca di HP dan tidak bisa disebut lewat radio. Jadi cabang
+    --     selalu digantungkan pada NOMOR POKOK terdekat di hulunya, bukan pada
+    --     kode induk apa adanya. Bentuknya tetap seperti yang diminta:
+    --     MTR-005_B1. Susunan pohon yang sebenarnya tidak hilang — dia ada di
+    --     `induk_id`, bukan di nama.
+    pokok_kode := induk.kode;
+    naik := induk;
+    WHILE pokok_kode !~ ('^' || singkat || '-[0-9]+$') AND naik.induk_id IS NOT NULL LOOP
+      SELECT * INTO naik FROM public.tiang WHERE id = naik.induk_id;
+      EXIT WHEN NOT FOUND;
+      pokok_kode := naik.kode;
+    END LOOP;
+    -- Jalur yang pangkalnya sendiri bukan nomor pokok (mis. hasil impor yang
+    -- terputus) tetap dapat nama — dipakai kode induk apa adanya.
+    IF pokok_kode !~ ('^' || singkat || '-[0-9]+$') THEN
+      pokok_kode := induk.kode;
+    END IF;
+
+    -- Huruf dari arah mata angin nyata; kalau sudah terpakai di titik cabang
+    -- yang sama, maju ke huruf berikutnya supaya tidak ada nama kembar.
     huruf := COALESCE(public.arah_huruf(arah_baru), 'K');
-    prefiks := induk.kode || '_' || huruf;
+    WHILE EXISTS (
+      SELECT 1 FROM public.tiang
+      WHERE upper(COALESCE(penyulang, '')) = upper(NEW.penyulang)
+        AND status_hidup = 'aktif'
+        AND kode ~ ('^' || pokok_kode || '_' || huruf || '[0-9]+[a-z]?$')
+    ) LOOP
+      huruf := chr(ascii(huruf) + 1);
+      EXIT WHEN huruf > 'Z';
+    END LOOP;
+
+    prefiks := pokok_kode || '_' || huruf;
   END IF;
 
   -- Deret pokok (langsung di belakang kode singkat) dinomori tiga angka supaya
