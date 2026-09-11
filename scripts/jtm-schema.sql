@@ -342,9 +342,13 @@ CREATE OR REPLACE FUNCTION public.tiang_buat_kode_jtm()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE
   induk      RECORD;
+  hulu       RECORD;
   naik       RECORD;
   anak       RECORD;
   ada_anak   BOOLEAN;
+  lurus      BOOLEAN;
+  belok      DOUBLE PRECISION;
+  arah_lama  DOUBLE PRECISION;
   pokok_kode TEXT;
   prefiks    TEXT;
   singkat    TEXT;
@@ -418,9 +422,35 @@ BEGIN
     END IF;
   END IF;
 
-  IF NOT ada_anak THEN
-    -- (b) Induknya belum punya anak → jalur yang sama diteruskan, berbelok pun
-    --     tetap satu deret. 'MTR-005' → prefiks 'MTR-' ;
+  -- Di percabangan, yang LURUS meneruskan deret; yang membelok jadi cabang.
+  --
+  -- Tanpa aturan ini, yang menentukan siapa "jalur utama" cuma urutan
+  -- pencatatan. Terbukti di impor sungguhan: Sheet menuliskan tujuh tiang
+  -- lateral ('3 L1'..'3 L7') sebelum melanjutkan jalur utamanya, jadi lateral
+  -- itulah yang menyandang nomor pokok dan SELURUH jalur utama sesudahnya —
+  -- lebih dari dua ratus tiang — terlempar jadi cabang. Namanya tetap pendek
+  -- dan unik, tapi penyulangnya jadi terbaca seolah trunk-nya sebuah cabang.
+  lurus := false;
+  IF ada_anak AND arah_baru IS NOT NULL AND induk.induk_id IS NOT NULL THEN
+    SELECT * INTO hulu FROM public.tiang WHERE id = induk.induk_id;
+    IF FOUND THEN
+      arah_lama := public.arah_derajat(hulu.lat, hulu.lng, induk.lat, induk.lng);
+      IF arah_lama IS NOT NULL THEN
+        belok := abs(arah_baru - arah_lama);
+        IF belok > 180 THEN belok := 360 - belok; END IF;
+        -- Anak PERTAMA selalu meneruskan deret, apa pun arahnya — dan di data
+        -- survei anak pertama sering justru lateral, karena begitulah urutan
+        -- pencatatannya. Jadi jalur yang lurus TETAP diberi deret meski sudah
+        -- ada saudara di deret yang sama: deretnya bukan janji bahwa jalurnya
+        -- tunggal, cuma penomoran yang berjalan. Huruf disimpan untuk yang
+        -- benar-benar membelok.
+        lurus := belok <= 45;
+      END IF;
+    END IF;
+  END IF;
+
+  IF NOT ada_anak OR lurus THEN
+    -- (b) Jalur yang sama diteruskan. 'MTR-005' → prefiks 'MTR-' ;
     --     'MTR-005_B1' → prefiks 'MTR-005_B'.
     prefiks := regexp_replace(induk.kode, '[0-9]+[a-z]?$', '');
   ELSE

@@ -41,6 +41,10 @@ DECLARE
   v_lng      DOUBLE PRECISION;
   dekat_id   UUID;
   dekat_m    DOUBLE PRECISION;
+  prev_id    UUID;
+  prev_lat   DOUBLE PRECISION;
+  prev_lng   DOUBLE PRECISION;
+  prev_m     DOUBLE PRECISION;
   id_baru    UUID;
   seg        RECORD;
   masuk      INT := 0;
@@ -97,6 +101,27 @@ BEGIN
     ORDER BY public.jarak_meter(v_lat, v_lng, t.lat, t.lng)
     LIMIT 1;
 
+    -- BARIS SEBELUMNYA lebih dipercaya daripada yang terdekat, selama masih
+    -- dalam bentang yang wajar.
+    --
+    -- Alasannya bukan selera: surveyor berjalan menyusuri jalur, jadi urutan
+    -- baris ITU jalurnya. Selalu memilih yang terdekat membuat tiang menempel
+    -- ke tetangga di seberang jalan yang kebetulan 3 m lebih dekat, dan setiap
+    -- kali itu terjadi lahir satu percabangan palsu. Pada impor 250 tiang
+    -- sungguhan akibatnya terukur: cuma 9 tiang tersisa di deret pokok, 241
+    -- lainnya terlempar jadi cabang. Barisnya benar semua, tapi bentuk
+    -- jaringannya jadi tidak mirip kenyataan.
+    --
+    -- Kalau baris sebelumnya ternyata jauh — data melompat ke seksi lain —
+    -- yang terdekat tetap dipakai.
+    IF prev_id IS NOT NULL THEN
+      prev_m := public.jarak_meter(v_lat, v_lng, prev_lat, prev_lng);
+      IF prev_m IS NOT NULL AND prev_m <= amb.bentang_maks_wajar_m THEN
+        dekat_id := prev_id;
+        dekat_m  := prev_m;
+      END IF;
+    END IF;
+
     -- Tiang terdekat yang JAUH bukan induk, dia tiang lain.
     --
     -- Ketahuan saat mengimpor 250 tiang sungguhan: satu tiang liar yang
@@ -117,6 +142,11 @@ BEGIN
       -- tidak boleh melahirkan jaringan kembar — tapi kalau impor kali ini
       -- menyebut segmen, tiang lamanya tetap disambungkan ke segmen itu.
       duplikat := duplikat + 1;
+      -- Barisnya dilewati, tapi tiang yang sudah ada di titik itu tetap jadi
+      -- acuan baris berikutnya — kalau tidak, rantai melompat melewatinya.
+      prev_id  := dekat_id;
+      prev_lat := v_lat;
+      prev_lng := v_lng;
       IF p_segmen_id IS NOT NULL THEN
         INSERT INTO public.segmen_tiang (segmen_id, tiang_id, sumber)
         VALUES (p_segmen_id, dekat_id, 'impor')
@@ -143,6 +173,10 @@ BEGIN
       VALUES (p_segmen_id, id_baru, 'impor')
       ON CONFLICT DO NOTHING;
     END IF;
+
+    prev_id  := id_baru;
+    prev_lat := v_lat;
+    prev_lng := v_lng;
 
     masuk := masuk + 1;
     IF dekat_m IS NOT NULL THEN
