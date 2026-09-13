@@ -236,6 +236,22 @@ export default function ImporTiang({ user }: { user: CurrentUser }) {
             </div>
           </div>
 
+          {/* Tiang tanpa segmen masuk master tapi TIDAK terlihat di penyapuan —
+              satuan pekerjaan regu adalah segmen. Tanpa peringatan ini orang
+              baru tahu setelah membuka HP dan menemukan daftarnya kosong. */}
+          {!segmenId && (
+            <p className="flex items-start gap-2 text-xs text-ink-soft bg-attention-tint rounded-xl p-3">
+              <TriangleAlert size={14} className="mt-0.5 shrink-0 text-attention" />
+              <span>
+                Belum memilih segmen. Tiangnya tetap masuk master, tapi{" "}
+                <b>tidak akan terlihat di penyapuan</b> sampai dimasukkan ke sebuah segmen —
+                regu menyapu per segmen, bukan per penyulang. Ini wajar kalau berkasnya
+                memuat beberapa segmen sekaligus: batas ruas tidak ada di Excel, dan yang
+                memperlihatkannya cuma peta. Tandai rentang tiangnya nanti di tab Peta.
+              </span>
+            </p>
+          )}
+
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
             <p className="text-xs text-ink-soft">
               <b>{barisSiap.length.toLocaleString("id-ID")}</b> baris berkoordinat siap diimpor

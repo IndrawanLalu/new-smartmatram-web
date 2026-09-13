@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import {
-  ChevronLeft, ChevronRight, GitMerge, Inbox, Loader2, Plus, Search, Users, X,
+  ChevronLeft, ChevronRight, GitMerge, Inbox, Loader2, Plus, Search, TriangleAlert, Users, X,
 } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -20,7 +20,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
   const [modalBaru, setModalBaru] = useState(false);
   const [gabungDari, setGabungDari] = useState<SegmenBaris | null>(null);
 
-  const { baris, penyulangList, total, loading, buat, gabung } = useSegmen(user, ulp);
+  const { baris, penyulangList, lepas, total, loading, buat, gabung } = useSegmen(user, ulp);
 
   const tersaring = useMemo(() => {
     const q = cari.trim().toLowerCase();
@@ -51,6 +51,27 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
 
   return (
     <div className="space-y-4">
+      {/* Tiang yang sudah di master tapi belum masuk segmen mana pun.
+          Regu menyapu PER SEGMEN, jadi tiang seperti ini tidak akan pernah
+          muncul di HP — dan itu tidak kelihatan dari mana pun kalau tidak
+          disebut di sini: daftar segmennya cuma tampak kosong. */}
+      {lepas.jumlah > 0 && (
+        <div className={`${CARD} p-4 flex items-start gap-3 border-attention/40`}>
+          <TriangleAlert size={18} className="mt-0.5 shrink-0 text-attention" />
+          <div className="text-sm text-ink-soft">
+            <p className="font-semibold text-ink">
+              {lepas.jumlah.toLocaleString("id-ID")} tiang belum masuk segmen mana pun
+            </p>
+            <p className="text-xs mt-1">
+              Penyulang: {lepas.penyulang.join(", ")}. Tiangnya sudah ada di master dan sudah
+              terhitung panjang rutenya, tapi <b>tidak akan terlihat regu saat menyapu</b> —
+              satuan pekerjaannya segmen. Batas segmen tidak ada di berkas impor; yang
+              memperlihatkannya cuma peta. Tandai rentang tiangnya di tab <b>Peta</b>.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ── Ringkasan ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Kartu label="Segmen" nilai={total.segmen.toLocaleString("id-ID")} />

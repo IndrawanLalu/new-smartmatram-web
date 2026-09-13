@@ -75,10 +75,21 @@ export const namaSegmen = (
   return `${label(awalJenis, awalNama)} - ${label(akhirJenis, akhirNama)}`;
 };
 
+/** Tiang yang belum masuk segmen mana pun — tidak terlihat regu saat menyapu. */
+interface TiangLepas {
+  id: string;
+  penyulang: string;
+  segmen_tiang: { segmen_id: string }[] | null;
+}
+
 export function useSegmen(user: CurrentUser, ulpPilihan: string) {
   const toast = useToast();
   const [baris, setBaris] = useState<SegmenBaris[]>([]);
   const [penyulangList, setPenyulangList] = useState<string[]>([]);
+  const [lepas, setLepas] = useState<{ jumlah: number; penyulang: string[] }>({
+    jumlah: 0,
+    penyulang: [],
+  });
   const [loading, setLoading] = useState(true);
 
   const unit = canSeeAllUnits(user.role) ? ulpPilihan || null : (user.unit ?? null);
@@ -106,6 +117,25 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
           .filter((p) => !unit || String(p.ulp ?? "").toUpperCase() === unit.toUpperCase())
           .map((p) => String(p.penyulang)),
       );
+
+      // Tiang yang sudah ada di master tapi belum masuk segmen mana pun. Dia
+      // tidak muncul di penyapuan — regu menyapu per segmen — jadi keadaan ini
+      // harus KELIHATAN, bukan cuma terbaca sebagai "segmennya kosong".
+      const tiang = await fetchAllRows<TiangLepas>(() => {
+        const q = supabaseBrowser
+          .from("tiang")
+          .select("id,penyulang,segmen_tiang(segmen_id)")
+          .not("penyulang", "is", null)
+          .is("gardu_kode", null)
+          .eq("status_hidup", "aktif")
+          .order("id");
+        return unit ? q.eq("ulp", unit) : q;
+      });
+      const tanpa = tiang.filter((t) => (t.segmen_tiang?.length ?? 0) === 0);
+      setLepas({
+        jumlah: tanpa.length,
+        penyulang: [...new Set(tanpa.map((t) => t.penyulang))].sort(),
+      });
     } catch (e) {
       toast.error(`Gagal memuat segmen: ${e instanceof Error ? e.message : e}`);
       setBaris([]);
@@ -177,5 +207,5 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
     [baris],
   );
 
-  return { baris, penyulangList, total, loading, muat, buat, gabung };
+  return { baris, penyulangList, lepas, total, loading, muat, buat, gabung };
 }
