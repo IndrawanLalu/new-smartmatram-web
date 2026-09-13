@@ -30,6 +30,8 @@ export interface TiangJtm {
   dikonfirmasi_at: string | null;
   /** Diisi di sini, bukan dari database: nama segmen yang memikul tiang ini. */
   segmen: string[];
+  /** Id segmennya — dipakai layar penandaan untuk tahu mana yang sudah masuk. */
+  segmenIds: string[];
   penyulangLewat: string[];
 }
 
@@ -39,6 +41,7 @@ export interface TiangJtm {
  *  sebenarnya berhenti bisa dipercaya. */
 interface AnggotaBaris {
   tiang_id: string;
+  segmen_id: string;
   segmen: { nama: string; penyulang: string; status: string }[] | null;
 }
 
@@ -53,7 +56,7 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
     setLoading(true);
     try {
       const [rows, anggota] = await Promise.all([
-        fetchAllRows<Omit<TiangJtm, "segmen" | "penyulangLewat">>(() => {
+        fetchAllRows<Omit<TiangJtm, "segmen" | "segmenIds" | "penyulangLewat">>(() => {
           const q = supabaseBrowser
             .from("tiang")
             .select(
@@ -69,17 +72,18 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
         fetchAllRows<AnggotaBaris>(() =>
           supabaseBrowser
             .from("segmen_tiang")
-            .select("tiang_id,segmen(nama,penyulang,status)")
+            .select("tiang_id,segmen_id,segmen(nama,penyulang,status)")
             .order("tiang_id"),
         ),
       ]);
 
-      const per = new Map<string, { segmen: string[]; penyulang: Set<string> }>();
+      const per = new Map<string, { segmen: string[]; ids: string[]; penyulang: Set<string> }>();
       for (const a of anggota) {
         const s = Array.isArray(a.segmen) ? a.segmen[0] : a.segmen;
         if (!s || s.status !== "aktif") continue;
-        const isi = per.get(a.tiang_id) ?? { segmen: [], penyulang: new Set<string>() };
+        const isi = per.get(a.tiang_id) ?? { segmen: [], ids: [], penyulang: new Set<string>() };
         isi.segmen.push(s.nama);
+        isi.ids.push(a.segmen_id);
         isi.penyulang.add(s.penyulang);
         per.set(a.tiang_id, isi);
       }
@@ -92,6 +96,7 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
             lat: t.lat === null ? null : Number(t.lat),
             lng: t.lng === null ? null : Number(t.lng),
             segmen: isi?.segmen ?? [],
+            segmenIds: isi?.ids ?? [],
             penyulangLewat: isi ? [...isi.penyulang] : [],
           };
         }),
