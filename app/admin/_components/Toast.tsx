@@ -58,7 +58,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     <ToastContext.Provider value={api}>
       {children}
       <div
-        className="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 w-[min(22rem,calc(100vw-2.5rem))]"
+        // Di atas modal (2000): sebagian pesan justru lahir dari tindakan di dalam
+        // modal, dan pesan yang tertimbun sama saja dengan tidak ada.
+        className="fixed bottom-5 right-5 z-[2100] flex flex-col gap-2 w-[min(22rem,calc(100vw-2.5rem))]"
         role="status"
         aria-live="polite"
       >

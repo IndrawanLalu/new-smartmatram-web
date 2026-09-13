@@ -34,8 +34,16 @@ export default function ModalShell({
   }, [onClose]);
 
   return (
+    // z-[2000], BUKAN z-50. Leaflet memakai z-index sampai 1000 untuk petak
+    // peta (400) dan kendalinya (1000), dan angka itu bukan milik kita — dia
+    // datang dari CSS pustakanya. Modal yang dibuka dari halaman berpeta akan
+    // tertimbun peta kalau nilainya di bawah itu.
+    //
+    // Tingkatan yang dipakai aplikasi ini: peta & isinya ≤1000 · modal 2000 ·
+    // notifikasi 2100 (harus di atas modal, karena sebagian pesannya justru
+    // lahir dari tindakan di dalam modal).
     <div
-      className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4 animate-fade-in"
+      className="fixed inset-0 z-[2000] bg-black/50 flex items-center justify-center p-4 animate-fade-in"
       onClick={onClose}
     >
       <div
