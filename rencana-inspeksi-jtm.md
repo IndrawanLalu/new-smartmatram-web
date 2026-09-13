@@ -428,17 +428,37 @@ maksud — petugas tidak perlu belajar tiga sistem status di satu aplikasi.
 
 ## 12. Urutan pengerjaan
 
-| # | Pekerjaan | Alasan urutannya |
-|---|---|---|
-| 1 | SQL: `segmen`, `segmen_tiang`, perluasan `tiang` untuk JTM, `kode_singkat` penyulang, penamaan otomatis | Semua bergantung ke sini |
-| 2 | SQL: acuan item + opsi (pola HARGARDU) + view panjang & cakupan | Bentuk jawabannya harus ada sebelum formulir dibuat |
-| 3 | Web: **impor Excel tiang** + data contoh GUNUNG SARI | Supaya hasilnya bisa dilihat sebelum regu disuruh jalan |
-| 4 | Web: master segmen — daftar, buat, gabung, peta | Regu perlu memilih segmen sejak ketukan pertama |
-| 5 | Mobile: penyapuan — pilih penyulang & segmen, titik/menumpang tiang, **penjaga jarak 50 m**, koreksi posisi tiang, formulir per tiang | Bagian terbesar, dan yang menghasilkan data |
-| 6 | Web: persetujuan + koreksi master inline | Tanpa ini master tidak pernah terkoreksi |
-| 7 | Web: **koreksi massal di peta** — geser titik, pilih banyak, pindah segmen & penyulang | Sesudah ada data nyata dari lapangan; sebelum itu tidak ada yang perlu dikoreksi |
-| 8 | Web: dashboard cakupan + KMS per penyulang, dan **satu daftar Perlu Perbaikan** | Output yang diminta |
-| 9 | Web: pengaturan item per tier + ambang jarak (UP3) | Supaya penambahan berikutnya tidak lewat saya |
+| # | Pekerjaan | Keadaan | Alasan urutannya |
+|---|---|---|---|
+| 1 | SQL: `segmen`, `segmen_tiang`, perluasan `tiang` untuk JTM, `kode_singkat` penyulang, penamaan otomatis | ✅ ditulis & diuji lokal | Semua bergantung ke sini |
+| 2 | SQL: acuan item + opsi (pola HARGARDU) + view panjang & cakupan | ✅ ditulis & diuji lokal | Bentuk jawabannya harus ada sebelum formulir dibuat |
+| 3 | Web: **impor Excel tiang** + data contoh GUNUNG SARI | ✅ ditulis & diuji lokal | Supaya hasilnya bisa dilihat sebelum regu disuruh jalan |
+| 4 | Web: master segmen — daftar, buat, gabung, peta | ✅ ditulis | Regu perlu memilih segmen sejak ketukan pertama |
+| 5 | Mobile: penyapuan — pilih penyulang & segmen, titik/menumpang tiang, **penjaga jarak 50 m**, koreksi posisi tiang, formulir per tiang | ✅ ditulis, **belum OTA** | Bagian terbesar, dan yang menghasilkan data |
+| 6 | Web: persetujuan + koreksi master inline | 🔲 | Tanpa ini master tidak pernah terkoreksi |
+| 7 | Web: **koreksi massal di peta** — geser titik, pilih banyak, pindah segmen & penyulang | 🔲 | Sesudah ada data nyata dari lapangan; sebelum itu tidak ada yang perlu dikoreksi |
+| 8 | Web: dashboard cakupan + KMS per penyulang, dan **satu daftar Perlu Perbaikan** | 🔲 | Output yang diminta |
+| 9 | Web: pengaturan item per tier + ambang jarak (UP3) | 🔲 | Supaya penambahan berikutnya tidak lewat saya |
+
+### 12.1 Enam SQL yang menunggu dijalankan di Supabase
+
+Diperiksa langsung ke basis data 13 September 2026: **belum satu pun terpasang.**
+Prasyaratnya sudah lengkap (`jtr-schema.sql`, `jtr-penamaan.sql`, `master_audit`,
+`penyulang_ref`), jadi tidak ada yang perlu dijalankan lebih dulu. Urutannya wajib,
+dan ketiganya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
+
+```
+1. scripts/jtm-schema.sql            segmen · segmen_tiang · jtm_settings · penamaan
+2. scripts/jtm-acuan.sql             33 item + 111 pilihan
+3. scripts/jtm-view.sql              panjang rute vs penghantar, segmen_ringkas
+4. scripts/jtm-impor.sql             impor_tiang_jtm · gabung_segmen
+5. scripts/jtm-inspeksi-schema.sql   tabel penyapuan · kondisi terakhir · perlu perbaikan
+6. scripts/jtm-inspeksi-fungsi.sql   mulai/nilai/tambah/tumpangi/koreksi/selesai/putuskan
+```
+
+Sesudah itu, dua langkah supaya hasilnya langsung terlihat: impor tab `GUNUNG SARI`
+lewat **Jaringan JTM → Impor Tiang**, dan tambahkan menu `jtm` ke role **inspektor**
+lewat Kelola Role.
 
 ---
 
