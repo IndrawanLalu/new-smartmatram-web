@@ -9,6 +9,7 @@ import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { useTiangJtm } from "../_hooks/useTiangJtm";
 import { useSegmen } from "../_hooks/useSegmen";
+import { useJtmRef } from "../_hooks/useJtmRef";
 import SegmenModal from "./SegmenModal";
 
 const PetaJtmInner = dynamic(() => import("./PetaJtmInner"), {
@@ -33,9 +34,11 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
   const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
   const [segmenTujuan, setSegmenTujuan] = useState("");
   const [modalSegmen, setModalSegmen] = useState(false);
+  const [tandaTujuan, setTandaTujuan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
   const { tiang, penyulangList, loading, muat } = useTiangJtm(user, ulp);
+  const { per: pilihanRef, penanda } = useJtmRef();
   const {
     baris: segmenList,
     penyulangList: penyulangMaster,
@@ -43,8 +46,15 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
     muat: muatSegmen,
   } = useSegmen(user, ulp);
 
+  /**
+   * KOSONG sampai penyulang dipilih — disengaja.
+   *
+   * Satu ULP bisa punya ribuan tiang, dan menggambar semuanya begitu tab dibuka
+   * membuat peta tersendat justru pada detik pertama orang melihatnya. Lagipula
+   * pertanyaan yang dibawa orang ke peta ini selalu tentang SATU penyulang.
+   */
   const tersaring = useMemo(
-    () => tiang.filter((t) => !penyulang || t.penyulang === penyulang),
+    () => (penyulang ? tiang.filter((t) => t.penyulang === penyulang) : []),
     [tiang, penyulang],
   );
   const bertitik = useMemo(
@@ -97,6 +107,32 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
       await Promise.all([muat(), muatSegmen()]);
     } catch (e) {
       toast.error(`Gagal memasukkan: ${e instanceof Error ? e.message : e}`);
+    } finally {
+      setSibuk(false);
+    }
+  };
+
+  const beriTanda = async (kode: string | null) => {
+    if (pilihan.length === 0) return;
+    setSibuk(true);
+    try {
+      const ids = pilihan.map((t) => t.id);
+      for (let i = 0; i < ids.length; i += SEPOTONG) {
+        const { error } = await supabaseBrowser
+          .from("tiang")
+          .update({ penanda: kode, updated_at: new Date().toISOString() })
+          .in("id", ids.slice(i, i + SEPOTONG));
+        if (error) throw new Error(error.message);
+      }
+      toast.success(
+        kode
+          ? `${ids.length} tiang ditandai ${pilihanRef("penanda").find((x) => x.kode === kode)?.label ?? kode}.`
+          : `Penanda dilepas dari ${ids.length} tiang.`,
+      );
+      setTerpilih(new Set());
+      await muat();
+    } catch (e) {
+      toast.error(`Gagal menandai: ${e instanceof Error ? e.message : e}`);
     } finally {
       setSibuk(false);
     }
@@ -271,6 +307,34 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
                 </button>
               )}
 
+              {/* Penanda tiang: gardu, LBS, recloser. Bukan hasil pemeriksaan —
+                  ini patokan yang membuat orang mengenali ruas di peta. */}
+              <div className="flex items-end gap-2">
+                <div>
+                  <p className={EYEBROW}>Tandai tiang</p>
+                  <select
+                    value={tandaTujuan}
+                    onChange={(e) => setTandaTujuan(e.target.value)}
+                    className={`${FIELD} mt-1 w-[170px]`}
+                  >
+                    <option value="">— pilih penanda —</option>
+                    {pilihanRef("penanda", true).map((x) => (
+                      <option key={x.kode} value={x.kode}>
+                        {x.label}
+                      </option>
+                    ))}
+                    <option value="__lepas">(lepas penanda)</option>
+                  </select>
+                </div>
+                <button
+                  onClick={() => void beriTanda(tandaTujuan === "__lepas" ? null : tandaTujuan)}
+                  disabled={!tandaTujuan || pilihan.length === 0 || sibuk}
+                  className={BTN_GHOST}
+                >
+                  Terapkan
+                </button>
+              </div>
+
               {pilihan.length > 0 && (
                 <button onClick={() => setTerpilih(new Set())} className={BTN_GHOST}>
                   <X size={15} /> Kosongkan
@@ -281,11 +345,20 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
         </div>
       )}
 
-      {bertitik.length === 0 ? (
+      {!penyulang ? (
         <div className={`${CARD} flex-1 flex flex-col items-center justify-center gap-2 text-center`}>
           <MapPinOff size={32} className="text-ink-muted" />
           <p className="text-sm text-ink-soft max-w-md">
-            Belum ada tiang bertitik untuk saringan ini. Impor tiang dulu di tab sebelah, atau
+            Pilih <b>satu penyulang</b> untuk menggambar jaringannya. Peta sengaja dibiarkan
+            kosong saat dibuka — satu ULP bisa berisi ribuan tiang, dan menggambar semuanya
+            membuat peta tersendat tepat pada detik pertama dilihat.
+          </p>
+        </div>
+      ) : bertitik.length === 0 ? (
+        <div className={`${CARD} flex-1 flex flex-col items-center justify-center gap-2 text-center`}>
+          <MapPinOff size={32} className="text-ink-muted" />
+          <p className="text-sm text-ink-soft max-w-md">
+            Belum ada tiang bertitik untuk penyulang ini. Impor tiang dulu di tab sebelah, atau
             tunggu regu menyapu di lapangan.
           </p>
         </div>
@@ -304,6 +377,7 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
             mode={mode}
             terpilih={terpilih}
             onUbahPilihan={ubahPilihan}
+            penanda={penanda}
           />
         </div>
       )}

@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useRef } from "react";
 import {
-  MapContainer, TileLayer, CircleMarker, Polyline, Popup, Rectangle, Tooltip, useMapEvents,
+  MapContainer, TileLayer, CircleMarker, Marker, Polyline, Popup, Rectangle, Tooltip, useMapEvents,
 } from "react-leaflet";
-import type { LatLngBoundsExpression, LeafletMouseEvent } from "leaflet";
+import L, { type LatLngBoundsExpression, type LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { TiangJtm } from "../_hooks/useTiangJtm";
+import type { RefBaris } from "../_hooks/useJtmRef";
 
 interface Props {
   tiang: TiangJtm[];
@@ -14,6 +15,39 @@ interface Props {
   mode: "lihat" | "tandai";
   terpilih: Set<string>;
   onUbahPilihan: (ids: string[], cara: "ganti" | "alih") => void;
+  /** Kode penanda → bentuk & warnanya. Diatur orang di tab Pengaturan, jadi
+   *  peta tidak boleh punya daftarnya sendiri. */
+  penanda: Map<string, RefBaris>;
+}
+
+/**
+ * Ikon tiang bertanda — gardu, LBS, recloser.
+ *
+ * Digambar sebagai HTML, bukan berkas gambar: menambah penanda baru di halaman
+ * Pengaturan langsung punya ikon, tanpa seorang pun mengunggah apa pun. Bentuk
+ * berbeda, bukan cuma warna berbeda — peta ini sering dilihat di layar kecil
+ * dan sambil terburu-buru, dan bentuk masih terbaca saat warna sudah tidak.
+ */
+function ikonPenanda(p: RefBaris, dipilih: boolean) {
+  const w = dipilih ? "#F59E0B" : (p.warna ?? "#1D3573");
+  const sisi = 16;
+  const bayang = "filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))";
+  const isi =
+    p.bentuk === "segitiga"
+      ? `<div style="width:0;height:0;border-left:${sisi / 2}px solid transparent;border-right:${sisi / 2}px solid transparent;border-bottom:${sisi}px solid ${w};${bayang}"></div>`
+      : `<div style="width:${sisi}px;height:${sisi}px;background:${w};border:2px solid #fff;${bayang};${
+          p.bentuk === "bulat"
+            ? "border-radius:50%"
+            : p.bentuk === "belah"
+              ? "transform:rotate(45deg)"
+              : "border-radius:2px"
+        }"></div>`;
+  return L.divIcon({
+    html: isi,
+    className: "",
+    iconSize: [sisi + 4, sisi + 4],
+    iconAnchor: [(sisi + 4) / 2, (sisi + 4) / 2],
+  });
 }
 
 /** Nama tiang = satu elemen DOM yang ikut digambar ulang tiap peta digeser.
@@ -108,7 +142,7 @@ function KotakPilih({
   );
 }
 
-export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: Props) {
+export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, penanda }: Props) {
   const [satelit, setSatelit] = useState(false);
   const [tampilNama, setTampilNama] = useState(false);
 
@@ -184,6 +218,7 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
           const dipilih = terpilih.has(t.id);
           const menandai = mode === "tandai";
           const bersegmen = t.segmenIds.length > 0;
+          const tanda = t.penanda ? penanda.get(t.penanda) : undefined;
 
           const isi = dipilih
             ? DIPILIH
@@ -198,6 +233,61 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
               : bersegmen
                 ? "#fff"
                 : TEPI_BELUM;
+
+          const isiPopup = (
+            <Popup>
+              <b>{t.kode}</b>
+              {t.nomor_lama ? <> · nomor lama {t.nomor_lama}</> : null}
+              <br />
+              {t.penyulang}
+              {tanda ? ` · ${tanda.label}` : ""}
+              <br />
+              {t.jenis ?? "jenis belum dicatat"}
+              {t.konstruksi ? ` · ${t.konstruksi}` : ""}
+              <br />
+              {t.segmen.length > 0 ? (
+                <>Segmen: {t.segmen.join(" · ")}</>
+              ) : (
+                <i>belum masuk segmen mana pun</i>
+              )}
+              {bersama && (
+                <>
+                  <br />
+                  Dipikul: {t.penyulangLewat.join(", ")}
+                </>
+              )}
+              <br />
+              {t.dikonfirmasi_at ? (
+                <>Dikonfirmasi lapangan</>
+              ) : (
+                <i>belum dikonfirmasi lapangan{t.sumber === "impor" ? " (dari impor)" : ""}</i>
+              )}
+            </Popup>
+          );
+
+          // Tiang bertanda memakai ikon berbentuk, bukan lingkaran: gardu dan
+          // recloser adalah PATOKAN orang membaca peta ini, jadi harus menonjol
+          // dari ratusan tiang biasa di sekelilingnya.
+          if (tanda) {
+            return (
+              <Marker
+                key={t.id}
+                position={[t.lat!, t.lng!]}
+                icon={ikonPenanda(tanda, dipilih)}
+                zIndexOffset={500}
+                eventHandlers={
+                  menandai ? { click: () => onUbahPilihan([t.id], "alih") } : undefined
+                }
+              >
+                {tampilNama && (
+                  <Tooltip permanent direction="right" offset={[11, 0]} className="tooltip-tiang">
+                    {t.kode}
+                  </Tooltip>
+                )}
+                {!menandai && isiPopup}
+              </Marker>
+            );
+          }
 
           return (
             <CircleMarker
@@ -223,35 +313,7 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
                   {t.kode}
                 </Tooltip>
               )}
-              {!menandai && (
-                <Popup>
-                  <b>{t.kode}</b>
-                  {t.nomor_lama ? <> · nomor lama {t.nomor_lama}</> : null}
-                  <br />
-                  {t.penyulang}
-                  <br />
-                  {t.jenis ?? "jenis belum dicatat"}
-                  {t.konstruksi ? ` · ${t.konstruksi}` : ""}
-                  <br />
-                  {t.segmen.length > 0 ? (
-                    <>Segmen: {t.segmen.join(" · ")}</>
-                  ) : (
-                    <i>belum masuk segmen mana pun</i>
-                  )}
-                  {bersama && (
-                    <>
-                      <br />
-                      Dipikul: {t.penyulangLewat.join(", ")}
-                    </>
-                  )}
-                  <br />
-                  {t.dikonfirmasi_at ? (
-                    <>Dikonfirmasi lapangan</>
-                  ) : (
-                    <i>belum dikonfirmasi lapangan{t.sumber === "impor" ? " (dari impor)" : ""}</i>
-                  )}
-                </Popup>
-              )}
+              {!menandai && isiPopup}
             </CircleMarker>
           );
         })}

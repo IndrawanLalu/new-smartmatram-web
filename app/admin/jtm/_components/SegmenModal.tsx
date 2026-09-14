@@ -11,6 +11,7 @@ import {
   type SegmenBaris,
   type SegmenBaru,
 } from "../_hooks/useSegmen";
+import { useJtmRef } from "../_hooks/useJtmRef";
 
 interface Props {
   penyulangList: string[];
@@ -43,6 +44,7 @@ export default function SegmenModal({
   const [v, setV] = useState({ ...KOSONG, ulp: ulpAwal });
   const [menyimpan, setMenyimpan] = useState(false);
   const [sambungDari, setSambungDari] = useState("");
+  const { per: pilihanRef } = useJtmRef();
 
   const ubah = (patch: Partial<typeof KOSONG>) => setV((s) => ({ ...s, ...patch }));
 
@@ -247,22 +249,33 @@ export default function SegmenModal({
         <div className="grid sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2">
             <label className={EYEBROW}>Penghantar</label>
-            <input
+            <select
               value={v.penghantar_jenis}
               onChange={(e) => ubah({ penghantar_jenis: e.target.value })}
-              placeholder="AAAC, AAACS, A3C…"
               className={`${FIELD} mt-1 w-full`}
-            />
+            >
+              <option value="">— belum dicatat —</option>
+              {pilihanRef("penghantar", true).map((x) => (
+                <option key={x.kode} value={x.kode}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
           </div>
           <div>
-            <label className={EYEBROW}>Ukuran (mm²)</label>
-            <input
-              type="number"
+            <label className={EYEBROW}>Ukuran</label>
+            <select
               value={v.penghantar_ukuran}
               onChange={(e) => ubah({ penghantar_ukuran: e.target.value })}
-              placeholder="150"
               className={`${FIELD} mt-1 w-full`}
-            />
+            >
+              <option value="">—</option>
+              {pilihanRef("ukuran", true).map((x) => (
+                <option key={x.kode} value={x.kode}>
+                  {x.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
