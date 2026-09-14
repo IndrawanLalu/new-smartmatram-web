@@ -25,21 +25,22 @@ const CITRA =
 const JALAN = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
 
 /**
- * Dua hal diwarnai dengan DUA saluran berbeda, bukan satu.
+ * TIGA keterangan, TIGA saluran — bukan ditumpuk jadi satu warna.
  *
- * Isi lingkaran = sudah pernah dilihat orang di lapangan atau belum. Cincin
- * ungu = tiang dipikul lebih dari satu penyulang. Kalau keduanya dijejalkan ke
- * warna isi, tiang impor yang juga underbuild terpaksa memilih salah satu, dan
- * yang hilang justru keterangan yang paling jarang ada.
+ *   isi lingkaran  = segmen mana yang memikulnya; KOSONG (putih) kalau belum
+ *                    punya segmen sama sekali
+ *   garis tepi     = putus-putus selama belum dikonfirmasi orang di lapangan
+ *   cincin ungu    = dipikul lebih dari satu penyulang
+ *
+ * Yang belum bersegmen sengaja dibuat BOLONG, bukan sekadar abu muda. Dia
+ * benda yang sedang dicari orang saat menandai segmen, dan lingkaran kosong
+ * terbaca sebagai "belum diisi" dari sekali lihat — sementara abu di antara
+ * warna-warna lain cuma terbaca sebagai warna yang lain lagi.
  */
-const ISI_TERKONFIRMASI = "#2A4A9C";
-const ISI_BELUM = "#94A3B8";
-const CINCIN_BERSAMA = "#8E24AA";
-
-/** Warna segmen saat menandai. Yang BELUM bersegmen sengaja abu pucat — dia
- *  yang sedang dicari, jadi harus paling mudah dibedakan dari yang sudah. */
 const WARNA_SEGMEN = ["#1D3573", "#00695C", "#B3701A", "#8E24AA", "#C62828", "#2E7D32"];
-const BELUM_BERSEGMEN = "#CBD5E1";
+const BELUM_BERSEGMEN = "#FFFFFF";
+const TEPI_BELUM = "#64748B";
+const CINCIN_BERSAMA = "#8E24AA";
 const DIPILIH = "#F59E0B";
 
 /**
@@ -182,14 +183,21 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
           const bersama = t.penyulangLewat.length > 1;
           const dipilih = terpilih.has(t.id);
           const menandai = mode === "tandai";
+          const bersegmen = t.segmenIds.length > 0;
 
           const isi = dipilih
             ? DIPILIH
-            : menandai
-              ? (warnaSegmen.get(t.segmenIds[0] ?? "") ?? BELUM_BERSEGMEN)
-              : t.dikonfirmasi_at
-                ? ISI_TERKONFIRMASI
-                : ISI_BELUM;
+            : bersegmen
+              ? (warnaSegmen.get(t.segmenIds[0]) ?? WARNA_SEGMEN[0])
+              : BELUM_BERSEGMEN;
+
+          const tepi = bersama
+            ? CINCIN_BERSAMA
+            : dipilih
+              ? "#92400E"
+              : bersegmen
+                ? "#fff"
+                : TEPI_BELUM;
 
           return (
             <CircleMarker
@@ -200,8 +208,12 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
                 menandai ? { click: () => onUbahPilihan([t.id], "alih") } : undefined
               }
               pathOptions={{
-                color: bersama ? CINCIN_BERSAMA : dipilih ? "#92400E" : "#fff",
+                color: tepi,
                 weight: bersama ? 3 : 2,
+                // Putus-putus = belum ada yang berdiri di bawahnya. Dipakai di
+                // tepi, bukan di isi, supaya keterangan "milik segmen mana"
+                // tidak perlu mengalah.
+                dashArray: t.dikonfirmasi_at ? undefined : "3,3",
                 fillColor: isi,
                 fillOpacity: 1,
               }}
@@ -273,35 +285,25 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan }: P
       </div>
 
       <div className="absolute bottom-2 left-2 z-[1000] flex flex-wrap items-center gap-3 rounded-lg bg-black/60 px-3 py-1.5 text-[11px] text-white">
-        {mode === "tandai" ? (
+        <span className="flex items-center gap-1.5">
+          <i className="w-2.5 h-2.5 rounded-full bg-white border border-dashed border-white/90" />{" "}
+          belum bersegmen
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-2.5 h-2.5 rounded-full bg-[#1D3573] ring-1 ring-white" /> sudah
+          bersegmen — warna per segmen
+        </span>
+        <span className="flex items-center gap-1.5">
+          <i className="w-2.5 h-2.5 rounded-full bg-[#1D3573] ring-2 ring-[#8E24AA]" /> dipikul
+          banyak penyulang
+        </span>
+        <span className="text-white/70">tepi putus-putus = belum dikonfirmasi lapangan</span>
+        {mode === "tandai" && (
           <>
             <span className="flex items-center gap-1.5">
               <i className="w-2.5 h-2.5 rounded-full bg-[#F59E0B] ring-1 ring-white" /> terpilih
             </span>
-            <span className="flex items-center gap-1.5">
-              <i className="w-2.5 h-2.5 rounded-full bg-[#CBD5E1] ring-1 ring-white" /> belum
-              bersegmen
-            </span>
-            <span className="flex items-center gap-1.5">
-              <i className="w-2.5 h-2.5 rounded-full bg-[#1D3573] ring-1 ring-white" /> sudah
-              bersegmen (warna per segmen)
-            </span>
             <span className="text-white/70">tarik kotak · Shift menambah · ketuk mengalihkan</span>
-          </>
-        ) : (
-          <>
-            <span className="flex items-center gap-1.5">
-              <i className="w-2.5 h-2.5 rounded-full bg-[#2A4A9C] ring-1 ring-white" /> dikonfirmasi
-              lapangan
-            </span>
-            <span className="flex items-center gap-1.5">
-              <i className="w-2.5 h-2.5 rounded-full bg-[#94A3B8] ring-1 ring-white" /> belum
-              dikonfirmasi
-            </span>
-            <span className="flex items-center gap-1.5">
-              <i className="w-2.5 h-2.5 rounded-full bg-[#94A3B8] ring-2 ring-[#8E24AA]" /> dipikul
-              banyak penyulang
-            </span>
           </>
         )}
       </div>

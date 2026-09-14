@@ -292,6 +292,7 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
       {modalSegmen && (
         <SegmenModal
           penyulangList={penyulangMaster}
+          segmenAda={segmenList}
           ulpAwal={canSeeAllUnits(user.role) ? ulp : (user.unit ?? "")}
           onSimpan={buat}
           onTutup={() => setModalSegmen(false)}

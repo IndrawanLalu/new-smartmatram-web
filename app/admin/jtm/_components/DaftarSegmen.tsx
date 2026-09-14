@@ -280,6 +280,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
       {modalBaru && (
         <SegmenModal
           penyulangList={penyulangList}
+          segmenAda={baris}
           ulpAwal={canSeeAllUnits(user.role) ? ulp : (user.unit ?? "")}
           onSimpan={buat}
           onTutup={() => setModalBaru(false)}
