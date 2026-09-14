@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import { Loader2, MapPinOff, MousePointerSquareDashed, Plus, X } from "lucide-react";
+import { Loader2, MapPinOff, MousePointerSquareDashed, Plus, TriangleAlert, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
@@ -37,7 +37,7 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
   const [tandaTujuan, setTandaTujuan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
-  const { tiang, penyulangList, loading, muat } = useTiangJtm(user, ulp);
+  const { tiang, penyulangList, loading, error, muat } = useTiangJtm(user, ulp);
   const { per: pilihanRef, penanda } = useJtmRef();
   const {
     baris: segmenList,
@@ -345,7 +345,26 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
         </div>
       )}
 
-      {!penyulang ? (
+      {error ? (
+        <div className={`${CARD} flex-1 flex flex-col items-center justify-center gap-3 text-center p-6`}>
+          <TriangleAlert size={32} className="text-attention" />
+          <p className="text-sm font-semibold text-ink">Daftar tiang gagal dimuat</p>
+          <p className="text-xs text-ink-soft max-w-lg font-mono bg-surface rounded-lg px-3 py-2">
+            {error}
+          </p>
+          {/* Sebab yang paling sering, dan paling membingungkan kalau tidak
+              disebut: kolom baru belum ada karena skripnya belum dijalankan.
+              Gejalanya menipu — dropdown penyulang ikut kosong, seolah tidak
+              ada datanya. */}
+          {error.includes("penanda") && (
+            <p className="text-xs text-ink-soft max-w-lg">
+              Kolom <b>tiang.penanda</b> belum ada. Jalankan{" "}
+              <b>scripts/jtm-pengaturan.sql</b> di Supabase SQL Editor, lalu muat ulang
+              halaman ini.
+            </p>
+          )}
+        </div>
+      ) : !penyulang ? (
         <div className={`${CARD} flex-1 flex flex-col items-center justify-center gap-2 text-center`}>
           <MapPinOff size={32} className="text-ink-muted" />
           <p className="text-sm text-ink-soft max-w-md">

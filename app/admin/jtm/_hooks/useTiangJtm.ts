@@ -51,11 +51,16 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
   const toast = useToast();
   const [tiang, setTiang] = useState<TiangJtm[]>([]);
   const [loading, setLoading] = useState(true);
+  // Galat DISIMPAN, bukan cuma dilempar ke toast. Toast lewat dalam tiga detik;
+  // sesudah itu kueri yang gagal tidak bisa dibedakan dari "memang tidak ada
+  // tiangnya" — dan yang pertama butuh tindakan, yang kedua tidak.
+  const [error, setError] = useState<string | null>(null);
 
   const unit = canSeeAllUnits(user.role) ? ulpPilihan || null : (user.unit ?? null);
 
   const muat = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [rows, anggota] = await Promise.all([
         fetchAllRows<Omit<TiangJtm, "segmen" | "segmenIds" | "penyulangLewat">>(() => {
@@ -104,7 +109,9 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
         }),
       );
     } catch (e) {
-      toast.error(`Gagal memuat tiang: ${e instanceof Error ? e.message : e}`);
+      const pesan = e instanceof Error ? e.message : String(e);
+      toast.error(`Gagal memuat tiang: ${pesan}`);
+      setError(pesan);
       setTiang([]);
     } finally {
       setLoading(false);
@@ -120,5 +127,5 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
     [tiang],
   );
 
-  return { tiang, penyulangList, loading, muat };
+  return { tiang, penyulangList, loading, error, muat };
 }
