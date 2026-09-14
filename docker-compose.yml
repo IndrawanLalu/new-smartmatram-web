@@ -1,0 +1,103 @@
+# SMART-Mataram — homelab stack
+#
+# Kontrol eksekusi lewat profile (default HANYA web yang nyala):
+#   docker compose up -d --build            → web saja (aman untuk smoke test)
+#   docker compose --profile bot up -d      → + wa-bot (butuh scan QR, kirim WA nyata)
+#   docker compose --profile ml run --rm ml-engine python -m src.pipeline
+#
+# Port host dipilih 3100/3101 agar tidak bentrok dengan diandra (3000/3001).
+name: smart-mataram
+
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${NEXT_PUBLIC_SUPABASE_ANON_KEY}
+        NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost:3100}
+        NEXT_PUBLIC_WA_GROUP_REALISASI: ${NEXT_PUBLIC_WA_GROUP_REALISASI:-}
+    image: smart-mataram-web
+    container_name: smart-mataram-web
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      PORT: "3000"
+      HOSTNAME: "0.0.0.0"
+      # web memanggil wa-bot lewat nama service (bukan 127.0.0.1)
+      WA_BOT_URL: "http://wa-bot:3001"
+      # Chatbot → Ollama native di Windows host (endpoint OpenAI-compatible).
+      # qwen3:8b (~5,2 GB): tool calling andal, setia enumerasi data, tak bocor
+      # <think> via /v1. Gantikan qwen2.5:7b yg suka generalisasi kabur pada data
+      # banyak. BUKAN qwen3.6 36B (berat/OOM). GEMINI_API_KEY di .env placeholder.
+      CHAT_BASE_URL: "http://host.docker.internal:11434/v1"
+      CHAT_API_KEY: "ollama"
+      CHAT_MODELS: "qwen3:8b"
+      # Model lokal cold-load bisa lambat → longgarkan timeout ronde-1 (default 15s).
+      CHAT_TIMEOUT_MS: "60000"
+      # Embedding utk tool cari_standar → Ollama lokal (nomic-embed-text sudah ada).
+      # Default kode 127.0.0.1 salah di dalam container; pakai host.docker.internal.
+      EMBED_BASE_URL: "http://host.docker.internal:11434"
+    ports:
+      - "3100:3000"
+    mem_limit: 1g
+    extra_hosts:
+      # untuk akses Ollama native di Windows host (FAB chat, nanti)
+      - "host.docker.internal:host-gateway"
+
+  wa-bot:
+    build:
+      context: .
+      dockerfile: wa-bot/Dockerfile
+    image: smart-mataram-wa-bot
+    container_name: smart-mataram-wa-bot
+    restart: unless-stopped
+    profiles: ["bot"]
+    env_file: .env
+    environment:
+      WA_BOT_PORT: "3001"
+      # bind ke semua interface di dalam container agar web bisa reach
+      WA_BOT_HOST: "0.0.0.0"
+    ports:
+      - "3101:3001"
+    volumes:
+      - wa_session:/app/wa-bot/session
+    mem_limit: 1g
+
+  ml-engine:
+    build:
+      context: .
+      dockerfile: ml-engine/Dockerfile
+    image: smart-mataram-ml
+    container_name: smart-mataram-ml
+    profiles: ["ml"]
+    env_file: .env
+    mem_limit: 1g
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # Gateway WhatsApp (Baileys) — HANYA untuk SMART, menggantikan wa-bot lama.
+  #
+  # TIDAK menerbitkan port ke LAN: `web` memanggilnya lewat nama service, dan
+  # gateway memanggil balik `web` lewat nama service juga. Dua arah tanpa
+  # sekalipun keluar dari mesin ini. Port 3102 diikat ke 127.0.0.1 hanya untuk
+  # membuka UI-nya saat scan QR, lewat `ssh -L 3102:127.0.0.1:3102`.
+  wa-gateway:
+    build:
+      context: ../wa-api-gateway
+      dockerfile: Dockerfile
+    image: smart-mataram-wa-gateway
+    container_name: smart-mataram-wa-gateway
+    restart: unless-stopped
+    env_file: ../wa-api-gateway/.env
+    ports:
+      - "127.0.0.1:3102:3001"
+    volumes:
+      # Kredensial WhatsApp hidup di sini. Hilang = scan QR ulang.
+      - wa_gateway_data:/data
+    mem_limit: 512m
+
+volumes:
+  wa_session:
+  wa_gateway_data:
