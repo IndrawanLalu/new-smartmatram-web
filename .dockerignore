@@ -1,0 +1,34 @@
+# dependencies & build artifacts (di-install/build di dalam image)
+node_modules
+**/node_modules
+.next
+out
+build
+
+# wa-bot: session WA jangan ikut ter-copy (dibuat runtime via volume)
+wa-bot/session
+
+# ml-engine: venv & artifact lokal
+ml-engine/.venv
+ml-engine/**/__pycache__
+ml-engine/models/*.pkl
+ml-engine/*.log
+
+# env & secrets (dilewatkan via env_file/args, bukan di-bake)
+.env
+.env.*
+!.env.example
+
+# git & tooling
+.git
+.github
+.claude
+.vscode
+tests
+test-results
+playwright-report
+
+# misc
+*.log
+*.md
+!README.md
