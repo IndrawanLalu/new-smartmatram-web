@@ -148,11 +148,14 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
     void muat();
   }, [muat]);
 
+  /** Mengembalikan ID segmen baru (bukan sekadar true) supaya layar peta bisa
+   *  langsung menjadikannya tujuan — segmen yang baru dibuat hampir selalu
+   *  segmen yang sedang ingin diisi. */
   const buat = useCallback(
-    async (v: SegmenBaru) => {
+    async (v: SegmenBaru): Promise<string | null> => {
       // `nama` dan `induk_segmen_id` sengaja TIDAK dikirim — keduanya dibentuk
       // trigger. Mengirimnya dari layar berarti dua tempat yang bisa berselisih.
-      const { error } = await supabaseBrowser.from("segmen").insert({
+      const { data, error } = await supabaseBrowser.from("segmen").insert({
         penyulang: v.penyulang.trim(),
         ulp: v.ulp.toUpperCase(),
         titik_awal_jenis: v.titik_awal_jenis,
@@ -163,18 +166,18 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
         penghantar_ukuran: v.penghantar_ukuran,
         catatan: v.catatan,
         sumber: "manual",
-      });
+      }).select("id").maybeSingle();
       if (error) {
         toast.error(
           error.message.includes("segmen_nama_unik")
             ? "Segmen dengan nama itu sudah ada di penyulang ini."
             : error.message,
         );
-        return false;
+        return null;
       }
       toast.success("Segmen dibuat.");
       await muat();
-      return true;
+      return (data?.id as string) ?? null;
     },
     [toast, muat],
   );

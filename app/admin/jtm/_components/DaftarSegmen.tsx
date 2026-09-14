@@ -282,7 +282,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
           penyulangList={penyulangList}
           segmenAda={baris}
           ulpAwal={canSeeAllUnits(user.role) ? ulp : (user.unit ?? "")}
-          onSimpan={buat}
+          onSimpan={async (v) => !!(await buat(v))}
           onTutup={() => setModalBaru(false)}
         />
       )}

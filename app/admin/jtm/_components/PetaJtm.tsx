@@ -237,14 +237,33 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
                 </div>
               </div>
 
-              <button
-                onClick={() => void masukkan()}
-                disabled={!segmenTujuan || pilihan.length === 0 || sibuk}
-                className={BTN_PRIMARY}
-              >
-                {sibuk && <Loader2 size={15} className="animate-spin" />}
-                Masukkan {pilihan.length > 0 ? `${pilihan.length - sudahDiTujuan}` : ""}
-              </button>
+              <div>
+                <button
+                  onClick={() => void masukkan()}
+                  disabled={!segmenTujuan || pilihan.length === 0 || sibuk}
+                  className={BTN_PRIMARY}
+                  title={
+                    pilihan.length === 0
+                      ? "Belum ada tiang terpilih — tarik kotak di peta dulu"
+                      : !segmenTujuan
+                        ? "Pilih segmen tujuan dulu"
+                        : undefined
+                  }
+                >
+                  {sibuk && <Loader2 size={15} className="animate-spin" />}
+                  Masukkan {pilihan.length > 0 ? `${pilihan.length - sudahDiTujuan}` : ""}
+                </button>
+                {/* Tombol mati yang diam adalah tombol yang menipu: orang
+                    menekannya, tidak terjadi apa-apa, dan menyangka sudah
+                    tersimpan. */}
+                {(pilihan.length === 0 || !segmenTujuan) && (
+                  <p className="text-[11px] text-attention mt-1">
+                    {pilihan.length === 0
+                      ? "Tarik kotak di peta untuk memilih tiang"
+                      : "Pilih segmen tujuannya dulu"}
+                  </p>
+                )}
+              </div>
 
               {sudahDiTujuan > 0 && (
                 <button onClick={() => void keluarkan()} disabled={sibuk} className={BTN_GHOST}>
@@ -294,7 +313,15 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
           penyulangList={penyulangMaster}
           segmenAda={segmenList}
           ulpAwal={canSeeAllUnits(user.role) ? ulp : (user.unit ?? "")}
-          onSimpan={buat}
+          // Segmen yang baru dibuat dari peta LANGSUNG jadi tujuan. Tanpa ini,
+          // orang membuat segmen lalu menekan "Masukkan" yang diam saja —
+          // tombolnya mati karena tujuannya belum dipilih, dan tidak ada yang
+          // memberi tahu. Itu persis yang bikin segmen kedua kosong.
+          onSimpan={async (v) => {
+            const id = await buat(v);
+            if (id) setSegmenTujuan(id);
+            return !!id;
+          }}
           onTutup={() => setModalSegmen(false)}
         />
       )}
