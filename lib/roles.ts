@@ -152,6 +152,11 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "scanMeter",       label: "Scan Meter" },
   { id: "penyeimbangan",   label: "Penyeimbangan Beban" },
   { id: "jtr",             label: "Inspeksi JTR" },
+  // Harus SAMA PERSIS dengan `id` di menuConfig aplikasi HP. Daftar ini yang
+  // dipakai Kelola Role; menu yang tidak ada di sini tidak akan pernah bisa
+  // diberikan ke role mana pun, dan aplikasinya terpasang tapi menunya tak
+  // pernah muncul — terbaca seperti OTA yang gagal.
+  { id: "jtm",             label: "Inspeksi JTM" },
   { id: "hargardu",        label: "Pemeliharaan Gardu" },
 ];
 // ⚠ Daftar ini HARUS sejalan dengan `menuConfig.ts` di repo mobile. Menambah
