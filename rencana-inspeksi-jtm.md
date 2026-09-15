@@ -526,10 +526,9 @@ didaftarkan ulang. Dibalik: tampil kalau jawabannya **bukan** "tidak ada".
 
 ### 12.1 Sebelas SQL, dijalankan berurutan di Supabase
 
-Diperiksa langsung ke basis data 13 September 2026: **belum satu pun terpasang.**
-Prasyaratnya sudah lengkap (`jtr-schema.sql`, `jtr-penamaan.sql`, `master_audit`,
-`penyulang_ref`), jadi tidak ada yang perlu dijalankan lebih dulu. Urutannya wajib,
-dan semuanya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
+**Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
+Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
+idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 
 ```
 1. scripts/jtm-schema.sql            segmen · segmen_tiang · jtm_settings · penamaan
@@ -545,8 +544,26 @@ dan semuanya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 11. scripts/jtm-temuan.sql           foto temuan wajib, opsi ikut Pengaturan, nama pohon
 ```
 
-Nomor 7-11 ditulis belakangan dan **belum terpasang per 15 September 2026**. Kesebelasnya
-sudah diuji berurutan di kluster Postgres bersih, termasuk dijalankan dua kali.
+Terverifikasi ada di Supabase: tabel/view `jtm_ref` · `jtm_cakupan` · `tiang_kondisi_terakhir` ·
+`jtm_perlu_perbaikan`; kolom `nilai_bawaan` · `syarat_item` · `syarat_nilai` · `syarat_negasi` ·
+`sumber_opsi` · `periksa.foto_url` · `tiang.penanda` · `opsi.dari_ref`; fungsi `usul_awal_jtm` ·
+`rintis_segmen_jtm` · `tutup_segmen_jtm` · `jtm_selaraskan_opsi`.
+
+### 12.2 Yang masih menunggu sebelum dipakai regu
+
+⚠ **Empat jawaban bawaan masih kosong dan MENGHALANGI SIMPAN di tier 1**: Jenis Tiang,
+Konstruksi, Bahan Isolator, Jenis Konduktor. Dikosongkan dengan sengaja — jawabannya mendua,
+beton 9 m dan besi 11 m sama-sama normal, dan yang tahu mana yang lazim di wilayahnya adalah
+admin. Tapi sejak isian wajib memblokir simpan, akibatnya berubah: tanpa keempatnya "Tiang
+normal" cuma mengisi sebagian dan janji dua-ketukan tidak terwujud. Diisi di
+**/admin/jtm → Tiang Normal**.
+
+Enam item lain yang bawaannya kosong tidak menghalangi apa pun — semuanya bersyarat (nomor
+gardu, nama pohon, nomor peralatan) atau tier 2 (suhu sambungan, nilai pentanahan). Memang
+tidak boleh terisi otomatis: nilai pentanahan yang tidak pernah diukur lebih buruk daripada
+kolom kosong.
+
+Belum terverifikasi: menu `jtm` tercentang untuk role **inspektor** di Kelola Role.
 
 Sesudah itu, dua langkah supaya hasilnya langsung terlihat: impor tab `GUNUNG SARI`
 lewat **Jaringan JTM → Impor Tiang**, dan tambahkan menu `jtm` ke role **inspektor**
