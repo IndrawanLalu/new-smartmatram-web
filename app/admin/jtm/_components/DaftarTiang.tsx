@@ -34,7 +34,10 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
 
   // UP3 memilih ULP di layar; peran lain terkunci di unitnya dan tidak pernah
   // melihat saringan ini sama sekali.
-  const { baris, penyulangList, loading, ubahInduk, ubahKode, nomoriUlang } = useTiangDaftar(
+  // `namaDi` tidak dipakai di sini: dropdown induk sudah menyebut nama versi
+  // penyulangnya sendiri lewat `namaPerPenyulang`.
+  const { baris, penyulangList, namaPerPenyulang, loading, ubahInduk, ubahKode, nomoriUlang } =
+    useTiangDaftar(
     semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
   const oleh = user.name || user.email;
@@ -54,18 +57,6 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   const halamanMaks = Math.max(1, Math.ceil(tersaring.length / PER_HALAMAN));
   const kini = Math.min(halaman, halamanMaks);
   const tampil = tersaring.slice((kini - 1) * PER_HALAMAN, kini * PER_HALAMAN);
-
-  /** Calon induk = tiang penyulang yang sama. Penjaga di database tetap yang
-   *  menolak lingkaran; daftar ini cuma mencegah pilihan yang jelas keliru. */
-  const calonInduk = useMemo(() => {
-    const m = new Map<string, TiangBaris[]>();
-    for (const b of baris) {
-      const d = m.get(b.penyulang) ?? [];
-      d.push(b);
-      m.set(b.penyulang, d);
-    }
-    return m;
-  }, [baris]);
 
   if (loading) {
     return (
@@ -195,10 +186,14 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       aria-label={`Induk ${b.kode}`}
                     >
                       <option value="">— pangkal —</option>
-                      {(calonInduk.get(b.penyulang) ?? [])
-                        .filter((x) => x.id !== b.id)
+                      {/* Calon induk = tiang yang DILEWATI penyulang ini, bukan
+                          yang dimiliki. Penyulang yang berpangkal pada batang
+                          milik orang harus bisa menunjuk batang itu — dan
+                          namanya disebut sebagaimana penyulang ini menyebutnya. */}
+                      {(namaPerPenyulang.get(b.penyulang) ?? [])
+                        .filter((x) => x.tiangId !== b.id)
                         .map((x) => (
-                          <option key={x.id} value={x.id}>
+                          <option key={x.tiangId} value={x.tiangId}>
                             {x.kode}
                           </option>
                         ))}

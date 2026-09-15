@@ -40,9 +40,17 @@ export interface TiangBaris {
   sumber: string | null;
 }
 
+/** Satu nama tiang di satu penyulang. */
+export interface NamaTiang {
+  tiangId: string;
+  penyulang: string;
+  kode: string;
+}
+
 export function useTiangDaftar(ulp: string | null) {
   const toast = useToast();
   const [baris, setBaris] = useState<TiangBaris[]>([]);
+  const [nama, setNama] = useState<NamaTiang[]>([]);
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
@@ -59,6 +67,27 @@ export function useTiangDaftar(ulp: string | null) {
           .order("kode");
         return ulp ? q.eq("ulp", ulp) : q;
       });
+
+      // Nama per penyulang dibaca terpisah, dan bukan sekadar untuk ditampilkan:
+      // inilah yang menentukan tiang mana saja yang boleh jadi INDUK. Penyulang
+      // yang berpangkal pada batang milik orang harus bisa menunjuk batang itu,
+      // dan batang itu tidak akan pernah muncul kalau daftarnya disaring dari
+      // penyulang pemiliknya.
+      const semuaNama = await fetchAllRows<Record<string, unknown>>(() => {
+        const q = supabaseBrowser
+          .from("tiang_kode_penyulang")
+          .select("tiang_id,penyulang,ulp,kode")
+          .order("penyulang")
+          .order("kode");
+        return ulp ? q.eq("ulp", ulp) : q;
+      });
+      setNama(
+        semuaNama.map((r) => ({
+          tiangId: r.tiang_id as string,
+          penyulang: r.penyulang as string,
+          kode: r.kode as string,
+        })),
+      );
 
       setBaris(
         data.map((r) => ({
@@ -92,6 +121,7 @@ export function useTiangDaftar(ulp: string | null) {
           : pesan,
       );
       setBaris([]);
+      setNama([]);
     } finally {
       setLoading(false);
     }
@@ -107,6 +137,29 @@ export function useTiangDaftar(ulp: string | null) {
   );
 
   const ulpList = useMemo(() => [...new Set(baris.map((b) => b.ulp))].sort(), [baris]);
+
+  /** Tiang yang dilewati sebuah penyulang, beserta namanya DI penyulang itu.
+   *  Dipakai sebagai daftar calon induk. */
+  const namaPerPenyulang = useMemo(() => {
+    const m = new Map<string, NamaTiang[]>();
+    for (const n of nama) {
+      const d = m.get(n.penyulang) ?? [];
+      d.push(n);
+      m.set(n.penyulang, d);
+    }
+    for (const d of m.values()) d.sort((a, b) => a.kode.localeCompare(b.kode));
+    return m;
+  }, [nama]);
+
+  /** Nama sebuah tiang di sebuah penyulang — untuk menampilkan induk dengan
+   *  nama yang dikenali penyulang itu, bukan nama penyulang sebelah. */
+  const namaDi = useCallback(
+    (tiangId: string | null, penyulang: string) =>
+      tiangId
+        ? (nama.find((n) => n.tiangId === tiangId && n.penyulang === penyulang)?.kode ?? null)
+        : null,
+    [nama],
+  );
 
   const ubahInduk = useCallback(
     async (tiangId: string, indukId: string | null, oleh: string) => {
@@ -176,5 +229,16 @@ export function useTiangDaftar(ulp: string | null) {
     [toast, muat],
   );
 
-  return { baris, penyulangList, ulpList, loading, muat, ubahInduk, ubahKode, nomoriUlang };
+  return {
+    baris,
+    penyulangList,
+    ulpList,
+    namaPerPenyulang,
+    namaDi,
+    loading,
+    muat,
+    ubahInduk,
+    ubahKode,
+    nomoriUlang,
+  };
 }
