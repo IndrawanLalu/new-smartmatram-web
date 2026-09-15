@@ -524,7 +524,49 @@ peralatan hubung datang dari Pengaturan dan bisa bertambah, menyebutkan satu per
 satu mana yang memunculkan isian kondisinya berarti tiap penanda baru harus
 didaftarkan ulang. Dibalik: tampil kalau jawabannya **bukan** "tidak ada".
 
-### 12.1 Sebelas SQL, dijalankan berurutan di Supabase
+### 12.0d Uji lapangan pertama — empat temuan (15 September 2026)
+
+Semuanya dari mencoba sendiri di penyulang PERUMNAS, dan satu di antaranya
+berbahaya.
+
+**1 · Tidak ada "sambung ke tiang mana".** Tiang baru selalu disambung ke tiang
+yang terakhir dititik. Regu yang kembali ke PRM-008 untuk meneruskan jalur utama
+mendapati tiangnya tersambung ke PRM-009 yang ada di cabang — dan seluruh
+penomoran sesudahnya ikut salah. JTR sudah punya pemilih induk sejak awal; JTM
+tidak. Sekarang: ketuk tiang mana pun di peta atau daftar, lalu titik.
+
+**2 · "1 dari 12" — ketakutan yang beralasan, datanya utuh.** Diperiksa langsung
+ke basis data: 11 tiang PERUMNAS tersimpan lengkap. Yang terjadi,
+`mulai_penyapuan_jtm` hanya menyambung penyapuan 'Dijadwalkan'/'Dalam Proses',
+jadi sesudah ditekan Selesai, masuk lagi ke segmen yang sama melahirkan
+penyapuan KEDUA yang kosong. Sekarang penyapuan yang belum diputuskan admin —
+termasuk yang sudah dikirim dan yang ditolak — disambung, bukan diduplikasi.
+Angka yang disebut juga berubah jadi **cakupan segmen**, bukan isi satu sesi.
+
+**3 · Melihat tiang jauh = merusaknya.** ⚠ Ini yang berbahaya. Dari tiang ke-12,
+mengetuk tiang ke-3 hanya menghasilkan satu tawaran: *"titik tiang salah"*, yang
+MEMINDAHKAN koordinat tiang itu ke tempat petugas berdiri. Jadi satu-satunya
+jalan ke depan adalah merusak data yang benar. Sekarang ada `DetailTiangModal` —
+baca-saja, tanpa satu pun tombol yang mengubah sesuatu — dan tombolnya selalu
+ada, sejauh apa pun tiangnya.
+
+**4 · Cabang tidak bernama cabang.** PRM-008 bercabang ke utara, tapi tiangnya
+jadi PRM-009, bukan PRM-008_A1. Bukan kekeliruan hitung: pada tiang cabang yang
+PERTAMA, induknya belum punya anak lain, jadi tidak ada satu pun keterangan di
+data yang membedakan "jalur diteruskan" dari "jalur pecah di sini". Aturan belok
+>45° baru bisa bekerja pada cabang kedua. Yang tahu sejak awal cuma orang yang
+melihat kabelnya berpisah — jadi ditambahkan sakelar **Cabang baru** di mode
+nitik, dan kolom `tiang.cabang_baru` yang dihormati pemicu penamaan. Diuji:
+PRM-003 → cabang `PRM-003_A1`, jalur utama lanjut `PRM-004`.
+
+**Ditambah dua layar yang selama ini kosong** (langkah 6 rencana ini):
+tab **Penyapuan** untuk menyetujui/mengembalikan hasil regu, dan tab **Tiang**
+berisi daftar tiang JTM dengan kolom induk yang bisa dibetulkan dari meja.
+Tanpa layar persetujuan seluruh modul buntu — `tiang_kondisi_terakhir` hanya
+memuat penyapuan 'Diverifikasi', jadi semua yang dikerjakan regu tersimpan rapi
+dan tidak muncul di angka mana pun.
+
+### 12.1 Dua belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -542,7 +584,16 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 9.  scripts/jtm-normal.sql           jtm_item_ref.nilai_bawaan + penjaganya
 10. scripts/jtm-syarat.sql           syarat_item/syarat_nilai + item jumperan & gardu
 11. scripts/jtm-temuan.sql           foto temuan wajib, opsi ikut Pengaturan, nama pohon
+12. scripts/jtm-lanjut.sql           sambung penyapuan, daftar tiang, koreksi induk, cabang tegas
 ```
+
+⚠ **Nomor 12 MENGGANTIKAN tiga fungsi** yang lebih dulu didefinisikan di berkas
+lain: `mulai_penyapuan_jtm` & `selesaikan_penyapuan_jtm` (dari
+`jtm-inspeksi-fungsi.sql`), `tiang_buat_kode_jtm` (dari `jtm-schema.sql`), dan
+`tambah_tiang_jtm` (dari `jtm-inspeksi-fungsi.sql`, parameternya bertambah jadi
+harus di-DROP dulu). Berkas asalnya sudah ditandai. Aturannya sederhana dan
+berlaku untuk seluruh daftar ini: **yang belakangan menang, jadi jalankan
+berurutan.**
 
 Terverifikasi ada di Supabase: tabel/view `jtm_ref` · `jtm_cakupan` · `tiang_kondisi_terakhir` ·
 `jtm_perlu_perbaikan`; kolom `nilai_bawaan` · `syarat_item` · `syarat_nilai` · `syarat_negasi` ·

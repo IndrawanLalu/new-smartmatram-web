@@ -338,6 +338,9 @@ CREATE TRIGGER trg_jaga_segmen_tiang
 -- memang sudah punya anak. Jalan yang menikung tetap satu deret nomor, persis
 -- seperti yang diminta pemilik pekerjaan: MTR-001…MTR-250, cabang MTR-005_B1.
 
+-- ⚠ FUNGSI DI BAWAH INI SUDAH DIGANTIKAN oleh `scripts/jtm-lanjut.sql`, yang
+-- menambahkan satu aturan: kolom `cabang_baru` sebagai permintaan tegas regu.
+-- Kalau berkas ini dijalankan ulang, jalankan `jtm-lanjut.sql` sesudahnya.
 CREATE OR REPLACE FUNCTION public.tiang_buat_kode_jtm()
 RETURNS TRIGGER LANGUAGE plpgsql AS $$
 DECLARE

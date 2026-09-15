@@ -226,6 +226,9 @@ END $$;
 -- menaruh titik dengan jari menghasilkan panjang jaringan yang kira-kira, dan
 -- panjang yang kira-kira tidak ada gunanya.
 
+-- ⚠ FUNGSI DI BAWAH INI SUDAH DIGANTIKAN oleh `scripts/jtm-lanjut.sql`, yang
+-- menambah parameter `p_cabang`. Kalau berkas ini dijalankan ulang, jalankan
+-- `jtm-temuan.sql` dan `jtm-lanjut.sql` sesudahnya.
 CREATE OR REPLACE FUNCTION public.tambah_tiang_jtm(
   p_segmen_id  UUID,
   p_lat        DOUBLE PRECISION,

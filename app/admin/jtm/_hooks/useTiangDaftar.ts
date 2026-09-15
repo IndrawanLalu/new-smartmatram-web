@@ -1,0 +1,132 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
+import { useToast } from "@/app/admin/_components/Toast";
+
+/**
+ * Daftar tiang JTM — beserta induknya, yang bisa dibetulkan dari sini.
+ *
+ * Kenapa koreksi induk harus ada di web: bentuk jaringan ditentukan saat regu
+ * menitik, dan sekali salah sambung, seluruh cabang di bawahnya ikut salah.
+ * Membetulkannya dari lapangan berarti mendatangi tiangnya lagi; dari sini
+ * cukup melihat petanya.
+ */
+
+export interface TiangBaris {
+  id: string;
+  kode: string;
+  penyulang: string;
+  ulp: string;
+  lat: number | null;
+  lng: number | null;
+  jenis: string | null;
+  konstruksi: string | null;
+  nomorLama: string | null;
+  penanda: string | null;
+  indukId: string | null;
+  indukKode: string | null;
+  jumlahAnak: number;
+  segmen: string | null;
+  jumlahSegmen: number;
+  dikonfirmasiAt: string | null;
+  terakhirDinilai: string | null;
+  sumber: string | null;
+}
+
+export function useTiangDaftar(ulp: string | null) {
+  const toast = useToast();
+  const [baris, setBaris] = useState<TiangBaris[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const muat = useCallback(async () => {
+    try {
+      // Dipaginasi: PostgREST memotong di 1.000 baris tanpa berkata apa-apa, dan
+      // satu penyulang saja sudah bisa melewatinya (GUNUNG SARI 250 tiang).
+      const data = await fetchAllRows<Record<string, unknown>>(() => {
+        const q = supabaseBrowser
+          .from("tiang_jtm_daftar")
+          .select(
+            "id,kode,penyulang,ulp,lat,lng,jenis,konstruksi,nomor_lama,penanda,induk_id,induk_kode,jumlah_anak,segmen,jumlah_segmen,dikonfirmasi_at,terakhir_dinilai,sumber",
+          )
+          .order("penyulang")
+          .order("kode");
+        return ulp ? q.eq("ulp", ulp) : q;
+      });
+
+      setBaris(
+        data.map((r) => ({
+          id: r.id as string,
+          kode: r.kode as string,
+          penyulang: r.penyulang as string,
+          ulp: r.ulp as string,
+          lat: r.lat !== null ? Number(r.lat) : null,
+          lng: r.lng !== null ? Number(r.lng) : null,
+          jenis: (r.jenis as string) ?? null,
+          konstruksi: (r.konstruksi as string) ?? null,
+          nomorLama: (r.nomor_lama as string) ?? null,
+          penanda: (r.penanda as string) ?? null,
+          indukId: (r.induk_id as string) ?? null,
+          indukKode: (r.induk_kode as string) ?? null,
+          jumlahAnak: Number(r.jumlah_anak ?? 0),
+          segmen: (r.segmen as string) ?? null,
+          jumlahSegmen: Number(r.jumlah_segmen ?? 0),
+          dikonfirmasiAt: (r.dikonfirmasi_at as string) ?? null,
+          terakhirDinilai: (r.terakhir_dinilai as string) ?? null,
+          sumber: (r.sumber as string) ?? null,
+        })),
+      );
+    } catch (e) {
+      const pesan = e instanceof Error ? e.message : String(e);
+      toast.error(
+        pesan.includes("tiang_jtm_daftar")
+          ? "View tiang_jtm_daftar belum ada — jalankan scripts/jtm-lanjut.sql di Supabase."
+          : pesan,
+      );
+      setBaris([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [ulp, toast]);
+
+  useEffect(() => {
+    void muat();
+  }, [muat]);
+
+  const penyulangList = useMemo(
+    () => [...new Set(baris.map((b) => b.penyulang))].sort(),
+    [baris],
+  );
+
+  const ubahInduk = useCallback(
+    async (tiangId: string, indukId: string | null, oleh: string) => {
+      const { data, error } = await supabaseBrowser.rpc("ubah_induk_tiang_jtm", {
+        p_tiang_id: tiangId,
+        p_induk_id: indukId,
+        p_oleh: oleh,
+      });
+      if (error) {
+        // Penjaga database menolak lingkaran dan penyulang berbeda dengan
+        // kalimatnya sendiri — teruskan, jangan diganti "gagal menyimpan".
+        toast.error(error.message);
+        return false;
+      }
+
+      const h = data as { kode: string; induk: string | null };
+      // Dipatch di tempat, tidak memuat ulang ratusan baris untuk satu perubahan.
+      setBaris((s) =>
+        s.map((b) =>
+          b.id === tiangId ? { ...b, indukId, indukKode: h.induk ?? null } : b,
+        ),
+      );
+      toast.success(
+        h.induk ? `${h.kode} kini menyambung ke ${h.induk}.` : `${h.kode} jadi pangkal.`,
+      );
+      return true;
+    },
+    [toast],
+  );
+
+  return { baris, penyulangList, loading, muat, ubahInduk };
+}
