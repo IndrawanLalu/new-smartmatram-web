@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, X } from "lucide-react";
+import { useMemo, useState } from "react";
+import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Merge, Trash2, X } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { usePenyapuan, type JawabanTiang, type Penyapuan } from "../_hooks/usePenyapuan";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
@@ -37,7 +37,7 @@ const tanggal = (iso: string | null) =>
 export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
   // UP3 melihat seluruh unit; peran lain terkunci di unitnya sendiri — aturan
   // yang sama dengan halaman JTM lainnya, bukan aturan baru untuk layar ini.
-  const { baris, loading, isiPenyapuan, putuskan } = usePenyapuan(
+  const { baris, loading, isiPenyapuan, putuskan, gabung, buangKosong } = usePenyapuan(
     canSeeAllUnits(user.role) ? null : (user.unit ?? null),
   );
   const [buka, setBuka] = useState<string | null>(null);
@@ -45,6 +45,23 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
   const [memuatIsi, setMemuatIsi] = useState(false);
 
   const nama = user.name || user.email;
+
+  /** Satu segmen = satu kartu, penyapuannya jadi riwayat di dalamnya.
+   *
+   *  Sebelum perbaikan `jtm-lanjut.sql`, tiap kali regu masuk lagi ke segmen
+   *  yang sudah dinyatakan selesai lahir penyapuan baru — satu segmen PERUMNAS
+   *  jadi punya tiga. Dikelompokkan begini, yang terbaca adalah pekerjaannya,
+   *  bukan berapa kali layarnya dibuka. */
+  const kelompok = useMemo(() => {
+    const m = new Map<string, Penyapuan[]>();
+    for (const b of baris) {
+      const k = (b.segmenId ?? b.id) + "|" + b.tier;
+      const d = m.get(k) ?? [];
+      d.push(b);
+      m.set(k, d);
+    }
+    return [...m.values()];
+  }, [baris]);
 
   const bukaBaris = async (p: Penyapuan) => {
     if (buka === p.id) {
@@ -94,7 +111,30 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
         </div>
       )}
 
-      {baris.map((p) => (
+      {kelompok.map((g) => {
+        const utama = g.reduce((a, b) => (b.tiangDinilai > a.tiangDinilai ? b : a), g[0]);
+        const pecah = g.filter((x) => x.status !== "Diverifikasi").length > 1;
+        return (
+        <div key={utama.id} className="space-y-2">
+          {pecah && (
+            <div className="flex flex-wrap items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
+              <AlertTriangle size={15} className="text-amber-700 shrink-0" />
+              <p className="text-xs text-amber-800 flex-1 min-w-[240px]">
+                Segmen ini punya <b>{g.length} catatan penyapuan</b> padahal satu pekerjaan.
+                Lahir sebelum perbaikan, saat masuk lagi ke segmen yang sudah selesai membuat
+                catatan baru. Menyatukannya memindahkan semua penilaian ke satu catatan —
+                tiang yang dinilai dua kali diambil yang terbaru.
+              </p>
+              <button
+                onClick={() => void gabung(utama.id, nama)}
+                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg text-xs font-semibold bg-amber-600 text-white hover:bg-amber-500"
+              >
+                <Merge size={14} /> Satukan
+              </button>
+            </div>
+          )}
+
+          {g.map((p) => (
         <div key={p.id} className={CARD}>
           <button
             onClick={() => void bukaBaris(p)}
@@ -165,10 +205,28 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
               {p.status === "Selesai" && (
                 <Keputusan id={p.id} nama={nama} onPutuskan={putuskan} />
               )}
+
+              {p.tiangDinilai === 0 && p.status !== "Diverifikasi" && (
+                <div className="mt-4 pt-4 border-t border-line flex items-center gap-3">
+                  <p className="text-xs text-ink-muted flex-1">
+                    Tidak ada satu pun tiang yang dinilai — ini bekas layar yang pernah
+                    dibuka, bukan pekerjaan.
+                  </p>
+                  <button
+                    onClick={() => void buangKosong(p.id, nama)}
+                    className={`${BTN_GHOST} text-danger`}
+                  >
+                    <Trash2 size={14} /> Buang
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>
-      ))}
+          ))}
+        </div>
+        );
+      })}
     </div>
   );
 }

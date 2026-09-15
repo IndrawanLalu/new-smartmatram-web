@@ -194,5 +194,42 @@ export function usePenyapuan(ulp: string | null) {
     [toast, muat],
   );
 
-  return { baris, loading, muat, isiPenyapuan, putuskan };
+  const gabung = useCallback(
+    async (id: string, oleh: string) => {
+      const { data, error } = await supabaseBrowser.rpc("gabung_penyapuan_jtm", {
+        p_tujuan: id,
+        p_oleh: oleh,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      const h = data as { penyapuan_dibuang: number; tiang_dinilai: number };
+      toast.success(
+        `${h.penyapuan_dibuang} penyapuan disatukan — kini ${h.tiang_dinilai} tiang dalam satu catatan.`,
+      );
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  const buangKosong = useCallback(
+    async (id: string, oleh: string) => {
+      const { error } = await supabaseBrowser.rpc("buang_penyapuan_kosong_jtm", {
+        p_id: id,
+        p_oleh: oleh,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      toast.success("Penyapuan kosong dibuang.");
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  return { baris, loading, muat, isiPenyapuan, putuskan, gabung, buangKosong };
 }

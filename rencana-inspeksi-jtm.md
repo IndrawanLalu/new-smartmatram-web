@@ -566,7 +566,57 @@ Tanpa layar persetujuan seluruh modul buntu — `tiang_kondisi_terakhir` hanya
 memuat penyapuan 'Diverifikasi', jadi semua yang dikerjakan regu tersimpan rapi
 dan tidak muncul di angka mana pun.
 
-### 12.1 Dua belas SQL, dijalankan berurutan di Supabase
+### 12.0e Satu batang, satu nama di tiap penyulang (15 September 2026)
+
+Koreksi terbesar sejauh ini, dan datang dari lapangan: **penomoran sebuah
+penyulang dihitung dari tiang pertamanya menurut rute — walaupun batang itu
+milik penyulang lain.** Tiang pertama PERUMNAS kebetulan batang milik GUNUNG
+SARI, jadi batang itu `PRM-001` sekaligus `GNN-001`.
+
+⚠ **Catatan yang perlu diluruskan:** JTR **tidak** melakukan ini. JTR memakai
+`jtr_sirkit` — satu tiang, banyak kabel, `pemilik_gardu_kode` mencegah panjang
+dihitung dua kali — tapi tiangnya tetap **satu nama**. Prinsipnya sudah ada di
+JTR; dua nama itu hal baru di JTM.
+
+| | |
+|---|---|
+| Tabel | `tiang_kode_penyulang` (tiang_id, penyulang, ulp, kode, utama) |
+| Nama diberikan | otomatis saat tiang masuk segmen penyulang — pemicu di `segmen_tiang` |
+| Deret | mengikuti leluhur terdekat yang bernama di penyulang itu; tanpa leluhur bernama = **001** |
+| `tiang` | tetap SATU baris per batang — panjang rute tidak dobel, keputusan terkunci no. 7 utuh |
+| Jumlah tiang | tetap dari `segmen_tiang.tiang_id`, **bukan** dari nama |
+| Panjang penghantar | tidak berubah — `gawang_penyulang` sudah benar |
+
+**Tidak ada "nama utama".** Tiap layar menyebut nama sesuai penyulang yang
+sedang dilihat; di layar tanpa konteks penyulang (tab Tiang, laporan lintas
+penyulang) disebut **semuanya**: `GNN-001 / PRM-001`. Menyebut salah satu saja
+di situ berarti menebak, dan itu juga yang akan tertulis di papan nomornya.
+
+**Penamaan disatukan.** `tiang_buat_kode_jtm` kini meneruskan nama dari leluhur
+yang bernama **di penyulang tiang itu**, bukan dari kode induk apa adanya —
+tanpa itu, tiang PERUMNAS yang induknya GNN-001 lahir bernama `GNN-003`.
+Sekalian **aturan belok JTR dikembalikan**: belok >60° memulai deret berhuruf
+(garis bawah kalau induknya sudah punya anak). Perlindungan impornya tetap,
+karena jalur yang lurus tetap meneruskan deret.
+
+**`nomori_ulang_penyulang_jtm`** — menomori ulang satu penyulang menurut rutenya.
+⚠ Mengganti nama yang sudah tercatat; aman sekarang karena belum ada papan nomor
+terpasang. Diperlukan karena nama terlanjur lahir mengikuti urutan pencatatan,
+sementara penomoran mengikuti rute.
+
+**`gabung_penyapuan_jtm`** — menyatukan penyapuan satu segmen yang terlanjur
+pecah (PERUMNAS punya tiga: 10 tiang, 1 tiang, 0 tiang). Tiang yang dinilai dua
+kali diambil yang terbaru. Plus `buang_penyapuan_kosong_jtm`.
+
+**Web:** saringan ULP + ganti nama + tombol Nomori ulang di tab Tiang;
+pengelompokan per segmen + tombol Satukan + Buang di tab Penyapuan.
+
+**Cara merapikan PERUMNAS sesudah SQL dijalankan:**
+1. Tab Tiang → induk `PRM-001` diarahkan ke **GNN-001**
+2. Tombol **Nomori ulang** pada PERUMNAS
+3. Tab Penyapuan → **Satukan** tiga catatan PERUMNAS jadi satu
+
+### 12.1 Empat belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -585,13 +635,16 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 10. scripts/jtm-syarat.sql           syarat_item/syarat_nilai + item jumperan & gardu
 11. scripts/jtm-temuan.sql           foto temuan wajib, opsi ikut Pengaturan, nama pohon
 12. scripts/jtm-lanjut.sql           sambung penyapuan, daftar tiang, koreksi induk, cabang tegas
+13. scripts/jtm-nama.sql             nama tiang per penyulang, ganti nama, nomori ulang
+14. scripts/jtm-gabung.sql           satukan penyapuan yang terlanjur pecah
 ```
 
 ⚠ **Nomor 12 MENGGANTIKAN tiga fungsi** yang lebih dulu didefinisikan di berkas
 lain: `mulai_penyapuan_jtm` & `selesaikan_penyapuan_jtm` (dari
 `jtm-inspeksi-fungsi.sql`), `tiang_buat_kode_jtm` (dari `jtm-schema.sql`), dan
 `tambah_tiang_jtm` (dari `jtm-inspeksi-fungsi.sql`, parameternya bertambah jadi
-harus di-DROP dulu). Berkas asalnya sudah ditandai. Aturannya sederhana dan
+harus di-DROP dulu). Berkas asalnya sudah ditandai. **Nomor 13 menggantikan lagi**
+`tiang_buat_kode_jtm` dan `tiang_jtm_daftar`. Aturannya sederhana dan
 berlaku untuk seluruh daftar ini: **yang belakangan menang, jadi jalankan
 berurutan.**
 

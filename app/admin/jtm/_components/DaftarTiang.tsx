@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { GitBranch, Loader2, Search } from "lucide-react";
-import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
+import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
+import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import ModalShell from "@/app/admin/_components/ModalShell";
 import { useTiangDaftar, type TiangBaris } from "../_hooks/useTiangDaftar";
 
 /**
@@ -24,13 +25,19 @@ const tanggal = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : null;
 
 export default function DaftarTiang({ user }: { user: CurrentUser }) {
+  const semuaUnit = canSeeAllUnits(user.role);
+  const [ulp, setUlp] = useState("");
   const [penyulang, setPenyulang] = useState("");
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
+  const [nomorUlang, setNomorUlang] = useState(false);
 
-  const { baris, penyulangList, loading, ubahInduk } = useTiangDaftar(
-    canSeeAllUnits(user.role) ? null : (user.unit ?? null),
+  // UP3 memilih ULP di layar; peran lain terkunci di unitnya dan tidak pernah
+  // melihat saringan ini sama sekali.
+  const { baris, penyulangList, loading, ubahInduk, ubahKode, nomoriUlang } = useTiangDaftar(
+    semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
+  const oleh = user.name || user.email;
 
   const tersaring = useMemo(() => {
     const q = cari.trim().toUpperCase();
@@ -87,6 +94,25 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
               className={`${FIELD} pl-9 w-[280px]`}
             />
           </div>
+          {semuaUnit && (
+            <select
+              value={ulp}
+              onChange={(e) => {
+                setUlp(e.target.value);
+                setPenyulang("");
+                setHalaman(1);
+              }}
+              className={`${FIELD} w-[170px]`}
+              aria-label="Saring ULP"
+            >
+              <option value="">Semua ULP</option>
+              {UNITS.map((u) => (
+                <option key={u.value} value={u.value}>
+                  {u.label}
+                </option>
+              ))}
+            </select>
+          )}
           <select
             value={penyulang}
             onChange={(e) => {
@@ -105,9 +131,19 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
           <span className="text-xs text-ink-muted ml-auto tabular-nums">
             {tersaring.length} tiang
           </span>
+          {penyulang && (
+            <button onClick={() => setNomorUlang(true)} className={BTN_GHOST}>
+              <ListOrdered size={15} /> Nomori ulang
+            </button>
+          )}
         </div>
 
         <p className="text-[11px] text-ink-muted mt-3 max-w-3xl">
+          Tiang yang dipikul dua penyulang punya <b>nama di masing-masing penyulang</b> —
+          satu batang beton, dua nama, dan keduanya benar. Jumlah tiang tetap dihitung dari
+          batangnya, bukan dari berapa nama yang dia punya.
+        </p>
+        <p className="text-[11px] text-ink-muted mt-2 max-w-3xl">
           Kolom <b>Induk</b> menentukan bentuk jaringannya — ke mana garis ditarik, dan dari
           mana penomoran cabang dihitung. Mengubahnya di sini tercatat di jejak audit dan{" "}
           <b>tidak menamai ulang tiangnya</b>: kode yang sudah tertulis di lembar kerja dan
@@ -132,7 +168,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
               {tampil.map((b) => (
                 <tr key={b.id} className="hover:bg-surface/60">
                   <td className="px-4 py-2">
-                    <span className="font-semibold text-ink">{b.kode}</span>
+                    <NamaTiang b={b} oleh={oleh} onSimpan={ubahKode} />
                     {b.jumlahAnak > 1 && (
                       <span
                         className="inline-flex items-center gap-0.5 text-[10px] text-navy-600 ml-1.5"
@@ -227,9 +263,115 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
         )}
       </div>
 
+      {nomorUlang && (
+        <ModalShell
+          title={`Nomori ulang ${penyulang}`}
+          subtitle="Penomoran mengikuti rute, bukan urutan pencatatan"
+          maxWidth="max-w-lg"
+          onClose={() => setNomorUlang(false)}
+        >
+          <div className="p-5 space-y-3">
+            <p className="text-sm text-ink-soft">
+              Seluruh tiang <b>{penyulang}</b> dinomori ulang menurut rutenya — dimulai dari
+              tiang paling hulu, walaupun batangnya milik penyulang lain.
+            </p>
+            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+              <b>Nama tiang yang sudah tercatat akan berganti.</b> Aman selama nama itu belum
+              terpasang sebagai papan nomor dan belum pernah disebut di laporan gangguan.
+              Sesudah itu, jangan dipakai lagi. Tiap tiang tercatat di jejak audit.
+            </p>
+            <p className="text-xs text-ink-muted">
+              Betulkan dulu kolom <b>Induk</b> kalau ada yang salah sambung — urutan nomor
+              mengikuti pohon induk, bukan urutan pencatatan.
+            </p>
+            <div className="flex justify-end gap-2 pt-1">
+              <button onClick={() => setNomorUlang(false)} className={BTN_GHOST}>
+                Batal
+              </button>
+              <button
+                onClick={async () => {
+                  const u = semuaUnit ? ulp : (user.unit ?? "");
+                  if (!u) return;
+                  await nomoriUlang(penyulang, u, oleh);
+                  setNomorUlang(false);
+                }}
+                disabled={semuaUnit && !ulp}
+                className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-40 transition-colors"
+              >
+                <ListOrdered size={15} /> Nomori ulang
+              </button>
+            </div>
+            {semuaUnit && !ulp && (
+              <p className="text-xs text-amber-700">Pilih ULP dulu — penomoran per unit.</p>
+            )}
+          </div>
+        </ModalShell>
+      )}
+
       <p className={`${EYEBROW} text-center`}>
         Tiang yang belum dikonfirmasi lapangan berasal dari impor Excel, bukan dari kunjungan.
       </p>
     </div>
+  );
+}
+
+/** Nama tiang di kolom pertama.
+ *
+ *  Menampilkan SEMUA namanya — 'GNN-001 / PRM-001' — karena tabel ini tidak
+ *  punya konteks penyulang, dan menyebut salah satu saja berarti menebak. Yang
+ *  bisa diganti adalah nama di penyulang pemiliknya; nama di penyulang lain
+ *  diganti dari daftar penyulang itu sendiri. */
+function NamaTiang({
+  b,
+  oleh,
+  onSimpan,
+}: {
+  b: TiangBaris;
+  oleh: string;
+  onSimpan: (tiangId: string, penyulang: string, kode: string, oleh: string) => Promise<boolean>;
+}) {
+  const [ubah, setUbah] = useState(false);
+  const [nilai, setNilai] = useState(b.kode);
+
+  if (ubah) {
+    return (
+      <input
+        autoFocus
+        value={nilai}
+        onChange={(e) => setNilai(e.target.value)}
+        onBlur={async () => {
+          if (nilai.trim() && nilai.trim().toUpperCase() !== b.kode.toUpperCase()) {
+            await onSimpan(b.id, b.penyulang, nilai.trim(), oleh);
+          }
+          setUbah(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") e.currentTarget.blur();
+          if (e.key === "Escape") {
+            setNilai(b.kode);
+            setUbah(false);
+          }
+        }}
+        className={`${FIELD} h-8 text-xs w-[140px] font-semibold`}
+        aria-label={`Ganti nama ${b.kode}`}
+      />
+    );
+  }
+
+  return (
+    <button
+      onClick={() => {
+        setNilai(b.kode);
+        setUbah(true);
+      }}
+      className="group inline-flex items-center gap-1 text-left"
+      title="Ketuk untuk mengganti nama"
+    >
+      <span className="font-semibold text-ink">{b.semuaKode}</span>
+      <Pencil
+        size={11}
+        className="text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+      />
+    </button>
   );
 }

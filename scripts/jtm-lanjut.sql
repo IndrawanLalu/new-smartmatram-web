@@ -221,9 +221,20 @@ BEGIN
     IF NOT FOUND THEN RAISE EXCEPTION 'Tiang induk tidak ditemukan'; END IF;
     v_induk_kode := induk.kode;
 
-    IF upper(COALESCE(induk.penyulang, '')) <> upper(COALESCE(t.penyulang, '')) THEN
-      RAISE EXCEPTION 'Induk harus tiang penyulang yang sama (% vs %)',
-        induk.penyulang, t.penyulang;
+    -- Induk tidak harus MILIK penyulang yang sama — justru itulah underbuild:
+    -- penyulang berpangkal pada batang milik penyulang lain. Yang disyaratkan
+    -- adalah kabel penyulang ini benar-benar LEWAT tiang itu, dan bukti itu ada
+    -- pada keanggotaan segmen.
+    IF upper(COALESCE(induk.penyulang, '')) <> upper(COALESCE(t.penyulang, ''))
+       AND NOT EXISTS (
+         SELECT 1 FROM public.segmen_tiang st
+         JOIN public.segmen sg ON sg.id = st.segmen_id AND sg.status = 'aktif'
+         WHERE st.tiang_id = p_induk_id
+           AND upper(sg.penyulang) = upper(COALESCE(t.penyulang, ''))
+       ) THEN
+      RAISE EXCEPTION
+        'Tiang % tidak dilewati penyulang %. Masukkan dulu tiang itu ke segmen penyulang tersebut.',
+        induk.kode, t.penyulang;
     END IF;
 
     -- Lingkaran membuat setiap penelusuran pohon berputar selamanya. Ditolak di

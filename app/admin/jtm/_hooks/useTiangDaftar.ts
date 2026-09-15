@@ -17,6 +17,11 @@ import { useToast } from "@/app/admin/_components/Toast";
 export interface TiangBaris {
   id: string;
   kode: string;
+  /** Semua namanya sekaligus — 'GNN-001 / PRM-001'. Dipakai di layar yang tidak
+   *  punya konteks penyulang, karena di situ menyebut salah satu saja berarti
+   *  menebak. Ini juga yang akan tertulis di papan nomor tiang bersama. */
+  semuaKode: string;
+  jumlahNama: number;
   penyulang: string;
   ulp: string;
   lat: number | null;
@@ -48,7 +53,7 @@ export function useTiangDaftar(ulp: string | null) {
         const q = supabaseBrowser
           .from("tiang_jtm_daftar")
           .select(
-            "id,kode,penyulang,ulp,lat,lng,jenis,konstruksi,nomor_lama,penanda,induk_id,induk_kode,jumlah_anak,segmen,jumlah_segmen,dikonfirmasi_at,terakhir_dinilai,sumber",
+            "id,kode,semua_kode,jumlah_nama,penyulang,ulp,lat,lng,jenis,konstruksi,nomor_lama,penanda,induk_id,induk_kode,jumlah_anak,segmen,jumlah_segmen,dikonfirmasi_at,terakhir_dinilai,sumber",
           )
           .order("penyulang")
           .order("kode");
@@ -59,6 +64,8 @@ export function useTiangDaftar(ulp: string | null) {
         data.map((r) => ({
           id: r.id as string,
           kode: r.kode as string,
+          semuaKode: (r.semua_kode as string) ?? (r.kode as string),
+          jumlahNama: Number(r.jumlah_nama ?? 1),
           penyulang: r.penyulang as string,
           ulp: r.ulp as string,
           lat: r.lat !== null ? Number(r.lat) : null,
@@ -81,7 +88,7 @@ export function useTiangDaftar(ulp: string | null) {
       const pesan = e instanceof Error ? e.message : String(e);
       toast.error(
         pesan.includes("tiang_jtm_daftar")
-          ? "View tiang_jtm_daftar belum ada — jalankan scripts/jtm-lanjut.sql di Supabase."
+          ? "View tiang_jtm_daftar belum lengkap — jalankan scripts/jtm-nama.sql di Supabase."
           : pesan,
       );
       setBaris([]);
@@ -98,6 +105,8 @@ export function useTiangDaftar(ulp: string | null) {
     () => [...new Set(baris.map((b) => b.penyulang))].sort(),
     [baris],
   );
+
+  const ulpList = useMemo(() => [...new Set(baris.map((b) => b.ulp))].sort(), [baris]);
 
   const ubahInduk = useCallback(
     async (tiangId: string, indukId: string | null, oleh: string) => {
@@ -128,5 +137,44 @@ export function useTiangDaftar(ulp: string | null) {
     [toast],
   );
 
-  return { baris, penyulangList, loading, muat, ubahInduk };
+  const ubahKode = useCallback(
+    async (tiangId: string, penyulang: string, kode: string, oleh: string) => {
+      const { error } = await supabaseBrowser.rpc("ubah_kode_tiang_jtm", {
+        p_tiang_id: tiangId,
+        p_penyulang: penyulang,
+        p_kode: kode,
+        p_oleh: oleh,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      // Nama tiang menyentuh banyak kolom turunan (semua_kode, induk_kode tiang
+      // lain), jadi di sini memang dimuat ulang — bukan dipatch sebaris.
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  const nomoriUlang = useCallback(
+    async (penyulang: string, ulp: string, oleh: string) => {
+      const { data, error } = await supabaseBrowser.rpc("nomori_ulang_penyulang_jtm", {
+        p_penyulang: penyulang,
+        p_ulp: ulp,
+        p_oleh: oleh,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      const h = data as { tiang: number; diubah: number };
+      toast.success(`${h.diubah} dari ${h.tiang} tiang ${penyulang} dinomori ulang.`);
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  return { baris, penyulangList, ulpList, loading, muat, ubahInduk, ubahKode, nomoriUlang };
 }
