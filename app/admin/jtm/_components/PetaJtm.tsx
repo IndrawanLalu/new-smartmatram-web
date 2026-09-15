@@ -54,7 +54,18 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
    * pertanyaan yang dibawa orang ke peta ini selalu tentang SATU penyulang.
    */
   const tersaring = useMemo(
-    () => (penyulang ? tiang.filter((t) => t.penyulang === penyulang) : []),
+    () =>
+      penyulang
+        ? // DILEWATI, bukan dimiliki. Penyulang yang berpangkal pada batang milik
+          // penyulang lain harus melihat batang itu di petanya — kalau tidak,
+          // jaringannya tampak terputus di pangkalnya sendiri.
+          tiang
+            .filter(
+              (t) => t.penyulang === penyulang || t.penyulangLewat.includes(penyulang),
+            )
+            // Namanya disebut sebagaimana penyulang INI menyebutnya.
+            .map((t) => ({ ...t, kode: t.namaPer[penyulang] ?? t.kode }))
+        : [],
     [tiang, penyulang],
   );
   const bertitik = useMemo(

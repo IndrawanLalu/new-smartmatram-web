@@ -35,6 +35,10 @@ export interface TiangJtm {
   /** Id segmennya — dipakai layar penandaan untuk tahu mana yang sudah masuk. */
   segmenIds: string[];
   penyulangLewat: string[];
+  /** Nama tiang ini di tiap penyulang yang melewatinya. Batang milik penyulang
+   *  lain punya nama sendiri di sini — dan itulah nama yang harus terbaca saat
+   *  peta sedang menampilkan penyulang tersebut. */
+  namaPer: Record<string, string>;
 }
 
 /** PostgREST selalu mengetikkan relasi tertanam sebagai LARIK, walaupun
@@ -62,8 +66,8 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
     setLoading(true);
     setError(null);
     try {
-      const [rows, anggota] = await Promise.all([
-        fetchAllRows<Omit<TiangJtm, "segmen" | "segmenIds" | "penyulangLewat">>(() => {
+      const [rows, anggota, namaBaris] = await Promise.all([
+        fetchAllRows<Omit<TiangJtm, "segmen" | "segmenIds" | "penyulangLewat" | "namaPer">>(() => {
           const q = supabaseBrowser
             .from("tiang")
             .select(
@@ -82,6 +86,13 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
             .select("tiang_id,segmen_id,segmen(nama,penyulang,status)")
             .order("tiang_id"),
         ),
+        fetchAllRows<{ tiang_id: string; penyulang: string; kode: string }>(() => {
+          const q = supabaseBrowser
+            .from("tiang_kode_penyulang")
+            .select("tiang_id,penyulang,kode,ulp")
+            .order("tiang_id");
+          return unit ? q.eq("ulp", unit) : q;
+        }),
       ]);
 
       const per = new Map<string, { segmen: string[]; ids: string[]; penyulang: Set<string> }>();
@@ -95,6 +106,13 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
         per.set(a.tiang_id, isi);
       }
 
+      const namaPerTiang = new Map<string, Record<string, string>>();
+      for (const n of namaBaris) {
+        const d = namaPerTiang.get(n.tiang_id) ?? {};
+        d[n.penyulang] = n.kode;
+        namaPerTiang.set(n.tiang_id, d);
+      }
+
       setTiang(
         rows.map((t) => {
           const isi = per.get(t.id);
@@ -105,6 +123,7 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
             segmen: isi?.segmen ?? [],
             segmenIds: isi?.ids ?? [],
             penyulangLewat: isi ? [...isi.penyulang] : [],
+            namaPer: namaPerTiang.get(t.id) ?? {},
           };
         }),
       );

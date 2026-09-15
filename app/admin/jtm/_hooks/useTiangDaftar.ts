@@ -151,6 +151,20 @@ export function useTiangDaftar(ulp: string | null) {
     return m;
   }, [nama]);
 
+  /** Semua nama satu tiang. Tabel memakai ini supaya TIAP nama bisa diganti —
+   *  sebelumnya hanya nama penyulang pemilik yang bisa, jadi nama tiang di
+   *  penyulang yang menumpang tidak bisa dibetulkan dari mana pun. */
+  const namaPerTiang = useMemo(() => {
+    const m = new Map<string, NamaTiang[]>();
+    for (const n of nama) {
+      const d = m.get(n.tiangId) ?? [];
+      d.push(n);
+      m.set(n.tiangId, d);
+    }
+    for (const d of m.values()) d.sort((a, b) => a.penyulang.localeCompare(b.penyulang));
+    return m;
+  }, [nama]);
+
   /** Nama sebuah tiang di sebuah penyulang — untuk menampilkan induk dengan
    *  nama yang dikenali penyulang itu, bukan nama penyulang sebelah. */
   const namaDi = useCallback(
@@ -234,6 +248,7 @@ export function useTiangDaftar(ulp: string | null) {
     penyulangList,
     ulpList,
     namaPerPenyulang,
+    namaPerTiang,
     namaDi,
     loading,
     muat,

@@ -36,7 +36,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   // melihat saringan ini sama sekali.
   // `namaDi` tidak dipakai di sini: dropdown induk sudah menyebut nama versi
   // penyulangnya sendiri lewat `namaPerPenyulang`.
-  const { baris, penyulangList, namaPerPenyulang, loading, ubahInduk, ubahKode, nomoriUlang } =
+  const { baris, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang } =
     useTiangDaftar(
     semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
@@ -166,7 +166,12 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
               {tampil.map((b) => (
                 <tr key={b.id} className="hover:bg-surface/60">
                   <td className="px-4 py-2">
-                    <NamaTiang b={b} oleh={oleh} onSimpan={ubahKode} />
+                    <NamaTiang
+                      b={b}
+                      nama={namaPerTiang.get(b.id) ?? []}
+                      oleh={oleh}
+                      onSimpan={ubahKode}
+                    />
                     {b.jumlahAnak > 1 && (
                       <span
                         className="inline-flex items-center gap-0.5 text-[10px] text-navy-600 ml-1.5"
@@ -327,21 +332,61 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
 
 /** Nama tiang di kolom pertama.
  *
- *  Menampilkan SEMUA namanya — 'GNN-001 / PRM-001' — karena tabel ini tidak
- *  punya konteks penyulang, dan menyebut salah satu saja berarti menebak. Yang
- *  bisa diganti adalah nama di penyulang pemiliknya; nama di penyulang lain
- *  diganti dari daftar penyulang itu sendiri. */
+ *  SATU BARIS, BEBERAPA NAMA. Batang yang dipikul dua penyulang punya nama di
+ *  masing-masing, dan tiap nama harus bisa dibetulkan sendiri — sebelumnya cuma
+ *  nama penyulang PEMILIK yang bisa diganti, jadi nama tiang di penyulang yang
+ *  menumpang tidak bisa dibetulkan dari mana pun. Nomor yang diberikan skrip
+ *  pengisian awal pun terjebak di sana selamanya.
+ */
 function NamaTiang({
   b,
+  nama,
   oleh,
   onSimpan,
 }: {
   b: TiangBaris;
+  nama: { penyulang: string; kode: string }[];
+  oleh: string;
+  onSimpan: (tiangId: string, penyulang: string, kode: string, oleh: string) => Promise<boolean>;
+}) {
+  // Tiang yang belum punya baris nama sama sekali (data lama) tetap bisa
+  // diganti lewat nama pemiliknya.
+  const daftar = nama.length > 0 ? nama : [{ penyulang: b.penyulang, kode: b.kode }];
+
+  return (
+    <div className="flex flex-col gap-0.5">
+      {daftar.map((n) => (
+        <SatuNama
+          key={n.penyulang}
+          tiangId={b.id}
+          penyulang={n.penyulang}
+          kode={n.kode}
+          tampilPenyulang={daftar.length > 1}
+          oleh={oleh}
+          onSimpan={onSimpan}
+        />
+      ))}
+    </div>
+  );
+}
+
+function SatuNama({
+  tiangId,
+  penyulang,
+  kode,
+  tampilPenyulang,
+  oleh,
+  onSimpan,
+}: {
+  tiangId: string;
+  penyulang: string;
+  kode: string;
+  tampilPenyulang: boolean;
   oleh: string;
   onSimpan: (tiangId: string, penyulang: string, kode: string, oleh: string) => Promise<boolean>;
 }) {
   const [ubah, setUbah] = useState(false);
-  const [nilai, setNilai] = useState(b.kode);
+  const [nilai, setNilai] = useState(kode);
 
   if (ubah) {
     return (
@@ -350,20 +395,20 @@ function NamaTiang({
         value={nilai}
         onChange={(e) => setNilai(e.target.value)}
         onBlur={async () => {
-          if (nilai.trim() && nilai.trim().toUpperCase() !== b.kode.toUpperCase()) {
-            await onSimpan(b.id, b.penyulang, nilai.trim(), oleh);
+          if (nilai.trim() && nilai.trim().toUpperCase() !== kode.toUpperCase()) {
+            await onSimpan(tiangId, penyulang, nilai.trim(), oleh);
           }
           setUbah(false);
         }}
         onKeyDown={(e) => {
           if (e.key === "Enter") e.currentTarget.blur();
           if (e.key === "Escape") {
-            setNilai(b.kode);
+            setNilai(kode);
             setUbah(false);
           }
         }}
-        className={`${FIELD} h-8 text-xs w-[140px] font-semibold`}
-        aria-label={`Ganti nama ${b.kode}`}
+        className={`${FIELD} h-7 text-xs w-[150px] font-semibold`}
+        aria-label={`Ganti nama ${kode} di ${penyulang}`}
       />
     );
   }
@@ -371,15 +416,18 @@ function NamaTiang({
   return (
     <button
       onClick={() => {
-        setNilai(b.kode);
+        setNilai(kode);
         setUbah(true);
       }}
       className="group inline-flex items-center gap-1 text-left"
-      title="Ketuk untuk mengganti nama"
+      title={`Ketuk untuk mengganti nama di ${penyulang}`}
     >
-      <span className="font-semibold text-ink">{b.semuaKode}</span>
+      <span className="font-semibold text-ink">{kode}</span>
+      {tampilPenyulang && (
+        <span className="text-[10px] text-ink-muted">{penyulang}</span>
+      )}
       <Pencil
-        size={11}
+        size={10}
         className="text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
       />
     </button>
