@@ -435,17 +435,81 @@ maksud — petugas tidak perlu belajar tiga sistem status di satu aplikasi.
 | 3 | Web: **impor Excel tiang** + data contoh GUNUNG SARI | ✅ ditulis & diuji lokal | Supaya hasilnya bisa dilihat sebelum regu disuruh jalan |
 | 4 | Web: master segmen — daftar, buat, gabung, peta | ✅ ditulis | Regu perlu memilih segmen sejak ketukan pertama |
 | 5 | Mobile: penyapuan — pilih penyulang & segmen, titik/menumpang tiang, **penjaga jarak 50 m**, koreksi posisi tiang, formulir per tiang | ✅ ditulis, **belum OTA** | Bagian terbesar, dan yang menghasilkan data |
+| 5b | Mobile: **merintis segmen dari lapangan** — pilih penyulang, mode nitik, tutup segmen di ujung, antrean luring, tombol Tiang Normal | ✅ ditulis & diuji lokal, **belum OTA** | Jaringan yang tiangnya belum tercatat tidak bisa disapu sama sekali tanpa ini |
 | 6 | Web: persetujuan + koreksi master inline | 🔲 | Tanpa ini master tidak pernah terkoreksi |
 | 7 | Web: **koreksi massal di peta** — geser titik, pilih banyak, pindah segmen & penyulang | 🔲 | Sesudah ada data nyata dari lapangan; sebelum itu tidak ada yang perlu dikoreksi |
 | 8 | Web: dashboard cakupan + KMS per penyulang, dan **satu daftar Perlu Perbaikan** | 🔲 | Output yang diminta |
-| 9 | Web: pengaturan item per tier + ambang jarak (UP3) | 🔲 | Supaya penambahan berikutnya tidak lewat saya |
+| 9 | Web: pengaturan item per tier + ambang jarak (UP3) | 🔲 sebagian — tab **Tiang Normal** sudah ada | Supaya penambahan berikutnya tidak lewat saya |
 
-### 12.1 Enam SQL yang menunggu dijalankan di Supabase
+### 12.0 Merintis segmen dari lapangan (ditambahkan 15 September 2026)
+
+Alur kedua, di samping "pilih segmen lalu sapu". Diminta pemilik pekerjaan karena
+penyulang yang **belum punya satu tiang pun** tidak bisa disapu: tidak ada yang
+bisa dipilih.
+
+| Keputusan | Isinya |
+|---|---|
+| Masuknya | Pilih **penyulang** saja, bukan segmen |
+| Pangkal | Otomatis = ujung segmen terakhir penyulang itu. **Segmen pertama** sebuah penyulang diketik petugas (GI / PLTD / gardu induk) |
+| Menitik | Mode nitik menyala sejak awal; tiang baru langsung membuka penilaiannya |
+| Nama tiang | Tetap dari pemicu database — tidak berubah |
+| Nama segmen | Terbentuk saat **"Simpan segmen"**. Petugas hanya menyebut ujungnya |
+| Ujung tiang biasa | `TIANG` + kode + keterangan tempat → `TIANG GNN-B14_A5 PERCABANGAN PASAR` |
+| Ujung gardu/keypoint | `GARDU MTR-0123`, `LBS. PERPUSTAKAAN` — **penanda tiangnya ikut ditulis** |
+| Rintisan terbuka | Dilanjutkan, tidak diduplikasi. Satu rintisan terbuka per penyulang |
+| Luring | Antrean `@jtm_antrean` meniru JTR: `idLokal`, `indukRef` boleh menunjuk idLokal |
+
+**Tanpa status baru.** Segmen yang sedang dirintis = segmen yang `titik_akhir_jenis`-nya
+masih `UJUNG`; namanya terbaca `GI AMPENAN - UJUNG` sampai ditutup. Keadaannya ada di
+datanya sendiri, bukan di bendera terpisah yang bisa berselisih dengannya.
+
+**Batasnya, supaya tidak jadi kejutan:** sinyal tetap perlu **sekali di awal** untuk
+melahirkan segmen dan penyapuannya. Sesudah itu boleh mati sampai selesai. Dan seperti
+JTR, nama tiang baru turun saat antrean terkirim — selama luring tiang tampil
+"menunggu nama" dengan garis putus-putus. Menilai tiang yang **sudah ada di server**
+tetap butuh sinyal; yang bisa diantre hanya tiang yang baru dititik.
+
+### 12.0b Formulir tiang jadi BERHALAMAN (diminta 15 September 2026)
+
+Pemilik pekerjaan memilih model HARGARDU — halaman bertahap dengan tombol Lanjut —
+menggantikan satu gulungan panjang. Ditambah satu hal yang tidak ada di HARGARDU:
+**tombol lompat langsung ke halaman**.
+
+Alurnya, dan inilah alasan seluruh perubahan ini:
+
+> Halaman pertama = papan kendali. Ketuk **Tiang normal** → seluruh isian terisi.
+> Ternyata ada pohon → ketuk petak **ROW** → langsung sampai di halamannya →
+> ubah vegetasi → **Simpan**. Empat ketukan untuk satu tiang bertemuan, dua untuk
+> tiang yang benar-benar normal.
+
+Tanpa tombol lompat, satu perubahan berarti menekan Lanjut sepuluh kali — dikalikan
+lima puluh tiang sehari.
+
+| Halaman | Isinya |
+|---|---|
+| 1 · Papan kendali | Penyulang & segmen · tombol **Tiang normal** · petak lompat per kelompok (dengan keadaannya: normal / n temuan / belum diisi) · tombol **Simpan penilaian** |
+| 2..n · Kelompok | Satu halaman per kelompok item, dibuat **dari database** — kelompok baru muncul tanpa rilis |
+| Terakhir · Periksa & simpan | Daftar kelompok yang bisa diketuk untuk membetulkan + catatan + simpan |
+
+**Komponen yang tidak selalu ada.** Arrester, FCO, skur, pentanahan, jumperan, gardu,
+keypoint — isiannya baru muncul kalau komponennya memang ada. Aturannya **data, bukan
+kode**: `jtm_item_ref.syarat_item` + `syarat_nilai` (`scripts/jtm-syarat.sql`), jadi
+komponen berikutnya yang ternyata tidak selalu ada cukup satu baris UPDATE.
+
+Alasannya bukan hemat ketukan saja: isian yang terlihat akan diisi, dan petugas yang
+harus melengkapi "kondisi arrester" di tiang tanpa arrester akan mengisi apa saja —
+sejak itu laporan kondisi arrester berisi tiang yang arresternya tidak pernah ada.
+
+Dua item penentu yang belum ada dibuatkan: **`jumperan`** (ada/tidak) dan **`gardu`**
+(tidak ada/cantol/portal/beton, + `nomor_gardu`). FCO, arrester, skur, pentanahan dan
+keypoint sudah punya item "ada/tidak" sejak seed pertama.
+
+### 12.1 Sepuluh SQL, dijalankan berurutan di Supabase
 
 Diperiksa langsung ke basis data 13 September 2026: **belum satu pun terpasang.**
 Prasyaratnya sudah lengkap (`jtr-schema.sql`, `jtr-penamaan.sql`, `master_audit`,
 `penyulang_ref`), jadi tidak ada yang perlu dijalankan lebih dulu. Urutannya wajib,
-dan ketiganya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
+dan semuanya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 
 ```
 1. scripts/jtm-schema.sql            segmen · segmen_tiang · jtm_settings · penamaan
@@ -454,7 +518,14 @@ dan ketiganya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 4. scripts/jtm-impor.sql             impor_tiang_jtm · gabung_segmen
 5. scripts/jtm-inspeksi-schema.sql   tabel penyapuan · kondisi terakhir · perlu perbaikan
 6. scripts/jtm-inspeksi-fungsi.sql   mulai/nilai/tambah/tumpangi/koreksi/selesai/putuskan
+7. scripts/jtm-pengaturan.sql        tiang.penanda + jtm_ref (penanda/penghantar/ukuran)
+8. scripts/jtm-rintis.sql            usul_awal · rintis_segmen · tutup_segmen
+9.  scripts/jtm-normal.sql           jtm_item_ref.nilai_bawaan + penjaganya
+10. scripts/jtm-syarat.sql           syarat_item/syarat_nilai + item jumperan & gardu
 ```
+
+Nomor 7-10 ditulis belakangan dan **belum terpasang per 15 September 2026**. Kesepuluhnya
+sudah diuji berurutan di kluster Postgres bersih, termasuk dijalankan dua kali.
 
 Sesudah itu, dua langkah supaya hasilnya langsung terlihat: impor tab `GUNUNG SARI`
 lewat **Jaringan JTM → Impor Tiang**, dan tambahkan menu `jtm` ke role **inspektor**

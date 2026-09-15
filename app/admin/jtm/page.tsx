@@ -1,18 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { Map, Network, SlidersHorizontal, Upload } from "lucide-react";
+import { CheckCheck, Map, Network, SlidersHorizontal, Upload } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import DaftarSegmen from "./_components/DaftarSegmen";
 import PetaJtm from "./_components/PetaJtm";
 import ImporTiang from "./_components/ImporTiang";
 import PengaturanJtm from "./_components/PengaturanJtm";
+import TiangNormal from "./_components/TiangNormal";
 
 const TABS = [
   { key: "segmen", label: "Segmen", icon: Network },
   { key: "peta", label: "Peta", icon: Map },
   { key: "impor", label: "Impor Tiang", icon: Upload },
   { key: "pengaturan", label: "Pengaturan", icon: SlidersHorizontal },
+  { key: "normal", label: "Tiang Normal", icon: CheckCheck },
 ] as const;
 
 type TabKey = (typeof TABS)[number]["key"];
@@ -54,6 +56,7 @@ export default function JtmPage() {
       )}
       {tab === "impor" && <ImporTiang user={user} />}
       {tab === "pengaturan" && <PengaturanJtm />}
+      {tab === "normal" && <TiangNormal />}
     </div>
   );
 }
