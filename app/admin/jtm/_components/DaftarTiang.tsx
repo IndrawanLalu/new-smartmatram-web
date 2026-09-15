@@ -54,6 +54,13 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
     );
   }, [baris, penyulang, cari]);
 
+  /** Batang menurut id — dipakai menyebut nama asli tiang milik penyulang lain
+   *  di daftar calon induk. */
+  const perId = useMemo(
+    () => new Map(baris.map((b) => [b.id, { kode: b.kode, penyulang: b.penyulang }])),
+    [baris],
+  );
+
   const halamanMaks = Math.max(1, Math.ceil(tersaring.length / PER_HALAMAN));
   const kini = Math.min(halaman, halamanMaks);
   const tampil = tersaring.slice((kini - 1) * PER_HALAMAN, kini * PER_HALAMAN);
@@ -188,15 +195,23 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       <option value="">— pangkal —</option>
                       {/* Calon induk = tiang yang DILEWATI penyulang ini, bukan
                           yang dimiliki. Penyulang yang berpangkal pada batang
-                          milik orang harus bisa menunjuk batang itu — dan
-                          namanya disebut sebagaimana penyulang ini menyebutnya. */}
+                          milik orang harus bisa menunjuk batang itu.
+                          Batang milik penyulang lain disebut DUA-DUANYA —
+                          nama versi penyulang ini dan nama aslinya — karena
+                          nama versi penyulang ini bisa saja nomor sementara
+                          yang belum pernah dilihat siapa pun di lapangan. */}
                       {(namaPerPenyulang.get(b.penyulang) ?? [])
                         .filter((x) => x.tiangId !== b.id)
-                        .map((x) => (
-                          <option key={x.tiangId} value={x.tiangId}>
-                            {x.kode}
-                          </option>
-                        ))}
+                        .map((x) => {
+                          const batang = perId.get(x.tiangId);
+                          const asing = batang && batang.kode !== x.kode;
+                          return (
+                            <option key={x.tiangId} value={x.tiangId}>
+                              {x.kode}
+                              {asing ? `  ·  ${batang.kode} (${batang.penyulang})` : ""}
+                            </option>
+                          );
+                        })}
                     </select>
                   </td>
                   <td className="px-3 py-2 text-xs text-ink-soft max-w-[260px] truncate">
