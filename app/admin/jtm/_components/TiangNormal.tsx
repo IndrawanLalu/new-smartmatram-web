@@ -71,6 +71,7 @@ export default function TiangNormal() {
                 syaratNama={
                   i.syaratItem ? (item.find((x) => x.kode === i.syaratItem)?.nama ?? i.syaratItem) : null
                 }
+                syaratNegasi={i.syaratNegasi}
                 syaratLabel={
                   i.syaratItem
                     ? i.syaratNilai
@@ -92,12 +93,14 @@ function Baris({
   i,
   opsi,
   syaratNama,
+  syaratNegasi,
   syaratLabel,
   onSimpan,
 }: {
   i: ItemRef;
   opsi: { kode: string; label: string; normal: boolean }[];
   syaratNama: string | null;
+  syaratNegasi: boolean;
   syaratLabel: string | null;
   onSimpan: (kode: string, nilai: string | null) => Promise<boolean>;
 }) {
@@ -141,7 +144,8 @@ function Baris({
           perlu terlihat di sini, karena jawaban bawaannya juga ikut dilewati. */}
       {syaratNama && (
         <span className="text-[11px] text-ink-muted">
-          hanya kalau <b className="text-ink">{syaratNama}</b> = {syaratLabel}
+          hanya kalau <b className="text-ink">{syaratNama}</b> {syaratNegasi ? "bukan" : "="}{" "}
+          {syaratLabel}
         </span>
       )}
 

@@ -504,7 +504,27 @@ Dua item penentu yang belum ada dibuatkan: **`jumperan`** (ada/tidak) dan **`gar
 (tidak ada/cantol/portal/beton, + `nomor_gardu`). FCO, arrester, skur, pentanahan dan
 keypoint sudah punya item "ada/tidak" sejak seed pertama.
 
-### 12.1 Sepuluh SQL, dijalankan berurutan di Supabase
+### 12.0c Sembilan perbaikan dari pemakaian pertama (15 September 2026)
+
+Datang dari mencoba sendiri di lapangan, bukan dari tebakan.
+
+| Keluhan | Yang dikerjakan |
+|---|---|
+| Kepala formulir tertutup bilah status | `useSafeAreaInsets()` di tiga modal — formulir tiang, rintis, tutup segmen. `paddingTop: 52` yang ditebak dibuang |
+| Papan nomor "tidak ada" jadi temuan | `normal = true`. Sama untuk arrester, FCO, pentanahan — tiang tanpa arrester bukan tiang rusak |
+| Jenis konduktor diisi di Pengaturan tapi tidak muncul | **Bukan hardcode lagi**: `jtm_item_ref.sumber_opsi` + trigger penyelaras. Menambah AAAC di Pengaturan langsung jadi pilihan jawaban |
+| Peralatan hubung tidak sama dengan penanda tiang | Sumbernya kini kategori `penanda` yang sama persis |
+| ROW: pohon belum bernama | Item `jenis_pohon`, muncul begitu vegetasi bukan "aman" — **dari sini peta pohon lahir** |
+| Isian belum lengkap tapi tetap bisa disimpan | Isian wajib yang terlihat dihitung; tombol simpan mati sampai lengkap, dengan sebabnya disebut |
+| Catatan tidak ada | Catatan tiang pindah ke papan kendali, **plus catatan per temuan** |
+| Temuan tanpa foto | **Wajib berfoto**, dijaga fungsi database bukan cuma layar. Kolom `foto_url` terpisah dari `foto_tutup_url` — yang satu bukti kerusakan, yang lain bukti perbaikan |
+
+Satu tambahan yang lahir dari dua hal di atas: **`syarat_negasi`**. Begitu daftar
+peralatan hubung datang dari Pengaturan dan bisa bertambah, menyebutkan satu per
+satu mana yang memunculkan isian kondisinya berarti tiap penanda baru harus
+didaftarkan ulang. Dibalik: tampil kalau jawabannya **bukan** "tidak ada".
+
+### 12.1 Sebelas SQL, dijalankan berurutan di Supabase
 
 Diperiksa langsung ke basis data 13 September 2026: **belum satu pun terpasang.**
 Prasyaratnya sudah lengkap (`jtr-schema.sql`, `jtr-penamaan.sql`, `master_audit`,
@@ -522,9 +542,10 @@ dan semuanya idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 8. scripts/jtm-rintis.sql            usul_awal · rintis_segmen · tutup_segmen
 9.  scripts/jtm-normal.sql           jtm_item_ref.nilai_bawaan + penjaganya
 10. scripts/jtm-syarat.sql           syarat_item/syarat_nilai + item jumperan & gardu
+11. scripts/jtm-temuan.sql           foto temuan wajib, opsi ikut Pengaturan, nama pohon
 ```
 
-Nomor 7-10 ditulis belakangan dan **belum terpasang per 15 September 2026**. Kesepuluhnya
+Nomor 7-11 ditulis belakangan dan **belum terpasang per 15 September 2026**. Kesebelasnya
 sudah diuji berurutan di kluster Postgres bersih, termasuk dijalankan dua kali.
 
 Sesudah itu, dua langkah supaya hasilnya langsung terlihat: impor tab `GUNUNG SARI`

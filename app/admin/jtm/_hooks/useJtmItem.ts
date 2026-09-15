@@ -36,6 +36,8 @@ export interface ItemRef {
    *  setiap tiang. */
   syaratItem: string | null;
   syaratNilai: string[];
+  /** true = tampil kalau jawaban penentu BUKAN salah satu syaratNilai. */
+  syaratNegasi: boolean;
 }
 
 export interface OpsiRef {
@@ -56,7 +58,7 @@ export function useJtmItem() {
       const [a, b] = await Promise.all([
         supabaseBrowser
           .from("jtm_item_ref")
-          .select("kode,nama,kelompok,tipe,dimensi,tier,satuan,urutan,nilai_bawaan,syarat_item,syarat_nilai")
+          .select("kode,nama,kelompok,tipe,dimensi,tier,satuan,urutan,nilai_bawaan,syarat_item,syarat_nilai,syarat_negasi")
           .eq("aktif", true)
           .order("urutan"),
         supabaseBrowser
@@ -81,6 +83,7 @@ export function useJtmItem() {
           nilaiBawaan: (r.nilai_bawaan as string) ?? null,
           syaratItem: (r.syarat_item as string) ?? null,
           syaratNilai: (r.syarat_nilai as string[]) ?? [],
+          syaratNegasi: !!r.syarat_negasi,
         })),
       );
       setOpsi(
