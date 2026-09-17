@@ -704,7 +704,7 @@ bertahun-tahun kemudian.
 
 ### 12.0i Nama tiang membawa seluruh jalurnya (17 September 2026)
 
-Keputusan pemilik pekerjaan setelah melihat GUNUNG SARI, dengan tiga contoh:
+Keputusan pemilik pekerjaan, dengan tiga contoh:
 
 | di lapangan | nama |
 |---|---|
@@ -712,35 +712,44 @@ Keputusan pemilik pekerjaan setelah melihat GUNUNG SARI, dengan tiga contoh:
 | `GNN-003_A37` membelok ke barat | `GNN-003_A37D1` |
 | `GNN-003_A47` bercabang ke timur | `GNN-003_A47_B1` |
 
-Satu aturan: **tiap belokan dan tiap percabangan menambah ruas** pada nama
-induknya — percabangan dengan garis bawah, belokan tanpa — dan nama induk
-dibawa **utuh**, tidak ditambatkan ke nomor pokok seperti sebelumnya. Di tiang
-percabangan, **semua** anaknya memulai deret berhuruf, termasuk yang lurus.
+**Empat aturan, dan urutan ini yang menentukan:**
 
-⚠ **Konsekuensinya dihitung di data sebenarnya sebelum diputuskan.** Pada 252
-tiang GUNUNG SARI: nama terpanjang **63 huruf**, rata-rata **30,5**, dan
-**113 tiang (45%) bernama lebih dari 30 huruf**. Yang memanjangkan bukan
-belokan melainkan percabangan — jalur terpanjang melewati dua belas titik cabang.
-Contoh terpanjang:
+1. Anak yang **lurus meneruskan nomor** induknya — termasuk saat melewati tiang
+   percabangan. `GNN-001 GNN-002 GNN-003` adalah jalur utama yang jalan terus;
+   cabang cuma menggantung di sampingnya.
+2. Anak yang **membelok** menempel huruf arah pada nama induk yang dibawa utuh.
+3. **Garis bawah** dipakai kalau induknya tiang percabangan.
+4. **Tiap penyulang dinomori sendiri.** Arah masuk dihitung hanya dari bentang
+   yang memikul penyulang ini; percabangan dihitung hanya dari anak yang juga
+   bernama di penyulang ini.
+
+⚠ **Dua kesalahan yang sempat terjadi, jangan diulang.** Pertama, aturan 1
+dibalik — di tiang percabangan semua anaknya diberi huruf; akibatnya jalur utama
+GUNUNG SARI putus di tiang KEDUA dan 252 tiangnya bernama `GNN-001_D1_D1_A2_…`
+sepanjang 76 huruf. Kedua, aturan 4 belum ada — `GNN-001` induknya `MPN-001`
+milik AMPENAN dan anak keduanya `PRM-002` milik PERUMNAS, dan dua-duanya
+memecah penamaan GUNUNG SARI di tiang pertamanya.
+
+**Hasil akhir di 252 tiang GUNUNG SARI** (diukur dari data lengkap lintas
+penyulang, bukan salinan sebagian):
 
 ```
-GNN-040D10_A15_A28_A7_A7B1_A3_A4C1B1A1C19_A1_A4_D1_A10_A25_A6B1
+terpanjang  : 42 huruf        rata-rata : 24,3
+deret pokok : GNN-001 … GNN-004
+cabang      : GNN-003_A1  GNN-003_C1  GNN-003_A2 …
+terpanjang  : GNN-003_A37D10_A63B1_A7C1B1A1C25_D1_A10_D1
 ```
 
-Pemilik pekerjaan menerima itu dengan angka di depan mata, dan menyatakan rute
-jaringannya memang sudah benar. **Penambat ke nomor pokok yang dulu dipakai
-untuk memendekkan nama sudah dihapus — jangan dikembalikan tanpa membicarakannya.**
+Deret pokoknya pendek **bukan karena aturan**, melainkan karena bentuk pohon
+hasil impor: sesudah tiang keempat, jalur utamanya tercatat membelok tajam.
+Merapikannya berarti membetulkan kolom Induk di tab Tiang.
 
-**SATU ATURAN, SATU TEMPAT.** Sebelumnya penamaan hidup di tiga fungsi — pemicu
-saat menitik, penamaan saat menumpang, dan penomoran ulang — dan ketiganya
-sempat berbeda. Kini ketiganya memanggil `jtm_kode_anak`. Teruji: menomori ulang
-dua kali tidak mengubah satu nama pun.
+**SATU ATURAN, SATU TEMPAT:** `jtm_kode_anak`, dipanggil pemicu saat menitik,
+penamaan saat menumpang, dan penomoran ulang. Teruji: jalur mobile
+(`tambah_tiang_jtm`) menghasilkan `MBL-001…005`, `MBL-003_A1`, `MBL-003_A2D1` —
+sama persis dengan penomoran ulang. Menomori ulang dua kali tidak mengubah apa pun.
 
-Ambang belokan jadi setelan: `jtm_settings.belok_maks_derajat`, bawaan 60
-mengikuti JTR.
-
-Di layar, nama panjang dipotong dari **depan** (`…A25_A6B1`), bukan dari
-belakang — bagian yang membedakan satu tiang dari tiang lain ada di ekornya.
+Ambang belokan: `jtm_settings.belok_maks_derajat`, bawaan 60.
 
 ### 12.1 Delapan belas SQL, dijalankan berurutan di Supabase
 
