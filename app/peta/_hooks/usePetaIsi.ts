@@ -67,6 +67,21 @@ export interface GarduPeta {
  *  "perbesar dulu" — yang pertama membuat orang menutup halaman. */
 const BATAS_TIANG = 4000;
 
+/** Sebanyak ini kode gardu per permintaan. Lebih dari itu URL `in(...)` jadi
+ *  terlalu panjang dan ditolak di tengah jalan tanpa pesan yang jelas. */
+const POTONG_KODE = 150;
+
+const kueriGardu = () =>
+  supabaseBrowser.from("peta_gardu").select("kode,nama,ulp,lat,lng,jumlah_tiang");
+
+const keGardu = (x: Record<string, unknown>): GarduPeta => ({
+  kode: x.kode as string,
+  nama: (x.nama as string) ?? (x.kode as string),
+  ulp: (x.ulp as string) ?? "",
+  lat: Number(x.lat), lng: Number(x.lng),
+  jumlahTiang: Number(x.jumlah_tiang ?? 0),
+});
+
 export function usePetaIsi(
   kotak: Kotak | null,
   pilihan: { jaringan: Jaringan; kode: string }[],
@@ -93,8 +108,9 @@ export function usePetaIsi(
     const urut = ++urutRef.current;
     const jtm = pilihan.filter((p) => p.jaringan === "jtm").map((p) => p.kode);
     const jtr = pilihan.filter((p) => p.jaringan === "jtr").map((p) => p.kode);
+    const gPilih = pilihan.filter((p) => p.jaringan === "gardu").map((p) => p.kode);
 
-    if (jtm.length === 0 && jtr.length === 0 && !tampilGardu) {
+    if (jtm.length === 0 && jtr.length === 0 && gPilih.length === 0 && !tampilGardu) {
       setRute([]); setTiang([]); setGardu([]); setTerpotong(false);
       return;
     }
@@ -120,23 +136,35 @@ export function usePetaIsi(
         }));
       }
 
-      // ── Gardu: mulai zoom menengah ─────────────────────────────────────
+      // ── Gardu ──────────────────────────────────────────────────────────
+      // Dua jalan, dan yang dipilih bergantung pada apakah ada gardu yang
+      // SENGAJA dinyalakan:
+      //
+      //   • Ada pilihan → ambil persis yang itu, tanpa gerbang zoom dan tanpa
+      //     saringan layar. Orang yang mencentang satu penyulang di panel
+      //     meminta gardu itu; menyembunyikannya karena zoom masih jauh
+      //     membuat centangnya terasa rusak.
+      //   • Tidak ada → saklar "tampilkan semua" yang berlaku, dan di situ
+      //     gerbang zoom + kotak pandang wajib, karena 2.092 gardu sekaligus
+      //     adalah persis beban yang halaman ini dibuat untuk menghindarinya.
       let g: GarduPeta[] = [];
-      if (tampilGardu && kotak.zoom >= ZOOM_GARDU) {
-        const data = await fetchAllRows<Record<string, unknown>>(() =>
-          supabaseBrowser
-            .from("peta_gardu")
-            .select("kode,nama,ulp,lat,lng,jumlah_tiang")
-            .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
+      const bacaGardu = (siap: (q: ReturnType<typeof kueriGardu>) => typeof q) =>
+        fetchAllRows<Record<string, unknown>>(() => siap(kueriGardu()));
+
+      if (gPilih.length > 0) {
+        const kumpul: Record<string, unknown>[] = [];
+        // Dipecah: `in` masuk ke URL, dan ratusan kode sekaligus menabrak
+        // batas panjang URL — gagalnya senyap, tidak melempar galat.
+        for (let i = 0; i < gPilih.length; i += POTONG_KODE) {
+          kumpul.push(...(await bacaGardu((q) => q.in("kode", gPilih.slice(i, i + POTONG_KODE)))));
+        }
+        g = kumpul.map(keGardu);
+      } else if (tampilGardu && kotak.zoom >= ZOOM_GARDU) {
+        const data = await bacaGardu((q) =>
+          q.gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
         );
-        g = data.map((x) => ({
-          kode: x.kode as string,
-          nama: (x.nama as string) ?? (x.kode as string),
-          ulp: (x.ulp as string) ?? "",
-          lat: Number(x.lat), lng: Number(x.lng),
-          jumlahTiang: Number(x.jumlah_tiang ?? 0),
-        }));
+        g = data.map(keGardu);
       }
 
       // ── Tiang: hanya pada zoom dekat, hanya yang di layar ───────────────

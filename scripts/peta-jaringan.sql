@@ -205,17 +205,22 @@ SELECT
   r.penyulang        AS kode,
   r.penyulang        AS nama,
   r.ulp,
+  r.penyulang        AS feeder,   -- penyulang adalah kelompoknya sendiri
   r.jumlah_tiang,
   r.lat_min, r.lat_maks, r.lng_min, r.lng_maks
 FROM public.penyulang_rute r
 
 UNION ALL
 
+-- Gardu membawa penyulangnya supaya panel kiri bisa mengelompokkannya. Tanpa
+-- kolom ini folder Gardu jadi dua ribu baris rata tanpa urutan yang berarti —
+-- dan orang di lapangan berpikir per penyulang, bukan per kode gardu.
 SELECT
   'gardu'::text,
   g.kode,
   COALESCE(NULLIF(btrim(g.nama), ''), g.kode),
   g.ulp,
+  COALESCE(NULLIF(btrim(g.feeder), ''), '(tanpa penyulang)'),
   g.jumlah_tiang,
   g.lat, g.lat, g.lng, g.lng
 FROM public.peta_gardu g;

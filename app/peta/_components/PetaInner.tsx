@@ -6,6 +6,7 @@ import {
 } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIsi";
+import { WARNA } from "../_ui";
 
 /**
  * Peta jaringan.
@@ -24,10 +25,10 @@ interface Props {
   onKotak: (k: Kotak) => void;
 }
 
-const WARNA_RUTE = "#F59E0B";
-const WARNA_JTM = "#1D3573";
-const WARNA_JTR = "#0F766E";
-const WARNA_GARDU = "#B91C1C";
+// Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
+// yang digambar di sini TIDAK BISA berbeda — di situlah panel berhenti jadi
+// daftar dan mulai jadi legenda.
+const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU, penanda: WARNA_PENANDA } = WARNA;
 
 export default function PetaInner({ rute, tiang, gardu, fokus, onKotak }: Props) {
   return (
@@ -162,7 +163,7 @@ const Isi = function Isi({
             color: "#fff",
             weight: 1,
             fillColor: t.penanda
-              ? "#F59E0B"
+              ? WARNA_PENANDA
               : t.jaringan === "jtr"
                 ? WARNA_JTR
                 : WARNA_JTM,
