@@ -474,7 +474,9 @@ function SatuNama({
       className="group inline-flex items-center gap-1 text-left"
       title={`Ketuk untuk mengganti nama di ${penyulang}`}
     >
-      <span className="font-semibold text-ink">{kode}</span>
+      <span className="font-semibold text-ink" title={kode}>
+        {kode}
+      </span>
       {tampilPenyulang && (
         <span className="text-[10px] text-ink-muted">{penyulang}</span>
       )}

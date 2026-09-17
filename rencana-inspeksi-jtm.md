@@ -702,7 +702,47 @@ sesudah regu berjalan beberapa tiang. Yang penting dia bisa kembali dan
 membetulkannya tanpa mengulang apa pun; berguna juga saat cabang baru dibangun
 bertahun-tahun kemudian.
 
-### 12.1 Tujuh belas SQL, dijalankan berurutan di Supabase
+### 12.0i Nama tiang membawa seluruh jalurnya (17 September 2026)
+
+Keputusan pemilik pekerjaan setelah melihat GUNUNG SARI, dengan tiga contoh:
+
+| di lapangan | nama |
+|---|---|
+| `GNN-003` bercabang ke utara / selatan | `GNN-003_A1` / `GNN-003_C1` |
+| `GNN-003_A37` membelok ke barat | `GNN-003_A37D1` |
+| `GNN-003_A47` bercabang ke timur | `GNN-003_A47_B1` |
+
+Satu aturan: **tiap belokan dan tiap percabangan menambah ruas** pada nama
+induknya — percabangan dengan garis bawah, belokan tanpa — dan nama induk
+dibawa **utuh**, tidak ditambatkan ke nomor pokok seperti sebelumnya. Di tiang
+percabangan, **semua** anaknya memulai deret berhuruf, termasuk yang lurus.
+
+⚠ **Konsekuensinya dihitung di data sebenarnya sebelum diputuskan.** Pada 252
+tiang GUNUNG SARI: nama terpanjang **63 huruf**, rata-rata **30,5**, dan
+**113 tiang (45%) bernama lebih dari 30 huruf**. Yang memanjangkan bukan
+belokan melainkan percabangan — jalur terpanjang melewati dua belas titik cabang.
+Contoh terpanjang:
+
+```
+GNN-040D10_A15_A28_A7_A7B1_A3_A4C1B1A1C19_A1_A4_D1_A10_A25_A6B1
+```
+
+Pemilik pekerjaan menerima itu dengan angka di depan mata, dan menyatakan rute
+jaringannya memang sudah benar. **Penambat ke nomor pokok yang dulu dipakai
+untuk memendekkan nama sudah dihapus — jangan dikembalikan tanpa membicarakannya.**
+
+**SATU ATURAN, SATU TEMPAT.** Sebelumnya penamaan hidup di tiga fungsi — pemicu
+saat menitik, penamaan saat menumpang, dan penomoran ulang — dan ketiganya
+sempat berbeda. Kini ketiganya memanggil `jtm_kode_anak`. Teruji: menomori ulang
+dua kali tidak mengubah satu nama pun.
+
+Ambang belokan jadi setelan: `jtm_settings.belok_maks_derajat`, bawaan 60
+mengikuti JTR.
+
+Di layar, nama panjang dipotong dari **depan** (`…A25_A6B1`), bukan dari
+belakang — bagian yang membedakan satu tiang dari tiang lain ada di ekornya.
+
+### 12.1 Delapan belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -726,6 +766,7 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 15. scripts/jtm-master.sql           jawaban mengoreksi master + item ukuran konduktor
 16. scripts/jtm-tumpang.sql          menumpang atas kehendak regu + induk lintas penyulang
 17. scripts/jtm-percabangan.sql      penanda percabangan di tiang + perbaikan sisipan
+18. scripts/jtm-nama-penuh.sql       nama membawa seluruh jalur; satu aturan di `jtm_kode_anak`
 ```
 
 ⚠ Nomor 13 (`jtm-nama.sql`) **diubah lagi** — kolom `tiang.percabangan` dan
