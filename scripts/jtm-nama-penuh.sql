@@ -16,6 +16,16 @@
 --   2. Anak yang MEMBELOK menempel huruf arah pada nama induk yang dibawa utuh.
 --   3. Garis bawah dipakai kalau induknya tiang percabangan: yang membelok di
 --      situ meninggalkan jalur utama, bukan membelokkannya.
+--   4. TIAP PENYULANG DINOMORI SENDIRI. Arah masuk dihitung hanya dari bentang
+--      yang memikul penyulang ini, dan percabangan dihitung hanya dari anak
+--      yang juga bernama di penyulang ini.
+--
+--      Tanpa aturan 4: GNN-001 induknya MPN-001 milik AMPENAN, dan anak
+--      keduanya PRM-002 milik PERUMNAS. Dua-duanya membuat penamaan GUNUNG
+--      SARI pecah di tiang pertamanya — arah masuk dari AMPENAN membuat tiang
+--      berikutnya terhitung membelok 115 derajat, dan sadapan PERUMNAS
+--      menjadikannya percabangan. Deret pokok GUNUNG SARI habis di tiang kedua
+--      untuk dua sebab yang sama sekali bukan urusan GUNUNG SARI.
 --
 -- Sempat saya buat aturan 1 sebaliknya — di tiang percabangan semua anaknya
 -- memulai deret berhuruf. Akibatnya jalur utama GUNUNG SARI putus di tiang
@@ -37,6 +47,44 @@ ALTER TABLE public.jtm_settings
 
 COMMENT ON COLUMN public.jtm_settings.belok_maks_derajat IS
   'Belokan sampai sebesar ini masih dianggap jalur yang sama dan meneruskan nomor. Di atasnya, deret huruf baru dimulai. 60 mengikuti JTR.';
+
+
+-- ── 1b. Dua penolong: sesuatu yang DILIHAT DARI SATU PENYULANG ──────────────
+
+/* Leluhur terdekat yang bernama di penyulang ini, naik lewat pohon induk.
+   NULL berarti penyulang ini bermula di tiang tersebut — tidak ada bentang
+   miliknya sendiri di hulu, jadi tidak ada arah sebelumnya untuk dibandingkan. */
+CREATE OR REPLACE FUNCTION public.jtm_leluhur_di_penyulang(
+  p_mulai     UUID,
+  p_penyulang TEXT
+) RETURNS UUID
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public AS $$
+DECLARE naik UUID := p_mulai; ada UUID; n INT := 0;
+BEGIN
+  WHILE naik IS NOT NULL AND n < 500 LOOP
+    SELECT tiang_id INTO ada FROM public.tiang_kode_penyulang
+    WHERE tiang_id = naik AND upper(penyulang) = upper(p_penyulang);
+    IF ada IS NOT NULL THEN RETURN ada; END IF;
+    SELECT induk_id INTO naik FROM public.tiang WHERE id = naik;
+    n := n + 1;
+  END LOOP;
+  RETURN NULL;
+END $$;
+
+/* Apakah jalur PENYULANG INI pecah di tiang itu. Sadapan ke penyulang lain
+   TIDAK dihitung: kabel penyulang ini jalan terus, dan nomornya tidak ada
+   urusan dengan siapa yang menumpang di situ. */
+CREATE OR REPLACE FUNCTION public.jtm_cabang_di_penyulang(
+  p_tiang_id  UUID,
+  p_penyulang TEXT
+) RETURNS BOOLEAN
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+  SELECT count(*) >= 2
+  FROM public.tiang a
+  JOIN public.tiang_kode_penyulang k
+    ON k.tiang_id = a.id AND upper(k.penyulang) = upper(p_penyulang)
+  WHERE a.induk_id = p_tiang_id AND a.status_hidup = 'aktif'
+$$;
 
 
 -- ── 2. Satu-satunya tempat nama tiang disusun ────────────────────────────────
@@ -112,6 +160,7 @@ DECLARE
   l_lat    DOUBLE PRECISION;
   l_lng    DOUBLE PRECISION;
   l_induk  UUID;
+  hulu_id  UUID;
   l_cabang BOOLEAN := false;
   hulu_lat DOUBLE PRECISION;
   hulu_lng DOUBLE PRECISION;
@@ -137,19 +186,16 @@ BEGIN
 
   SELECT belok_maks_derajat INTO ambang FROM public.jtm_ambang(NEW.ulp);
 
-  -- Leluhur terdekat yang bernama DI PENYULANG INI.
-  naik := NEW.induk_id;
-  WHILE naik IS NOT NULL AND n < 500 LOOP
-    SELECT k.kode, t.id, t.lat, t.lng, t.induk_id, t.percabangan
-      INTO l_kode, l_id, l_lat, l_lng, l_induk, l_cabang
+  l_id := public.jtm_leluhur_di_penyulang(NEW.induk_id, NEW.penyulang);
+  IF l_id IS NOT NULL THEN
+    SELECT k.kode, t.lat, t.lng, t.induk_id
+      INTO l_kode, l_lat, l_lng, l_induk
     FROM public.tiang t
     JOIN public.tiang_kode_penyulang k
       ON k.tiang_id = t.id AND upper(k.penyulang) = upper(NEW.penyulang)
-    WHERE t.id = naik;
-    EXIT WHEN l_id IS NOT NULL;
-    SELECT induk_id INTO naik FROM public.tiang WHERE id = naik;
-    n := n + 1;
-  END LOOP;
+    WHERE t.id = l_id;
+    l_cabang := public.jtm_cabang_di_penyulang(l_id, NEW.penyulang);
+  END IF;
 
   IF l_id IS NULL THEN
     NEW.kode := public.jtm_kode_anak(NULL, false, NULL, NULL,
@@ -189,9 +235,13 @@ BEGIN
     END IF;
   END IF;
 
-  IF l_induk IS NOT NULL AND arah_baru IS NOT NULL THEN
-    SELECT lat, lng INTO hulu_lat, hulu_lng FROM public.tiang WHERE id = l_induk;
-    IF FOUND THEN
+  -- Arah sebelumnya diambil dari bentang yang memikul PENYULANG INI. Kalau
+  -- leluhurnya adalah tiang pertama penyulang ini, tidak ada arah sebelumnya —
+  -- dan bentang milik penyulang lain di hulunya bukan urusan penamaan ini.
+  IF arah_baru IS NOT NULL THEN
+    hulu_id := public.jtm_leluhur_di_penyulang(l_induk, NEW.penyulang);
+    IF hulu_id IS NOT NULL THEN
+      SELECT lat, lng INTO hulu_lat, hulu_lng FROM public.tiang WHERE id = hulu_id;
       arah_lama := public.arah_derajat(hulu_lat, hulu_lng, l_lat, l_lng);
       IF arah_lama IS NOT NULL THEN
         belok := abs(arah_baru - arah_lama);
@@ -235,6 +285,7 @@ DECLARE
   l_lat    DOUBLE PRECISION;
   l_lng    DOUBLE PRECISION;
   l_induk  UUID;
+  hulu_id  UUID;
   l_cabang BOOLEAN := false;
   hulu_lat DOUBLE PRECISION;
   hulu_lng DOUBLE PRECISION;
@@ -251,27 +302,26 @@ BEGIN
 
   SELECT belok_maks_derajat INTO ambang FROM public.jtm_ambang(p_ulp);
 
-  naik := t.induk_id;
-  WHILE naik IS NOT NULL AND n < 500 LOOP
-    SELECT k.kode, x.id, x.lat, x.lng, x.induk_id, x.percabangan
-      INTO l_kode, l_id, l_lat, l_lng, l_induk, l_cabang
+  l_id := public.jtm_leluhur_di_penyulang(t.induk_id, p_penyulang);
+  IF l_id IS NOT NULL THEN
+    SELECT k.kode, x.lat, x.lng, x.induk_id
+      INTO l_kode, l_lat, l_lng, l_induk
     FROM public.tiang x
     JOIN public.tiang_kode_penyulang k
       ON k.tiang_id = x.id AND upper(k.penyulang) = upper(p_penyulang)
-    WHERE x.id = naik;
-    EXIT WHEN l_id IS NOT NULL;
-    SELECT induk_id INTO naik FROM public.tiang WHERE id = naik;
-    n := n + 1;
-  END LOOP;
+    WHERE x.id = l_id;
+    l_cabang := public.jtm_cabang_di_penyulang(l_id, p_penyulang);
+  END IF;
 
   IF l_id IS NULL THEN
     RETURN public.jtm_kode_anak(NULL, false, NULL, NULL, p_penyulang, p_ulp, singkat, ambang);
   END IF;
 
   arah_baru := public.arah_derajat(l_lat, l_lng, t.lat, t.lng);
-  IF l_induk IS NOT NULL AND arah_baru IS NOT NULL THEN
-    SELECT lat, lng INTO hulu_lat, hulu_lng FROM public.tiang WHERE id = l_induk;
-    IF FOUND THEN
+  IF arah_baru IS NOT NULL THEN
+    hulu_id := public.jtm_leluhur_di_penyulang(l_induk, p_penyulang);
+    IF hulu_id IS NOT NULL THEN
+      SELECT lat, lng INTO hulu_lat, hulu_lng FROM public.tiang WHERE id = hulu_id;
       arah_lama := public.arah_derajat(hulu_lat, hulu_lng, l_lat, l_lng);
       IF arah_lama IS NOT NULL THEN
         belok := abs(arah_baru - arah_lama);
@@ -306,6 +356,7 @@ DECLARE
   i_lat    DOUBLE PRECISION;
   i_lng    DOUBLE PRECISION;
   i_induk  UUID;
+  h_id     UUID;
   i_cabang BOOLEAN;
   h_lat    DOUBLE PRECISION;
   h_lng    DOUBLE PRECISION;
@@ -354,11 +405,11 @@ BEGIN
     ORDER BY j.urut
   LOOP
     n_total := n_total + 1;
-    induk_kode := NULL; belok := NULL; arah_baru := NULL;
+    induk_kode := NULL; belok := NULL; arah_baru := NULL; i_cabang := false;
 
     IF r.induk_id IS NOT NULL THEN
-      SELECT k.kode, x.lat, x.lng, x.induk_id, x.percabangan
-        INTO induk_kode, i_lat, i_lng, i_induk, i_cabang
+      SELECT k.kode, x.lat, x.lng, x.induk_id
+        INTO induk_kode, i_lat, i_lng, i_induk
       FROM public.tiang x
       LEFT JOIN public.tiang_kode_penyulang k
         ON k.tiang_id = x.id AND upper(k.penyulang) = upper(p_penyulang)
@@ -367,10 +418,12 @@ BEGIN
       IF induk_kode LIKE '~%' THEN induk_kode := NULL; END IF;
 
       IF induk_kode IS NOT NULL THEN
+        i_cabang := public.jtm_cabang_di_penyulang(r.induk_id, p_penyulang);
         arah_baru := public.arah_derajat(i_lat, i_lng, r.lat, r.lng);
-        IF i_induk IS NOT NULL AND arah_baru IS NOT NULL THEN
-          SELECT lat, lng INTO h_lat, h_lng FROM public.tiang WHERE id = i_induk;
-          IF FOUND THEN
+        IF arah_baru IS NOT NULL THEN
+          h_id := public.jtm_leluhur_di_penyulang(i_induk, p_penyulang);
+          IF h_id IS NOT NULL THEN
+            SELECT lat, lng INTO h_lat, h_lng FROM public.tiang WHERE id = h_id;
             arah_lama := public.arah_derajat(h_lat, h_lng, i_lat, i_lng);
             IF arah_lama IS NOT NULL THEN
               belok := abs(arah_baru - arah_lama);
@@ -418,4 +471,6 @@ BEGIN
 END $$;
 
 
-GRANT EXECUTE ON FUNCTION public.jtm_kode_anak TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jtm_kode_anak            TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jtm_leluhur_di_penyulang TO authenticated;
+GRANT EXECUTE ON FUNCTION public.jtm_cabang_di_penyulang  TO authenticated;
