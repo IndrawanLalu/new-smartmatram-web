@@ -642,7 +642,33 @@ kehilangan LBS ikut kehilangan tanda gardunya.)
 Item **`ukuran_konduktor`** ditambahkan, bersumber dari daftar `ukuran` di
 Pengaturan JTM yang sudah lama ada.
 
-### 12.1 Lima belas SQL, dijalankan berurutan di Supabase
+### 12.0g Menumpang yang dinyatakan regu (17 September 2026)
+
+Dari uji penyulang AMPENAN. Datanya: **lima dari sembilan tiang AMPENAN adalah
+batang GUNUNG SARI**, dan `MPN-002` tidak punya induk sama sekali — rute AMPENAN
+putus tepat di tiang keduanya.
+
+| Keluhan | Sebab |
+|---|---|
+| Tiang yang menumpang tidak muncul di tab Tiang | saringan memakai penyulang **pemilik batang** |
+| Induk MPN-002 tidak bisa diarahkan ke MPN-001 | penjaga `ubah_induk_tiang_jtm` memeriksa penyulang pemilik anaknya |
+| Menumpang gagal kalau tiangnya >10 m | radius **penjaga** dipakai sebagai radius **pencarian** |
+
+Yang ketiga itu bedanya penting: 10 m benar untuk penjaga — dia mencegah batang
+beton kedua lahir tanpa sengaja, jadi harus yakin sebelum menuduh. Tapi regu
+yang berdiri di bawah tiang dan melihat sendiri kabelnya menumpang tidak sedang
+menebak; kalau GPS-nya meleset 14 m, satu-satunya jalan yang tersisa baginya
+adalah melahirkan tiang kembar — persis yang dijaga agar tidak terjadi.
+
+Sekarang: `jtm_settings.radius_cari_tumpang_m` (bawaan 25 m, per ULP), fungsi
+`tiang_sekitar_jtm` yang menyebut nama tiang **di penyulang yang sedang disapu**,
+dan tombol **"Tiang ini menumpang"** di mode nitik. Yang memutuskan tetap regu.
+
+Penjaga induk dilonggarkan: syaratnya bukan lagi "dilewati penyulang pemilik
+anaknya" melainkan **"anak dan induk sama-sama dilewati setidaknya satu penyulang
+yang sama"** — karena itulah arti sebuah bentang.
+
+### 12.1 Enam belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -664,6 +690,7 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 13. scripts/jtm-nama.sql             nama tiang per penyulang, ganti nama, nomori ulang
 14. scripts/jtm-gabung.sql           satukan penyapuan yang terlanjur pecah
 15. scripts/jtm-master.sql           jawaban mengoreksi master + item ukuran konduktor
+16. scripts/jtm-tumpang.sql          menumpang atas kehendak regu + induk lintas penyulang
 ```
 
 ⚠ **Nomor 12 MENGGANTIKAN tiga fungsi** yang lebih dulu didefinisikan di berkas

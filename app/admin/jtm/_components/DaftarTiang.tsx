@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -42,17 +42,51 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   );
   const oleh = user.name || user.email;
 
+  /** Tiang yang DILEWATI penyulang terpilih — bukan yang dimilikinya.
+   *
+   *  Penyulang yang berjalan di atas tiang milik orang punya separuh rutenya di
+   *  batang penyulang lain. Menyaring dari pemilik membuat separuh itu lenyap
+   *  dari tabel, dan bersamanya lenyap pula satu-satunya cara membetulkan
+   *  sambungan induknya. Di AMPENAN, lima dari sembilan tiangnya begitu. */
+  const idDiPenyulang = useMemo(
+    () =>
+      penyulang
+        ? new Set((namaPerPenyulang.get(penyulang) ?? []).map((n) => n.tiangId))
+        : null,
+    [namaPerPenyulang, penyulang],
+  );
+
   const tersaring = useMemo(() => {
     const q = cari.trim().toUpperCase();
     return baris.filter(
       (b) =>
-        (!penyulang || b.penyulang === penyulang) &&
+        (!idDiPenyulang || idDiPenyulang.has(b.id) || b.penyulang === penyulang) &&
         (!q ||
-          b.kode.toUpperCase().includes(q) ||
+          b.semuaKode.toUpperCase().includes(q) ||
           (b.nomorLama ?? "").toUpperCase().includes(q) ||
           (b.segmen ?? "").toUpperCase().includes(q)),
     );
-  }, [baris, penyulang, cari]);
+  }, [baris, idDiPenyulang, penyulang, cari]);
+
+  const calonInduk = useCallback(
+    (b: TiangBaris) => {
+      // Penyulang yang mana pun yang melewati tiang ini; kalau tabelnya sedang
+      // disaring, penyulang itulah yang dipakai menyebut namanya.
+      const lewat = (namaPerTiang.get(b.id) ?? []).map((n) => n.penyulang);
+      const dipakai = penyulang && lewat.includes(penyulang) ? [penyulang] : lewat;
+
+      const hasil = new Map<string, { tiangId: string; kode: string }>();
+      for (const f of dipakai.length > 0 ? dipakai : [b.penyulang]) {
+        for (const n of namaPerPenyulang.get(f) ?? []) {
+          if (n.tiangId !== b.id && !hasil.has(n.tiangId)) {
+            hasil.set(n.tiangId, { tiangId: n.tiangId, kode: n.kode });
+          }
+        }
+      }
+      return [...hasil.values()].sort((x, y) => x.kode.localeCompare(y.kode));
+    },
+    [namaPerTiang, namaPerPenyulang, penyulang],
+  );
 
   /** Batang menurut id — dipakai menyebut nama asli tiang milik penyulang lain
    *  di daftar calon induk. */
@@ -187,7 +221,14 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       </span>
                     )}
                   </td>
-                  <td className="px-3 py-2 text-ink-soft text-xs">{b.penyulang}</td>
+                  <td className="px-3 py-2 text-ink-soft text-xs">
+                    {b.penyulang}
+                    {penyulang && b.penyulang !== penyulang && (
+                      <span className="block text-[10px] text-navy-600">
+                        {penyulang} menumpang
+                      </span>
+                    )}
+                  </td>
                   <td className="px-3 py-2">
                     <select
                       value={b.indukId ?? ""}
@@ -198,25 +239,22 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       aria-label={`Induk ${b.kode}`}
                     >
                       <option value="">— pangkal —</option>
-                      {/* Calon induk = tiang yang DILEWATI penyulang ini, bukan
-                          yang dimiliki. Penyulang yang berpangkal pada batang
-                          milik orang harus bisa menunjuk batang itu.
-                          Batang milik penyulang lain disebut DUA-DUANYA —
-                          nama versi penyulang ini dan nama aslinya — karena
-                          nama versi penyulang ini bisa saja nomor sementara
-                          yang belum pernah dilihat siapa pun di lapangan. */}
-                      {(namaPerPenyulang.get(b.penyulang) ?? [])
-                        .filter((x) => x.tiangId !== b.id)
-                        .map((x) => {
-                          const batang = perId.get(x.tiangId);
-                          const asing = batang && batang.kode !== x.kode;
-                          return (
-                            <option key={x.tiangId} value={x.tiangId}>
-                              {x.kode}
-                              {asing ? `  ·  ${batang.kode} (${batang.penyulang})` : ""}
-                            </option>
-                          );
-                        })}
+                      {/* Calon induk = tiang yang BERBAGI PENYULANG dengan tiang
+                          ini. Sebuah bentang adalah dua tiang yang memikul kabel
+                          yang sama; siapa pemilik batangnya tidak menentukan
+                          apa pun. Batang milik penyulang lain disebut
+                          dua-duanya, karena nama versi penyulang ini bisa saja
+                          nomor yang belum pernah dilihat siapa pun di lapangan. */}
+                      {calonInduk(b).map((x) => {
+                        const batang = perId.get(x.tiangId);
+                        const asing = batang && batang.kode !== x.kode;
+                        return (
+                          <option key={x.tiangId} value={x.tiangId}>
+                            {x.kode}
+                            {asing ? `  ·  ${batang.kode} (${batang.penyulang})` : ""}
+                          </option>
+                        );
+                      })}
                     </select>
                   </td>
                   <td className="px-3 py-2 text-xs text-ink-soft max-w-[260px] truncate">
