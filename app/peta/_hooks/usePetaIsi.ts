@@ -16,8 +16,8 @@ import type { Jaringan } from "./usePetaDaftar";
  *
  * Tiga lapis penahan, dan yang PERTAMA paling menentukan:
  *
- *   1. Zoom menentukan APA yang dikirim. Di bawah 13 cuma garis rute — 82 baris
- *      untuk seluruh UP3. Di atas 15 tiang satu per satu, dan rute kasarnya
+ *   1. Zoom menentukan APA yang dikirim. Di bawah 11 cuma garis rute — satu
+ *      baris per penyulang. Di atas 15 tiang satu per satu, dan rute kasarnya
  *      berhenti: yang satu menggantikan yang lain, tidak menumpuk.
  *   2. Kotak pandang menentukan BERAPA BANYAK. Yang di luar layar tidak diminta.
  *   3. Kueri ditunda sampai peta berhenti bergerak, supaya satu geseran tidak
@@ -25,7 +25,15 @@ import type { Jaringan } from "./usePetaDaftar";
  */
 
 export const ZOOM_TIANG = 15;
-export const ZOOM_GARDU = 13;
+
+/** Gerbang gardu sengaja RENDAH — peta terbuka di zoom 12, dan gerbang di 13
+ *  berarti halaman terbuka kosong meski saklarnya menyala; orang menyimpulkan
+ *  saklarnya rusak, bukan zoomnya kurang. Menahan 2.092 gardu juga bukan
+ *  penghematan yang berarti: digambar ke kanvas jumlah segitu ringan, dan
+ *  `/admin/peta-gardu` sudah lama menggambar 815+ penanda sebagai elemen DOM
+ *  tanpa keluhan. Yang benar-benar perlu ditahan itu tiang — puluhan ribu, dan
+ *  gerbangnya ada di ZOOM_TIANG. */
+export const ZOOM_GARDU = 11;
 
 export interface Kotak {
   latMin: number;
