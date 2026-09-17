@@ -8,15 +8,19 @@
 --   GNN-003_A37 membelok    → ke barat  GNN-003_A37D1
 --   GNN-003_A47 bercabang   → ke timur  GNN-003_A47_B1
 --
--- Satu aturan: TIAP BELOKAN DAN TIAP PERCABANGAN MENAMBAH RUAS pada nama
--- induknya. Percabangan memakai garis bawah, belokan tidak, dan nama induk
--- dibawa UTUH — tidak ditambatkan ke nomor pokok seperti sebelumnya.
+-- Tiga aturan, dan yang PERTAMA yang paling mudah keliru:
 --
--- Konsekuensinya sudah dihitung di data sebenarnya sebelum ini ditulis: pada
--- 252 tiang GUNUNG SARI, nama terpanjang 63 huruf dan rata-rata 30. Yang
--- memanjangkan bukan belokan melainkan percabangan — jalur terpanjangnya
--- melewati dua belas titik cabang. Pemilik pekerjaan menerima itu dengan angka
--- di depan mata, dan menyatakan rutenya memang sudah benar.
+--   1. Anak yang LURUS meneruskan nomor induknya. `GNN-001 GNN-002 GNN-003`
+--      adalah jalur utama yang jalan terus — TERMASUK saat melewati tiang
+--      percabangan. Cabangnya cuma menggantung di sampingnya.
+--   2. Anak yang MEMBELOK menempel huruf arah pada nama induk yang dibawa utuh.
+--   3. Garis bawah dipakai kalau induknya tiang percabangan: yang membelok di
+--      situ meninggalkan jalur utama, bukan membelokkannya.
+--
+-- Sempat saya buat aturan 1 sebaliknya — di tiang percabangan semua anaknya
+-- memulai deret berhuruf. Akibatnya jalur utama GUNUNG SARI putus di tiang
+-- KEDUA dan 252 tiangnya bernama `GNN-001_D1_D1_A2_...`, terpanjang 76 huruf.
+-- Itu bukan yang diminta, dan tidak akan pernah terbaca oleh siapa pun.
 --
 -- SATU ATURAN, SATU TEMPAT. Sebelumnya penamaan hidup di tiga fungsi — pemicu
 -- saat menitik, penamaan saat menumpang, dan penomoran ulang — dan ketiganya
@@ -57,21 +61,24 @@ BEGIN
     -- Pangkal penyulang. Tiga angka supaya deretnya terbaca urut.
     prefiks := p_singkat || '-';
 
-  ELSIF COALESCE(p_cabang, false) THEN
-    -- DI TIANG PERCABANGAN, SEMUA ANAKNYA memulai deret berhuruf — termasuk
-    -- yang arahnya lurus. Itu maksud garis bawah: di sini jalurnya pecah, dan
-    -- tidak ada satu pun anak yang berhak mewarisi deret induknya.
-    prefiks := p_induk_kode || '_' || COALESCE(public.arah_huruf(p_arah), 'K');
-
   ELSIF p_belok IS NULL OR p_belok <= COALESCE(p_ambang, 60) THEN
-    -- Jalur yang sama diteruskan: angka di belakang nama induk diganti.
+    -- JALUR YANG SAMA DITERUSKAN — dan ini berlaku juga di tiang percabangan.
+    --
+    -- Sempat saya buat sebaliknya: di tiang percabangan semua anaknya memulai
+    -- deret berhuruf. Akibatnya jalur utama GUNUNG SARI putus di tiang kedua
+    -- dan seluruh penyulang bernama `GNN-001_D1_D1_A2_...`. Itu bukan yang
+    -- diminta: `GNN-001 GNN-002 GNN-003` adalah jalur utama yang jalan terus,
+    -- dan `_A1` cuma menggantung di sampingnya.
     prefiks := regexp_replace(p_induk_kode, '[0-9]+[a-z]?$', '');
 
   ELSE
-    -- Membelok, tapi tidak bercabang. Huruf ditempel TANPA garis bawah, dan
-    -- nama induknya dibawa utuh — itulah yang membuat jalur bisa ditelusuri
-    -- mundur dari namanya saja.
-    prefiks := p_induk_kode || COALESCE(public.arah_huruf(p_arah), 'K');
+    -- Membelok. Huruf arahnya ditempel pada nama induk yang dibawa UTUH —
+    -- itulah yang membuat jalur bisa ditelusuri mundur dari namanya saja.
+    -- Garis bawah dipakai kalau induknya memang tiang percabangan: yang
+    -- membelok di situ meninggalkan jalur utama, bukan membelokkannya.
+    prefiks := p_induk_kode
+               || CASE WHEN COALESCE(p_cabang, false) THEN '_' ELSE '' END
+               || COALESCE(public.arah_huruf(p_arah), 'K');
   END IF;
 
   pokok := prefiks = p_singkat || '-';
