@@ -21,7 +21,12 @@ export const GARIS = "#1e3552";
 export const WARNA = {
   jtm: "#3B82F6",
   jtr: "#14B8A6",
-  gardu: "#10B981",
+  // Merah, bukan hijau. Latar peta ini citra satelit Lombok — hijau di atas
+  // vegetasi hijau praktis hilang. Merah juga satu-satunya rona yang belum
+  // terpakai di sini (biru JTM, teal JTR, kuning rute), jadi tidak ada dua
+  // benda yang bisa tertukar. Di /admin/peta-gardu warna gardu mengikuti
+  // KONDISI, bukan jenisnya, jadi tidak ada warna gardu baku yang dilanggar.
+  gardu: "#EF4444",
   rute: "#F59E0B",
   penanda: "#F59E0B",
 } as const;

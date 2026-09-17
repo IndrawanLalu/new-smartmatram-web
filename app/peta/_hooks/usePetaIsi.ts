@@ -16,15 +16,21 @@ import type { Jaringan } from "./usePetaDaftar";
  *
  * Tiga lapis penahan, dan yang PERTAMA paling menentukan:
  *
- *   1. Zoom menentukan APA yang dikirim. Di bawah 11 cuma garis rute — satu
- *      baris per penyulang. Di atas 15 tiang satu per satu, dan rute kasarnya
+ *   1. Zoom menentukan APA yang dikirim. Di bawah 13 cuma garis rute — satu
+ *      baris per penyulang. Mulai 13 tiang satu per satu, dan rute kasarnya
  *      berhenti: yang satu menggantikan yang lain, tidak menumpuk.
  *   2. Kotak pandang menentukan BERAPA BANYAK. Yang di luar layar tidak diminta.
  *   3. Kueri ditunda sampai peta berhenti bergerak, supaya satu geseran tidak
  *      menembakkan sepuluh permintaan yang sembilan di antaranya sudah basi.
  */
 
-export const ZOOM_TIANG = 15;
+/** Tiang muncul mulai zoom 13, bukan 15. Di 15 orang harus memperbesar tiga
+ *  tingkat dari zoom bukaan sebelum satu nama pun bisa dibaca, dan sebelum itu
+ *  yang terlihat hanya garis — mudah disimpulkan bahwa tiangnya memang tidak
+ *  punya nama. Saringan kotak pandang dan BATAS_TIANG yang menahan bebannya,
+ *  bukan gerbang ini; gerbang ini hanya mencegah permintaan yang jelas-jelas
+ *  sia-sia di zoom se-pulau. */
+export const ZOOM_TIANG = 13;
 
 /** Gerbang gardu sengaja RENDAH — peta terbuka di zoom 12, dan gerbang di 13
  *  berarti halaman terbuka kosong meski saklarnya menyala; orang menyimpulkan

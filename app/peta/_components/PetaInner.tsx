@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { memo, useEffect, useMemo } from "react";
 import {
   MapContainer, TileLayer, LayersControl, CircleMarker, Marker, Polyline, Tooltip,
   useMap, useMapEvents,
@@ -54,9 +54,9 @@ const IKON_GARDU = L.divIcon({
   className: "",
   iconSize: [UKURAN_GARDU, UKURAN_GARDU],
   iconAnchor: [UKURAN_GARDU / 2, UKURAN_GARDU],
-  html: `<svg viewBox="0 0 16 16" width="${UKURAN_GARDU}" height="${UKURAN_GARDU}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 0 3px ${WARNA_GARDU}BB);">
-    <polygon points="8,1 15,7 1,7" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
-    <rect x="3" y="7" width="10" height="8" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.35)" stroke-width="0.5"/>
+  html: `<svg viewBox="0 0 16 16" width="${UKURAN_GARDU}" height="${UKURAN_GARDU}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.75));">
+    <polygon points="8,1 15,7 1,7" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
+    <rect x="3" y="7" width="10" height="8" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
     <rect x="6" y="10" width="4" height="5" fill="rgba(0,0,0,0.35)"/>
   </svg>`,
 });
@@ -137,7 +137,7 @@ function Fokus({ batas }: { batas: [[number, number], [number, number]] | null }
 
 /** Dipisah dan di-`memo` supaya menggeser peta tanpa perubahan data tidak
  *  menggambar ulang ribuan objek. */
-const Isi = function Isi({
+const Isi = memo(function Isi({
   rute, tiang, gardu,
 }: {
   rute: RuteBaris[];
@@ -149,6 +149,7 @@ const Isi = function Isi({
       rute.flatMap((r) =>
         r.bentang.map((b, i) => ({
           kunci: `${r.penyulang}-${i}`,
+          nama: r.penyulang,
           titik: [
             [b[0], b[1]],
             [b[2], b[3]],
@@ -165,7 +166,14 @@ const Isi = function Isi({
           key={g.kunci}
           positions={g.titik}
           pathOptions={{ color: WARNA_RUTE, weight: 2.5, opacity: 0.85 }}
-        />
+        >
+          {/* Di zoom jauh garis inilah satu-satunya yang terlihat. Tanpa
+              tooltip, menghadap beberapa penyulang sekaligus berarti menebak
+              garis mana milik siapa. */}
+          <Tooltip sticky>
+            <span className="text-[11px] font-semibold">{g.nama}</span>
+          </Tooltip>
+        </Polyline>
       ))}
 
       {tiang.map((t) =>
@@ -181,7 +189,11 @@ const Isi = function Isi({
               weight: 2,
               opacity: 0.9,
             }}
-          />
+          >
+            <Tooltip sticky>
+              <span className="text-[11px]">{t.kelompok}</span>
+            </Tooltip>
+          </Polyline>
         ) : null,
       )}
 
@@ -189,7 +201,7 @@ const Isi = function Isi({
         <CircleMarker
           key={t.id}
           center={[t.lat, t.lng]}
-          radius={t.penanda ? 6 : t.percabangan ? 5 : 3.5}
+          radius={t.penanda ? 7 : t.percabangan ? 6 : 5}
           pathOptions={{
             color: "#fff",
             weight: 1,
@@ -201,7 +213,7 @@ const Isi = function Isi({
             fillOpacity: 1,
           }}
         >
-          <Tooltip direction="right" offset={[8, 0]}>
+          <Tooltip direction="top" offset={[0, -6]} sticky>
             <span className="text-[11px] font-semibold">{t.kode}</span>
             <span className="block text-[10px]">{t.kelompok}</span>
           </Tooltip>
@@ -221,4 +233,4 @@ const Isi = function Isi({
       ))}
     </>
   );
-};
+});
