@@ -31,7 +31,12 @@ interface Batas {
 export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [ulp, setUlp] = useState(canSeeAllUnits(user.role) ? "" : (user.unit ?? ""));
   const [nyala, setNyala] = useState<Set<string>>(new Set());
-  const [tampilGardu, setTampilGardu] = useState(true);
+  // Padam saat halaman dibuka, sama seperti lapisan lain. Peta ini berangkat
+  // kosong dengan sengaja — yang muncul di layar adalah yang DIMINTA, bukan
+  // yang kebetulan tersedia. Saklar yang menyala sendiri membuat 2.092 gardu
+  // jadi latar tetap yang harus dimatikan lebih dulu tiap kali orang ingin
+  // melihat satu penyulang dengan tenang.
+  const [tampilGardu, setTampilGardu] = useState(false);
   const [kotak, setKotak] = useState<Kotak | null>(null);
   const [fokus, setFokus] = useState<[[number, number], [number, number]] | null>(null);
   const [panel, setPanel] = useState(true);
