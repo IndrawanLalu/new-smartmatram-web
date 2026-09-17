@@ -616,7 +616,33 @@ pengelompokan per segmen + tombol Satukan + Buang di tab Penyapuan.
 2. Tombol **Nomori ulang** pada PERUMNAS
 3. Tab Penyapuan → **Satukan** tiga catatan PERUMNAS jadi satu
 
-### 12.1 Empat belas SQL, dijalankan berurutan di Supabase
+### 12.0f Jawaban inspeksi mengoreksi master (17 September 2026)
+
+Tiga keluhan, satu sebab: **jawaban inspeksi tidak pernah mengalir ke master.**
+
+| Keluhan | Sebab yang ditemukan di data |
+|---|---|
+| "ditandai Gardu tapi simbolnya tidak berubah" | `PRM-002.penanda` NULL; peta memilih ikon dari kolom itu |
+| "jenis belum dicatat, ini maksudnya apa?" | `PRM-002.jenis` NULL, padahal `jenis_tiang = beton_11` sudah dijawab |
+| "ukuran penghantar belum ada di mobile" | itemnya memang belum pernah dibuat |
+
+`jtm_item_ref.master_field` menyatakan jawaban item mana yang mengoreksi kolom
+master mana — data, bukan kode. Sekarang `jenis_tiang` → `tiang.jenis`,
+`konstruksi` → `tiang.konstruksi`, `gardu` & `peralatan_hubung` → `tiang.penanda`.
+
+Dipasang sebagai **pemicu di tabel jawaban**, bukan ditambahkan ke
+`nilai_tiang_jtm` — fungsi itu sudah digantikan dua kali, dan menyalinnya lagi
+berarti empat salinan aturan penilaian yang harus selalu sama.
+
+Peralatan hubung menang atas gardu kalau tiangnya memikul keduanya; saat
+peralatan hubungnya dicabut, penandanya kembali ke gardu kalau tiang itu masih
+memikul satu. (Cacat ini ketahuan dari uji sendiri — sebelumnya tiang yang
+kehilangan LBS ikut kehilangan tanda gardunya.)
+
+Item **`ukuran_konduktor`** ditambahkan, bersumber dari daftar `ukuran` di
+Pengaturan JTM yang sudah lama ada.
+
+### 12.1 Lima belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -637,6 +663,7 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 12. scripts/jtm-lanjut.sql           sambung penyapuan, daftar tiang, koreksi induk, cabang tegas
 13. scripts/jtm-nama.sql             nama tiang per penyulang, ganti nama, nomori ulang
 14. scripts/jtm-gabung.sql           satukan penyapuan yang terlanjur pecah
+15. scripts/jtm-master.sql           jawaban mengoreksi master + item ukuran konduktor
 ```
 
 ⚠ **Nomor 12 MENGGANTIKAN tiga fungsi** yang lebih dulu didefinisikan di berkas
