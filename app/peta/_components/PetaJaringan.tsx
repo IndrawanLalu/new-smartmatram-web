@@ -85,7 +85,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
       ) : (
         <button
           onClick={() => setPanel(true)}
-          className="absolute z-[1100] top-3 left-3 h-9 px-3 rounded-xl bg-sidebar text-white/90 text-sm font-medium shadow-lg flex items-center gap-2"
+          className="absolute z-[1100] top-3 left-3 h-9 px-3 rounded-xl bg-navy-900 text-white/90 text-sm font-medium shadow-lg ring-1 ring-white/15 flex items-center gap-2"
         >
           <PanelLeftOpen size={16} /> Lapisan
         </button>

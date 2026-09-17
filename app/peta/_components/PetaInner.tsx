@@ -40,7 +40,7 @@ export default function PetaInner({ rute, tiang, gardu, fokus, onKotak }: Props)
       className="h-full w-full"
       style={{ background: "#0b1220" }}
     >
-      <LayersControl position="topright">
+      <LayersControl position="bottomright">
         <LayersControl.BaseLayer checked name="Citra satelit">
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"

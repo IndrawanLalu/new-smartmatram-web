@@ -20,6 +20,12 @@ import type { Jaringan, Lapisan } from "../_hooks/usePetaDaftar";
  *
  * Mengetuk hasil pencarian menyalakan lapisannya DAN melompat ke tempatnya —
  * dua hal yang selalu diinginkan bersamaan, jadi tidak dipisah jadi dua ketukan.
+ *
+ * WARNANYA DITETAPKAN DI SINI, bukan lewat token `sidebar`. Token itu bernilai
+ * #e9edf5 — panel terang bertinta gelap, benar untuk rel navigasi admin, tapi
+ * di sini panel berdiri menempel peta satelit dan harus gelap. Sempat memakai
+ * token itu dengan teks putih: putih di atas nyaris-putih, tidak terbaca sama
+ * sekali.
  */
 
 interface Props {
@@ -72,14 +78,14 @@ export default function PanelLapisan({
     });
 
   return (
-    <aside className="w-[280px] shrink-0 h-full flex flex-col bg-sidebar text-white/90 border-r border-sidebar-line">
-      <div className="h-[52px] shrink-0 flex items-center gap-2 px-3 border-b border-sidebar-line">
+    <aside className="w-[280px] shrink-0 h-full flex flex-col bg-navy-900 text-white/90 border-r border-white/10">
+      <div className="h-[52px] shrink-0 flex items-center gap-2 px-3 border-b border-white/10">
         <Layers size={17} className="text-white/70" />
         <span className="text-sm font-semibold">Lapisan</span>
         <span className="flex-1" />
         <button
           onClick={onTutup}
-          className="p-1.5 rounded-lg hover:bg-white/10 text-white/60"
+          className="p-1.5 rounded-lg hover:bg-white/10 text-white/70"
           title="Sembunyikan panel"
         >
           <PanelLeftClose size={16} />
@@ -88,19 +94,19 @@ export default function PanelLapisan({
 
       {/* Kotak cari di paling atas — bukan di dalam folder. Inilah jalan pintas
           yang membuat panel ini tidak perlu digulir. */}
-      <div className="p-3 border-b border-sidebar-line space-y-2">
+      <div className="p-3 border-b border-white/10 space-y-2">
         <div className="relative">
-          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/40" />
+          <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/55" />
           <input
             value={cari}
             onChange={(e) => setCari(e.target.value)}
             placeholder="Cari penyulang atau gardu…"
-            className="w-full h-8 pl-8 pr-7 rounded-lg bg-white/10 border border-white/10 text-sm text-white placeholder:text-white/40 focus:outline-none focus:border-white/30"
+            className="w-full h-8 pl-8 pr-7 rounded-lg bg-white/10 border border-white/10 text-sm text-white placeholder:text-white/45 focus:outline-none focus:border-white/30"
           />
           {cari && (
             <button
               onClick={() => setCari("")}
-              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/70"
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-white/55 hover:text-white/70"
             >
               <X size={13} />
             </button>
@@ -125,7 +131,7 @@ export default function PanelLapisan({
 
       <div className="flex-1 overflow-y-auto">
         {loading && (
-          <div className="flex items-center gap-2 p-4 text-xs text-white/50">
+          <div className="flex items-center gap-2 p-4 text-xs text-white/60">
             <Loader2 size={14} className="animate-spin" /> Memuat daftar…
           </div>
         )}
@@ -139,7 +145,7 @@ export default function PanelLapisan({
         {/* ── Hasil pencarian menggantikan pohon selama ada yang diketik ── */}
         {q ? (
           <div className="p-2">
-            <p className="px-1.5 pb-1.5 text-[10px] uppercase tracking-wide text-white/40">
+            <p className="px-1.5 pb-1.5 text-[10px] uppercase tracking-wide text-white/55">
               {hasil.length === 0 ? "Tidak ada yang cocok" : `${hasil.length} hasil`}
             </p>
             {hasil.map((l) => (
@@ -159,19 +165,19 @@ export default function PanelLapisan({
             const isi = perFolder[key];
             const terbuka = buka.has(key);
             return (
-              <div key={key} className="border-b border-sidebar-line/60">
+              <div key={key} className="border-b border-white/[0.07]">
                 <button
                   onClick={() => alihFolder(key)}
                   className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-white/5 text-left"
                 >
                   {terbuka ? (
-                    <ChevronDown size={14} className="text-white/40 shrink-0" />
+                    <ChevronDown size={14} className="text-white/55 shrink-0" />
                   ) : (
-                    <ChevronRight size={14} className="text-white/40 shrink-0" />
+                    <ChevronRight size={14} className="text-white/55 shrink-0" />
                   )}
-                  <Ikon size={14} className="text-white/60 shrink-0" />
+                  <Ikon size={14} className="text-white/70 shrink-0" />
                   <span className="text-[13px] font-medium flex-1 truncate">{judul}</span>
-                  <span className="text-[10px] text-white/35 tabular-nums">{isi.length}</span>
+                  <span className="text-[10px] text-white/50 tabular-nums">{isi.length}</span>
                 </button>
 
                 {terbuka && (
@@ -191,7 +197,7 @@ export default function PanelLapisan({
                     )}
 
                     {isi.length === 0 ? (
-                      <p className="px-3 py-2 text-[11px] text-white/35 leading-relaxed">
+                      <p className="px-3 py-2 text-[11px] text-white/50 leading-relaxed">
                         {key === "jtr"
                           ? "Belum ada gardu yang punya tiang JTR di basis ini."
                           : `Belum ada ${bantu.toLowerCase()}.`}
@@ -212,7 +218,7 @@ export default function PanelLapisan({
                     )}
 
                     {isi.length > 300 && (
-                      <p className="px-3 py-2 text-[11px] text-white/40 leading-relaxed">
+                      <p className="px-3 py-2 text-[11px] text-white/55 leading-relaxed">
                         {isi.length - 300} lagi tidak ditampilkan — pakai kotak cari di atas.
                       </p>
                     )}
@@ -257,7 +263,7 @@ function BarisLapisan({
           diinginkan: melihat satu penyulang tanpa gangguan yang lain. */}
       <button onClick={onHanya} className="flex-1 min-w-0 text-left" title="Tampilkan ini saja">
         <span className="block text-[12.5px] truncate">{l.kode}</span>
-        <span className="block text-[10px] text-white/40 truncate">
+        <span className="block text-[10px] text-white/55 truncate">
           {tampilJenis ? `${l.jaringan.toUpperCase()} · ` : ""}
           {l.nama !== l.kode ? `${l.nama} · ` : ""}
           {l.ulp}
@@ -268,7 +274,7 @@ function BarisLapisan({
       {adaTitik && (
         <button
           onClick={onLompat}
-          className="p-1 rounded text-white/30 opacity-0 group-hover:opacity-100 hover:text-white/80 shrink-0"
+          className="p-1 rounded text-white/45 opacity-0 group-hover:opacity-100 hover:text-white/80 shrink-0"
           title="Lompat ke sini"
         >
           <Crosshair size={13} />
