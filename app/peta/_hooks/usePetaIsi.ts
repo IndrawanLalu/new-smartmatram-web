@@ -17,7 +17,8 @@ import type { Jaringan } from "./usePetaDaftar";
  * Tiga lapis penahan, dan yang PERTAMA paling menentukan:
  *
  *   1. Zoom menentukan APA yang dikirim. Di bawah 13 cuma garis rute — 82 baris
- *      untuk seluruh UP3. Di atas 15 baru tiang satu per satu.
+ *      untuk seluruh UP3. Di atas 15 tiang satu per satu, dan rute kasarnya
+ *      berhenti: yang satu menggantikan yang lain, tidak menumpuk.
  *   2. Kotak pandang menentukan BERAPA BANYAK. Yang di luar layar tidak diminta.
  *   3. Kueri ditunda sampai peta berhenti bergerak, supaya satu geseran tidak
  *      menembakkan sepuluh permintaan yang sembilan di antaranya sudah basi.
@@ -100,11 +101,14 @@ export function usePetaIsi(
 
     setSibuk(true);
     try {
-      // ── Rute penyulang: selalu, di zoom berapa pun ──────────────────────
-      // Murah (satu baris per penyulang) dan justru dia yang membuat orang
-      // paham di mana dirinya sebelum tiangnya muncul.
+      // ── Rute penyulang: HANYA selama tiangnya belum digambar ────────────
+      // Rute ini garis KASAR — `segarkan_rute_penyulang` membuang tujuh dari
+      // delapan tiang. Gunanya menahan tempat di zoom jauh, waktu tiang satu
+      // per satu belum dikirim. Begitu tiang aslinya muncul, rute harus
+      // minggir: dua garis untuk satu jaringan terbaca sebagai dua jaringan
+      // yang tidak sinkron, padahal yang kasar memang tidak dimaksudkan akurat.
       let r: RuteBaris[] = [];
-      if (jtm.length > 0) {
+      if (jtm.length > 0 && kotak.zoom < ZOOM_TIANG) {
         const { data } = await supabaseBrowser
           .from("penyulang_rute")
           .select("penyulang,ulp,bentang")
