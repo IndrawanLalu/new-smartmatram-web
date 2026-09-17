@@ -9,6 +9,8 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIsi";
 import { WARNA } from "../_ui";
+import { htmlPenandaJtm } from "@/lib/penandaJtm";
+import type { Penanda } from "../_hooks/usePenandaJtm";
 
 /**
  * Peta jaringan.
@@ -32,12 +34,14 @@ interface Props {
   gardu: GarduPeta[];
   fokus: [[number, number], [number, number]] | null;
   onKotak: (k: Kotak) => void;
+  /** Kode penanda → bentuk & warnanya, dari tab Pengaturan JTM. */
+  penanda: Map<string, Penanda>;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
 // yang digambar di sini TIDAK BISA berbeda — di situlah panel berhenti jadi
 // daftar dan mulai jadi legenda.
-const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU, penanda: WARNA_PENANDA } = WARNA;
+const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU } = WARNA;
 
 /**
  * Ikon rumah untuk gardu — bentuk yang sama dengan `/admin/peta-gardu`, supaya
@@ -49,6 +53,7 @@ const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU, pe
  * digambar ulang. Tambatannya di bawah-tengah, jadi kaki rumahnya yang duduk
  * di koordinat, bukan titik tengahnya.
  */
+const SISI_PENANDA = 16;
 const UKURAN_GARDU = 16;
 const IKON_GARDU = L.divIcon({
   className: "",
@@ -61,7 +66,7 @@ const IKON_GARDU = L.divIcon({
   </svg>`,
 });
 
-export default function PetaInner({ rute, tiang, gardu, fokus, onKotak }: Props) {
+export default function PetaInner({ rute, tiang, gardu, fokus, onKotak, penanda }: Props) {
   return (
     <MapContainer
       center={[-8.58, 116.1]}
@@ -92,7 +97,7 @@ export default function PetaInner({ rute, tiang, gardu, fokus, onKotak }: Props)
       <Pemantau onKotak={onKotak} />
       <Fokus batas={fokus} />
 
-      <Isi rute={rute} tiang={tiang} gardu={gardu} />
+      <Isi rute={rute} tiang={tiang} gardu={gardu} penanda={penanda} />
     </MapContainer>
   );
 }
@@ -138,11 +143,12 @@ function Fokus({ batas }: { batas: [[number, number], [number, number]] | null }
 /** Dipisah dan di-`memo` supaya menggeser peta tanpa perubahan data tidak
  *  menggambar ulang ribuan objek. */
 const Isi = memo(function Isi({
-  rute, tiang, gardu,
+  rute, tiang, gardu, penanda,
 }: {
   rute: RuteBaris[];
   tiang: TiangPeta[];
   gardu: GarduPeta[];
+  penanda: Map<string, Penanda>;
 }) {
   const garisRute = useMemo(
     () =>
@@ -158,6 +164,29 @@ const Isi = memo(function Isi({
       ),
     [rute],
   );
+
+  /** Ikon dibuat sekali per (penanda, tiang) dan tidak disusun ulang tiap peta
+   *  digeser. Tiang yang penandanya tidak dikenal jatuh ke lingkaran biasa
+   *  daripada hilang dari peta. */
+  const { biasa, bertanda } = useMemo(() => {
+    const b: TiangPeta[] = [];
+    const p: { t: TiangPeta; ikon: L.DivIcon; label: string }[] = [];
+    for (const t of tiang) {
+      const ref = t.penanda ? penanda.get(t.penanda) : undefined;
+      if (!ref) { b.push(t); continue; }
+      p.push({
+        t,
+        label: ref.label,
+        ikon: L.divIcon({
+          className: "",
+          html: htmlPenandaJtm(ref.bentuk, ref.warna, SISI_PENANDA),
+          iconSize: [SISI_PENANDA + 4, SISI_PENANDA + 4],
+          iconAnchor: [(SISI_PENANDA + 4) / 2, (SISI_PENANDA + 4) / 2],
+        }),
+      });
+    }
+    return { biasa: b, bertanda: p };
+  }, [tiang, penanda]);
 
   return (
     <>
@@ -197,19 +226,20 @@ const Isi = memo(function Isi({
         ) : null,
       )}
 
-      {tiang.map((t) => (
+      {/* Tiang bertanda memakai bentuk dari tab Pengaturan — gardu segitiga,
+          FCO belah ketupat, dan seterusnya. Sebelumnya semuanya bulat kuning,
+          sehingga gardu dan FCO tak terbedakan padahal bentuknya sudah diatur.
+          Hanya yang bertanda yang jadi elemen DOM; jumlahnya sedikit, dan
+          selebihnya tetap lingkaran di kanvas. */}
+      {biasa.map((t) => (
         <CircleMarker
           key={t.id}
           center={[t.lat, t.lng]}
-          radius={t.penanda ? 7 : t.percabangan ? 6 : 5}
+          radius={t.percabangan ? 6 : 5}
           pathOptions={{
             color: "#fff",
             weight: 1,
-            fillColor: t.penanda
-              ? WARNA_PENANDA
-              : t.jaringan === "jtr"
-                ? WARNA_JTR
-                : WARNA_JTM,
+            fillColor: t.jaringan === "jtr" ? WARNA_JTR : WARNA_JTM,
             fillOpacity: 1,
           }}
         >
@@ -218,6 +248,17 @@ const Isi = memo(function Isi({
             <span className="block text-[10px]">{t.kelompok}</span>
           </Tooltip>
         </CircleMarker>
+      ))}
+
+      {bertanda.map(({ t, ikon, label }) => (
+        <Marker key={t.id} position={[t.lat, t.lng]} icon={ikon}>
+          <Tooltip direction="top" offset={[0, -10]} sticky>
+            <span className="text-[11px] font-semibold">{t.kode}</span>
+            <span className="block text-[10px]">
+              {label} · {t.kelompok}
+            </span>
+          </Tooltip>
+        </Marker>
       ))}
 
       {gardu.map((g) => (

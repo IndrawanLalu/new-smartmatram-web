@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import { usePetaDaftar, type Jaringan } from "../_hooks/usePetaDaftar";
 import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type Kotak } from "../_hooks/usePetaIsi";
+import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
 
@@ -42,6 +43,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [panel, setPanel] = useState(true);
 
   const { perFolder, semuaLapisan, loading, error } = usePetaDaftar(ulp || null);
+  const penanda = usePenandaJtm();
 
   const pilihan = useMemo(
     () =>
@@ -124,7 +126,10 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
       )}
 
       <div className="flex-1 min-w-0 relative">
-        <PetaInner rute={rute} tiang={tiang} gardu={gardu} fokus={fokus} onKotak={setKotak} />
+        <PetaInner
+          rute={rute} tiang={tiang} gardu={gardu}
+          fokus={fokus} onKotak={setKotak} penanda={penanda}
+        />
 
         {/* ── Bilah keadaan ──────────────────────────────────────────────────
             Penghitung objek berdiri di sini SEJAK AWAL, bukan ditambahkan

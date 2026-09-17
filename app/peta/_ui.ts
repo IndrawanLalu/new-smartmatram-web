@@ -28,7 +28,6 @@ export const WARNA = {
   // KONDISI, bukan jenisnya, jadi tidak ada warna gardu baku yang dilanggar.
   gardu: "#EF4444",
   rute: "#F59E0B",
-  penanda: "#F59E0B",
 } as const;
 
 export const INPUT =

@@ -8,6 +8,7 @@ import L, { type LatLngBoundsExpression, type LeafletMouseEvent } from "leaflet"
 import "leaflet/dist/leaflet.css";
 import type { TiangJtm } from "../_hooks/useTiangJtm";
 import type { RefBaris } from "../_hooks/useJtmRef";
+import { htmlPenandaJtm } from "@/lib/penandaJtm";
 
 interface Props {
   tiang: TiangJtm[];
@@ -20,35 +21,19 @@ interface Props {
   penanda: Map<string, RefBaris>;
 }
 
-/**
- * Ikon tiang bertanda — gardu, LBS, recloser.
- *
- * Digambar sebagai HTML, bukan berkas gambar: menambah penanda baru di halaman
- * Pengaturan langsung punya ikon, tanpa seorang pun mengunggah apa pun. Bentuk
- * berbeda, bukan cuma warna berbeda — peta ini sering dilihat di layar kecil
- * dan sambil terburu-buru, dan bentuk masih terbaca saat warna sudah tidak.
- */
+/** Gambarannya ada di `lib/penandaJtm` — dipakai bersama halaman `/admin/peta`,
+ *  supaya gardu dan FCO tidak pernah tampil berbeda di dua peta. */
 function ikonPenanda(p: RefBaris, dipilih: boolean) {
-  const w = dipilih ? "#F59E0B" : (p.warna ?? "#1D3573");
   const sisi = 16;
-  const bayang = "filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))";
-  const isi =
-    p.bentuk === "segitiga"
-      ? `<div style="width:0;height:0;border-left:${sisi / 2}px solid transparent;border-right:${sisi / 2}px solid transparent;border-bottom:${sisi}px solid ${w};${bayang}"></div>`
-      : `<div style="width:${sisi}px;height:${sisi}px;background:${w};border:2px solid #fff;${bayang};${
-          p.bentuk === "bulat"
-            ? "border-radius:50%"
-            : p.bentuk === "belah"
-              ? "transform:rotate(45deg)"
-              : "border-radius:2px"
-        }"></div>`;
   return L.divIcon({
-    html: isi,
+    html: htmlPenandaJtm(p.bentuk, dipilih ? DIPILIH_PENANDA : p.warna, sisi),
     className: "",
     iconSize: [sisi + 4, sisi + 4],
     iconAnchor: [(sisi + 4) / 2, (sisi + 4) / 2],
   });
 }
+
+const DIPILIH_PENANDA = "#F59E0B";
 
 /** Nama tiang = satu elemen DOM yang ikut digambar ulang tiap peta digeser.
  *  Ratusan masih lancar, ribuan membuat peta tersendat saat sedang dipakai. */
