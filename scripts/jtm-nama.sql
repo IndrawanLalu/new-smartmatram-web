@@ -641,7 +641,16 @@ BEGIN
     END IF;
 
     huruf := COALESCE(public.arah_huruf(arah_baru), 'K');
-    prefiks := pokok_kode || CASE WHEN ada_anak THEN '_' ELSE '' END || huruf;
+
+    -- Garis bawah = PERCABANGAN; tanpa garis bawah = jalur yang sama membelok.
+    -- Sakelar regu ikut menentukan, bukan cuma `ada_anak`: kalau cabangnya
+    -- disusuri LEBIH DULU, induknya belum punya anak apa pun pada saat tiang
+    -- cabang pertama lahir — dan tanpa ini namanya jadi belokan, padahal regu
+    -- sudah menyatakan tegas bahwa jalurnya pecah di situ.
+    prefiks := pokok_kode
+               || CASE WHEN ada_anak OR COALESCE(NEW.cabang_baru, false)
+                       THEN '_' ELSE '' END
+               || huruf;
 
     -- Huruf yang sudah terpakai di titik cabang yang sama maju ke huruf
     -- berikutnya; lanjutan deret cabang lama tidak lewat sini, dia lewat jalur
