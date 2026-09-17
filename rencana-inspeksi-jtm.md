@@ -668,7 +668,41 @@ Penjaga induk dilonggarkan: syaratnya bukan lagi "dilewati penyulang pemilik
 anaknya" melainkan **"anak dan induk sama-sama dilewati setidaknya satu penyulang
 yang sama"** — karena itulah arti sebuah bentang.
 
-### 12.1 Enam belas SQL, dijalankan berurutan di Supabase
+### 12.0h Percabangan ditandai di tiangnya (17 September 2026)
+
+Pemilik pekerjaan menunjuk kelemahan aturan JTR: belokan dan percabangan
+sama-sama disimpulkan dari sudut, jadi dua cabang searah dari tiang yang sama
+berbagi satu deret huruf. Usulnya: **tandai tiangnya sebagai percabangan**,
+lalu apa pun yang menyambung ke sana mendapat garis bawah.
+
+Diuji dulu sebelum disetujui. Hasilnya: **tidak ada nama kembar** di JTM (ada
+penjaga yang memajukan huruf), tapi ditemukan cacat yang lebih buruk dan belum
+disebut siapa pun — aturan "sisipan" salah tembak. Tiga anak searah dari tiang
+yang sama menghasilkan `003B1`, `003a`, `003b`: dua terakhir dinamai seolah
+disisipkan DI ANTARA induk dan anaknya, padahal mereka bersaudara.
+
+| | |
+|---|---|
+| Kolom | `tiang.percabangan` |
+| Menyala otomatis | begitu tiang punya anak kedua |
+| Ditandai tegas | sakelar di mobile (menandai INDUKNYA), tombol di tab Tiang web, **dan bisa disusulkan kapan saja** |
+| Aturan nama | anak dari tiang percabangan mendapat garis bawah — urutan penyusuran berhenti berpengaruh |
+| Dimatikan | ditolak selama tiang itu memang masih punya ≥2 anak |
+| Sisipan | kini menuntut tiangnya benar-benar LEBIH DEKAT ke induk daripada anak yang sudah ada |
+
+**Keputusan belokan** (ditanyakan, dijawab pemilik pekerjaan): belokan >45° tetap
+mendapat huruf **tanpa** garis bawah, seperti JTR. Huruf tetap ditambatkan ke
+nomor pokok terdekat — `MTR-003B2` yang membelok jadi `MTR-003C1`, bukan
+`MTR-003B2C1`. Penambat itu yang mencegah nama 62 huruf seperti pada impor 250
+tiang GUNUNG SARI.
+
+Menandai percabangan **tidak menuntut petugas berdiri di bawah tiangnya** —
+percabangan terlihat dari mana pun kabelnya kelihatan, dan sering baru disadari
+sesudah regu berjalan beberapa tiang. Yang penting dia bisa kembali dan
+membetulkannya tanpa mengulang apa pun; berguna juga saat cabang baru dibangun
+bertahun-tahun kemudian.
+
+### 12.1 Tujuh belas SQL, dijalankan berurutan di Supabase
 
 **Kesebelasnya sudah terpasang, diperiksa langsung lewat PostgREST 15 September 2026.**
 Urutan di bawah tetap wajib kalau perlu dipasang ulang di lingkungan lain, dan semuanya
@@ -691,7 +725,11 @@ idempoten — ragu sudah terjalan atau belum, jalankan ulang saja.
 14. scripts/jtm-gabung.sql           satukan penyapuan yang terlanjur pecah
 15. scripts/jtm-master.sql           jawaban mengoreksi master + item ukuran konduktor
 16. scripts/jtm-tumpang.sql          menumpang atas kehendak regu + induk lintas penyulang
+17. scripts/jtm-percabangan.sql      penanda percabangan di tiang + perbaikan sisipan
 ```
+
+⚠ Nomor 13 (`jtm-nama.sql`) **diubah lagi** — kolom `tiang.percabangan` dan
+aturan garis bawahnya ada di sana. Jalankan ulang sebelum nomor 17.
 
 ⚠ **Nomor 12 MENGGANTIKAN tiga fungsi** yang lebih dulu didefinisikan di berkas
 lain: `mulai_penyapuan_jtm` & `selesaikan_penyapuan_jtm` (dari

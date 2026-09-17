@@ -36,7 +36,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   // melihat saringan ini sama sekali.
   // `namaDi` tidak dipakai di sini: dropdown induk sudah menyebut nama versi
   // penyulangnya sendiri lewat `namaPerPenyulang`.
-  const { baris, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang } =
+  const { baris, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang, tandaiPercabangan } =
     useTiangDaftar(
     semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
@@ -206,15 +206,29 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       oleh={oleh}
                       onSimpan={ubahKode}
                     />
-                    {b.jumlahAnak > 1 && (
-                      <span
-                        className="inline-flex items-center gap-0.5 text-[10px] text-navy-600 ml-1.5"
-                        title={`${b.jumlahAnak} tiang menyambung ke sini`}
-                      >
-                        <GitBranch size={10} />
-                        {b.jumlahAnak}
-                      </span>
-                    )}
+                    {/* Percabangan ditandai di TIANGNYA, jadi anak yang lahir
+                        belakangan tetap dapat garis bawah apa pun urutan regu
+                        menyusurinya. Menyala sendiri saat tiang punya anak
+                        kedua; di sini untuk percabangan yang cabangnya belum
+                        sempat dititik. */}
+                    <button
+                      onClick={() =>
+                        void tandaiPercabangan(b.id, !b.percabangan, oleh)
+                      }
+                      className={`inline-flex items-center gap-0.5 text-[10px] rounded px-1 py-0.5 ml-1.5 border transition-colors ${
+                        b.percabangan
+                          ? "text-navy-700 bg-navy-50 border-navy-200"
+                          : "text-ink-muted border-transparent hover:border-line"
+                      }`}
+                      title={
+                        b.percabangan
+                          ? "Tiang percabangan — ketuk untuk membatalkan"
+                          : "Tandai sebagai tiang percabangan"
+                      }
+                    >
+                      <GitBranch size={10} />
+                      {b.jumlahAnak > 1 ? b.jumlahAnak : ""}
+                    </button>
                     {b.nomorLama && (
                       <span className="block text-[10px] text-ink-muted">
                         lama: {b.nomorLama}

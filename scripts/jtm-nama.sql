@@ -22,6 +22,26 @@
 -- Aman dijalankan berulang.
 
 
+-- ── 0. Tiang percabangan ─────────────────────────────────────────────────────
+-- PERCABANGAN ITU SIFAT TIANGNYA, bukan kesimpulan dari urutan penyusuran.
+--
+-- Sebelumnya garis bawah ditentukan oleh "apakah induknya sudah punya anak
+-- SAAT tiang ini lahir". Akibatnya nama tiang yang sama bisa berbeda tergantung
+-- regu menyusuri cabangnya lebih dulu atau belakangan — padahal yang ada di
+-- lapangan tidak berubah: ada tap-off di tiang itu, titik.
+--
+-- Ditandai di tiangnya, sekali, dan berlaku untuk semua anaknya.
+
+ALTER TABLE public.tiang
+  ADD COLUMN IF NOT EXISTS percabangan BOOLEAN NOT NULL DEFAULT false;
+
+COMMENT ON COLUMN public.tiang.percabangan IS
+  'Di tiang ini jaringan bercabang. Anak dari tiang percabangan mendapat garis bawah pada namanya. Dinyalakan otomatis begitu tiang punya anak kedua, atau ditandai tegas regu/admin.';
+
+CREATE INDEX IF NOT EXISTS tiang_percabangan_idx
+  ON public.tiang (percabangan) WHERE percabangan;
+
+
 -- ── 1. Nama tiang per penyulang ──────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS public.tiang_kode_penyulang (
@@ -516,6 +536,7 @@ DECLARE
   l_lat      DOUBLE PRECISION;
   l_lng      DOUBLE PRECISION;
   l_induk    UUID;
+  l_cabang   BOOLEAN := false;
   induk_kode TEXT;
   hulu_lat   DOUBLE PRECISION;
   hulu_lng   DOUBLE PRECISION;
@@ -551,8 +572,8 @@ BEGIN
   -- Leluhur terdekat yang bernama DI PENYULANG INI.
   naik := NEW.induk_id;
   WHILE naik IS NOT NULL AND n < 500 LOOP
-    SELECT k.kode, t.id, t.lat, t.lng, t.induk_id
-      INTO l_kode, l_id, l_lat, l_lng, l_induk
+    SELECT k.kode, t.id, t.lat, t.lng, t.induk_id, t.percabangan
+      INTO l_kode, l_id, l_lat, l_lng, l_induk, l_cabang
     FROM public.tiang t
     JOIN public.tiang_kode_penyulang k
       ON k.tiang_id = t.id AND upper(k.penyulang) = upper(NEW.penyulang)
@@ -596,7 +617,13 @@ BEGIN
     IF arah_anak IS NOT NULL THEN
       selisih := abs(arah_baru - arah_anak);
       IF selisih > 180 THEN selisih := 360 - selisih; END IF;
-      IF selisih <= 45 THEN
+      -- ARAH SAJA TIDAK CUKUP. Dua tiang bersaudara yang sama-sama menuju timur
+      -- juga lolos uji arah, dan dulu ikut dinamai 'a', 'b' — terbaca sebagai
+      -- sisipan padahal mereka saudara. Yang benar-benar berdiri DI ANTARA
+      -- induk dan anaknya pasti lebih dekat ke induk daripada anak itu.
+      IF selisih <= 45
+         AND public.jarak_meter(l_lat, l_lng, NEW.lat, NEW.lng)
+             < public.jarak_meter(l_lat, l_lng, anak_lat, anak_lng) THEN
         SELECT COALESCE(max(substring(kode from '([a-z])$')), '') INTO huruf
         FROM public.tiang_kode_penyulang
         WHERE upper(penyulang) = upper(NEW.penyulang)
@@ -647,8 +674,12 @@ BEGIN
     -- disusuri LEBIH DULU, induknya belum punya anak apa pun pada saat tiang
     -- cabang pertama lahir — dan tanpa ini namanya jadi belokan, padahal regu
     -- sudah menyatakan tegas bahwa jalurnya pecah di situ.
+    -- GARIS BAWAH = PERCABANGAN, dan itu sifat tiang induknya. `ada_anak`
+    -- tetap ikut supaya percabangan yang belum sempat ditandai tetap terbaca
+    -- benar; penandanya sendiri dinyalakan otomatis sesudah ini (lihat
+    -- `jtm-percabangan.sql`).
     prefiks := pokok_kode
-               || CASE WHEN ada_anak OR COALESCE(NEW.cabang_baru, false)
+               || CASE WHEN l_cabang OR ada_anak OR COALESCE(NEW.cabang_baru, false)
                        THEN '_' ELSE '' END
                || huruf;
 

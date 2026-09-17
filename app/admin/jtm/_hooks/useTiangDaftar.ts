@@ -30,6 +30,10 @@ export interface TiangBaris {
   konstruksi: string | null;
   nomorLama: string | null;
   penanda: string | null;
+  /** Di tiang ini jaringan bercabang. Anak dari tiang percabangan mendapat
+   *  garis bawah pada namanya — dan itu sifat tiangnya, bukan kesimpulan dari
+   *  urutan regu menyusuri. */
+  percabangan: boolean;
   indukId: string | null;
   indukKode: string | null;
   jumlahAnak: number;
@@ -61,7 +65,7 @@ export function useTiangDaftar(ulp: string | null) {
         const q = supabaseBrowser
           .from("tiang_jtm_daftar")
           .select(
-            "id,kode,semua_kode,jumlah_nama,penyulang,ulp,lat,lng,jenis,konstruksi,nomor_lama,penanda,induk_id,induk_kode,jumlah_anak,segmen,jumlah_segmen,dikonfirmasi_at,terakhir_dinilai,sumber",
+            "id,kode,semua_kode,jumlah_nama,penyulang,ulp,lat,lng,jenis,konstruksi,nomor_lama,penanda,percabangan,induk_id,induk_kode,jumlah_anak,segmen,jumlah_segmen,dikonfirmasi_at,terakhir_dinilai,sumber",
           )
           .order("penyulang")
           .order("kode");
@@ -103,6 +107,7 @@ export function useTiangDaftar(ulp: string | null) {
           konstruksi: (r.konstruksi as string) ?? null,
           nomorLama: (r.nomor_lama as string) ?? null,
           penanda: (r.penanda as string) ?? null,
+          percabangan: !!r.percabangan,
           indukId: (r.induk_id as string) ?? null,
           indukKode: (r.induk_kode as string) ?? null,
           jumlahAnak: Number(r.jumlah_anak ?? 0),
@@ -117,7 +122,7 @@ export function useTiangDaftar(ulp: string | null) {
       const pesan = e instanceof Error ? e.message : String(e);
       toast.error(
         pesan.includes("tiang_jtm_daftar")
-          ? "View tiang_jtm_daftar belum lengkap — jalankan scripts/jtm-nama.sql di Supabase."
+          ? "View tiang_jtm_daftar belum lengkap — jalankan scripts/jtm-percabangan.sql di Supabase."
           : pesan,
       );
       setBaris([]);
@@ -243,6 +248,27 @@ export function useTiangDaftar(ulp: string | null) {
     [toast, muat],
   );
 
+  const tandaiPercabangan = useCallback(
+    async (tiangId: string, nyala: boolean, oleh: string) => {
+      const { data, error } = await supabaseBrowser.rpc("tandai_percabangan_jtm", {
+        p_tiang_id: tiangId,
+        p_nyala: nyala,
+        p_oleh: oleh,
+      });
+      if (error) {
+        // Penolakan "tiang ini memang bercabang" sudah menjelaskan sendiri.
+        toast.error(error.message);
+        return false;
+      }
+      const h = data as { kode: string; percabangan: boolean };
+      setBaris((s2) =>
+        s2.map((b) => (b.id === tiangId ? { ...b, percabangan: h.percabangan } : b)),
+      );
+      return true;
+    },
+    [toast],
+  );
+
   return {
     baris,
     penyulangList,
@@ -255,5 +281,6 @@ export function useTiangDaftar(ulp: string | null) {
     ubahInduk,
     ubahKode,
     nomoriUlang,
+    tandaiPercabangan,
   };
 }
