@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { FileWarning, Loader2, Send, TriangleAlert, Users } from "lucide-react";
 import { BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
-import type { Regu, SegmenPilihan } from "../_hooks/useWoPerabasan";
+import type { Regu, SegmenPilihan, WoRingkas } from "../_hooks/useWoPerabasan";
 
 /**
  * Menerbitkan WO perabasan.
@@ -29,12 +29,16 @@ export default function TerbitkanWo({
   segmen,
   segmenTerikat,
   regu,
+  woTerbuka,
   onTerbitkan,
+  onTambah,
 }: {
   user: CurrentUser;
   segmen: SegmenPilihan[];
   segmenTerikat: Set<string>;
   regu: Regu[];
+  /** WO yang masih berstatus Terbit — satu-satunya yang boleh ditambah. */
+  woTerbuka: WoRingkas[];
   onTerbitkan: (v: {
     ulp: string;
     nama: string;
@@ -43,6 +47,12 @@ export default function TerbitkanWo({
     regu: Record<string, string>;
     tglWo: string;
   }) => Promise<{ item: number; tanpa_regu: number; dilewati: { segmen: string; sebab: string }[] } | null>;
+  onTambah: (v: {
+    woId: string;
+    segmen: string[];
+    regu: Record<string, string>;
+    targetKm: number | null;
+  }) => Promise<{ item: number } | null>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [ulp, setUlp] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -54,6 +64,16 @@ export default function TerbitkanWo({
   const [bagi, setBagi] = useState<Record<string, string>>({});
   const [saringPenyulang, setSaringPenyulang] = useState("");
   const [sibuk, setSibuk] = useState(false);
+
+  /**
+   * "baru" = terbitkan WO sendiri · "tambah" = sisipkan ke WO yang sudah ada.
+   *
+   * Yang kedua ada karena memaksa membuat WO kedua memecah capaian satu bulan
+   * jadi dua angka yang harus dijumlah orang — dan yang harus dijumlah orang
+   * cepat atau lambat salah dijumlah.
+   */
+  const [mode, setMode] = useState<"baru" | "tambah">("baru");
+  const [woTujuan, setWoTujuan] = useState("");
 
   const tersedia = useMemo(
     () =>
@@ -71,6 +91,11 @@ export default function TerbitkanWo({
   );
 
   const reguUlp = useMemo(() => regu.filter((g) => g.ulp === ulp), [regu, ulp]);
+  const woUlp = useMemo(() => woTerbuka.filter((w) => w.ulp === ulp), [woTerbuka, ulp]);
+  const woDipilih = useMemo(
+    () => woUlp.find((w) => w.wo_id === woTujuan) ?? null,
+    [woUlp, woTujuan],
+  );
 
   const daftarPenyulang = useMemo(
     () => [...new Set(segmen.filter((s) => !ulp || s.ulp === ulp).map((s) => s.penyulang))].sort(),
@@ -99,20 +124,38 @@ export default function TerbitkanWo({
   }, [dipilih, bagi]);
 
   const targetNum = Number(target.replace(",", ".")) || 0;
-  const siap = !!ulp && nama.trim().length > 2 && targetNum > 0 && dipilih.length > 0;
+  const siap =
+    !!ulp &&
+    dipilih.length > 0 &&
+    (mode === "baru" ? nama.trim().length > 2 && targetNum > 0 : !!woTujuan);
+
+  const petaRegu = () =>
+    Object.fromEntries(
+      dipilih.filter((s) => bagi[s.segmen_id]).map((s) => [s.segmen_id, bagi[s.segmen_id]]),
+    );
 
   const kirim = async () => {
     setSibuk(true);
-    const h = await onTerbitkan({
-      ulp,
-      nama: nama.trim(),
-      targetKm: targetNum,
-      segmen: dipilih.map((s) => s.segmen_id),
-      regu: Object.fromEntries(
-        dipilih.filter((s) => bagi[s.segmen_id]).map((s) => [s.segmen_id, bagi[s.segmen_id]]),
-      ),
-      tglWo: tgl,
-    });
+    const h =
+      mode === "baru"
+        ? await onTerbitkan({
+            ulp,
+            nama: nama.trim(),
+            targetKm: targetNum,
+            segmen: dipilih.map((s) => s.segmen_id),
+            regu: petaRegu(),
+            tglWo: tgl,
+          })
+        : await onTambah({
+            woId: woTujuan,
+            segmen: dipilih.map((s) => s.segmen_id),
+            regu: petaRegu(),
+            // Kosong = biarkan targetnya apa adanya. Menaikkannya opsional
+            // supaya WO bertarget 2 km yang diisi 12 km tidak menampilkan
+            // capaian 600% — angka yang benar secara hitungan tapi tidak
+            // berarti apa-apa bagi yang membacanya.
+            targetKm: targetNum > 0 ? targetNum : null,
+          });
     setSibuk(false);
     if (h) {
       setPilih(new Set());
@@ -125,12 +168,35 @@ export default function TerbitkanWo({
   return (
     <div className="space-y-4">
       <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>Terbitkan WO perabasan</p>
+        <p className={EYEBROW}>Susun WO perabasan</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
           Satu WO boleh memuat segmen dari beberapa penyulang, dan boleh terbit beberapa kali
           sebulan. Ukurannya <b>total kilometer</b> — bukan jumlah segmen, karena ruas 7 km dan
           ruas 0,3 km bukan pekerjaan yang sebanding.
         </p>
+
+        <div className="mt-3 flex flex-wrap gap-2">
+          {(
+            [
+              ["baru", "Buat WO baru"],
+              ["tambah", "Tambah ke WO yang sudah ada"],
+            ] as const
+          ).map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setMode(k)}
+              disabled={k === "tambah" && woUlp.length === 0}
+              className={`${CHIP} ${mode === k ? CHIP_ON : CHIP_OFF} disabled:opacity-40`}
+              title={
+                k === "tambah" && woUlp.length === 0
+                  ? "Belum ada WO berjalan di ULP ini"
+                  : undefined
+              }
+            >
+              {label}
+            </button>
+          ))}
+        </div>
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div>
@@ -152,34 +218,91 @@ export default function TerbitkanWo({
               ))}
             </select>
           </div>
-          <div>
-            <label className={EYEBROW}>Nama WO</label>
-            <input
-              value={nama}
-              onChange={(e) => setNama(e.target.value)}
-              placeholder="Perabasan Oktober 2026"
-              className={`${FIELD} mt-1 block w-[250px]`}
-            />
-          </div>
-          <div>
-            <label className={EYEBROW}>Target (km)</label>
-            <input
-              value={target}
-              onChange={(e) => setTarget(e.target.value)}
-              placeholder="25"
-              className={`${FIELD} mt-1 block w-[110px] text-right font-mono`}
-            />
-          </div>
-          <div>
-            <label className={EYEBROW}>Tanggal WO</label>
-            <input
-              type="date"
-              value={tgl}
-              onChange={(e) => setTgl(e.target.value)}
-              className={`${FIELD} mt-1 block w-[160px]`}
-            />
-          </div>
+          {mode === "baru" ? (
+            <>
+              <div>
+                <label className={EYEBROW}>Nama WO</label>
+                <input
+                  value={nama}
+                  onChange={(e) => setNama(e.target.value)}
+                  placeholder="Perabasan Oktober 2026"
+                  className={`${FIELD} mt-1 block w-[250px]`}
+                />
+              </div>
+              <div>
+                <label className={EYEBROW}>Target (km)</label>
+                <input
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder="25"
+                  className={`${FIELD} mt-1 block w-[110px] text-right font-mono`}
+                />
+              </div>
+              <div>
+                <label className={EYEBROW}>Tanggal WO</label>
+                <input
+                  type="date"
+                  value={tgl}
+                  onChange={(e) => setTgl(e.target.value)}
+                  className={`${FIELD} mt-1 block w-[160px]`}
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label className={EYEBROW}>WO tujuan</label>
+                <select
+                  value={woTujuan}
+                  onChange={(e) => setWoTujuan(e.target.value)}
+                  className={`${FIELD} mt-1 block w-[280px]`}
+                >
+                  <option value="">— pilih WO —</option>
+                  {woUlp.map((w) => (
+                    <option key={w.wo_id} value={w.wo_id}>
+                      {w.nama} · {w.tgl_wo} · {w.item} segmen
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className={EYEBROW}>Ubah target (km)</label>
+                <input
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                  placeholder={woDipilih ? woDipilih.target_km.toFixed(2) : "opsional"}
+                  className={`${FIELD} mt-1 block w-[130px] text-right font-mono`}
+                />
+              </div>
+            </>
+          )}
         </div>
+
+        {/* Isi WO tujuan diperlihatkan apa adanya. Menambah segmen ke WO yang
+            sudah penuh tanpa melihat isinya adalah cara paling mudah membuat
+            targetnya jadi angka yang tidak berarti apa-apa. */}
+        {mode === "tambah" && woDipilih && (
+          <p className="text-xs text-ink-soft mt-3">
+            <b className="text-ink">{woDipilih.nama}</b> sekarang berisi {woDipilih.item} segmen ·{" "}
+            rencana <b className="text-ink tabular-nums">{woDipilih.rencana_km.toFixed(2)}</b> km
+            dari target {woDipilih.target_km.toFixed(2)} km
+            {totalKm > 0 && (
+              <>
+                {" → jadi "}
+                <b className="text-ink tabular-nums">
+                  {(woDipilih.rencana_km + totalKm).toFixed(2)}
+                </b>{" "}
+                km
+                {targetNum === 0 && woDipilih.rencana_km + totalKm > woDipilih.target_km && (
+                  <span className="text-amber-700">
+                    {" "}
+                    — melewati target; isi “Ubah target” kalau memang naik
+                  </span>
+                )}
+              </>
+            )}
+          </p>
+        )}
       </div>
 
       {/* Angka berjalan, menempel di atas daftar supaya terbaca saat mencentang
@@ -222,7 +345,7 @@ export default function TerbitkanWo({
             className={`${BTN_PRIMARY} ml-auto`}
           >
             {sibuk ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-            Terbitkan WO
+            {mode === "baru" ? "Terbitkan WO" : "Tambahkan ke WO"}
           </button>
         </div>
       </div>

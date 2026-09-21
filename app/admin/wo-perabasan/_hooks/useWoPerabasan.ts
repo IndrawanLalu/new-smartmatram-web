@@ -180,6 +180,40 @@ export function useWoPerabasan() {
     [toast, muat],
   );
 
+  /**
+   * Menambah segmen ke WO yang SUDAH terbit.
+   *
+   * Aturan per segmennya sama persis dengan penerbitan — database memakai
+   * fungsi yang sama untuk keduanya, jadi segmen yang ditolak saat terbit
+   * tidak bisa menyelinap masuk lewat pintu ini.
+   */
+  const tambahKeWo = useCallback(
+    async (v: {
+      woId: string;
+      segmen: string[];
+      regu: Record<string, string>;
+      targetKm: number | null;
+      oleh?: string;
+    }) => {
+      const { data, error } = await supabaseBrowser.rpc("tambah_wo_perabasan", {
+        p_wo_id: v.woId,
+        p_segmen: v.segmen,
+        p_regu: v.regu,
+        p_target_km: v.targetKm,
+        p_oleh: v.oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return null;
+      }
+      const h = data as unknown as { nama: string; item: number; tanpa_regu: number };
+      toast.success(`${h.item} segmen ditambahkan ke ${h.nama}.`);
+      await muat();
+      return h;
+    },
+    [toast, muat],
+  );
+
   const putuskan = useCallback(
     async (itemId: string, terima: boolean, catatan: string, oleh?: string) => {
       const { error } = await supabaseBrowser.rpc("putuskan_perabasan_segmen", {
@@ -279,7 +313,7 @@ export function useWoPerabasan() {
 
   return {
     wo, item, segmen, realisasi, regu, loading, muat,
-    terbitkan, putuskan, batalkanItem, tugaskanRegu,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu,
     segmenTerikat, menunggu, tanpaRegu,
   };
 }

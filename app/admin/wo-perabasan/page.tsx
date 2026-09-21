@@ -19,7 +19,7 @@ import Persetujuan from "./_components/Persetujuan";
 
 const TABS = [
   { key: "daftar", label: "WO Berjalan", icon: ClipboardList },
-  { key: "terbit", label: "Terbitkan WO", icon: Send },
+  { key: "terbit", label: "Susun WO", icon: Send },
   { key: "setuju", label: "Persetujuan", icon: BadgeCheck },
 ] as const;
 
@@ -30,7 +30,7 @@ export default function WoPerabasanPage() {
   const [tab, setTab] = useState<TabKey>("daftar");
   const {
     wo, item, segmen, realisasi, regu, loading,
-    terbitkan, putuskan, batalkanItem, tugaskanRegu,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu,
     segmenTerikat, menunggu, tanpaRegu,
   } = useWoPerabasan();
 
@@ -92,7 +92,9 @@ export default function WoPerabasanPage() {
           segmen={segmen}
           segmenTerikat={segmenTerikat}
           regu={regu}
+          woTerbuka={wo.filter((w) => w.status === "Terbit")}
           onTerbitkan={(v) => terbitkan({ ...v, oleh })}
+          onTambah={(v) => tambahKeWo({ ...v, oleh })}
         />
       )}
       {tab === "setuju" && (
