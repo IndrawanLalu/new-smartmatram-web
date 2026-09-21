@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Save, Plus, Trash2 } from "lucide-react";
+import { X, Save, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type PengukuranGardu } from "../_hooks/usePengukuranGardu";
 
@@ -26,6 +26,24 @@ interface Props {
 const INPUT = "border border-line rounded-lg px-2.5 py-1.5 text-sm text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-1 focus:ring-navy-500/15 w-full";
 const NUM_INPUT = `${INPUT} text-center font-mono`;
 
+/**
+ * Batas masuk akal tegangan sekunder trafo, dipakai untuk MENANDAI — bukan
+ * menolak. Nominalnya 400 V antar-fasa dan 230 V fasa-netral; pitanya sengaja
+ * dilebarkan jauh melewati toleransi PLN supaya yang tertangkap hanya salah
+ * ketik, bukan jaringan yang memang tegangannya jelek.
+ *
+ * Bukan kekhawatiran teoretis. Diperiksa 21 Sep 2026 di data sungguhan:
+ *   GT023  V S-T = 39922  → beban terbaca 1727% dari trafo 250 kVA
+ *   GG052  V S-T =  4002  → beban terbaca  250% dari trafo 100 kVA
+ *   MM297  V R-T =    40  → beban terbaca   40%, mestinya sekitar 58%
+ * Ketiganya satu angka kelebihan atau kekurangan.
+ */
+const BATAS_TEG_LL = { min: 300, max: 500 };
+const BATAS_TEG_LN = { min: 170, max: 290 };
+
+const diLuarBatas = (v: number, b: { min: number; max: number }) =>
+  v > 0 && (v < b.min || v > b.max);
+
 const JURUSAN_FIELDS: { field: JurusanNumField; label: string }[] = [
   { field: "arusR", label: "Arus R (A)" },
   { field: "arusS", label: "Arus S (A)" },
@@ -35,6 +53,42 @@ const JURUSAN_FIELDS: { field: JurusanNumField; label: string }[] = [
   { field: "tegS", label: "Teg Ujung S (V)" },
   { field: "tegT", label: "Teg Ujung T (V)" },
 ];
+
+// ── Components ────────────────────────────────────────────────────────────────
+
+/**
+ * Satu kolom tegangan, dengan penanda kalau angkanya di luar batas masuk akal.
+ *
+ * Ditandai, bukan ditolak: yang salah ketik dan yang jaringannya memang jelek
+ * sama-sama menghasilkan angka di luar pita, dan yang bisa membedakannya cuma
+ * orang yang tahu gardunya. Menolaknya akan membuat pengukuran sungguhan tidak
+ * bisa dicatat.
+ */
+function TeganganField({
+  label,
+  val,
+  set,
+  janggal,
+}: {
+  label: string;
+  val: number;
+  set: (v: number) => void;
+  janggal: boolean;
+}) {
+  return (
+    <div>
+      <label className="text-xs text-ink-soft mb-1 block">{label}</label>
+      <input
+        type="number"
+        step="0.1"
+        value={val}
+        onChange={(e) => set(Number(e.target.value))}
+        aria-invalid={janggal}
+        className={`${NUM_INPUT} ${janggal ? "border-amber-400 bg-amber-50 text-amber-900" : ""}`}
+      />
+    </div>
+  );
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -53,12 +107,42 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
   const [tegRN, setTegRN] = useState(0);
   const [tegSN, setTegSN] = useState(0);
   const [tegTN, setTegTN] = useState(0);
+  const [tegRS, setTegRS] = useState(0);
+  const [tegRT, setTegRT] = useState(0);
+  const [tegST, setTegST] = useState(0);
   const [suhu, setSuhu] = useState(0);
   const [jurusanRows, setJurusanRows] = useState<JurusanRow[]>([]);
 
-  // beban_kva dihitung otomatis dari arus × tegangan per fasa
-  const bebanKva = (arusR * tegRN + arusS * tegSN + arusT * tegTN) / 1000;
+  // ── Beban trafo ────────────────────────────────────────────────────────────
+  //
+  // Rumusnya HARUS sama dengan yang dipakai aplikasi petugas, dan dulu tidak.
+  // HP menghitung S = √3 × V̄(antar-fasa) × Ī, layar ini dulu menghitung
+  // Σ(V fasa-netral × I). Akibatnya: membuka baris lalu menekan Simpan tanpa
+  // mengubah apa pun sudah menulis ulang beban_kva dengan rumus yang berbeda.
+  // Diperiksa 21 Sep 2026: 105 dari 395 baris terbaru akan bergeser angkanya.
+  //
+  // Sepuluh baris lama tidak punya tegangan antar-fasa sama sekali. Untuk
+  // mereka dipakai jumlah per fasa — dan layar mengatakannya, bukan
+  // diam-diam memakai rumus lain di balik angka yang terlihat sama.
+  const adaLL = tegRS > 0 && tegRT > 0 && tegST > 0;
+  const bebanKva = adaLL
+    ? Math.sqrt(3) * ((tegRS + tegRT + tegST) / 3 / 1000) * ((arusR + arusS + arusT) / 3)
+    : (arusR * tegRN + arusS * tegSN + arusT * tegTN) / 1000;
   const persenBeban = kvaTrfo > 0 ? (bebanKva / kvaTrfo) * 100 : 0;
+
+  const tegJanggal =
+    diLuarBatas(tegRS, BATAS_TEG_LL) ||
+    diLuarBatas(tegRT, BATAS_TEG_LL) ||
+    diLuarBatas(tegST, BATAS_TEG_LL) ||
+    diLuarBatas(tegRN, BATAS_TEG_LN) ||
+    diLuarBatas(tegSN, BATAS_TEG_LN) ||
+    diLuarBatas(tegTN, BATAS_TEG_LN);
+
+  // Selisih dengan yang TERSIMPAN. Baris yang angkanya akan bergeser harus
+  // terlihat sebelum Simpan ditekan — kalau tidak, pembetulan satu gardu
+  // diam-diam mengubah gardu lain yang cuma dibuka sekilas.
+  const bebanTersimpan = row?.beban_kva ?? 0;
+  const bergeser = Math.abs(bebanKva - bebanTersimpan) > 0.5;
 
   useEffect(() => {
     if (!row) return;
@@ -73,6 +157,9 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
     setTegRN(row.total_teg_rn);
     setTegSN(row.total_teg_sn);
     setTegTN(row.total_teg_tn);
+    setTegRS(row.total_teg_rs ?? 0);
+    setTegRT(row.total_teg_rt ?? 0);
+    setTegST(row.total_teg_st ?? 0);
     setSuhu(row.suhu_trafo);
     const pj = row.perjurusan ?? {};
     setJurusanRows(
@@ -137,6 +224,9 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
           total_teg_rn: tegRN,
           total_teg_sn: tegSN,
           total_teg_tn: tegTN,
+          total_teg_rs: tegRS,
+          total_teg_rt: tegRT,
+          total_teg_st: tegST,
           suhu_trafo: suhu,
           beban_kva: bebanKva,
           persen_beban: persenBeban,
@@ -220,6 +310,37 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
             </div>
           </section>
 
+          {/* Tegangan Fasa-Fasa — INI yang menentukan beban trafo */}
+          <section>
+            <div className="flex items-baseline justify-between gap-3 mb-3">
+              <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider">
+                Tegangan Fasa-Fasa (V)
+              </h3>
+              <span className="text-[11px] text-ink-muted">dipakai menghitung beban trafo</span>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              {([
+                { label: "V R-S", val: tegRS, set: setTegRS },
+                { label: "V R-T", val: tegRT, set: setTegRT },
+                { label: "V S-T", val: tegST, set: setTegST },
+              ] as const).map(({ label, val, set }) => (
+                <TeganganField
+                  key={label}
+                  label={label}
+                  val={val}
+                  set={set}
+                  janggal={diLuarBatas(val, BATAS_TEG_LL)}
+                />
+              ))}
+            </div>
+            {!adaLL && (
+              <p className="text-[11px] text-amber-700 mt-2">
+                Belum terisi lengkap — selama itu bebannya dihitung dari jumlah per fasa
+                (arus × tegangan fasa-netral), bukan dari rumus √3 yang dipakai petugas di HP.
+              </p>
+            )}
+          </section>
+
           {/* Tegangan Fase-Netral */}
           <section>
             <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-3">Tegangan Fase-Netral (V)</h3>
@@ -229,13 +350,28 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 { label: "V S-N", val: tegSN, set: setTegSN },
                 { label: "V T-N", val: tegTN, set: setTegTN },
               ] as const).map(({ label, val, set }) => (
-                <div key={label}>
-                  <label className="text-xs text-ink-soft mb-1 block">{label}</label>
-                  <input type="number" step="0.1" value={val} onChange={(e) => set(Number(e.target.value))} className={NUM_INPUT} />
-                </div>
+                <TeganganField
+                  key={label}
+                  label={label}
+                  val={val}
+                  set={set}
+                  janggal={diLuarBatas(val, BATAS_TEG_LN)}
+                />
               ))}
             </div>
           </section>
+
+          {tegJanggal && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5">
+              <TriangleAlert size={15} className="shrink-0 mt-0.5 text-amber-600" />
+              <p className="text-xs text-amber-900">
+                Ada tegangan di luar batas masuk akal (antar-fasa {BATAS_TEG_LL.min}-{BATAS_TEG_LL.max} V,
+                fasa-netral {BATAS_TEG_LN.min}-{BATAS_TEG_LN.max} V). Hampir selalu satu angka kelebihan
+                atau kekurangan saat diketik di lapangan — dan satu angka itu cukup membuat persentase
+                beban trafo meleset berkali-kali lipat.
+              </p>
+            </div>
+          )}
 
           {/* Beban & Suhu */}
           <section>
@@ -249,7 +385,13 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
               </div>
               <div>
                 <label className="text-xs text-ink-soft mb-1 block">% Beban (otomatis)</label>
-                <div className="border border-line rounded-lg px-2.5 py-1.5 text-center font-mono text-sm bg-surface text-ink-soft">
+                <div
+                  className={`border rounded-lg px-2.5 py-1.5 text-center font-mono text-sm ${
+                    persenBeban > 100
+                      ? "border-red-300 bg-red-50 text-red-700 font-semibold"
+                      : "border-line bg-surface text-ink-soft"
+                  }`}
+                >
                   {persenBeban.toFixed(1)}%
                 </div>
               </div>
@@ -258,6 +400,13 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
                 <input type="number" step="0.1" value={suhu} onChange={(e) => setSuhu(Number(e.target.value))} className={NUM_INPUT} />
               </div>
             </div>
+            {bergeser && (
+              <p className="text-[11px] text-amber-700 mt-2">
+                Tersimpan sekarang <b className="font-mono">{bebanTersimpan.toFixed(2)} kVA</b>
+                {kvaTrfo > 0 && ` (${((bebanTersimpan / kvaTrfo) * 100).toFixed(1)}%)`} — menekan
+                Simpan akan menggantinya dengan angka di atas.
+              </p>
+            )}
           </section>
 
           {/* Per Jurusan */}
