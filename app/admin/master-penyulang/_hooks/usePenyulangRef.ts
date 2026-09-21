@@ -44,6 +44,46 @@ export interface PenyulangBelum {
   gardu: number;
 }
 
+/** Satu tabel yang ikut — atau tidak ikut — berganti nama. */
+export interface BarisDampak {
+  tabel: string;
+  kolom?: string;
+  baris: number;
+  alasan?: string;
+}
+
+/**
+ * Pratinjau penggantian nama, apa adanya dari database.
+ *
+ * Dihitung di sana, bukan di sini. Layar yang menghitung sendiri akan memakai
+ * aturan pencocokan yang sedikit berbeda dari yang dipakai fungsi penggantinya,
+ * dan selisihnya baru ketahuan setelah tombolnya ditekan.
+ */
+export interface PratinjauGanti {
+  nama_lama: string;
+  nama_baru: string | null;
+  ulp: string;
+  terdaftar: boolean;
+  ulp_master: string | null;
+  /** ganti = nama milik ULP ini sendirian · pisah = dipakai ULP lain juga · daftar_baru = belum ada di master */
+  tindakan: "ganti" | "pisah" | "daftar_baru";
+  berubah: BarisDampak[];
+  /** Ikut berganti, tapi tabelnya tidak menyimpan ULP → tidak bisa dilingkupi saat memisah. */
+  tidak_terlingkup: BarisDampak[];
+  /** Sengaja dibiarkan memakai nama lama, beserta alasannya. */
+  tidak_ikut: BarisDampak[];
+  /** ULP lain yang TETAP memakai nama lama. Inilah yang paling perlu dibaca. */
+  tetap_ulp_lain: { ulp: string; baris: number }[];
+  peringatan: string[];
+  selesai?: boolean;
+  prefiks_baru?: string | null;
+  ulp_master_sisa?: string | null;
+}
+
+export type HasilPratinjau =
+  | { ok: true; data: PratinjauGanti }
+  | { ok: false; pesan: string };
+
 /** Hasil penggantian prefiks, untuk dilaporkan apa adanya ke admin. */
 export interface HasilPrefiks {
   kode_lama: string | null;
@@ -136,11 +176,51 @@ export function usePenyulangRef() {
     [toast, muat],
   );
 
+  /**
+   * Pratinjau — TIDAK mengubah apa pun, aman dipanggil tiap ketikan.
+   *
+   * Galatnya dikembalikan, bukan di-toast: sebagian di antaranya lahir dari
+   * nama yang baru diketik separuh, dan notifikasi yang muncul tiap huruf
+   * membuat admin berhenti membacanya justru saat pesannya penting.
+   */
+  const pratinjau = useCallback(
+    async (lama: string, ulp: string, baru: string): Promise<HasilPratinjau> => {
+      const { data, error } = await supabaseBrowser.rpc("pratinjau_ganti_nama_penyulang", {
+        p_lama: lama,
+        p_ulp: ulp,
+        p_baru: baru || null,
+      });
+      if (error) return { ok: false, pesan: error.message };
+      return { ok: true, data: data as unknown as PratinjauGanti };
+    },
+    [],
+  );
+
+  const gantiNama = useCallback(
+    async (lama: string, ulp: string, baru: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("ganti_nama_penyulang", {
+        p_lama: lama,
+        p_ulp: ulp,
+        p_baru: baru,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        // Penjaga di database menerangkan sendiri kenapa ditolak, lengkap
+        // dengan ULP mana yang bentrok. Diteruskan apa adanya.
+        toast.error(error.message);
+        return null;
+      }
+      await muat();
+      return data as unknown as PratinjauGanti;
+    },
+    [toast, muat],
+  );
+
   /** ULP yang benar-benar ada isinya, untuk bilah saring. */
   const daftarUlp = useMemo(
     () => [...new Set(baris.map((b) => b.ulp ?? "—"))].sort(),
     [baris],
   );
 
-  return { baris, belum, daftarUlp, loading, muat, simpan, hapus };
+  return { baris, belum, daftarUlp, loading, muat, simpan, hapus, pratinjau, gantiNama };
 }

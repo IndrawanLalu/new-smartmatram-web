@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Inbox, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { Inbox, Loader2, PenLine, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { UNITS, type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import {
@@ -11,6 +11,7 @@ import {
   type PenyulangBelum,
 } from "../_hooks/usePenyulangRef";
 import { useToast } from "@/app/admin/_components/Toast";
+import GantiNamaModal from "./GantiNamaModal";
 
 /**
  * Master Penyulang — induk yang dituju gardu, tiang, dan segmen.
@@ -32,9 +33,15 @@ import { useToast } from "@/app/admin/_components/Toast";
  */
 
 export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
-  const { baris, belum, daftarUlp, loading, simpan, hapus } = usePenyulangRef();
+  const { baris, belum, daftarUlp, loading, simpan, hapus, pratinjau, gantiNama } =
+    usePenyulangRef();
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState<string>(bolehSemua ? "" : (user.unit ?? ""));
+
+  // Nama + ULP, bukan nama saja. Satu nama bisa dipakai dua ULP, dan yang
+  // diganti selalu punya SATU ULP tertentu — tanpa ULP-nya, layar ini tidak
+  // tahu sisi mana yang sedang dibetulkan.
+  const [ganti, setGanti] = useState<{ nama: string; ulp: string } | null>(null);
 
   const tampil = useMemo(
     () => baris.filter((b) => !saring || (b.ulp ?? "—") === saring),
@@ -123,6 +130,7 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
           daftar={belumTampil}
           silang={namaSilang}
           onTambah={(b) => simpan({ penyulang: b.penyulang, ulp: b.ulp, oleh: user.name ?? user.email })}
+          onGantiNama={(b) => setGanti({ nama: b.penyulang, ulp: b.ulp })}
         />
       )}
 
@@ -188,6 +196,7 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
                   b={b}
                   onSimpan={simpan}
                   onHapus={hapus}
+                  onGantiNama={(ulp) => setGanti({ nama: b.penyulang, ulp })}
                   oleh={user.name ?? user.email}
                 />
               ))}
@@ -202,6 +211,17 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
           </table>
         </div>
       </div>
+
+      {ganti && (
+        <GantiNamaModal
+          namaLama={ganti.nama}
+          ulp={ganti.ulp}
+          oleh={user.name ?? user.email}
+          onPratinjau={pratinjau}
+          onGanti={gantiNama}
+          onClose={() => setGanti(null)}
+        />
+      )}
     </div>
   );
 }
@@ -217,11 +237,13 @@ function BelumTerdaftar({
   daftar,
   silang,
   onTambah,
+  onGantiNama,
 }: {
   daftar: PenyulangBelum[];
   /** nama → ULP yang memakainya, hanya untuk nama yang dipakai lebih dari satu ULP */
   silang: Map<string, string[]>;
   onTambah: (b: PenyulangBelum) => Promise<unknown>;
+  onGantiNama: (b: PenyulangBelum) => void;
 }) {
   const [sibuk, setSibuk] = useState<string | null>(null);
   const totalGardu = daftar.reduce((n, b) => n + b.gardu, 0);
@@ -242,8 +264,7 @@ function BelumTerdaftar({
             <p className="text-[11px] text-amber-700 mt-2 max-w-3xl">
               Yang bertanda ⚠ dipakai <b>lebih dari satu ULP</b>. Nama penyulang unik di seluruh
               basis data, jadi keduanya tidak bisa sama-sama didaftarkan — salah satunya harus
-              ganti nama lebih dulu. Tombolnya sengaja dibiarkan hidup: yang menolak adalah
-              database, beserta keterangan ULP mana saja yang bentrok.
+              <b> ganti nama</b> lebih dulu, lalu sisanya baru bisa dimasukkan ke master.
             </p>
           )}
         </div>
@@ -265,22 +286,39 @@ function BelumTerdaftar({
             </span>
             <span className="text-xs text-ink-soft w-[120px]">{b.ulp}</span>
             <span className="text-xs text-ink-muted tabular-nums w-[80px]">{b.gardu} gardu</span>
-            <button
-              onClick={async () => {
-                setSibuk(b.ulp + b.penyulang);
-                await onTambah(b);
-                setSibuk(null);
-              }}
-              disabled={sibuk === b.ulp + b.penyulang}
-              className={`${BTN_GHOST} h-8 px-2.5 text-xs`}
-            >
-              {sibuk === b.ulp + b.penyulang ? (
-                <Loader2 size={13} className="animate-spin" />
-              ) : (
-                <Plus size={13} />
-              )}
-              Masukkan ke master
-            </button>
+            {/* Untuk nama yang dipakai dua ULP, MENDAFTARKAN bukan langkah
+                pertama yang sah — namanya harus dibereskan dulu. Urutan
+                tombolnya mengikuti itu: yang benar ditaruh di depan. */}
+            {silang.has(b.penyulang) ? (
+              <>
+                <button
+                  onClick={() => onGantiNama(b)}
+                  className={`${BTN_GHOST} h-8 px-2.5 text-xs border-amber-300 text-amber-800`}
+                >
+                  <PenLine size={13} /> Ganti nama dulu
+                </button>
+                <span className="text-[11px] text-ink-muted">
+                  bentrok dengan {silang.get(b.penyulang)!.filter((u) => u !== b.ulp).join(", ")}
+                </span>
+              </>
+            ) : (
+              <button
+                onClick={async () => {
+                  setSibuk(b.ulp + b.penyulang);
+                  await onTambah(b);
+                  setSibuk(null);
+                }}
+                disabled={sibuk === b.ulp + b.penyulang}
+                className={`${BTN_GHOST} h-8 px-2.5 text-xs`}
+              >
+                {sibuk === b.ulp + b.penyulang ? (
+                  <Loader2 size={13} className="animate-spin" />
+                ) : (
+                  <Plus size={13} />
+                )}
+                Masukkan ke master
+              </button>
+            )}
           </div>
         ))}
       </div>
@@ -351,6 +389,7 @@ function Baris({
   b,
   onSimpan,
   onHapus,
+  onGantiNama,
   oleh,
 }: {
   b: PenyulangBaris;
@@ -361,6 +400,7 @@ function Baris({
     oleh?: string;
   }) => Promise<HasilPrefiks | null>;
   onHapus: (penyulang: string, oleh?: string) => Promise<boolean>;
+  onGantiNama: (ulp: string) => void;
   oleh?: string;
 }) {
   const toast = useToast();
@@ -415,7 +455,20 @@ function Baris({
 
   return (
     <tr className="border-b border-line last:border-0 hover:bg-surface/60">
-      <td className="px-3 py-2 font-semibold text-ink">{b.penyulang}</td>
+      <td className="px-3 py-2 font-semibold text-ink">
+        <button
+          onClick={() => onGantiNama(b.ulp ?? "")}
+          disabled={!b.ulp}
+          title={b.ulp ? `Ganti nama ${b.penyulang} di ULP ${b.ulp}` : "Penyulang ini belum punya ULP"}
+          className="inline-flex items-center gap-1.5 group disabled:cursor-not-allowed"
+        >
+          {b.penyulang}
+          <PenLine
+            size={12}
+            className="text-ink-muted opacity-0 group-hover:opacity-100 group-disabled:hidden transition-opacity"
+          />
+        </button>
+      </td>
       <td className="px-3 py-2 text-ink-soft">{b.ulp ?? "—"}</td>
       <td className="px-3 py-2">
         <div className="flex items-center gap-1.5">

@@ -198,7 +198,7 @@ perabasan; menaruhnya di dalam JTM menyembunyikannya dari regu rabas.
 |---|---|---|---|
 | **1** | Web: grup Master Data + Master Penyulang jadi menu; kolom gardu, penanda ULP silang, daftar yang belum terdaftar | `master-penyulang.sql` + deploy | **selesai** 21 Sep |
 | **2** | SQL: `ganti_nama_penyulang()` — dilingkupi satu ULP, memisah kalau perlu | SQL Editor | **selesai** 21 Sep · diuji 14 skenario di PostgreSQL 17 lokal |
-| **3** | Web: layar ganti nama + pratinjau per ULP | deploy | |
+| **3** | Web: layar ganti nama + pratinjau per ULP | deploy | **selesai** 21 Sep |
 | **4** | Lengkapi 22 penyulang yang bolong, betulkan 4 nama ULP silang | **kerja Bapak**, lewat layar | |
 | **5** | SQL: kunci asing `ON UPDATE CASCADE` ke `penyulang_ref` | SQL Editor | |
 | **6** | SQL + Web: Master Segmen + impor segmen | SQL + deploy | |
