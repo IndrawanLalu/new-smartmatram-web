@@ -218,7 +218,8 @@ apa adanya**, bukan ditaruh penanda di tengah laut.
 | **1** | SQL: penahan realisasi + koreksi titik + usulan kVA + radius per ULP | SQL Editor | **selesai** 22 Sep |
 | **2** | Web: tab Persetujuan (tiga kelompok) + peta sebelum/sesudah | deploy | **selesai** 22 Sep |
 | **3** | HP: pita keadaan + jarak selalu terlihat + modal konfirmasi + foto wajib | OTA | **selesai** 22 Sep · sekalian pensiunkan spreadsheet |
-| **4** | Pemantauan: berapa persen gardu sudah bertitik, per ULP | deploy |
+| **4** | Pemantauan: berapa persen gardu sudah bertitik, per ULP | deploy | |
+| **+** | Web: layar pengatur radius per ULP | deploy | **selesai** 22 Sep |
 
 Fase 1–2 berguna lebih dulu: yang 7 beda kVA dan anomali yang sudah ada bisa
 langsung diperiksa, tanpa menunggu HP.

@@ -50,6 +50,7 @@ import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
+import RadiusTitikPanel from "./_components/RadiusTitikPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
 import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
 import { detectAnomali, hasThresholdCriteria } from "@/lib/anomaliGardu";
@@ -378,6 +379,12 @@ export default function PengukuranGarduPage() {
         onSave={saveSettings}
         onReset={resetSettings}
       />
+
+      {/* ── Radius titik pengukuran ─────────────────────────────────────────
+          Terpisah dari kriteria anomali meski satu tabel: yang di atas menilai
+          HASIL ukurnya, yang ini menilai apakah pengukurannya sah dilakukan
+          di situ. */}
+      <RadiusTitikPanel user={user} />
 
       {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
       <div className="flex gap-1 rounded-xl border border-line bg-white p-1 shadow-card">
