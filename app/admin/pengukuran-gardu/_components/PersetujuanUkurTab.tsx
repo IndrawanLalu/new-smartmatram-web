@@ -13,6 +13,7 @@ import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD }
 import type { CurrentUser } from "@/lib/roles";
 import { usePersetujuanUkur, type UsulanUkur } from "../_hooks/usePersetujuanUkur";
 import PetaSebelumSesudah from "./PetaSebelumSesudah";
+import RadiusTitikPanel from "./RadiusTitikPanel";
 import { detectAnomali, type AnomalySettings } from "@/lib/anomaliGardu";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 
@@ -182,6 +183,11 @@ export default function PersetujuanUkurTab({
             </div>
           </div>
         ))}
+
+      {/* Pengaturnya di DASAR tab ini, terlipat. Inilah tab yang isinya
+          ditentukan angka itu — admin yang merasa antreannya terlalu panjang
+          atau terlalu kosong sudah berada di layar yang tepat. */}
+      <RadiusTitikPanel user={user} />
     </div>
   );
 }
