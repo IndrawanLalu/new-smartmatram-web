@@ -41,6 +41,10 @@ export const TEXT_FIELDS = [
  */
 export const KOLOM_TAMPIL = [
   "no_laporan",
+  // Diturunkan dari `nama_posko` saat impor. Ikut dikirim karena layar
+  // menyaring per ULP — dan menyaring dari teks posko di sisi klien berarti
+  // aturan "posko mana milik ULP mana" hidup di dua tempat sekaligus.
+  "ulp",
   "tgl_lapor",
   "waktu_lapor",
   "waktu_response",

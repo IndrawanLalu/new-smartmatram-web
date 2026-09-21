@@ -21,6 +21,8 @@ export interface GangguanRow {
   pembuat_laporan?: string;
   /** Kolom DB hasil parse waktu_lapor, "YYYY-MM-DD". */
   tgl_lapor?: string | null;
+  /** Diturunkan dari `nama_posko` saat impor, bukan dikirim APKT. */
+  ulp?: string | null;
   waktu_lapor?: string;
   durasi_response_time?: number | null;
   durasi_recovery_time?: number | null;

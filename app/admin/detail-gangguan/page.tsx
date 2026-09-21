@@ -23,6 +23,8 @@ import {
   Table2,
 } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
+import { canSeeAllUnits } from "@/lib/roles";
 import KoreksiModal from "./_components/KoreksiModal";
 import RekapTab from "./_components/RekapTab";
 import DashboardTab from "./_components/DashboardTab";
@@ -113,6 +115,7 @@ function firstOfMonthStr(): string {
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DetailGangguanPage() {
+  const user = useCurrentUser();
   const [dateFrom, setDateFrom] = useState(firstOfMonthStr());
   const [dateTo, setDateTo] = useState(todayStr());
   const [tab, setTab] = useState<Tab>("data");
@@ -153,6 +156,9 @@ export default function DetailGangguanPage() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("non");
+  /** "" = semua ULP. Peran selain UP3 tidak pernah menerima baris unit lain,
+   *  jadi bagi mereka saringan ini cuma keterangan. */
+  const [ulpPilih, setUlpPilih] = useState("");
   const [sortKey, setSortKey] = useState<string>("durasi_response_time");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [halaman, setHalaman] = useState(1);
@@ -221,9 +227,34 @@ export default function DetailGangguanPage() {
     }
   }
 
+  /** ULP yang benar-benar ada di data yang termuat, beserta jumlahnya.
+   *  Diturunkan dari isinya, bukan dari daftar unit yang tetap — bulan yang
+   *  memang tidak ada gangguan di sebuah ULP tidak perlu menampilkan tombol
+   *  yang hasilnya pasti kosong. */
+  const perUlp = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const u = String(r.ulp ?? "").toUpperCase();
+      if (u) m.set(u, (m.get(u) ?? 0) + 1);
+    }
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+  }, [rows]);
+
+  /** Saringan ULP dipasang SEBELUM klasifikasi CT, supaya tab Data, Dashboard,
+   *  dan Rekap sama-sama ikut tersaring. Kalau dipasang di salah satu tab saja,
+   *  angka dashboard dan isi tabel akan menyebut dua kenyataan berbeda tentang
+   *  rentang tanggal yang sama. */
+  const rowsUlp = useMemo(
+    () =>
+      ulpPilih
+        ? rows.filter((r) => String(r.ulp ?? "").toUpperCase() === ulpPilih)
+        : rows,
+    [rows, ulpPilih],
+  );
+
   const classified = useMemo(
-    () => rows.map((r) => ({ row: r, ct: classifyCt(r) })),
-    [rows],
+    () => rowsUlp.map((r) => ({ row: r, ct: classifyCt(r) })),
+    [rowsUlp],
   );
   const counts = useMemo(() => {
     let ct = 0;
@@ -394,6 +425,40 @@ export default function DetailGangguanPage() {
           </div>
         )}
       </div>
+
+      {/* Saring ULP — di ATAS tab, bukan di dalam salah satunya, karena dia
+          berlaku untuk ketiga tab sekaligus. Saringan yang tinggal di dalam
+          satu tab akan membuat dashboard dan tabel menyebut dua kenyataan
+          berbeda tentang rentang tanggal yang sama. */}
+      {perUlp.length > 0 && (
+        <div className={`${CARD} px-4 py-3 flex items-center gap-1.5 flex-wrap`}>
+          <span className="text-[11px] font-semibold text-ink-soft mr-1">ULP</span>
+          {perUlp.length > 1 && (
+            <button
+              onClick={() => setUlpPilih("")}
+              className={`${CHIP} ${ulpPilih === "" ? CHIP_ON : CHIP_OFF}`}
+            >
+              Semua
+              <span className="tabular-nums opacity-70">{rows.length}</span>
+            </button>
+          )}
+          {perUlp.map(([u, n]) => (
+            <button
+              key={u}
+              onClick={() => setUlpPilih(ulpPilih === u ? "" : u)}
+              className={`${CHIP} ${ulpPilih === u ? CHIP_ON : CHIP_OFF}`}
+            >
+              {u}
+              <span className="tabular-nums opacity-70">{n}</span>
+            </button>
+          ))}
+          {!canSeeAllUnits(user.role) && (
+            <span className="text-[11px] text-ink-muted ml-auto">
+              Hanya unit Anda — peran {user.role} tidak menerima data ULP lain.
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex items-center gap-1.5 flex-wrap">

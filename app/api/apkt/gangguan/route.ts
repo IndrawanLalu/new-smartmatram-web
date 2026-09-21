@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { getCurrentUser } from "@/lib/auth";
+import { canSeeAllUnits } from "@/lib/roles";
 import {
   dedupNoLaporan,
   KOLOM_TAMPIL,
@@ -14,12 +16,18 @@ const HINT = "Pastikan scripts/apkt-gangguan-key-no-laporan.sql sudah dijalankan
 // GET /api/apkt/gangguan?from=YYYY-MM-DD&to=YYYY-MM-DD → data tersimpan di DB
 export async function GET(req: Request) {
   const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const me = await getCurrentUser();
+  if (!me) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const from = searchParams.get("from");
   const to = searchParams.get("to");
+
+  // Penyaringan unit dikerjakan DI SINI, bukan di layar. Menyaring di klien
+  // berarti baris milik ULP lain tetap dikirim ke browser yang tidak berhak
+  // membacanya — tersembunyi dari mata, tapi ada di dalam jawaban jaringan.
+  // UP3 melihat semua; peran lain terkunci ke unitnya sendiri.
+  const unit = canSeeAllUnits(me.role) ? null : me.unit;
 
   // Hanya kolom yang dipakai layar — lihat KOLOM_TAMPIL. Sebulan data turun
   // dari 1,84 MB ke ~1,0 MB tanpa mengubah apa pun yang terlihat.
@@ -37,6 +45,7 @@ export async function GET(req: Request) {
       .range(start, start + PAGE - 1);
     if (from) q = q.gte("tgl_lapor", from);
     if (to) q = q.lte("tgl_lapor", to);
+    if (unit) q = q.eq("ulp", unit);
 
     // Daftar kolomnya dirakit saat berjalan, jadi bentuk barisnya tidak bisa
     // disimpulkan dari tipe tabel — sebutkan sendiri, setelah semua filter.
