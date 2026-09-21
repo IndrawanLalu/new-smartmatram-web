@@ -1,16 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
+import { Inbox, Loader2, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { UNITS, type CurrentUser, canSeeAllUnits } from "@/lib/roles";
-import { usePenyulangRef, type HasilPrefiks, type PenyulangBaris } from "../_hooks/usePenyulangRef";
+import {
+  usePenyulangRef,
+  type HasilPrefiks,
+  type PenyulangBaris,
+  type PenyulangBelum,
+} from "../_hooks/usePenyulangRef";
 import { useToast } from "@/app/admin/_components/Toast";
 
 /**
- * Master penyulang JTM.
+ * Master Penyulang — induk yang dituju gardu, tiang, dan segmen.
  *
- * Dua hal yang diurus di sini, dan yang kedua jauh lebih berat akibatnya:
+ * Tiga hal yang diurus di sini, dan bobotnya menaik:
  *
  *   1. DAFTAR PENYULANG per ULP — inilah yang muncul di HP saat regu merintis
  *      segmen baru. Penyulang yang tidak ada di sini tidak bisa dirintis, dan
@@ -18,12 +23,16 @@ import { useToast } from "@/app/admin/_components/Toast";
  *
  *   2. PREFIKS NAMA TIANG. Mengubahnya menomori ulang SELURUH tiang penyulang
  *      itu — nama yang sudah dipegang regu di lapangan ikut berubah. Karena itu
- *      jumlah tiang yang terpengaruh ditampilkan sebelum tombolnya ditekan,
- *      bukan sesudahnya.
+ *      jumlah tiang yang terpengaruh ditampilkan sebelum tombolnya ditekan.
+ *
+ *   3. KELENGKAPAN MASTER. Selama masih ada penyulang yang dipakai gardu tapi
+ *      belum terdaftar, gardu-gardu itu tidak punya induk yang sah — dan kunci
+ *      asing yang akan mengikat ketiganya tidak bisa dipasang sama sekali.
+ *      Karena itu daftarnya ditaruh DI ATAS, bukan disembunyikan di bawah tabel.
  */
 
-export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
-  const { baris, daftarUlp, loading, simpan, hapus } = usePenyulangRef();
+export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
+  const { baris, belum, daftarUlp, loading, simpan, hapus } = usePenyulangRef();
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState<string>(bolehSemua ? "" : (user.unit ?? ""));
 
@@ -33,6 +42,11 @@ export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
   );
 
   const belumBerprefiks = tampil.filter((b) => !b.kode_singkat).length;
+  const belumTampil = useMemo(
+    () => belum.filter((b) => !saring || b.ulp === saring),
+    [belum, saring],
+  );
+  const silangUlp = tampil.filter((b) => b.gardu_ulp_lain > 0);
 
   if (loading) {
     return (
@@ -92,6 +106,49 @@ export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
         </div>
       </div>
 
+      {/* DI ATAS tabel, bukan di bawah. Selama daftar ini berisi, gardu-gardu
+          itu tidak punya induk yang sah — dan itu pekerjaan yang menghalangi
+          semua yang lain, bukan catatan kaki. */}
+      {belumTampil.length > 0 && (
+        <BelumTerdaftar
+          daftar={belumTampil}
+          onTambah={(b) => simpan({ penyulang: b.penyulang, ulp: b.ulp, oleh: user.name ?? user.email })}
+        />
+      )}
+
+      {silangUlp.length > 0 && (
+        <div className={`${CARD} p-5 border-amber-200`}>
+          <p className={EYEBROW}>Nama dipakai di lebih dari satu ULP</p>
+          <p className="text-xs text-ink-soft mt-1 max-w-3xl">
+            {silangUlp.length} nama di bawah ini dipakai gardu di ULP yang berbeda-beda. Itu
+            berarti <b>dua penyulang berlainan yang kebetulan bernama sama</b> — keliru sejak
+            awal, dan membuat angka per penyulang mencampur dua jaringan.
+          </p>
+          <p className="text-[11px] text-ink-muted mt-2 max-w-3xl">
+            Membereskannya murah <b>sekarang</b>: belum ada satu pun tiang atau segmen yang
+            memakainya. Begitu inspeksi JTM menelusuri jalurnya, nama tiang sudah telanjur ikut
+            memakai prefiks yang salah.
+          </p>
+          <div className="mt-3 space-y-1.5">
+            {silangUlp.map((b) => (
+              <div key={b.penyulang} className="flex flex-wrap items-center gap-2 text-sm">
+                <TriangleAlert size={14} className="text-amber-600 shrink-0" />
+                <span className="font-semibold text-ink w-[180px] truncate">{b.penyulang}</span>
+                <span className="text-xs text-ink-soft">
+                  {Object.entries(b.gardu_per_ulp ?? {})
+                    .sort((x, y) => y[1] - x[1])
+                    .map(([u, n]) => `${u} ${n} gardu`)
+                    .join("  ·  ")}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[11px] text-ink-muted mt-3">
+            Alat pemisahnya belum ada — menyusul di tahap berikutnya.
+          </p>
+        </div>
+      )}
+
       <Tambah
         ulpAwal={saring || user.unit || ""}
         bolehSemua={bolehSemua}
@@ -103,7 +160,7 @@ export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
           <table className="w-full text-sm min-w-[720px]">
             <thead>
               <tr className="text-left text-ink-soft border-b border-line bg-surface">
-                {["Penyulang", "ULP", "Prefiks", "Tiang", "Nama di penyulang ini", "Segmen", ""].map(
+                {["Penyulang", "ULP", "Prefiks", "Gardu", "Tiang", "Nama di penyulang ini", "Segmen", ""].map(
                   (h) => (
                     <th key={h} className="px-3 py-2.5 font-semibold">
                       {h}
@@ -124,7 +181,7 @@ export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
               ))}
               {tampil.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-ink-muted text-xs">
+                  <td colSpan={8} className="px-3 py-6 text-center text-ink-muted text-xs">
                     Belum ada penyulang di sini.
                   </td>
                 </tr>
@@ -132,6 +189,68 @@ export default function PengaturanPenyulang({ user }: { user: CurrentUser }) {
             </tbody>
           </table>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Penyulang yang dipakai gardu tapi belum ada di master.
+ *
+ * Ditampilkan sebagai daftar kerja dengan tombol per baris, bukan sekadar
+ * peringatan: yang bisa diselesaikan dengan satu ketukan tidak pantas
+ * disuruh diketik ulang di kotak isian di bawah.
+ */
+function BelumTerdaftar({
+  daftar,
+  onTambah,
+}: {
+  daftar: PenyulangBelum[];
+  onTambah: (b: PenyulangBelum) => Promise<unknown>;
+}) {
+  const [sibuk, setSibuk] = useState<string | null>(null);
+  const totalGardu = daftar.reduce((n, b) => n + b.gardu, 0);
+
+  return (
+    <div className={`${CARD} p-5 border-amber-300`}>
+      <div className="flex items-start gap-3">
+        <Inbox size={20} className="text-amber-600 shrink-0 mt-0.5" />
+        <div>
+          <p className={EYEBROW}>Belum terdaftar di master</p>
+          <p className="text-xs text-ink-soft mt-1 max-w-3xl">
+            <b>{daftar.length} penyulang</b> dipakai <b>{totalGardu.toLocaleString("id-ID")} gardu</b>{" "}
+            tapi tidak ada di master. Gardu-gardu itu tidak punya induk yang sah, dan selama ini
+            belum beres, gardu–penyulang–segmen tidak bisa diikat satu sama lain.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-1.5">
+        {daftar.map((b) => (
+          <div key={b.ulp + b.penyulang} className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-ink w-[200px] truncate" title={b.penyulang}>
+              {b.penyulang}
+            </span>
+            <span className="text-xs text-ink-soft w-[120px]">{b.ulp}</span>
+            <span className="text-xs text-ink-muted tabular-nums w-[80px]">{b.gardu} gardu</span>
+            <button
+              onClick={async () => {
+                setSibuk(b.ulp + b.penyulang);
+                await onTambah(b);
+                setSibuk(null);
+              }}
+              disabled={sibuk === b.ulp + b.penyulang}
+              className={`${BTN_GHOST} h-8 px-2.5 text-xs`}
+            >
+              {sibuk === b.ulp + b.penyulang ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Plus size={13} />
+              )}
+              Masukkan ke master
+            </button>
+          </div>
+        ))}
       </div>
     </div>
   );
@@ -283,6 +402,21 @@ function Baris({
             </span>
           )}
         </div>
+      </td>
+      <td className="px-3 py-2 tabular-nums">
+        <span className={b.gardu_ulp_lain > 0 ? "text-amber-700 font-semibold" : "text-ink-soft"}>
+          {b.gardu}
+        </span>
+        {b.gardu_ulp_lain > 0 && (
+          <span
+            className="block text-[10px] text-amber-700"
+            title={Object.entries(b.gardu_per_ulp ?? {})
+              .map(([u, n]) => `${u}: ${n}`)
+              .join(" · ")}
+          >
+            {b.gardu_ulp_lain} di ULP lain
+          </span>
+        )}
       </td>
       <td className="px-3 py-2 text-ink-soft tabular-nums">{b.tiang_dimiliki}</td>
       <td className="px-3 py-2 text-ink-soft tabular-nums">{b.tiang_bernama}</td>

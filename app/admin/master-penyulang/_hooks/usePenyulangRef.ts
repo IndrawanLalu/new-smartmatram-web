@@ -23,6 +23,25 @@ export interface PenyulangBaris {
   /** Semua tiang yang punya nama di penyulang ini — termasuk yang cuma dilewati. */
   tiang_bernama: number;
   segmen: number;
+  /** Gardu yang memakai penyulang ini. Bobot sebenarnya dari sebuah penggantian nama. */
+  gardu: number;
+  /**
+   * Gardu yang memakai nama ini TAPI berada di ULP lain.
+   *
+   * Nilai > 0 berarti nama ini dipakai DUA penyulang berbeda yang kebetulan
+   * senama — kekeliruan sejak awal. Penggantian namanya harus MEMISAH, bukan
+   * merambat ke seluruh database.
+   */
+  gardu_ulp_lain: number;
+  /** Sebaran gardu per ULP, untuk pratinjau penggantian nama. */
+  gardu_per_ulp: Record<string, number> | null;
+}
+
+/** Penyulang yang dipakai gardu tapi belum ada di master — daftar kerja. */
+export interface PenyulangBelum {
+  penyulang: string;
+  ulp: string;
+  gardu: number;
 }
 
 /** Hasil penggantian prefiks, untuk dilaporkan apa adanya ke admin. */
@@ -37,25 +56,39 @@ export interface HasilPrefiks {
 export function usePenyulangRef() {
   const toast = useToast();
   const [baris, setBaris] = useState<PenyulangBaris[]>([]);
+  const [belum, setBelum] = useState<PenyulangBelum[]>([]);
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
     try {
       const { data, error } = await supabaseBrowser
         .from("penyulang_pakai")
-        .select("penyulang,ulp,kode_singkat,tiang_dimiliki,tiang_bernama,segmen")
+        .select(
+          "penyulang,ulp,kode_singkat,tiang_dimiliki,tiang_bernama,segmen,gardu,gardu_ulp_lain,gardu_per_ulp",
+        )
         .order("ulp")
         .order("penyulang");
       if (error) throw new Error(error.message);
       setBaris((data ?? []) as unknown as PenyulangBaris[]);
+
+      // Dibaca bersamaan, bukan saat bagiannya dibuka: daftar ini justru yang
+      // paling perlu terlihat lebih dulu — selama masih berisi, kunci asing
+      // ke master tidak bisa dipasang sama sekali.
+      const b = await supabaseBrowser
+        .from("penyulang_belum_terdaftar")
+        .select("penyulang,ulp,gardu")
+        .order("gardu", { ascending: false });
+      if (b.error) throw new Error(b.error.message);
+      setBelum((b.data ?? []) as unknown as PenyulangBelum[]);
     } catch (e) {
       const pesan = e instanceof Error ? e.message : String(e);
       toast.error(
         pesan.includes("does not exist")
-          ? "View penyulang_pakai belum ada — jalankan scripts/jtm-penyulang-pengaturan.sql di Supabase."
+          ? "View penyulang_pakai / penyulang_belum_terdaftar belum lengkap — jalankan scripts/master-penyulang.sql di Supabase."
           : pesan,
       );
       setBaris([]);
+      setBelum([]);
     } finally {
       setLoading(false);
     }
@@ -109,5 +142,5 @@ export function usePenyulangRef() {
     [baris],
   );
 
-  return { baris, daftarUlp, loading, muat, simpan, hapus };
+  return { baris, belum, daftarUlp, loading, muat, simpan, hapus };
 }

@@ -9,7 +9,6 @@ import {
   SlidersHorizontal,
   TowerControl,
   Upload,
-  Zap,
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import DaftarSegmen from "./_components/DaftarSegmen";
@@ -19,7 +18,6 @@ import PengaturanJtm from "./_components/PengaturanJtm";
 import TiangNormal from "./_components/TiangNormal";
 import DaftarPenyapuan from "./_components/DaftarPenyapuan";
 import DaftarTiang from "./_components/DaftarTiang";
-import PengaturanPenyulang from "./_components/PengaturanPenyulang";
 
 const TABS = [
   { key: "segmen", label: "Segmen", icon: Network },
@@ -27,7 +25,6 @@ const TABS = [
   { key: "tiang", label: "Tiang", icon: TowerControl },
   { key: "penyapuan", label: "Inspeksi", icon: ClipboardCheck },
   { key: "impor", label: "Impor Tiang", icon: Upload },
-  { key: "penyulang", label: "Penyulang", icon: Zap },
   { key: "pengaturan", label: "Pengaturan", icon: SlidersHorizontal },
   { key: "normal", label: "Tiang Normal", icon: CheckCheck },
 ] as const;
@@ -72,7 +69,6 @@ export default function JtmPage() {
       {tab === "tiang" && <DaftarTiang user={user} />}
       {tab === "penyapuan" && <DaftarPenyapuan user={user} />}
       {tab === "impor" && <ImporTiang user={user} />}
-      {tab === "penyulang" && <PengaturanPenyulang user={user} />}
       {tab === "pengaturan" && <PengaturanJtm />}
       {tab === "normal" && <TiangNormal />}
     </div>

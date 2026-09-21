@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe,
+  Globe, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -42,11 +42,23 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // Gardu, penyulang, dan (menyusul) segmen harus saling terikat: penyulang
+    // di gardu tidak boleh berbeda dengan master JTM. Selama ketiganya tersebar
+    // sebagai tab di dalam modul yang berlainan, tidak ada tempat yang bisa
+    // memperlihatkan bahwa ketiganya sudah cocok — dan yang tidak terlihat
+    // tidak pernah diperiksa.
+    key: "master",
+    label: "Master Data",
+    items: [
+      { href: "/admin/master-gardu",     label: "Master Gardu",     icon: Database },
+      { href: "/admin/master-penyulang", label: "Master Penyulang", icon: Zap },
+    ],
+  },
+  {
     key: "monitoring",
     label: "Monitoring",
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck },
-      { href: "/admin/master-gardu",        label: "Master Gardu",         icon: Database },
       { href: "/admin/pengukuran-gardu",    label: "Pengukuran Gardu",     icon: Gauge },
       { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
       { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },
