@@ -54,6 +54,35 @@ export const KOLOM_PENGUKURAN =
 
 export const bebanTampil = (v: number | null | undefined) => Math.round(v ?? 0);
 
+/** Keadaan pengiriman sebuah pengukuran ke AMG. */
+export type StatusAmg = "terkirim" | "antrian" | "gagal" | "belum";
+
+/**
+ * Menentukan keadaan AMG sebuah baris.
+ *
+ * Disendirikan karena aturannya dulu ditulis ulang di EMPAT layar sebagai
+ * rangkaian syarat sebaris — daftar Realisasi, Filter Pengukuran, detail
+ * gardu, dan Penyeimbangan. Aturan yang disalin empat kali akan melenceng,
+ * dan yang melenceng di sini berarti lencana di satu layar mengatakan
+ * "terkirim" sementara saringan di layar sebelah menghitungnya "gagal".
+ */
+export function statusAmg(r: {
+  amg_sent_at?: string | null;
+  amg_queued_at?: string | null;
+  amg_error?: string | null;
+}): StatusAmg {
+  if (r.amg_sent_at) return "terkirim";
+  if (!r.amg_queued_at) return "belum";
+  return r.amg_error ? "gagal" : "antrian";
+}
+
+export const LABEL_AMG: Record<StatusAmg, string> = {
+  terkirim: "Terkirim",
+  antrian: "Antrian",
+  gagal: "Gagal",
+  belum: "Belum dikirim",
+};
+
 export const isOverload = (v: number | null | undefined) => bebanTampil(v) >= OVERLOAD_PCT;
 export const isUnderload = (v: number | null | undefined) => bebanTampil(v) < UNDERLOAD_PCT;
 

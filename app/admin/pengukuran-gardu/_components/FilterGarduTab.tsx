@@ -9,6 +9,7 @@ import { useFilterGardu } from "../_hooks/useFilterGardu";
 import {
   OVERLOAD_PCT, HIGH_CURRENT_A, HIGH_TEMP_C, getNominalCurrent,
   type PengukuranGardu,
+  statusAmg,
 } from "../_hooks/usePengukuranGardu";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import GarduDetailModal from "./GarduDetailModal";
@@ -463,25 +464,25 @@ export default function FilterGarduTab({ user }: Props) {
                                 WO
                               </span>
                             )}
-                            {row.amg_sent_at && (
+                            {statusAmg(row) === "terkirim" && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-50 text-sky-700 border border-sky-200 whitespace-nowrap">
                                 AMG
                               </span>
                             )}
-                            {!row.amg_sent_at && row.amg_queued_at && row.amg_error && (
+                            {statusAmg(row) === "gagal" && (
                               <span
-                                title={row.amg_error}
+                                title={row.amg_error ?? undefined}
                                 className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-red-50 text-red-700 border border-red-200 whitespace-nowrap"
                               >
                                 AMG GAGAL{(row.amg_attempts ?? 0) >= 3 ? " 3×" : ""}
                               </span>
                             )}
-                            {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
+                            {statusAmg(row) === "antrian" && (
                               <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-amber-50 text-amber-600 border border-amber-200 whitespace-nowrap">
                                 ANTRIAN
                               </span>
                             )}
-                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && !row.amg_sent_at && !row.amg_queued_at && (
+                            {!isOverload && !isHighTemp && !isHighCurrent && !isPhaseOl && !row.wo_sent_at && statusAmg(row) === "belum" && (
                               <span className="text-[10px] text-accent-deep">Normal</span>
                             )}
                           </div>

@@ -14,7 +14,10 @@ import {
   HIGH_CURRENT_A,
   HIGH_TEMP_C,
   getNominalCurrent,
+  statusAmg,
+  LABEL_AMG,
   type PengukuranGardu,
+  type StatusAmg,
 } from "./_hooks/usePengukuranGardu";
 import {
   AlertTriangle,
@@ -146,6 +149,13 @@ export default function PengukuranGarduPage() {
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [showTable, setShowTable]     = useState(false);
 
+  // Saringan keadaan AMG. Tanpa ini, pengukuran yang gagal terkirim praktis
+  // tidak bisa ditemukan: per 21 Sep 2026 ada 75 baris gagal, tersebar
+  // Juli-September, dan SEMUANYA sudah 3x percobaan — artinya tidak ada lagi
+  // yang akan mencoba mengirimnya sendiri. Selama tidak ada yang menyaring,
+  // 75 pengukuran itu hilang begitu saja dari AMG tanpa satu pun pemberitahuan.
+  const [amgSaring, setAmgSaring] = useState<StatusAmg | "semua">("semua");
+
   useEffect(() => {
     const t = setTimeout(() => { setSearch(searchInput); setPage(1); }, 1000);
     return () => clearTimeout(t);
@@ -173,6 +183,8 @@ export default function PengukuranGarduPage() {
   useEffect(() => {
     setShowTable(false);
   }, [filter.month, filter.year, filter.ulp, filter.penyulang]);
+
+  useEffect(() => { setPage(1); }, [amgSaring, search]);
 
   type AlertModalKey = "overload" | "underload" | "highCurrent" | "phaseOverload" | "highTemp";
   const [alertModal, setAlertModal] = useState<AlertModalKey | null>(null);
@@ -211,16 +223,25 @@ export default function PengukuranGarduPage() {
   // disunting, dihapus, maupun dikirim ke AMG. Kondisinya tetap ikut seluruh
   // perhitungan beban lewat `latestData`.
   const filteredData = useMemo(() => {
-    if (!search) return latestPengukuran;
     const q = search.toLowerCase();
-    return latestPengukuran.filter(
-      (d) =>
+    return latestPengukuran.filter((d) => {
+      if (amgSaring !== "semua" && statusAmg(d) !== amgSaring) return false;
+      if (!q) return true;
+      return (
         d.no_gardu?.toLowerCase().includes(q) ||
         d.penyulang?.toLowerCase().includes(q) ||
         d.alamat?.toLowerCase().includes(q) ||
         d.petugas_nama?.toLowerCase().includes(q)
-    );
-  }, [latestPengukuran, search]);
+      );
+    });
+  }, [latestPengukuran, search, amgSaring]);
+
+  /** Berapa baris per keadaan AMG, untuk angka di pilnya. */
+  const cacahAmg = useMemo(() => {
+    const n: Record<StatusAmg, number> = { terkirim: 0, antrian: 0, gagal: 0, belum: 0 };
+    for (const d of latestPengukuran) n[statusAmg(d)]++;
+    return n;
+  }, [latestPengukuran]);
 
   const paginatedData = useMemo(
     () => filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
@@ -579,6 +600,36 @@ export default function PengukuranGarduPage() {
                 className="border border-line rounded-lg pl-8 pr-3 py-1.5 text-sm w-full text-ink bg-white focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 disabled:opacity-40 disabled:cursor-not-allowed"
               />
             </div>
+            {/* Saringan keadaan AMG. Menekan pilnya sekalian menampilkan tabel:
+                orang yang mencari pengukuran gagal kirim tidak perlu disuruh
+                menekan "Tampilkan Data" lebih dulu untuk sesuatu yang sudah
+                jelas dimintanya. */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {(["semua", "gagal", "belum", "antrian", "terkirim"] as const).map((k) => {
+                const aktif = amgSaring === k;
+                const n = k === "semua" ? latestPengukuran.length : cacahAmg[k];
+                const sorot = k === "gagal" && n > 0;
+                return (
+                  <button
+                    key={k}
+                    onClick={() => { setAmgSaring(k); setShowTable(true); }}
+                    className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+                      aktif
+                        ? "bg-navy-600 border-navy-600 text-white"
+                        : sorot
+                          ? "bg-red-50 border-red-200 text-red-700 hover:border-red-300"
+                          : "bg-white border-line text-ink-soft hover:border-navy-300"
+                    }`}
+                  >
+                    {k === "semua" ? "Semua" : LABEL_AMG[k]}
+                    <span className={`tabular-nums ${aktif ? "text-white/70" : "text-ink-muted"}`}>
+                      {n}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
             {showTable && (
               <p className="text-sm text-ink-soft">
                 {loading ? "Memuat..." : `${filteredData.length} gardu`}
@@ -611,6 +662,21 @@ export default function PengukuranGarduPage() {
               )}
             </div>
           </div>
+
+          {/* Pesan galat AMG hampir selalu bisa ditindaklanjuti — kVA yang beda
+              atau kode gardu yang tidak dikenal AMG. Karena itu saat menyaring
+              "Gagal", pesannya ditampilkan di barisnya, bukan disembunyikan di
+              balik tooltip yang harus ditemukan lebih dulu. */}
+          {showTable && amgSaring === "gagal" && filteredData.length > 0 && (
+            <div className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+              <p className="text-xs text-red-800">
+                <b>{filteredData.length} pengukuran</b> tidak sampai ke AMG pada periode ini, dan
+                semuanya sudah berhenti dicoba setelah 3 kali. Betulkan sebabnya dulu (kVA yang
+                berbeda dibetulkan lewat Edit, kode gardu yang tidak dikenal AMG lewat master),
+                lalu centang barisnya dan tekan <b>Kirim ke AMG</b>.
+              </p>
+            </div>
+          )}
 
           {/* Empty state — belum ditampilkan */}
           {!showTable && (
@@ -684,23 +750,30 @@ export default function PengukuranGarduPage() {
                           {row.wo_sent_at && (
                             <span className="ml-1.5 text-[10px] bg-navy-50 text-navy-600 border border-navy-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">WO</span>
                           )}
-                          {row.amg_sent_at && (
+                          {statusAmg(row) === "terkirim" && (
                             <span className="ml-1 text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
                               AMG
                             </span>
                           )}
-                          {!row.amg_sent_at && row.amg_queued_at && !row.amg_error && (
+                          {statusAmg(row) === "antrian" && (
                             <span className="ml-1 text-[10px] bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
                               ANTRIAN
                             </span>
                           )}
-                          {!row.amg_sent_at && row.amg_queued_at && row.amg_error && (
-                            <span
-                              title={row.amg_error}
-                              className="ml-1 text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
-                            >
-                              AMG GAGAL{(row.amg_attempts ?? 0) >= 3 ? " 3×" : ""}
-                            </span>
+                          {statusAmg(row) === "gagal" && (
+                            <>
+                              <span
+                                title={row.amg_error ?? undefined}
+                                className="ml-1 text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
+                              >
+                                AMG GAGAL{(row.amg_attempts ?? 0) >= 3 ? " 3×" : ""}
+                              </span>
+                              {amgSaring === "gagal" && row.amg_error && (
+                                <span className="block text-[10px] text-red-700 font-normal mt-0.5 max-w-[260px] leading-tight">
+                                  {row.amg_error}
+                                </span>
+                              )}
+                            </>
                           )}
                         </td>
                         <td className="px-4 py-3 text-ink-soft">{row.penyulang ?? "—"}</td>
