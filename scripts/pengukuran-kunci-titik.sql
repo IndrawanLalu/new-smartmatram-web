@@ -73,6 +73,23 @@ ON CONFLICT (ulp) DO NOTHING;
 --    Disengaja: satu tindakan yang sama tidak boleh punya dua aturan tergantung
 --    layar mana yang memanggilnya.
 
+-- ⚠ DIBUANG DULU, bukan CREATE OR REPLACE begitu saja.
+--
+-- Tanda tangannya BERTAMBAH tiga parameter, dan menambah parameter lewat
+-- CREATE OR REPLACE tidak mengganti fungsinya — dia melahirkan fungsi KEDUA
+-- dengan nama sama. Sesudah itu Postgres menolak apa pun yang menyebut namanya
+-- tanpa daftar argumen: "function name is not unique", dan GRANT di bawah
+-- gagal.
+--
+-- Aman dibuang meski aplikasi HP masih memanggil dengan TUJUH parameter lama:
+-- PostgREST memanggil lewat nama parameter, dan ketiga yang baru punya nilai
+-- bawaan. Panggilan lama tetap mendarat di fungsi ini.
+--
+-- Jebakan yang sama sudah saya tulis sendiri di `wo-perabasan-regu.sql` dan
+-- tetap saya masuki di sini.
+DROP FUNCTION IF EXISTS public.koreksi_titik_gardu(
+  TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT, TEXT);
+
 CREATE OR REPLACE FUNCTION public.koreksi_titik_gardu(
   p_kode      TEXT,
   p_ulp       TEXT,
@@ -369,8 +386,15 @@ COMMENT ON VIEW public.pengukuran_persetujuan IS
 
 GRANT SELECT  ON public.pengukuran_tertahan     TO authenticated;
 GRANT SELECT  ON public.pengukuran_persetujuan  TO authenticated;
-GRANT EXECUTE ON FUNCTION public.koreksi_titik_gardu TO authenticated;
-GRANT EXECUTE ON FUNCTION public.usul_kva_gardu      TO authenticated;
+-- Daftar argumennya disebut lengkap. Nama saja cukup selama fungsinya tunggal,
+-- tapi begitu ada dua yang senama, GRANT tanpa daftar argumen gagal — dan
+-- gagalnya di BARIS TERAKHIR, sesudah seluruh skrip telanjur berjalan.
+GRANT EXECUTE ON FUNCTION public.koreksi_titik_gardu(
+  TEXT, TEXT, DOUBLE PRECISION, DOUBLE PRECISION, NUMERIC, TEXT, TEXT, TEXT, UUID, TEXT[]
+) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.usul_kva_gardu(
+  TEXT, TEXT, NUMERIC, TEXT, TEXT, UUID, TEXT[]
+) TO authenticated;
 
 
 -- =============================================================================
