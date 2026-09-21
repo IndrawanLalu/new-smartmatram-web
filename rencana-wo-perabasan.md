@@ -191,7 +191,7 @@ diverifikasi, dan tidak bisa dibandingkan dengan keadaan sesudahnya.
 | **1** | SQL: `segmen.panjang_manual_km` + view panjang yang memilih hitungan-atau-ketikan | SQL Editor | **selesai** 21 Sep (`scripts/master-segmen.sql`) |
 | **2** | Web: Master Segmen + impor segmen per penyulang (`rencana-master-data.md`) | deploy web | **selesai** 21 Sep |
 | **3** | SQL: tabel WO + fungsi terbitkan/selesaikan/putuskan | SQL Editor | **selesai** 21 Sep (`scripts/wo-perabasan.sql`) · diuji 15 skenario |
-| **4** | Web: menu WO Perabasan — terbitkan & persetujuan | deploy web |
+| **4** | Web: menu WO Perabasan — terbitkan & persetujuan | deploy web | **selesai** 21 Sep |
 | **5** | HP: layar perabasan per segmen + realisasi pohon + foto | OTA |
 
 Fase 1–2 sudah berguna sendiri walau WO belum ada: segmen membuat angka panjang
