@@ -101,7 +101,7 @@ export function useApprovalJtr(user: CurrentUser) {
     setError(null);
     try {
       let q = supabaseBrowser
-        .from("jtr_penyapuan")
+        .from("jtr_inspeksi")
         .select("*")
         .in("status", ["Selesai", "Ditolak"])
         .order("tgl_selesai", { ascending: true, nullsFirst: false });
@@ -143,7 +143,38 @@ export function useApprovalJtr(user: CurrentUser) {
     [user.name, user.email],
   );
 
-  return { daftar, loading, error, memproses, putuskan, muat, setError };
+  /**
+   * Membatalkan inspeksi yang salah objek atau uji coba.
+   *
+   * BUKAN penolakan. Menolak berarti "ulangi" — gardunya kembali jadi
+   * pekerjaan. Membatalkan berarti "jangan diulang", dan hitungannya hilang.
+   * Tiang yang sudah dinilai di dalamnya tidak ikut dibatalkan: tiangnya nyata
+   * berdiri di lapangan, yang keliru cuma catatan bahwa ia diperiksa pada
+   * kesempatan itu.
+   */
+  const batalkan = useCallback(
+    async (id: string, alasan: string) => {
+      setMemproses(id);
+      try {
+        const { error: e } = await supabaseBrowser.rpc("batalkan_inspeksi_jtr", {
+          p_id: id,
+          p_alasan: alasan,
+          p_nama: user.name ?? user.email ?? null,
+        });
+        if (e) throw new Error(e.message);
+        setDaftar((s) => s.filter((x) => x.id !== id));
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Gagal membatalkan inspeksi");
+        return false;
+      } finally {
+        setMemproses(null);
+      }
+    },
+    [user.name, user.email],
+  );
+
+  return { daftar, loading, error, memproses, putuskan, batalkan, muat, setError };
 }
 
 /**

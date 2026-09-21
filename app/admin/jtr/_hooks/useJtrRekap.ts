@@ -37,8 +37,8 @@ export interface RekapGardu {
 export interface Cakupan {
   ulp: string;
   gardu_master: number;
-  pernah_disapu: number;
-  disapu_12_bulan: number;
+  pernah_diinspeksi: number;
+  diinspeksi_12_bulan: number;
   persen_12_bulan: number | null;
 }
 
@@ -124,7 +124,7 @@ export function useJtrRekap(user: CurrentUser) {
         })(),
         (() => {
           let b = supabaseBrowser
-            .from("jtr_penyapuan")
+            .from("jtr_inspeksi")
             .select("*")
             .order("tgl_selesai", { ascending: false, nullsFirst: false })
             .limit(50);

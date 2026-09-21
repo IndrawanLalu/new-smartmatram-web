@@ -52,7 +52,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
   return (
     <div className="space-y-4">
       {/* Tiang yang sudah di master tapi belum masuk segmen mana pun.
-          Regu menyapu PER SEGMEN, jadi tiang seperti ini tidak akan pernah
+          Regu memeriksa PER SEGMEN, jadi tiang seperti ini tidak akan pernah
           muncul di HP — dan itu tidak kelihatan dari mana pun kalau tidak
           disebut di sini: daftar segmennya cuma tampak kosong. */}
       {lepas.jumlah > 0 && (
@@ -64,7 +64,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
             </p>
             <p className="text-xs mt-1">
               Penyulang: {lepas.penyulang.join(", ")}. Tiangnya sudah ada di master dan sudah
-              terhitung panjang rutenya, tapi <b>tidak akan terlihat regu saat menyapu</b> —
+              terhitung panjang rutenya, tapi <b>tidak akan terlihat regu saat inspeksi</b> —
               satuan pekerjaannya segmen. Batas segmen tidak ada di berkas impor; yang
               memperlihatkannya cuma peta. Tandai rentang tiangnya di tab <b>Peta</b>.
             </p>

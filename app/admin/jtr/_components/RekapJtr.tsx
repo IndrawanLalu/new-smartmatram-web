@@ -98,7 +98,7 @@ export default function RekapJtr({ user }: { user: CurrentUser }) {
         />
       </div>
 
-      {/* Cakupan penyapuan — ukuran keberhasilan program */}
+      {/* Cakupan inspeksi — ukuran keberhasilan program */}
       <div className={CARD}>
         <div className="px-4 py-3 border-b border-line">
           <p className={EYEBROW}>Cakupan inspeksi</p>
@@ -199,12 +199,12 @@ export default function RekapJtr({ user }: { user: CurrentUser }) {
         </div>
       </div>
 
-      {/* Penyapuan yang sudah tercatat */}
+      {/* Inspeksi yang sudah tercatat */}
       <div className={CARD}>
         <div className="px-4 py-3 border-b border-line">
-          <p className={EYEBROW}>Inspeksi gardu</p>
+          <p className={EYEBROW}>Inspeksi JTR</p>
           <p className="text-sm text-ink-soft mt-0.5">
-            Satu baris = satu gardu yang dinyatakan sudah diinspeksi tuntas oleh petugas.
+            Satu baris = satu gardu yang jaringan JTR-nya dinyatakan sudah diinspeksi tuntas.
           </p>
         </div>
         {penyapuan.length === 0 ? (

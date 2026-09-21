@@ -236,7 +236,7 @@ export default function ImporTiang({ user }: { user: CurrentUser }) {
             </div>
           </div>
 
-          {/* Tiang tanpa segmen masuk master tapi TIDAK terlihat di penyapuan —
+          {/* Tiang tanpa segmen masuk master tapi TIDAK terlihat di inspeksi —
               satuan pekerjaan regu adalah segmen. Tanpa peringatan ini orang
               baru tahu setelah membuka HP dan menemukan daftarnya kosong. */}
           {!segmenId && (
@@ -244,8 +244,8 @@ export default function ImporTiang({ user }: { user: CurrentUser }) {
               <TriangleAlert size={14} className="mt-0.5 shrink-0 text-attention" />
               <span>
                 Belum memilih segmen. Tiangnya tetap masuk master, tapi{" "}
-                <b>tidak akan terlihat di penyapuan</b> sampai dimasukkan ke sebuah segmen —
-                regu menyapu per segmen, bukan per penyulang. Ini wajar kalau berkasnya
+                <b>tidak akan terlihat di inspeksi</b> sampai dimasukkan ke sebuah segmen —
+                regu memeriksa per segmen, bukan per penyulang. Ini wajar kalau berkasnya
                 memuat beberapa segmen sekaligus: batas ruas tidak ada di Excel, dan yang
                 memperlihatkannya cuma peta. Tandai rentang tiangnya nanti di tab Peta.
               </span>

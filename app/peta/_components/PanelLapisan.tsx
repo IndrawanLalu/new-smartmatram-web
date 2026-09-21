@@ -190,7 +190,7 @@ export default function PanelLapisan({
               {perFolder.jtm.length === 0 ? (
                 <Kosong>
                   Belum ada penyulang yang tiangnya disurvei. Barisnya muncul
-                  sendiri setelah penyapuan JTM pertama pada sebuah penyulang.
+                  sendiri setelah inspeksi JTM pertama pada sebuah penyulang.
                 </Kosong>
               ) : (
                 perFolder.jtm.map((l) => (

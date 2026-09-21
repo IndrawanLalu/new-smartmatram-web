@@ -75,7 +75,7 @@ export const namaSegmen = (
   return `${label(awalJenis, awalNama)} - ${label(akhirJenis, akhirNama)}`;
 };
 
-/** Tiang yang belum masuk segmen mana pun — tidak terlihat regu saat menyapu. */
+/** Tiang yang belum masuk segmen mana pun — tidak terlihat regu saat inspeksi. */
 interface TiangLepas {
   id: string;
   penyulang: string;
@@ -119,7 +119,7 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
       );
 
       // Tiang yang sudah ada di master tapi belum masuk segmen mana pun. Dia
-      // tidak muncul di penyapuan — regu menyapu per segmen — jadi keadaan ini
+      // tidak muncul di inspeksi — regu memeriksa per segmen — jadi keadaan ini
       // harus KELIHATAN, bukan cuma terbaca sebagai "segmennya kosong".
       const tiang = await fetchAllRows<TiangLepas>(() => {
         const q = supabaseBrowser

@@ -33,7 +33,7 @@ const LABEL: Record<Perubahan, string> = {
 };
 
 /**
- * Peta sebelum vs sesudah satu inspeksi gardu.
+ * Peta sebelum vs sesudah satu inspeksi JTR.
  *
  * Yang dicari admin bukan "seperti apa jaringannya", melainkan "apa yang
  * berubah". Karena itu bawaannya **Selisih** — satu peta dengan perubahannya

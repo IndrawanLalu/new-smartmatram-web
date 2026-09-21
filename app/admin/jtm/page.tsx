@@ -25,7 +25,7 @@ const TABS = [
   { key: "segmen", label: "Segmen", icon: Network },
   { key: "peta", label: "Peta", icon: Map },
   { key: "tiang", label: "Tiang", icon: TowerControl },
-  { key: "penyapuan", label: "Penyapuan", icon: ClipboardCheck },
+  { key: "penyapuan", label: "Inspeksi", icon: ClipboardCheck },
   { key: "impor", label: "Impor Tiang", icon: Upload },
   { key: "penyulang", label: "Penyulang", icon: Zap },
   { key: "pengaturan", label: "Pengaturan", icon: SlidersHorizontal },

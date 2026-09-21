@@ -8,7 +8,7 @@ import { useJtrItem, type ItemJtr } from "../_hooks/useJtrItem";
  * Menyetel isian tombol "Tiang baik" di HP petugas.
  *
  * Kebanyakan tiang memang baik dan bentuknya sama. Satu ketukan mengisi
- * seluruh jawaban ini sekaligus — itulah bedanya antara menyapu lima puluh
+ * seluruh jawaban ini sekaligus — itulah bedanya antara memeriksa lima puluh
  * tiang sehari dan menyerah di tiang kelima belas.
  *
  * Item yang dibiarkan kosong tidak ikut terisi otomatis, dan itu bukan

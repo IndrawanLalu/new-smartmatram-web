@@ -8,7 +8,7 @@ import { useJtmItem, type ItemRef } from "../_hooks/useJtmItem";
  * Menyetel isian tombol "Tiang normal" di HP petugas.
  *
  * Kebanyakan tiang memang normal dan bentuknya sama. Satu ketukan mengisi
- * seluruh jawaban ini sekaligus — itulah bedanya antara menyapu lima puluh
+ * seluruh jawaban ini sekaligus — itulah bedanya antara memeriksa lima puluh
  * tiang sehari dan menyerah di tiang kelima belas.
  *
  * Item yang dibiarkan kosong tidak ikut terisi otomatis, dan itu bukan

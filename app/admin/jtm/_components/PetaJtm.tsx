@@ -389,7 +389,7 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
           <MapPinOff size={32} className="text-ink-muted" />
           <p className="text-sm text-ink-soft max-w-md">
             Belum ada tiang bertitik untuk penyulang ini. Impor tiang dulu di tab sebelah, atau
-            tunggu regu menyapu di lapangan.
+            tunggu regu memeriksanya di lapangan.
           </p>
         </div>
       ) : terlaluBanyak ? (

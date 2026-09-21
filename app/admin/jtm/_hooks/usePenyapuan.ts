@@ -5,10 +5,10 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 
 /**
- * Penyapuan JTM yang dikirim regu, beserta keputusannya.
+ * Inspeksi JTM yang dikirim regu, beserta keputusannya.
  *
  * KENAPA LAYAR INI MENENTUKAN SEGALANYA: `tiang_kondisi_terakhir` — dasar semua
- * angka JTM, termasuk daftar Perlu Perbaikan — hanya memuat penyapuan berstatus
+ * angka JTM, termasuk daftar Perlu Perbaikan — hanya memuat inspeksi berstatus
  * 'Diverifikasi'. Selama tidak ada yang memutuskan, seluruh pekerjaan regu
  * tersimpan rapi di basis data dan tidak muncul di mana pun. Itu persis yang
  * terjadi pada uji lapangan pertama.
@@ -105,7 +105,7 @@ export function usePenyapuan(ulp: string | null) {
     void muat();
   }, [muat]);
 
-  /** Isi satu penyapuan, dibaca hanya saat barisnya dibuka — sebuah penyapuan
+  /** Isi satu inspeksi, dibaca hanya saat barisnya dibuka — sebuah inspeksi
    *  bisa memuat ratusan jawaban, dan memuatnya di muka membuat daftar yang
    *  mungkin cuma dilihat sekilas jadi berat tanpa alasan. */
   const isiPenyapuan = useCallback(
@@ -176,7 +176,7 @@ export function usePenyapuan(ulp: string | null) {
 
   const putuskan = useCallback(
     async (id: string, setuju: boolean, nama: string, catatan: string) => {
-      const { error } = await supabaseBrowser.rpc("putuskan_penyapuan_jtm", {
+      const { error } = await supabaseBrowser.rpc("putuskan_inspeksi_jtm", {
         p_id: id,
         p_setuju: setuju,
         p_nama: nama,
@@ -196,7 +196,7 @@ export function usePenyapuan(ulp: string | null) {
 
   const gabung = useCallback(
     async (id: string, oleh: string) => {
-      const { data, error } = await supabaseBrowser.rpc("gabung_penyapuan_jtm", {
+      const { data, error } = await supabaseBrowser.rpc("gabung_inspeksi_jtm", {
         p_tujuan: id,
         p_oleh: oleh,
       });
@@ -206,7 +206,7 @@ export function usePenyapuan(ulp: string | null) {
       }
       const h = data as { penyapuan_dibuang: number; tiang_dinilai: number };
       toast.success(
-        `${h.penyapuan_dibuang} penyapuan disatukan — kini ${h.tiang_dinilai} tiang dalam satu catatan.`,
+        `${h.penyapuan_dibuang} inspeksi disatukan — kini ${h.tiang_dinilai} tiang dalam satu catatan.`,
       );
       await muat();
       return true;
@@ -216,7 +216,7 @@ export function usePenyapuan(ulp: string | null) {
 
   const buangKosong = useCallback(
     async (id: string, oleh: string) => {
-      const { error } = await supabaseBrowser.rpc("buang_penyapuan_kosong_jtm", {
+      const { error } = await supabaseBrowser.rpc("buang_inspeksi_kosong_jtm", {
         p_id: id,
         p_oleh: oleh,
       });
@@ -224,12 +224,41 @@ export function usePenyapuan(ulp: string | null) {
         toast.error(error.message);
         return false;
       }
-      toast.success("Penyapuan kosong dibuang.");
+      toast.success("Inspeksi kosong dibuang.");
       await muat();
       return true;
     },
     [toast, muat],
   );
 
-  return { baris, loading, muat, isiPenyapuan, putuskan, gabung, buangKosong };
+  /**
+   * Membatalkan inspeksi yang salah segmen atau uji coba.
+   *
+   * BUKAN penolakan. Menolak berarti "ulangi" — segmennya kembali jadi
+   * pekerjaan. Membatalkan berarti "jangan diulang".
+   *
+   * Beda dengan `buangKosong`: yang itu cuma untuk inspeksi yang benar-benar
+   * nol tiang — bekas layar yang pernah dibuka. Yang ini untuk inspeksi yang
+   * sudah berisi pekerjaan tapi objeknya keliru.
+   */
+  const batalkan = useCallback(
+    async (id: string, alasan: string, oleh: string) => {
+      const { error } = await supabaseBrowser.rpc("batalkan_inspeksi_jtm", {
+        p_id: id,
+        p_alasan: alasan,
+        p_nama: oleh,
+      });
+      if (error) {
+        // Penjaga di database sudah menerangkan sendiri kenapa ditolak.
+        toast.error(error.message);
+        return false;
+      }
+      toast.success("Inspeksi dibatalkan.");
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  return { baris, loading, muat, isiPenyapuan, putuskan, gabung, buangKosong, batalkan };
 }

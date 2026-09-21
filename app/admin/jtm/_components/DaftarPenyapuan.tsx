@@ -1,16 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Merge, Trash2, X } from "lucide-react";
+import { AlertTriangle, Ban, Check, ChevronDown, ChevronRight, Loader2, Merge, Trash2, X } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { usePenyapuan, type JawabanTiang, type Penyapuan } from "../_hooks/usePenyapuan";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 
 /**
- * Persetujuan penyapuan JTM.
+ * Persetujuan inspeksi JTM.
  *
  * Tanpa layar ini seluruh modul JTM buntu: `tiang_kondisi_terakhir` hanya
- * memuat penyapuan berstatus 'Diverifikasi', jadi setiap tiang yang dinilai
+ * memuat inspeksi berstatus 'Diverifikasi', jadi setiap tiang yang dinilai
  * regu tersimpan rapi dan tidak pernah muncul di angka mana pun. Regu bekerja
  * sehari penuh, lalu melihat nol di mana-mana.
  */
@@ -37,19 +38,33 @@ const tanggal = (iso: string | null) =>
 export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
   // UP3 melihat seluruh unit; peran lain terkunci di unitnya sendiri — aturan
   // yang sama dengan halaman JTM lainnya, bukan aturan baru untuk layar ini.
-  const { baris, loading, isiPenyapuan, putuskan, gabung, buangKosong } = usePenyapuan(
+  const { baris: semua, loading, isiPenyapuan, putuskan, gabung, buangKosong, batalkan } = usePenyapuan(
     canSeeAllUnits(user.role) ? null : (user.unit ?? null),
   );
   const [buka, setBuka] = useState<string | null>(null);
   const [isi, setIsi] = useState<JawabanTiang[]>([]);
   const [memuatIsi, setMemuatIsi] = useState(false);
+  const [batalUntuk, setBatalUntuk] = useState<string | null>(null);
+  /** Yang dibatalkan disembunyikan secara bawaan, tapi HARUS bisa dilihat lagi:
+   *  tanpa itu, pembatalan yang keliru jadi kesalahan yang tidak bisa
+   *  dibetulkan siapa pun. */
+  const [tampilBatal, setTampilBatal] = useState(false);
+
+  const baris = useMemo(
+    () => (tampilBatal ? semua : semua.filter((b) => b.status !== "Dibatalkan")),
+    [semua, tampilBatal],
+  );
+  const jmlBatal = useMemo(
+    () => semua.filter((b) => b.status === "Dibatalkan").length,
+    [semua],
+  );
 
   const nama = user.name || user.email;
 
-  /** Satu segmen = satu kartu, penyapuannya jadi riwayat di dalamnya.
+  /** Satu segmen = satu kartu, inspeksinya jadi riwayat di dalamnya.
    *
    *  Sebelum perbaikan `jtm-lanjut.sql`, tiap kali regu masuk lagi ke segmen
-   *  yang sudah dinyatakan selesai lahir penyapuan baru — satu segmen PERUMNAS
+   *  yang sudah dinyatakan selesai lahir inspeksi baru — satu segmen PERUMNAS
    *  jadi punya tiga. Dikelompokkan begini, yang terbaca adalah pekerjaannya,
    *  bukan berapa kali layarnya dibuka. */
   const kelompok = useMemo(() => {
@@ -81,7 +96,7 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 gap-2 text-ink-soft text-sm">
-        <Loader2 size={18} className="animate-spin" /> Memuat penyapuan…
+        <Loader2 size={18} className="animate-spin" /> Memuat inspeksi…
       </div>
     );
   }
@@ -91,23 +106,34 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
   return (
     <div className="space-y-4">
       <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>Penyapuan JTM</p>
+        <p className={EYEBROW}>Inspeksi JTM</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
-          Penyapuan yang dikirim regu menunggu diputuskan di sini. Sebelum disetujui,{" "}
+          Inspeksi yang dikirim regu menunggu diputuskan di sini. Sebelum disetujui,{" "}
           <b>hasilnya belum terhitung di mana pun</b> — bukan hilang, tapi juga belum jadi
           angka. Menolak wajib beralasan, karena regu yang dikembalikan tanpa sebab akan
           mengulang seluruh penyusuran sambil menebak apa yang salah.
         </p>
         {menunggu.length > 0 && (
           <p className="text-xs font-semibold text-blue-700 mt-2">
-            {menunggu.length} penyapuan menunggu keputusan Anda.
+            {menunggu.length} inspeksi menunggu keputusan Anda.
           </p>
+        )}
+        {jmlBatal > 0 && (
+          <label className="mt-3 inline-flex items-center gap-2 text-xs text-ink-soft cursor-pointer">
+            <input
+              type="checkbox"
+              checked={tampilBatal}
+              onChange={(e) => setTampilBatal(e.target.checked)}
+              className="accent-navy-600"
+            />
+            Tampilkan {jmlBatal} yang dibatalkan
+          </label>
         )}
       </div>
 
       {baris.length === 0 && (
         <div className={`${CARD} p-10 text-center text-sm text-ink-muted`}>
-          Belum ada penyapuan untuk unit ini.
+          Belum ada inspeksi untuk unit ini.
         </div>
       )}
 
@@ -120,7 +146,7 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
             <div className="flex flex-wrap items-center gap-2 bg-amber-50 border border-amber-200 rounded-xl px-4 py-2.5">
               <AlertTriangle size={15} className="text-amber-700 shrink-0" />
               <p className="text-xs text-amber-800 flex-1 min-w-[240px]">
-                Segmen ini punya <b>{g.length} catatan penyapuan</b> padahal satu pekerjaan.
+                Segmen ini punya <b>{g.length} catatan inspeksi</b> padahal satu pekerjaan.
                 Lahir sebelum perbaikan, saat masuk lagi ke segmen yang sudah selesai membuat
                 catatan baru. Menyatukannya memindahkan semua penilaian ke satu catatan —
                 tiang yang dinilai dua kali diambil yang terbaru.
@@ -190,7 +216,7 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
 
               {memuatIsi ? (
                 <div className="flex items-center gap-2 text-sm text-ink-muted py-6">
-                  <Loader2 size={15} className="animate-spin" /> Memuat isi penyapuan…
+                  <Loader2 size={15} className="animate-spin" /> Memuat isi inspeksi…
                 </div>
               ) : isi.length === 0 ? (
                 <p className="text-sm text-ink-muted py-4">Tidak ada tiang yang dinilai.</p>
@@ -220,6 +246,30 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
                   </button>
                 </div>
               )}
+
+              {/* Inspeksi yang SUDAH berisi pekerjaan tapi objeknya keliru —
+                  salah segmen, atau uji coba. Berbeda dari "Buang" di atas,
+                  yang cuma untuk catatan yang benar-benar nol tiang. */}
+              {p.tiangDinilai > 0 && p.status !== "Dibatalkan" && (
+                <div className="mt-4 pt-4 border-t border-line flex items-center gap-3">
+                  <p className="text-xs text-ink-muted flex-1">
+                    Salah segmen atau uji coba? <b>Batalkan</b> membuangnya dari hitungan
+                    tanpa menyuruh regu mengerjakan ulang. Tiang yang sudah dinilai tetap.
+                  </p>
+                  <button
+                    onClick={() => setBatalUntuk(p.id)}
+                    className={`${BTN_GHOST} text-ink-muted hover:text-red-600`}
+                  >
+                    <Ban size={14} /> Batalkan
+                  </button>
+                </div>
+              )}
+
+              {p.status === "Dibatalkan" && p.verifiedNote && (
+                <p className="mt-4 pt-4 border-t border-line text-xs text-ink-muted">
+                  <b>Dibatalkan:</b> {p.verifiedNote}
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -227,6 +277,17 @@ export default function DaftarPenyapuan({ user }: { user: CurrentUser }) {
         </div>
         );
       })}
+
+      {batalUntuk && (
+        <BatalkanModal
+          judul="Batalkan inspeksi JTM ini?"
+          keterangan="Catatannya dibuang dari hitungan cakupan dan rekap temuan. Tiang yang sudah dinilai TIDAK ikut dibatalkan — tiangnya nyata berdiri di lapangan."
+          peringatan="Berbeda dengan Tolak: segmennya tidak dikembalikan jadi pekerjaan, jadi tidak akan ada yang mengerjakannya ulang."
+          labelTombol="Batalkan inspeksi"
+          onTutup={() => setBatalUntuk(null)}
+          onBatalkan={(alasan) => batalkan(batalUntuk, alasan, nama)}
+        />
+      )}
     </div>
   );
 }

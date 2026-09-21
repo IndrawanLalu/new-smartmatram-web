@@ -3,10 +3,11 @@
 import { useState, useEffect, useMemo } from "react";
 import dynamic from "next/dynamic";
 import {
-  Loader2, Inbox, CheckCircle2, XCircle, GitBranch, Ruler, TriangleAlert, User, Calendar,
+  Loader2, Inbox, CheckCircle2, XCircle, GitBranch, Ruler, TriangleAlert, User, Calendar, Ban,
 } from "lucide-react";
 import { type CurrentUser } from "@/lib/roles";
 import { CARD, BTN_PRIMARY, BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 
 const km = (v: number) => `${Number(v).toFixed(3).replace(".", ",")} km`;
 import {
@@ -31,7 +32,7 @@ const tgl = (iso: string | null) =>
     : "—";
 
 export default function ApprovalGardu({ user }: { user: CurrentUser }) {
-  const { daftar, loading, error, memproses, putuskan } = useApprovalJtr(user);
+  const { daftar, loading, error, memproses, putuskan, batalkan } = useApprovalJtr(user);
   const [dipilih, setDipilih] = useState<string | null>(null);
   const [banding, setBanding] = useState<{
     tiang: TiangBanding[];
@@ -43,6 +44,7 @@ export default function ApprovalGardu({ user }: { user: CurrentUser }) {
   } | null>(null);
   const [memuatBanding, setMemuatBanding] = useState(false);
   const [catatan, setCatatan] = useState("");
+  const [batalUntuk, setBatalUntuk] = useState<string | null>(null);
 
   const aktif: InspeksiMenunggu | null = useMemo(
     () => daftar.find((d) => d.id === dipilih) ?? daftar[0] ?? null,
@@ -347,7 +349,7 @@ export default function ApprovalGardu({ user }: { user: CurrentUser }) {
                   ) : (
                     <CheckCircle2 size={16} />
                   )}
-                  Setujui inspeksi gardu ini
+                  Setujui inspeksi JTR ini
                 </button>
                 <button
                   className={`${BTN_GHOST} text-red-600 border-red-200 hover:bg-red-50`}
@@ -358,14 +360,39 @@ export default function ApprovalGardu({ user }: { user: CurrentUser }) {
                   <XCircle size={16} />
                   Tolak
                 </button>
+                {/* Sengaja dipisahkan ke kanan, jauh dari Tolak. Keduanya tampak
+                    mirip padahal berlawanan, dan yang satu ini tidak menyuruh
+                    siapa pun mengerjakan ulang. */}
+                <button
+                  className={`${BTN_GHOST} ml-auto text-ink-muted hover:text-red-600`}
+                  disabled={memproses === aktif.id}
+                  onClick={() => setBatalUntuk(aktif.id)}
+                >
+                  <Ban size={16} />
+                  Batalkan
+                </button>
               </div>
               <p className="text-[11px] text-ink-muted">
                 Menyetujui berarti pekerjaan di gardu ini dinyatakan benar dan sesuai. Menolak
                 mengembalikannya ke petugas — karena itu alasannya diminta lebih dulu.
+                <br />
+                <b>Batalkan</b> berbeda: dipakai kalau inspeksinya salah gardu atau uji coba,
+                jadi tidak perlu dikerjakan ulang dan tidak ikut dihitung.
               </p>
             </div>
           </div>
         </div>
+      )}
+
+      {batalUntuk && (
+        <BatalkanModal
+          judul="Batalkan inspeksi JTR ini?"
+          keterangan="Catatan inspeksinya dibuang dari hitungan cakupan dan rekap temuan. Tiang yang sudah dinilai TIDAK ikut dibatalkan — tiangnya nyata berdiri di lapangan."
+          peringatan="Berbeda dengan Tolak: gardunya tidak dikembalikan jadi pekerjaan, jadi tidak akan ada yang mengerjakannya ulang."
+          labelTombol="Batalkan inspeksi"
+          onTutup={() => setBatalUntuk(null)}
+          onBatalkan={(alasan) => batalkan(batalUntuk, alasan)}
+        />
       )}
     </div>
   );
