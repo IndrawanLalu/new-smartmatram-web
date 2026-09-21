@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { FileWarning, Loader2, Send, TriangleAlert } from "lucide-react";
+import { FileWarning, Loader2, Send, TriangleAlert, Users } from "lucide-react";
 import { BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
-import type { SegmenPilihan } from "../_hooks/useWoPerabasan";
+import type { Regu, SegmenPilihan } from "../_hooks/useWoPerabasan";
 
 /**
  * Menerbitkan WO perabasan.
@@ -19,24 +19,30 @@ import type { SegmenPilihan } from "../_hooks/useWoPerabasan";
  *   3. Segmen yang belum punya panjang SAMA SEKALI. Yang ini menyumbang 0 km
  *      ke rencana — tanpa penanda, WO terlihat kurang dari targetnya tanpa
  *      sebab yang jelas.
+ *   4. Berapa yang belum dibagi ke REGU. Segmen tanpa regu tidak muncul di HP
+ *      siapa pun, dan dari layar WO ia terlihat persis sama dengan yang sedang
+ *      dikerjakan.
  */
 
 export default function TerbitkanWo({
   user,
   segmen,
   segmenTerikat,
+  regu,
   onTerbitkan,
 }: {
   user: CurrentUser;
   segmen: SegmenPilihan[];
   segmenTerikat: Set<string>;
+  regu: Regu[];
   onTerbitkan: (v: {
     ulp: string;
     nama: string;
     targetKm: number;
     segmen: string[];
+    regu: Record<string, string>;
     tglWo: string;
-  }) => Promise<{ item: number; dilewati: { segmen: string; sebab: string }[] } | null>;
+  }) => Promise<{ item: number; tanpa_regu: number; dilewati: { segmen: string; sebab: string }[] } | null>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [ulp, setUlp] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -44,6 +50,8 @@ export default function TerbitkanWo({
   const [target, setTarget] = useState("");
   const [tgl, setTgl] = useState(() => new Date().toISOString().slice(0, 10));
   const [pilih, setPilih] = useState<Set<string>>(new Set());
+  /** segmen_id → nama regu. Kosong berarti belum dibagi. */
+  const [bagi, setBagi] = useState<Record<string, string>>({});
   const [saringPenyulang, setSaringPenyulang] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
@@ -62,6 +70,8 @@ export default function TerbitkanWo({
     [segmen, ulp, segmenTerikat, saringPenyulang],
   );
 
+  const reguUlp = useMemo(() => regu.filter((g) => g.ulp === ulp), [regu, ulp]);
+
   const daftarPenyulang = useMemo(
     () => [...new Set(segmen.filter((s) => !ulp || s.ulp === ulp).map((s) => s.penyulang))].sort(),
     [segmen, ulp],
@@ -76,6 +86,17 @@ export default function TerbitkanWo({
     .filter((s) => s.panjang_dari === "ketikan")
     .reduce((n, s) => n + (s.panjang_pakai_km ?? 0), 0);
   const tanpaPanjang = dipilih.filter((s) => s.panjang_dari === "kosong").length;
+  const tanpaRegu = dipilih.filter((s) => !bagi[s.segmen_id]).length;
+
+  /** Km yang akan dipikul tiap regu — supaya pembagian timpang terlihat. */
+  const bebanRegu = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const s of dipilih) {
+      const g = bagi[s.segmen_id];
+      if (g) n[g] = (n[g] ?? 0) + (s.panjang_pakai_km ?? 0);
+    }
+    return n;
+  }, [dipilih, bagi]);
 
   const targetNum = Number(target.replace(",", ".")) || 0;
   const siap = !!ulp && nama.trim().length > 2 && targetNum > 0 && dipilih.length > 0;
@@ -87,11 +108,15 @@ export default function TerbitkanWo({
       nama: nama.trim(),
       targetKm: targetNum,
       segmen: dipilih.map((s) => s.segmen_id),
+      regu: Object.fromEntries(
+        dipilih.filter((s) => bagi[s.segmen_id]).map((s) => [s.segmen_id, bagi[s.segmen_id]]),
+      ),
       tglWo: tgl,
     });
     setSibuk(false);
     if (h) {
       setPilih(new Set());
+      setBagi({});
       setNama("");
       setTarget("");
     }
@@ -185,6 +210,12 @@ export default function TerbitkanWo({
               {tanpaPanjang} segmen belum punya panjang — menyumbang 0 km ke rencana
             </span>
           )}
+          {tanpaRegu > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs text-red-700">
+              <Users size={13} />
+              {tanpaRegu} belum dibagi regu — tidak akan muncul di HP siapa pun
+            </span>
+          )}
           <button
             onClick={() => void kirim()}
             disabled={!siap || sibuk}
@@ -195,6 +226,54 @@ export default function TerbitkanWo({
           </button>
         </div>
       </div>
+
+      {dipilih.length > 0 && reguUlp.length > 0 && (
+        <div className={`${CARD} p-4`}>
+          <p className={EYEBROW}>Bagi ke regu</p>
+          <p className="text-[11px] text-ink-muted mt-1">
+            Tiap segmen hanya muncul di HP regu yang ditugasi — sepola temuan, tidak bercampur.
+            Yang tidak dibagi tidak muncul di mana pun.
+          </p>
+          <div className="mt-2.5 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-soft">Semua yang dipilih ke:</span>
+            {reguUlp.map((g) => (
+              <button
+                key={g.regu}
+                onClick={() =>
+                  setBagi((p) => ({
+                    ...p,
+                    ...Object.fromEntries(dipilih.map((s) => [s.segmen_id, g.regu])),
+                  }))
+                }
+                className={`${CHIP} ${CHIP_OFF}`}
+              >
+                {g.regu}
+                {/* Beban yang SUDAH dipikul regu itu di WO lain. Tanpa angka ini,
+                    pembagian terasa adil di layar ini padahal satu regu sedang
+                    memikul tiga WO sekaligus. */}
+                {g.km_berjalan > 0 && (
+                  <span className="text-ink-muted">+{Number(g.km_berjalan).toFixed(1)} km berjalan</span>
+                )}
+              </button>
+            ))}
+            <button onClick={() => setBagi({})} className={`${CHIP} ${CHIP_OFF}`}>
+              Kosongkan
+            </button>
+          </div>
+
+          {Object.keys(bebanRegu).length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
+              {Object.entries(bebanRegu)
+                .sort((a, b) => b[1] - a[1])
+                .map(([g, km]) => (
+                  <span key={g} className="text-xs text-ink-soft">
+                    <b className="text-ink">{g}</b> {km.toFixed(2)} km
+                  </span>
+                ))}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className={`${CARD} p-5`}>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -214,6 +293,14 @@ export default function TerbitkanWo({
             </button>
           ))}
         </div>
+
+        {ulp && reguUlp.length === 0 && (
+          <p className="text-xs text-red-700 mt-3">
+            ULP {ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN).
+            WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya
+            didaftarkan lalu ditugaskan dari tab WO Berjalan.
+          </p>
+        )}
 
         {!ulp ? (
           <p className="text-xs text-ink-muted py-10 text-center">Pilih ULP dulu.</p>
@@ -251,7 +338,7 @@ export default function TerbitkanWo({
                     {s.panjang_pakai_km !== null ? s.panjang_pakai_km.toFixed(2) : "—"}
                     {s.panjang_dari === "ketikan" && <span className="text-amber-600"> ✎</span>}
                   </span>
-                  <span className="w-[120px] text-right text-[11px]">
+                  <span className="w-[110px] text-right text-[11px]">
                     {s.umur_inspeksi_bulan === null ? (
                       <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">
                         <TriangleAlert size={11} /> belum diinspeksi
@@ -260,6 +347,28 @@ export default function TerbitkanWo({
                       <span className="text-ink-muted">{s.umur_inspeksi_bulan} bln lalu</span>
                     )}
                   </span>
+
+                  {/* Hanya muncul setelah dicentang: dropdown di baris yang tidak
+                      dipilih cuma menambah kebisingan pada daftar yang sudah panjang. */}
+                  {aktif && reguUlp.length > 0 && (
+                    <select
+                      value={bagi[s.segmen_id] ?? ""}
+                      onChange={(e) =>
+                        setBagi((p) => ({ ...p, [s.segmen_id]: e.target.value }))
+                      }
+                      onClick={(e) => e.preventDefault()}
+                      className={`${FIELD} w-[120px] h-8 text-xs ${
+                        bagi[s.segmen_id] ? "" : "border-red-300 text-red-700"
+                      }`}
+                    >
+                      <option value="">— belum dibagi —</option>
+                      {reguUlp.map((g) => (
+                        <option key={g.regu} value={g.regu}>
+                          {g.regu}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </label>
               );
             })}

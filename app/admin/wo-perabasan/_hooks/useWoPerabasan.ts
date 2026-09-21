@@ -43,6 +43,11 @@ export interface WoItem {
   segmen_nama: string;
   panjang_km: number | null;
   panjang_dari: string | null;
+  /**
+   * Regu yang ditugasi, mis. "RABAS 1". NULL = belum ditugaskan — dan selama
+   * NULL, segmen ini TIDAK muncul di HP regu mana pun.
+   */
+  regu: string | null;
   status: string;
   tgl_mulai: string | null;
   tgl_selesai: string | null;
@@ -59,6 +64,14 @@ export interface SegmenPilihan {
   panjang_pakai_km: number | null;
   panjang_dari: "hitungan" | "ketikan" | "kosong";
   umur_inspeksi_bulan: number | null;
+}
+
+/** Regu rabas yang aktif di sebuah ULP, beserta beban yang sedang dipikulnya. */
+export interface Regu {
+  regu: string;
+  ulp: string;
+  segmen_berjalan: number;
+  km_berjalan: number;
 }
 
 export interface Realisasi {
@@ -78,7 +91,7 @@ export interface Realisasi {
 const KOLOM_WO =
   "wo_id,ulp,nama,tgl_wo,target_km,status,item,item_selesai,rencana_km,capaian_km,capaian_km_hitungan,capaian_km_ketikan,capaian_persen,pohon_dirabas";
 const KOLOM_ITEM =
-  "id,wo_id,segmen_id,urutan,ulp,penyulang,segmen_nama,panjang_km,panjang_dari,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_note";
+  "id,wo_id,segmen_id,urutan,ulp,penyulang,segmen_nama,panjang_km,panjang_dari,regu,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_note";
 const KOLOM_SEGMEN =
   "segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan";
 
@@ -88,11 +101,12 @@ export function useWoPerabasan() {
   const [item, setItem] = useState<WoItem[]>([]);
   const [segmen, setSegmen] = useState<SegmenPilihan[]>([]);
   const [realisasi, setRealisasi] = useState<Realisasi[]>([]);
+  const [regu, setRegu] = useState<Regu[]>([]);
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
     try {
-      const [w, i, s, r] = await Promise.all([
+      const [w, i, s, r, g] = await Promise.all([
         supabaseBrowser.from("wo_perabasan_capaian").select(KOLOM_WO).order("tgl_wo", { ascending: false }),
         supabaseBrowser.from("wo_perabasan_item").select(KOLOM_ITEM).order("urutan"),
         supabaseBrowser
@@ -102,13 +116,19 @@ export function useWoPerabasan() {
           .order("penyulang")
           .order("nama"),
         supabaseBrowser.from("perabasan_realisasi").select("*").order("dikerjakan_at"),
+        supabaseBrowser
+          .from("regu_perabasan")
+          .select("regu,ulp,segmen_berjalan,km_berjalan")
+          .order("ulp")
+          .order("regu"),
       ]);
-      for (const x of [w, i, s, r]) if (x.error) throw new Error(x.error.message);
+      for (const x of [w, i, s, r, g]) if (x.error) throw new Error(x.error.message);
 
       setWo((w.data ?? []) as unknown as WoRingkas[]);
       setItem((i.data ?? []) as unknown as WoItem[]);
       setSegmen((s.data ?? []) as unknown as SegmenPilihan[]);
       setRealisasi((r.data ?? []) as unknown as Realisasi[]);
+      setRegu((g.data ?? []) as unknown as Regu[]);
     } catch (e) {
       const pesan = e instanceof Error ? e.message : String(e);
       toast.error(
@@ -131,6 +151,8 @@ export function useWoPerabasan() {
       nama: string;
       targetKm: number;
       segmen: string[];
+      /** segmen_id → nama regu. Yang tidak disebut masuk tanpa regu. */
+      regu: Record<string, string>;
       tglWo: string;
       oleh?: string;
     }) => {
@@ -140,6 +162,7 @@ export function useWoPerabasan() {
         p_target_km: v.targetKm,
         p_segmen: v.segmen,
         p_tgl_wo: v.tglWo,
+        p_regu: v.regu,
         p_oleh: v.oleh ?? null,
       });
       if (error) {
@@ -147,7 +170,12 @@ export function useWoPerabasan() {
         return null;
       }
       await muat();
-      return data as unknown as { wo_id: string; item: number; dilewati: { segmen: string; sebab: string }[] };
+      return data as unknown as {
+        wo_id: string;
+        item: number;
+        tanpa_regu: number;
+        dilewati: { segmen: string; sebab: string }[];
+      };
     },
     [toast, muat],
   );
@@ -165,6 +193,23 @@ export function useWoPerabasan() {
         return false;
       }
       toast.success(terima ? "Segmen diverifikasi." : "Dikembalikan ke regu.");
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  const tugaskanRegu = useCallback(
+    async (itemId: string, namaRegu: string, oleh?: string) => {
+      const { error } = await supabaseBrowser.rpc("tugaskan_regu_segmen", {
+        p_item_id: itemId,
+        p_regu: namaRegu || null,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
       await muat();
       return true;
     },
@@ -203,9 +248,21 @@ export function useWoPerabasan() {
   /** Item yang menunggu keputusan admin. */
   const menunggu = useMemo(() => item.filter((i) => i.status === "Selesai"), [item]);
 
+  /**
+   * Segmen yang sudah terbit tapi BELUM ditugaskan ke regu mana pun.
+   *
+   * Angka ini harus nol. Selama tidak, ada pekerjaan yang tidak muncul di HP
+   * siapa pun — dan dari layar WO ia terlihat persis sama dengan pekerjaan
+   * yang sedang dikerjakan.
+   */
+  const tanpaRegu = useMemo(
+    () => item.filter((i) => !i.regu && ["Dijadwalkan", "Dalam Proses", "Ditolak"].includes(i.status)),
+    [item],
+  );
+
   return {
-    wo, item, segmen, realisasi, loading, muat,
-    terbitkan, putuskan, batalkanItem,
-    segmenTerikat, menunggu,
+    wo, item, segmen, realisasi, regu, loading, muat,
+    terbitkan, putuskan, batalkanItem, tugaskanRegu,
+    segmenTerikat, menunggu, tanpaRegu,
   };
 }

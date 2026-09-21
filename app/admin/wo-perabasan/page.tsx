@@ -29,8 +29,9 @@ export default function WoPerabasanPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
   const {
-    wo, item, segmen, realisasi, loading,
-    terbitkan, putuskan, batalkanItem, segmenTerikat, menunggu,
+    wo, item, segmen, realisasi, regu, loading,
+    terbitkan, putuskan, batalkanItem, tugaskanRegu,
+    segmenTerikat, menunggu, tanpaRegu,
   } = useWoPerabasan();
 
   const oleh = user.name ?? user.email;
@@ -50,6 +51,16 @@ export default function WoPerabasanPage() {
           >
             <Icon size={16} />
             {label}
+            {key === "daftar" && tanpaRegu.length > 0 && (
+              <span
+                className={`tabular-nums text-[10px] px-1.5 py-0.5 rounded-full ${
+                  tab === key ? "bg-white/20" : "bg-red-100 text-red-700"
+                }`}
+                title={`${tanpaRegu.length} segmen belum ditugaskan ke regu mana pun`}
+              >
+                {tanpaRegu.length}
+              </span>
+            )}
             {key === "setuju" && menunggu.length > 0 && (
               <span
                 className={`tabular-nums text-[10px] px-1.5 py-0.5 rounded-full ${
@@ -67,9 +78,12 @@ export default function WoPerabasanPage() {
         <DaftarWo
           wo={wo}
           item={item}
+          regu={regu}
+          tanpaRegu={tanpaRegu}
           loading={loading}
           user={user}
           onBatalkanItem={(id, alasan) => batalkanItem(id, alasan, oleh)}
+          onTugaskanRegu={(id, namaRegu) => tugaskanRegu(id, namaRegu, oleh)}
         />
       )}
       {tab === "terbit" && (
@@ -77,6 +91,7 @@ export default function WoPerabasanPage() {
           user={user}
           segmen={segmen}
           segmenTerikat={segmenTerikat}
+          regu={regu}
           onTerbitkan={(v) => terbitkan({ ...v, oleh })}
         />
       )}

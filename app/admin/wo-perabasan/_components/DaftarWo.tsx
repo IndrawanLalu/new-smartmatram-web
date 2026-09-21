@@ -2,9 +2,9 @@
 
 import { useMemo, useState } from "react";
 import { ChevronDown, ChevronRight, Loader2, Trees, X } from "lucide-react";
-import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW } from "@/app/admin/_ui";
+import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
-import type { WoItem, WoRingkas } from "../_hooks/useWoPerabasan";
+import type { Regu, WoItem, WoRingkas } from "../_hooks/useWoPerabasan";
 
 /**
  * WO perabasan yang sudah terbit, beserta capaiannya.
@@ -28,15 +28,21 @@ const WARNA_STATUS: Record<string, string> = {
 export default function DaftarWo({
   wo,
   item,
+  regu,
+  tanpaRegu,
   loading,
   user,
   onBatalkanItem,
+  onTugaskanRegu,
 }: {
   wo: WoRingkas[];
   item: WoItem[];
+  regu: Regu[];
+  tanpaRegu: WoItem[];
   loading: boolean;
   user: CurrentUser;
   onBatalkanItem: (itemId: string, alasan: string) => Promise<boolean>;
+  onTugaskanRegu: (itemId: string, namaRegu: string) => Promise<boolean>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -72,6 +78,40 @@ export default function DaftarWo({
               {u}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Pekerjaan yang tidak muncul di HP siapa pun. Ditaruh DI ATAS daftar WO
+          karena dari kartu WO ia terlihat persis sama dengan pekerjaan yang
+          sedang berjalan — bedanya cuma bahwa tidak ada yang mengerjakannya. */}
+      {tanpaRegu.filter((i) => !saring || i.ulp === saring).length > 0 && (
+        <div className={`${CARD} p-5 border-red-200`}>
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-red-700">
+            Belum ditugaskan ke regu
+          </p>
+          <p className="text-xs text-ink-soft mt-1 max-w-3xl">
+            Segmen berikut sudah masuk WO tapi <b>tidak muncul di HP regu mana pun</b>. Pilih
+            regunya di baris masing-masing — tiap regu hanya melihat segmennya sendiri, sepola
+            temuan.
+          </p>
+          <div className="mt-3 space-y-1.5">
+            {tanpaRegu
+              .filter((i) => !saring || i.ulp === saring)
+              .map((i) => (
+                <div key={i.id} className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="text-xs text-ink-soft w-[120px] truncate">{i.penyulang}</span>
+                  <span className="text-ink flex-1 min-w-[180px]">{i.segmen_nama}</span>
+                  <span className="font-mono tabular-nums text-xs text-ink-soft w-[64px] text-right">
+                    {i.panjang_km !== null ? Number(i.panjang_km).toFixed(2) : "—"}
+                  </span>
+                  <PilihRegu
+                    item={i}
+                    regu={regu.filter((g) => g.ulp === i.ulp)}
+                    onTugaskan={onTugaskanRegu}
+                  />
+                </div>
+              ))}
+          </div>
         </div>
       )}
 
@@ -144,7 +184,7 @@ export default function DaftarWo({
                   <table className="w-full text-sm min-w-[720px]">
                     <thead>
                       <tr className="text-left text-ink-soft border-b border-line bg-surface">
-                        {["#", "Penyulang", "Segmen", "Km", "Status", "Petugas", ""].map((h) => (
+                        {["#", "Penyulang", "Segmen", "Km", "Regu", "Status", "Petugas", ""].map((h) => (
                           <th key={h} className="px-3 py-2 font-semibold text-xs">
                             {h}
                           </th>
@@ -153,7 +193,13 @@ export default function DaftarWo({
                     </thead>
                     <tbody>
                       {isi.map((i) => (
-                        <BarisItem key={i.id} i={i} onBatalkan={onBatalkanItem} />
+                        <BarisItem
+                          key={i.id}
+                          i={i}
+                          regu={regu.filter((g) => g.ulp === i.ulp)}
+                          onBatalkan={onBatalkanItem}
+                          onTugaskan={onTugaskanRegu}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -167,12 +213,75 @@ export default function DaftarWo({
   );
 }
 
+/**
+ * Pemilih regu satu baris.
+ *
+ * Dipakai di dua tempat — kartu "belum ditugaskan" dan tabel item — jadi
+ * disendirikan. Yang berstatus Selesai TIDAK bisa dipindah: database
+ * menolaknya, dan alasannya masuk akal — nama regu yang tercatat mengerjakan
+ * akan berbeda dari yang tertulis di WO, dan tidak ada yang bisa menjelaskan
+ * selisihnya belakangan.
+ */
+function PilihRegu({
+  item,
+  regu,
+  onTugaskan,
+}: {
+  item: WoItem;
+  regu: Regu[];
+  onTugaskan: (itemId: string, namaRegu: string) => Promise<boolean>;
+}) {
+  const [sibuk, setSibuk] = useState(false);
+  const terkunci = ["Selesai", "Diverifikasi", "Dibatalkan"].includes(item.status);
+
+  if (terkunci) {
+    return (
+      <span className="text-xs text-ink-soft w-[120px] truncate" title="Tidak bisa dipindah lagi">
+        {item.regu ?? "—"}
+      </span>
+    );
+  }
+
+  if (regu.length === 0) {
+    return (
+      <span className="text-[11px] text-red-700 w-[120px]" title={`ULP ${item.ulp} belum punya regu rabas aktif`}>
+        belum ada regu
+      </span>
+    );
+  }
+
+  return (
+    <select
+      value={item.regu ?? ""}
+      disabled={sibuk}
+      onChange={async (e) => {
+        setSibuk(true);
+        await onTugaskan(item.id, e.target.value);
+        setSibuk(false);
+      }}
+      className={`${FIELD} w-[130px] h-8 text-xs ${item.regu ? "" : "border-red-300 text-red-700"}`}
+      aria-label={`Regu untuk ${item.segmen_nama}`}
+    >
+      <option value="">— belum dibagi —</option>
+      {regu.map((g) => (
+        <option key={g.regu} value={g.regu}>
+          {g.regu}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 function BarisItem({
   i,
+  regu,
   onBatalkan,
+  onTugaskan,
 }: {
   i: WoItem;
+  regu: Regu[];
   onBatalkan: (itemId: string, alasan: string) => Promise<boolean>;
+  onTugaskan: (itemId: string, namaRegu: string) => Promise<boolean>;
 }) {
   const [sibuk, setSibuk] = useState(false);
   const bisaDibatalkan = !["Diverifikasi", "Dibatalkan"].includes(i.status);
@@ -195,6 +304,9 @@ function BarisItem({
       <td className="px-3 py-2 font-mono tabular-nums text-xs">
         {i.panjang_km !== null ? Number(i.panjang_km).toFixed(2) : "—"}
         {i.panjang_dari === "ketikan" && <span className="text-amber-600"> ✎</span>}
+      </td>
+      <td className="px-3 py-2">
+        <PilihRegu item={i} regu={regu} onTugaskan={onTugaskan} />
       </td>
       <td className="px-3 py-2">
         <span
