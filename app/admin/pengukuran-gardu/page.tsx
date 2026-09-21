@@ -39,11 +39,13 @@ import {
   Scale,
   Database,
   ClipboardList,
+  BadgeCheck,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
+import PersetujuanUkurTab from "./_components/PersetujuanUkurTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
@@ -71,6 +73,7 @@ const TABS = [
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
   { key: "wo-pengukuran",  label: "WO Pengukuran",        icon: ClipboardList },
+  { key: "persetujuan",    label: "Persetujuan",          icon: BadgeCheck },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -863,6 +866,17 @@ export default function PengukuranGarduPage() {
         <WoPengukuranTab
           user={user}
           ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
+        />
+      )}
+
+      {activeTab === "persetujuan" && (
+        <PersetujuanUkurTab
+          user={user}
+          // Sumber kelompok anomali — pengukuran terakhir per gardu pada
+          // periode yang sedang dipilih di bilah saring, memakai ambang ULP
+          // yang sama dengan seluruh halaman ini.
+          pengukuran={latestData}
+          settings={anomalySettings}
         />
       )}
 

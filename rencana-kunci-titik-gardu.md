@@ -213,10 +213,10 @@ apa adanya**, bukan ditaruh penanda di tengah laut.
 
 ## 6. Urutan kerja (setelah tiga pertanyaan di atas dijawab)
 
-| Fase | Isi | Butuh |
-|---|---|---|
-| **1** | SQL: kolom penahan di `pengukuran_gardu` + view realisasi yang menghormatinya + fungsi putuskan | SQL Editor |
-| **2** | Web: tab Persetujuan (tiga kelompok) | deploy |
+| Fase | Isi | Butuh | Keadaan |
+|---|---|---|---|
+| **1** | SQL: penahan realisasi + koreksi titik + usulan kVA + radius per ULP | SQL Editor | **selesai** 22 Sep |
+| **2** | Web: tab Persetujuan (tiga kelompok) + peta sebelum/sesudah | deploy | **selesai** 22 Sep |
 | **3** | HP: pita keadaan + jarak selalu terlihat + modal konfirmasi + foto wajib | OTA |
 | **4** | Pemantauan: berapa persen gardu sudah bertitik, per ULP | deploy |
 
