@@ -16,13 +16,19 @@ import ExcelJS from "exceljs";
  */
 
 const KOLOM =
-  "kode,gardu_kode,ulp,jurusan,lat,lng,jenis,tinggi,kondisi,aks_suspension,aks_large_angle,aks_dead_end,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi)";
+  // Aksesoris ikut KABEL: tiang ber-underbuild memikul dua kabel dengan dua set
+  // klem masing-masing. Ditulis satu literal — sambungan `+` mematikan
+  // inferensi tipe supabase-js.
+  "kode,gardu_kode,ulp,jurusan,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi,aks_suspension,aks_large_angle,aks_dead_end)";
 
 interface Konduktor {
   nomor: number;
   jenis: string | null;
   ukuran: string | null;
   kondisi: string | null;
+  aks_suspension: string | null;
+  aks_large_angle: string | null;
+  aks_dead_end: string | null;
 }
 
 export async function GET(req: NextRequest) {
@@ -105,9 +111,11 @@ export async function GET(req: NextRequest) {
     { header: "Kabel 1", key: "k1", width: 22 },
     { header: "Kabel 2", key: "k2", width: 22 },
     { header: "Kabel 3", key: "k3", width: 22 },
-    { header: "Suspension", key: "susp", width: 12 },
-    { header: "Large Angle", key: "large", width: 12 },
-    { header: "Dead End", key: "dead", width: 12 },
+    // Satu kolom per kabel, isinya suspension / large angle / dead end.
+    // Sembilan kolom terpisah membuat lembarnya melebar tanpa terbaca.
+    { header: "Aksesoris K1", key: "aks1", width: 22 },
+    { header: "Aksesoris K2", key: "aks2", width: 22 },
+    { header: "Aksesoris K3", key: "aks3", width: 22 },
     { header: "Jamperan", key: "jamperan", width: 20 },
     { header: "Andongan", key: "andongan", width: 11 },
     { header: "Tarikan SR", key: "sr", width: 10 },
@@ -138,6 +146,15 @@ export async function GET(req: NextRequest) {
       .join(" ");
   };
 
+  /** Aksesoris satu kabel: "Baik / Tidak Ada / Rusak" untuk ketiga klemnya. */
+  const aks = (list: Konduktor[] | null | undefined, n: number) => {
+    const k = list?.find((x) => x.nomor === n);
+    if (!k) return "";
+    return [k.aks_suspension, k.aks_large_angle, k.aks_dead_end]
+      .map((v) => v ?? "")
+      .join(" / ");
+  };
+
   baris.forEach((t, i) => {
     const g = petaGardu.get(
       `${String(t.gardu_kode).toUpperCase()}|${String(t.ulp).toUpperCase()}`,
@@ -163,9 +180,9 @@ export async function GET(req: NextRequest) {
       k1: kabel(t.tiang_konduktor, 1),
       k2: kabel(t.tiang_konduktor, 2),
       k3: kabel(t.tiang_konduktor, 3),
-      susp: t.aks_suspension ?? "",
-      large: t.aks_large_angle ?? "",
-      dead: t.aks_dead_end ?? "",
+      aks1: aks(t.tiang_konduktor, 1),
+      aks2: aks(t.tiang_konduktor, 2),
+      aks3: aks(t.tiang_konduktor, 3),
       jamperan: jam.length ? `${jam[0].jenis ?? ""} · ${jam[0].kondisi ?? ""}` : "Tidak ada",
       andongan: t.andongan ?? "",
       sr: t.tarikan_sr ?? 0,

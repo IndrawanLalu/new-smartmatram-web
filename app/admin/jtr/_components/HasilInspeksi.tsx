@@ -27,6 +27,20 @@ const kabelRingkas = (t: TiangBaris) =>
         .join(" · ")
     : "—";
 
+/**
+ * Aksesoris per kabel: "Utama rusak · UB2 baik".
+ *
+ * Nomor kabelnya disebut karena di situlah letak masalahnya — tiang
+ * ber-underbuild punya dua set klem, dan "aksesoris rusak" tanpa keterangan
+ * kabel mana membuat regu memeriksa dua-duanya di lapangan.
+ */
+const aksRingkas = (t: TiangBaris) => {
+  const rusak = (t.tiang_konduktor ?? [])
+    .filter((k) => [k.aks_suspension, k.aks_large_angle, k.aks_dead_end].includes("Rusak"))
+    .map((k) => (k.nomor === 1 ? "Utama" : `UB${k.nomor}`));
+  return rusak.length ? `${rusak.join(", ")} rusak` : "—";
+};
+
 const jamperanRingkas = (t: TiangBaris) =>
   t.jamperan?.length ? `${t.jamperan[0].jenis ?? "—"} · ${t.jamperan[0].kondisi ?? "—"}` : "Tidak ada";
 
@@ -218,8 +232,8 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
                       {t.kondisi ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-ink-soft">{kabelRingkas(t)}</td>
-                    <td className="px-3 py-2 text-ink-soft">
-                      {[t.aks_suspension, t.aks_large_angle, t.aks_dead_end].filter((v) => v && v !== "Tidak Ada").join(" · ") || "—"}
+                    <td className={`px-3 py-2 ${aksRingkas(t) !== "—" ? "text-attention font-semibold" : "text-ink-soft"}`}>
+                      {aksRingkas(t)}
                     </td>
                     <td className="px-3 py-2 text-ink-soft">{jamperanRingkas(t)}</td>
                     <td className="px-3 py-2 text-ink-soft">{t.andongan ?? "—"}</td>

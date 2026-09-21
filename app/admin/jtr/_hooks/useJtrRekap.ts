@@ -50,12 +50,21 @@ interface TiangRingkas {
   kondisi: string | null;
   arde_kondisi: string | null;
   rawan_row: string[] | null;
-  aks_suspension: string | null;
-  aks_large_angle: string | null;
-  aks_dead_end: string | null;
   andongan: string | null;
+  stay_kondisi: string | null;
   underbuild_tm: boolean;
   catatan_perbaikan: string | null;
+  // Kondisi kabel dan aksesoris melekat pada KABEL, bukan tiang: tiang
+  // ber-underbuild memikul dua kabel dengan dua set klem, dan kerusakan di
+  // kabel bawah tidak boleh tertulis seolah milik kabel atas.
+  tiang_konduktor:
+    | {
+        kondisi: string | null;
+        aks_suspension: string | null;
+        aks_large_angle: string | null;
+        aks_dead_end: string | null;
+      }[]
+    | null;
 }
 
 export interface InspeksiGardu {
@@ -136,7 +145,11 @@ export function useJtrRekap(user: CurrentUser) {
       const barisTiang = await fetchAllRows<TiangRingkas>(() => {
         let b = supabaseBrowser
           .from("tiang")
-          .select("kode,ulp,gardu_kode,jurusan,kondisi,arde_kondisi,rawan_row,aks_suspension,aks_large_angle,aks_dead_end,andongan,underbuild_tm,catatan_perbaikan")
+          // Satu literal, bukan sambungan `+`: supabase-js membaca string ini
+          // di tingkat tipe dan menyerah begitu disambung.
+          .select(
+            "kode,ulp,gardu_kode,jurusan,kondisi,arde_kondisi,rawan_row,andongan,stay_kondisi,underbuild_tm,catatan_perbaikan,tiang_konduktor!tiang_konduktor_tiang_id_fkey(kondisi,aks_suspension,aks_large_angle,aks_dead_end)",
+          )
           .eq("status_hidup", "aktif")
           .not("gardu_kode", "is", null);
         if (unit) b = b.eq("ulp", unit);
@@ -162,6 +175,10 @@ export function useJtrRekap(user: CurrentUser) {
    */
   const temuan = useMemo<Temuan[]>(() => {
     const hitung = (f: (t: TiangRingkas) => boolean) => tiang.filter(f).length;
+    // Satu tiang terhitung sekali walau dua kabelnya sama-sama bermasalah:
+    // yang dijawab tabel ini adalah "berapa TIANG yang punya temuan ini".
+    const adaKabel = (t: TiangRingkas, f: (k: NonNullable<TiangRingkas["tiang_konduktor"]>[number]) => boolean) =>
+      (t.tiang_konduktor ?? []).some(f);
     const rusakAks = (v: string | null) => v === "Rusak";
 
     const daftar: Temuan[] = [
@@ -172,12 +189,22 @@ export function useJtrRekap(user: CurrentUser) {
       { label: "Tiang tidak baik", jumlah: hitung((t) => !!t.kondisi && t.kondisi !== "Baik"), urgensi: "Tinggi" },
       { label: "Andongan tidak baik", jumlah: hitung((t) => !!t.andongan && t.andongan !== "Baik"), urgensi: "Sedang" },
       {
+        label: "Konduktor tidak baik",
+        jumlah: hitung((t) => adaKabel(t, (k) => !!k.kondisi && k.kondisi !== "Baik")),
+        urgensi: "Tinggi",
+      },
+      {
         label: "Aksesoris rusak",
-        jumlah: hitung(
-          (t) => rusakAks(t.aks_suspension) || rusakAks(t.aks_large_angle) || rusakAks(t.aks_dead_end),
+        jumlah: hitung((t) =>
+          adaKabel(
+            t,
+            (k) =>
+              rusakAks(k.aks_suspension) || rusakAks(k.aks_large_angle) || rusakAks(k.aks_dead_end),
+          ),
         ),
         urgensi: "Sedang",
       },
+      { label: "Stay rusak", jumlah: hitung((t) => t.stay_kondisi === "Rusak"), urgensi: "Sedang" },
       { label: "Rawan ROW", jumlah: hitung((t) => (t.rawan_row?.length ?? 0) > 0), urgensi: "Sedang" },
       { label: "Ada catatan perbaikan", jumlah: hitung((t) => !!t.catatan_perbaikan?.trim()), urgensi: "Sedang" },
     ];

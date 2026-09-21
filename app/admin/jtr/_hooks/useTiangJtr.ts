@@ -9,13 +9,24 @@ import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 // menarik tabel yang sama akan cepat berselisih isinya begitu salah satu diubah.
 
 const KOLOM =
-  "id,kode,gardu_kode,ulp,jurusan,induk_id,lat,lng,jenis,tinggi,kondisi,aks_suspension,aks_large_angle,aks_dead_end,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi)";
+  // Ditulis sebagai SATU literal, tidak disambung dengan `+`: supabase-js
+  // membaca string ini di tingkat tipe, dan sambungan membuatnya menyerah lalu
+  // memulangkan `GenericStringError[]`.
+  //
+  // Aksesoris ikut KABEL, bukan tiang — tiang ber-underbuild memikul dua kabel,
+  // dan tiap kabel punya klem suspension, large angle, dan dead end sendiri.
+  "id,kode,gardu_kode,ulp,jurusan,induk_id,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,foto_temuan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi,aks_suspension,aks_large_angle,aks_dead_end,foto_temuan)";
 
 export interface KonduktorBaris {
   nomor: number;
   jenis: string | null;
   ukuran: string | null;
   kondisi: string | null;
+  aks_suspension: string | null;
+  aks_large_angle: string | null;
+  aks_dead_end: string | null;
+  /** Bukti foto temuan pada kabel ini, dikunci nama field di layar HP. */
+  foto_temuan: Record<string, string> | null;
 }
 
 export interface TiangBaris {
@@ -30,9 +41,6 @@ export interface TiangBaris {
   jenis: string | null;
   tinggi: number | null;
   kondisi: string | null;
-  aks_suspension: string | null;
-  aks_large_angle: string | null;
-  aks_dead_end: string | null;
   jamperan: { jenis?: string; kondisi?: string }[] | null;
   andongan: string | null;
   tarikan_sr: number | null;
@@ -43,6 +51,8 @@ export interface TiangBaris {
   rawan_row: string[] | null;
   underbuild_tm: boolean;
   catatan_perbaikan: string | null;
+  /** Bukti foto temuan tingkat tiang. Yang per kabel ada di `tiang_konduktor`. */
+  foto_temuan: Record<string, string> | null;
   dikonfirmasi_at: string | null;
   dikonfirmasi_oleh: string | null;
   created_at: string;
