@@ -4,8 +4,10 @@ import { useState, useEffect, useMemo } from "react";
 import {
   Loader2, CheckCircle2, XCircle, TriangleAlert, User, Calendar,
   Camera, ShieldCheck, Wrench, ClipboardList, ArrowLeft,
+  Ban,
 } from "lucide-react";
 import { CARD, BTN_PRIMARY, BTN_GHOST, EYEBROW, FIELD } from "@/app/admin/_ui";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import {
   ambilRincian,
   ketidakseimbangan,
@@ -53,15 +55,17 @@ interface Props {
   error: string | null;
   onKembali: () => void;
   putuskan: (id: string, setuju: boolean, catatan?: string) => Promise<boolean>;
+  batalkan: (id: string, alasan: string) => Promise<boolean>;
   putuskanUsulan: (id: string, setuju: boolean, alasan?: string) => Promise<boolean>;
 }
 
 export default function DetailPemeliharaan({
-  aktif, memproses, error, onKembali, putuskan, putuskanUsulan,
+  aktif, memproses, error, onKembali, putuskan, batalkan, putuskanUsulan,
 }: Props) {
   const [rincian, setRincian] = useState<Rincian | null>(null);
   const [memuatRincian, setMemuatRincian] = useState(false);
   const [catatan, setCatatan] = useState("");
+  const [batalTerbuka, setBatalTerbuka] = useState(false);
   const [sudahDiputus, setSudahDiputus] = useState<Record<string, "disetujui" | "ditolak">>({});
 
   useEffect(() => {
@@ -442,13 +446,37 @@ export default function DetailPemeliharaan({
           >
             <XCircle size={15} /> Kembalikan ke regu
           </button>
+          {/* Dipisahkan ke kanan, jauh dari "Kembalikan". Keduanya tampak mirip
+              padahal berlawanan: yang satu menyuruh mengulang, yang ini justru
+              menyatakan tidak perlu dikerjakan sama sekali. */}
+          <button
+            onClick={() => setBatalTerbuka(true)}
+            disabled={memproses === aktif.id}
+            className={`${BTN_GHOST} ml-auto text-ink-muted hover:text-red-600`}
+          >
+            <Ban size={15} /> Batalkan
+          </button>
         </div>
         <p className="text-[11px] text-ink-muted">
           Menyetujui menandai master gardu ini sudah dikonfirmasi orang yang berdiri di
           bawahnya. Mengembalikan membuat gardu muncul lagi di daftar tugas regu, dan
           usulan koreksi yang lahir dari pekerjaan ini ikut gugur.
+          <br />
+          <b>Batalkan</b> dipakai kalau pekerjaannya salah gardu atau uji coba — tidak
+          dikerjakan ulang, dan tidak ikut dihitung.
         </p>
       </section>
+      )}
+
+      {batalTerbuka && (
+        <BatalkanModal
+          judul={`Batalkan pemeliharaan gardu ${aktif.gardu_kode}?`}
+          keterangan="Catatannya dibuang dari hitungan dan dari daftar. Hasil ukur serta foto tetap tersimpan sebagai riwayat."
+          peringatan="Kalau pemeliharaan inilah yang dulu mengonfirmasi master gardu ini, penanda konfirmasinya ikut dicabut."
+          labelTombol="Batalkan pemeliharaan"
+          onTutup={() => setBatalTerbuka(false)}
+          onBatalkan={(alasan) => batalkan(aktif.id, alasan)}
+        />
       )}
 
       {error && <p className="text-sm text-danger">{error}</p>}

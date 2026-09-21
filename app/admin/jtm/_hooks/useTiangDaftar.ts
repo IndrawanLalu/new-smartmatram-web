@@ -269,8 +269,39 @@ export function useTiangDaftar(ulp: string | null) {
     [toast],
   );
 
+  /**
+   * Membatalkan tiang yang salah input.
+   *
+   * Barisnya tidak dihapus — `status_hidup` jadi 'batal', dan view
+   * `tiang_jtm_daftar` menyaring ke yang aktif saja, jadi tiangnya hilang dari
+   * daftar dengan sendirinya. Nama tiang di tiap penyulang ikut dibuang oleh
+   * fungsi database, kalau tidak nomornya terkunci selamanya oleh indeks unik.
+   *
+   * Ditolak kalau tiang ini masih menyuplai tiang lain: memutus pohon di
+   * tengah membuat panjang seluruh cabang di bawahnya langsung salah.
+   */
+  const batalkan = useCallback(
+    async (id: string, alasan: string, oleh: string) => {
+      const { error } = await supabaseBrowser.rpc("batalkan_tiang", {
+        p_id: id,
+        p_nama: oleh,
+        p_alasan: alasan,
+      });
+      if (error) {
+        // Penjaga di database sudah menerangkan sendiri kenapa ditolak.
+        toast.error(error.message);
+        return false;
+      }
+      toast.success("Tiang dibatalkan.");
+      setBaris((s2) => s2.filter((b) => b.id !== id));
+      return true;
+    },
+    [toast],
+  );
+
   return {
     baris,
+    batalkan,
     penyulangList,
     ulpList,
     namaPerPenyulang,

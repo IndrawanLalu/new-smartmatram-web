@@ -143,7 +143,34 @@ export function useTiangJtr(user: CurrentUser) {
     [baris],
   );
 
-  return { baris, penyulangList, garduList, loading, error, muat };
+  /**
+   * Membatalkan tiang yang salah input.
+   *
+   * Barisnya tidak dihapus — `status_hidup` jadi 'batal', dan hook ini hanya
+   * membaca yang aktif, jadi tiangnya hilang dari daftar dengan sendirinya.
+   *
+   * Ditolak kalau tiang ini masih menyuplai tiang lain: memutus pohon di
+   * tengah membuat panjang seluruh cabang di bawahnya langsung salah.
+   */
+  const batalkan = useCallback(
+    async (id: string, alasan: string, oleh: string | null) => {
+      const { error: e } = await supabaseBrowser.rpc("batalkan_tiang", {
+        p_id: id,
+        p_nama: oleh,
+        p_alasan: alasan,
+      });
+      if (e) {
+        // Penjaga di database sudah menerangkan sendiri kenapa ditolak.
+        setError(e.message);
+        return false;
+      }
+      setBaris((s2) => s2.filter((b) => b.id !== id));
+      return true;
+    },
+    [],
+  );
+
+  return { baris, batalkan, penyulangList, garduList, loading, error, muat };
 }
 
 /** Tanggal yang dipakai sebagai "kapan tiang ini diperiksa". */

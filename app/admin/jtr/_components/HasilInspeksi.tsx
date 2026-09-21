@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Loader2, Download, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
+import { Ban, Loader2, Download, Inbox, ChevronLeft, ChevronRight } from "lucide-react";
 import { type CurrentUser } from "@/lib/roles";
 import { CARD, EYEBROW, BTN_PRIMARY } from "@/app/admin/_ui";
 import { useTiangJtr, tanggalPeriksa, type TiangBaris } from "../_hooks/useTiangJtr";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 
 const BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -45,7 +46,8 @@ const jamperanRingkas = (t: TiangBaris) =>
   t.jamperan?.length ? `${t.jamperan[0].jenis ?? "—"} · ${t.jamperan[0].kondisi ?? "—"}` : "Tidak ada";
 
 export default function HasilInspeksi({ user }: { user: CurrentUser }) {
-  const { baris, penyulangList, garduList, loading, error } = useTiangJtr(user);
+  const { baris, batalkan, penyulangList, garduList, loading, error } = useTiangJtr(user);
+  const [batalUntuk, setBatalUntuk] = useState<TiangBaris | null>(null);
 
   const sekarang = new Date();
   const [tahun, setTahun] = useState(sekarang.getFullYear());
@@ -213,7 +215,7 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
             <table className="w-full text-sm whitespace-nowrap">
               <thead>
                 <tr className="text-left text-ink-soft border-b border-line bg-surface">
-                  {["Tanggal","Tiang","Gardu","Penyulang","Jur","Jenis","Tinggi","Kondisi","Kabel","Aksesoris","Jamperan","Andongan","SR","Arde","Stay","Rawan ROW","TM","Catatan","Petugas"].map((h) => (
+                  {["Tanggal","Tiang","Gardu","Penyulang","Jur","Jenis","Tinggi","Kondisi","Kabel","Aksesoris","Jamperan","Andongan","SR","Arde","Stay","Rawan ROW","TM","Catatan","Petugas",""].map((h) => (
                     <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>
                   ))}
                 </tr>
@@ -251,6 +253,16 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
                       {t.catatan_perbaikan ?? "—"}
                     </td>
                     <td className="px-3 py-2 text-ink-soft">{t.dikonfirmasi_oleh ?? "—"}</td>
+                    <td className="px-3 py-2">
+                      <button
+                        onClick={() => setBatalUntuk(t)}
+                        className="text-ink-muted hover:text-red-600 p-1"
+                        title="Batalkan — untuk tiang yang salah input, bukan yang dibongkar"
+                        aria-label={`Batalkan ${t.kode}`}
+                      >
+                        <Ban size={14} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -281,6 +293,19 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
             </div>
           )}
         </div>
+      )}
+
+      {batalUntuk && (
+        <BatalkanModal
+          judul={`Batalkan tiang ${batalUntuk.kode}?`}
+          keterangan="Dipakai untuk tiang yang SALAH INPUT — yang sebenarnya tidak pernah ada. Barisnya tidak dihapus, hanya berhenti terhitung, dan jejaknya tersimpan."
+          peringatan="Bukan untuk tiang yang dibongkar. Tiang yang pernah berdiri lalu dicabut punya arti berbeda bagi sejarah jaringan, dan panjang jaringannya ikut berubah."
+          labelTombol="Batalkan tiang"
+          onTutup={() => setBatalUntuk(null)}
+          onBatalkan={(alasan) =>
+            batalkan(batalUntuk.id, alasan, user.name ?? user.email ?? null)
+          }
+        />
       )}
     </div>
   );

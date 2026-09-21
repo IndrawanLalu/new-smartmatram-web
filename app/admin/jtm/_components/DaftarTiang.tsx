@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
+import { Ban, GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import ModalShell from "@/app/admin/_components/ModalShell";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useTiangDaftar, type TiangBaris } from "../_hooks/useTiangDaftar";
 
 /**
@@ -36,11 +37,12 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   // melihat saringan ini sama sekali.
   // `namaDi` tidak dipakai di sini: dropdown induk sudah menyebut nama versi
   // penyulangnya sendiri lewat `namaPerPenyulang`.
-  const { baris, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang, tandaiPercabangan } =
+  const { baris, batalkan, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang, tandaiPercabangan } =
     useTiangDaftar(
     semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
   const oleh = user.name || user.email;
+  const [batalUntuk, setBatalUntuk] = useState<TiangBaris | null>(null);
 
   /** Tiang yang DILEWATI penyulang terpilih — bukan yang dimilikinya.
    *
@@ -194,6 +196,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                 <th className="text-left font-semibold px-3 py-2.5">Segmen</th>
                 <th className="text-left font-semibold px-3 py-2.5">Jenis</th>
                 <th className="text-left font-semibold px-3 py-2.5">Keadaan</th>
+                <th className="px-3 py-2.5" />
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -292,11 +295,21 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                       </span>
                     )}
                   </td>
+                  <td className="px-3 py-2">
+                    <button
+                      onClick={() => setBatalUntuk(b)}
+                      className="text-ink-muted hover:text-red-600 p-1"
+                      title="Batalkan — untuk tiang yang salah input, bukan yang dibongkar"
+                      aria-label={`Batalkan ${b.kode}`}
+                    >
+                      <Ban size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))}
               {tampil.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-sm text-ink-muted">
+                  <td colSpan={7} className="px-4 py-12 text-center text-sm text-ink-muted">
                     Tidak ada tiang yang cocok.
                   </td>
                 </tr>
@@ -373,6 +386,17 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
             )}
           </div>
         </ModalShell>
+      )}
+
+      {batalUntuk && (
+        <BatalkanModal
+          judul={`Batalkan tiang ${batalUntuk.kode}?`}
+          keterangan="Dipakai untuk tiang yang SALAH INPUT — yang sebenarnya tidak pernah ada. Barisnya tidak dihapus, hanya berhenti terhitung, dan jejaknya tersimpan."
+          peringatan="Bukan untuk tiang yang dibongkar. Tiang yang pernah berdiri lalu dicabut punya arti berbeda bagi sejarah jaringan, dan namanya tidak boleh ikut hilang."
+          labelTombol="Batalkan tiang"
+          onTutup={() => setBatalUntuk(null)}
+          onBatalkan={(alasan) => batalkan(batalUntuk.id, alasan, oleh)}
+        />
       )}
 
       <p className={`${EYEBROW} text-center`}>

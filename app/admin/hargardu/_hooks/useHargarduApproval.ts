@@ -194,6 +194,44 @@ export function useHargarduApproval(user: CurrentUser, saring: SaringDaftar) {
    * trafonya pernah diganti, dan itu pantas dilihat sendiri — bukan lolos
    * diam-diam karena pemeliharaannya secara umum sudah benar.
    */
+  /**
+   * Membatalkan pemeliharaan yang salah gardu atau uji coba.
+   *
+   * BUKAN penolakan. Menolak berarti "ulangi" — gardunya kembali jadi
+   * pekerjaan. Membatalkan berarti "jangan diulang".
+   *
+   * Kalau pemeliharaan ini yang dulu mengonfirmasi master gardunya, penandanya
+   * ikut dicabut oleh fungsi database — tepat sasaran, karena `gardu`
+   * menyimpan dari pemeliharaan mana konfirmasinya datang.
+   */
+  const batalkan = useCallback(
+    async (id: string, alasan: string) => {
+      setMemproses(id);
+      try {
+        const { error: e } = await supabaseBrowser.rpc("batalkan_pemeliharaan", {
+          p_id: id,
+          p_alasan: alasan,
+          p_nama: user.name ?? user.email ?? null,
+        });
+        if (e) throw new Error(e.message);
+        // Barisnya TIDAK dibuang — daftar ini memuat seluruh riwayat. Yang
+        // berubah statusnya, dan itu yang perlu terlihat.
+        setDaftar((s) =>
+          s.map((x) =>
+            x.id === id ? { ...x, status: "Dibatalkan", verified_note: alasan } : x,
+          ),
+        );
+        return true;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "Gagal membatalkan pemeliharaan");
+        return false;
+      } finally {
+        setMemproses(null);
+      }
+    },
+    [user.name, user.email],
+  );
+
   const putuskanUsulan = useCallback(
     async (id: string, setuju: boolean, alasan?: string) => {
       setMemproses(id);
@@ -216,7 +254,7 @@ export function useHargarduApproval(user: CurrentUser, saring: SaringDaftar) {
     [user.name, user.email],
   );
 
-  return { daftar, loading, error, memproses, putuskan, putuskanUsulan, muat, setError };
+  return { daftar, loading, error, memproses, putuskan, putuskanUsulan, muat, setError, batalkan };
 }
 
 /**

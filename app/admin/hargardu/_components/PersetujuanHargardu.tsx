@@ -43,7 +43,7 @@ export default function PersetujuanHargardu({ user }: { user: CurrentUser }) {
   });
   const [dipilih, setDipilih] = useState<string | null>(null);
 
-  const { daftar, loading, error, memproses, putuskan, putuskanUsulan, muat } =
+  const { daftar, loading, error, memproses, putuskan, batalkan, putuskanUsulan, muat } =
     useHargarduApproval(user, saring);
 
   const aktif = useMemo(() => daftar.find((d) => d.id === dipilih) ?? null, [daftar, dipilih]);
@@ -61,6 +61,7 @@ export default function PersetujuanHargardu({ user }: { user: CurrentUser }) {
         error={error}
         onKembali={() => setDipilih(null)}
         putuskan={putuskan}
+        batalkan={batalkan}
         putuskanUsulan={putuskanUsulan}
       />
     );
