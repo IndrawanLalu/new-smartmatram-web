@@ -158,6 +158,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   // pernah muncul — terbaca seperti OTA yang gagal.
   { id: "jtm",             label: "Inspeksi JTM" },
   { id: "hargardu",        label: "Pemeliharaan Gardu" },
+  { id: "perabasan",       label: "Perabasan" },
 ];
 // ⚠ Daftar ini HARUS sejalan dengan `menuConfig.ts` di repo mobile. Menambah
 // menu di sana saja tidak cukup: menu yang tidak terdaftar di sini tidak bisa
