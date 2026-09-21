@@ -197,7 +197,7 @@ perabasan; menaruhnya di dalam JTM menyembunyikannya dari regu rabas.
 | Fase | Isi | Butuh | Keadaan |
 |---|---|---|---|
 | **1** | Web: grup Master Data + Master Penyulang jadi menu; kolom gardu, penanda ULP silang, daftar yang belum terdaftar | `master-penyulang.sql` + deploy | **selesai** 21 Sep |
-| **2** | SQL: `ganti_nama_penyulang()` — dilingkupi satu ULP, memisah kalau perlu | SQL Editor | |
+| **2** | SQL: `ganti_nama_penyulang()` — dilingkupi satu ULP, memisah kalau perlu | SQL Editor | **selesai** 21 Sep · diuji 14 skenario di PostgreSQL 17 lokal |
 | **3** | Web: layar ganti nama + pratinjau per ULP | deploy | |
 | **4** | Lengkapi 22 penyulang yang bolong, betulkan 4 nama ULP silang | **kerja Bapak**, lewat layar | |
 | **5** | SQL: kunci asing `ON UPDATE CASCADE` ke `penyulang_ref` | SQL Editor | |
@@ -254,21 +254,71 @@ Ketiga tabel itu punya kolom `ulp` sendiri, jadi pelingkupannya tepat. Tanpa
 kolom itu pemisahan mustahil — dan itulah sebabnya tabel yang tidak punya `ulp`
 tidak ikut dipisah.
 
-### 7.2 Keempat kasusnya hanya menyentuh `gardu`
+### 7.2 ⚠ KOREKSI: ada 11 nama silang ULP, bukan 4
 
-Diperiksa 21 Sep 2026 — tidak ada satu pun tiang, segmen, atau inspeksi yang
-memakai keempat nama ini:
+Diperiksa ulang 21 Sep 2026 sebelum menulis fungsinya. Angka "4" di bagian lain
+berkas ini **salah** — itu cuma yang kebetulan ikut terlihat.
 
-| Nama | Sebarannya |
-|---|---|
-| HILBERON | gardu: TANJUNG 85 · AMPENAN 29 |
-| KOPANG | gardu: CAKRANEGARA 25 · AMPENAN 10 |
-| PRAYA | gardu: CAKRANEGARA 43 · GERUNG 17 |
-| TANJUNG | gardu: TANJUNG 86 · AMPENAN 6 |
+Keempat yang disebut semula ternyata **belum terdaftar di master sama sekali**,
+sehingga tidak muncul di `penyulang_pakai`. Tujuh lainnya sudah terdaftar dan
+belum pernah terlihat dari layar mana pun:
 
-Jadi pemisahannya murah **sekarang**. Kalau menunggu sampai JTM menelusuri
-jalurnya, tiang dan segmennya ikut terlibat — dan nama tiang sudah terlanjur
-memakai prefiks penyulang yang salah.
+| Nama | Terdaftar? | Sebaran gardu | Tiang/segmen |
+|---|---|---|---|
+| HILBERON | tidak | TANJUNG 85 · AMPENAN 29 | — |
+| TANJUNG | tidak | TANJUNG 86 · AMPENAN 6 | — |
+| PRAYA | tidak | CAKRANEGARA 43 · GERUNG 17 | — |
+| KOPANG | tidak | CAKRANEGARA 25 · AMPENAN 10 | — |
+| CEMARA | ya (AMPENAN) | CAKRANEGARA 73 · AMPENAN 53 | — |
+| GERUNG | ya (GERUNG) | GERUNG 90 · CAKRANEGARA 31 | — |
+| MATARAM | ya (AMPENAN) | AMPENAN 41 · CAKRANEGARA 24 | — |
+| PAGUTAN | ya (AMPENAN) | AMPENAN 170 · CAKRANEGARA 6 | — |
+| BUNG KARNO | ya (AMPENAN) | AMPENAN 23 · CAKRANEGARA 5 | — |
+| CAKRA KOTA | ya (CAKRANEGARA) | CAKRANEGARA 83 · **AMPENAN 1** | 1 tiang · 1 segmen |
+| LEMBAR | ya (GERUNG) | GERUNG 42 · **CAKRANEGARA 1** | — |
+
+**Tiga baris terakhir kemungkinan bukan kasus yang sama.** Satu gardu nyasar di
+ULP sebelah lebih mungkin berarti **ULP gardu itu yang salah ketik**, bukan ada
+penyulang kedua bernama sama. Memisahkannya justru melahirkan penyulang palsu
+berisi satu gardu. Yang bisa membedakan cuma orang yang tahu jaringannya —
+datanya tidak bisa.
+
+Jadi urutannya: betulkan dulu ULP gardu yang nyasar (lewat Master Gardu), baru
+sisanya dipisah sebagai penyulang senama yang sungguhan.
+
+### 7.2b ⚠ KOREKSI: nama penyulang hidup di 19 kolom, bukan 3
+
+Bagian 7.1 menyebut `gardu`, `tiang`, dan `segmen`. Diperiksa langsung ke basis
+data: ada **19 kolom di 18 tabel**. Tiga belas ikut berganti nama, enam sengaja
+tidak. Daftarnya beserta alasan satu per satu ada di fungsi
+`penyulang_ikut()` — bukan tertanam di badan fungsi penggantinya, supaya bisa
+ditinjau orang dan tabel ke-19 tahun depan tidak diam-diam tertinggal.
+
+Yang **tidak** ikut, beserta sebabnya: `inspeksi_pohon` (di luar cakupan),
+`padam_apkt` dan `ml_outage_events` (dokumen dari sumber luar; impor berikutnya
+menulis nama lama lagi), `daily_feeder_risk` (keluaran model, ditulis ulang tiap
+malam), `gangguan_realtime` (salinan pesan dispatcher), `jalur` (gambar peta
+warisan).
+
+`pengukuran_gardu` ikut, tapi tabelnya **tidak punya kolom ULP** — jadi pada
+pemisahan barisnya tidak bisa dilingkupi dan sengaja dibiarkan memakai nama
+lama. Pratinjau menyebutkannya sebagai "tidak terlingkup", bukan
+menyembunyikannya.
+
+### 7.2c ⚠ BUG: satu nama tidak bisa didaftarkan dua ULP
+
+`penyulang_ref.penyulang` itu primary key. Artinya TANJUNG dan AMPENAN **tidak
+mungkin** sama-sama punya baris `HILBERON` — salah satunya harus ganti nama
+lebih dulu.
+
+`simpan_penyulang` versi lama tidak tahu itu: diberi nama yang sudah ada dengan
+ULP berbeda, dia **diam-diam memindahkan baris masternya**. Lewat tombol
+"Masukkan ke master" di Fase 1 akibatnya nyata — menekan HILBERON/TANJUNG lalu
+HILBERON/AMPENAN tidak menghasilkan dua penyulang; yang kedua merebut baris yang
+pertama, dan 85 gardu TANJUNG berinduk ke AMPENAN tanpa satu pun pesan.
+
+Sudah ditutup di `ganti-nama-penyulang.sql` bagian 7, dengan pesan yang menyebut
+jalan keluarnya.
 
 ### 7.3 Pratinjau wajib menyebut yang TIDAK berubah
 

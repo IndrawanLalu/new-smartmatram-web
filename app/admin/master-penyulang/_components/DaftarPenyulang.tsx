@@ -46,6 +46,15 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
     () => belum.filter((b) => !saring || b.ulp === saring),
     [belum, saring],
   );
+
+  // Dihitung dari daftar YANG BELUM DISARING. Kalau dihitung dari yang tersaring,
+  // justru kasus silang ULP-nya yang hilang — padahal itu satu-satunya yang
+  // membuat baris ini tidak bisa langsung dimasukkan ke master.
+  const namaSilang = useMemo(() => {
+    const n = new Map<string, string[]>();
+    for (const b of belum) n.set(b.penyulang, [...(n.get(b.penyulang) ?? []), b.ulp]);
+    return new Map([...n].filter(([, u]) => u.length > 1));
+  }, [belum]);
   const silangUlp = tampil.filter((b) => b.gardu_ulp_lain > 0);
 
   if (loading) {
@@ -112,6 +121,7 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
       {belumTampil.length > 0 && (
         <BelumTerdaftar
           daftar={belumTampil}
+          silang={namaSilang}
           onTambah={(b) => simpan({ penyulang: b.penyulang, ulp: b.ulp, oleh: user.name ?? user.email })}
         />
       )}
@@ -125,9 +135,10 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
             awal, dan membuat angka per penyulang mencampur dua jaringan.
           </p>
           <p className="text-[11px] text-ink-muted mt-2 max-w-3xl">
-            Membereskannya murah <b>sekarang</b>: belum ada satu pun tiang atau segmen yang
-            memakainya. Begitu inspeksi JTM menelusuri jalurnya, nama tiang sudah telanjur ikut
-            memakai prefiks yang salah.
+            Membereskannya <b>makin mahal makin lama ditunda</b>: begitu inspeksi JTM menelusuri
+            jalurnya, tiang dan segmennya ikut terlibat, dan nama tiang sudah telanjur memakai
+            prefiks penyulang yang keliru. Angka tiang dan segmen di tabel bawah memperlihatkan
+            berapa yang sudah terlibat hari ini.
           </p>
           <div className="mt-3 space-y-1.5">
             {silangUlp.map((b) => (
@@ -144,7 +155,8 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
             ))}
           </div>
           <p className="text-[11px] text-ink-muted mt-3">
-            Alat pemisahnya belum ada — menyusul di tahap berikutnya.
+            Pemisahnya sudah ada di database (<span className="font-mono">ganti_nama_penyulang</span>)
+            dan sudah diuji; layarnya menyusul di tahap berikutnya.
           </p>
         </div>
       )}
@@ -203,13 +215,17 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
  */
 function BelumTerdaftar({
   daftar,
+  silang,
   onTambah,
 }: {
   daftar: PenyulangBelum[];
+  /** nama → ULP yang memakainya, hanya untuk nama yang dipakai lebih dari satu ULP */
+  silang: Map<string, string[]>;
   onTambah: (b: PenyulangBelum) => Promise<unknown>;
 }) {
   const [sibuk, setSibuk] = useState<string | null>(null);
   const totalGardu = daftar.reduce((n, b) => n + b.gardu, 0);
+  const adaSilang = daftar.some((b) => silang.has(b.penyulang));
 
   return (
     <div className={`${CARD} p-5 border-amber-300`}>
@@ -222,6 +238,14 @@ function BelumTerdaftar({
             tapi tidak ada di master. Gardu-gardu itu tidak punya induk yang sah, dan selama ini
             belum beres, gardu–penyulang–segmen tidak bisa diikat satu sama lain.
           </p>
+          {adaSilang && (
+            <p className="text-[11px] text-amber-700 mt-2 max-w-3xl">
+              Yang bertanda ⚠ dipakai <b>lebih dari satu ULP</b>. Nama penyulang unik di seluruh
+              basis data, jadi keduanya tidak bisa sama-sama didaftarkan — salah satunya harus
+              ganti nama lebih dulu. Tombolnya sengaja dibiarkan hidup: yang menolak adalah
+              database, beserta keterangan ULP mana saja yang bentrok.
+            </p>
+          )}
         </div>
       </div>
 
@@ -229,6 +253,14 @@ function BelumTerdaftar({
         {daftar.map((b) => (
           <div key={b.ulp + b.penyulang} className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-semibold text-ink w-[200px] truncate" title={b.penyulang}>
+              {silang.has(b.penyulang) && (
+                <span
+                  className="text-amber-600 mr-1"
+                  title={`Juga dipakai di ${silang.get(b.penyulang)!.filter((u) => u !== b.ulp).join(", ")}`}
+                >
+                  ⚠
+                </span>
+              )}
               {b.penyulang}
             </span>
             <span className="text-xs text-ink-soft w-[120px]">{b.ulp}</span>
