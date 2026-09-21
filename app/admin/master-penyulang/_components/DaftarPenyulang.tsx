@@ -33,7 +33,7 @@ import GantiNamaModal from "./GantiNamaModal";
  */
 
 export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
-  const { baris, belum, daftarUlp, loading, simpan, hapus, pratinjau, gantiNama } =
+  const { baris, belum, daftarUlp, loading, simpan, hapus, pratinjau, gantiNama, gabungkan } =
     usePenyulangRef();
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState<string>(bolehSemua ? "" : (user.unit ?? ""));
@@ -42,6 +42,26 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
   // diganti selalu punya SATU ULP tertentu — tanpa ULP-nya, layar ini tidak
   // tahu sisi mana yang sedang dibetulkan.
   const [ganti, setGanti] = useState<{ nama: string; ulp: string } | null>(null);
+
+  // Penyulang yang TERDAFTAR tapi belum memikul satu gardu pun. Diperiksa
+  // 21 Sep 2026: 48 dari 81 penyulang di master seperti ini, sementara 21 nama
+  // dipakai gardu tapi tidak terdaftar. Sebagian besar benda yang SAMA,
+  // ditulis dengan dua kebiasaan penamaan — master memakai awalan "OL.", data
+  // gardu tidak. Karena itu daftar ini disodorkan saat mengganti nama.
+  const kandidatGabung = useMemo(
+    () =>
+      ganti
+        ? baris.filter(
+            (b) =>
+              (b.ulp ?? "") === ganti.ulp &&
+              b.gardu === 0 &&
+              b.tiang_dimiliki === 0 &&
+              b.segmen === 0 &&
+              b.penyulang !== ganti.nama,
+          )
+        : [],
+    [baris, ganti],
+  );
 
   const tampil = useMemo(
     () => baris.filter((b) => !saring || (b.ulp ?? "—") === saring),
@@ -217,8 +237,10 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
           namaLama={ganti.nama}
           ulp={ganti.ulp}
           oleh={user.name ?? user.email}
+          kandidat={kandidatGabung}
           onPratinjau={pratinjau}
           onGanti={gantiNama}
+          onGabung={gabungkan}
           onClose={() => setGanti(null)}
         />
       )}

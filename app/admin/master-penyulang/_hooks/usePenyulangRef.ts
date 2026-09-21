@@ -65,8 +65,20 @@ export interface PratinjauGanti {
   ulp: string;
   terdaftar: boolean;
   ulp_master: string | null;
-  /** ganti = nama milik ULP ini sendirian · pisah = dipakai ULP lain juga · daftar_baru = belum ada di master */
-  tindakan: "ganti" | "pisah" | "daftar_baru";
+  /**
+   * ganti = nama milik ULP ini sendirian · pisah = dipakai ULP lain juga ·
+   * daftar_baru = belum ada di master · gabung = nama tujuannya SUDAH ADA di master
+   */
+  tindakan: "ganti" | "pisah" | "daftar_baru" | "gabung";
+  /** Hanya saat menggabung: penyulang tujuan dan apa yang sudah dipikulnya. */
+  tujuan: {
+    penyulang: string;
+    ulp: string | null;
+    kode_singkat: string | null;
+    isi: BarisDampak[];
+  } | null;
+  /** true = ada peringatan "TIDAK BISA". Tombolnya dimatikan; database tetap menolak sendiri. */
+  terhalang: boolean;
   berubah: BarisDampak[];
   /** Ikut berganti, tapi tabelnya tidak menyimpan ULP → tidak bisa dilingkupi saat memisah. */
   tidak_terlingkup: BarisDampak[];
@@ -196,6 +208,32 @@ export function usePenyulangRef() {
     [],
   );
 
+  /**
+   * Gabungkan ke penyulang yang SUDAH ADA di master.
+   *
+   * Tindakan tersendiri, bukan varian ganti nama: penggantian nama
+   * meninggalkan satu penyulang dengan nama lain, penggabungan menyatukan dua
+   * riwayat dan tidak bisa dipisah lagi. Menumpangkannya pada tombol yang sama
+   * membuat yang tidak bisa dibatalkan terjadi karena orang salah mengetik.
+   */
+  const gabungkan = useCallback(
+    async (lama: string, ulp: string, tujuan: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("gabung_penyulang", {
+        p_lama: lama,
+        p_ulp: ulp,
+        p_tujuan: tujuan,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return null;
+      }
+      await muat();
+      return data as unknown as PratinjauGanti;
+    },
+    [toast, muat],
+  );
+
   const gantiNama = useCallback(
     async (lama: string, ulp: string, baru: string, oleh?: string) => {
       const { data, error } = await supabaseBrowser.rpc("ganti_nama_penyulang", {
@@ -222,5 +260,8 @@ export function usePenyulangRef() {
     [baris],
   );
 
-  return { baris, belum, daftarUlp, loading, muat, simpan, hapus, pratinjau, gantiNama };
+  return {
+    baris, belum, daftarUlp, loading, muat,
+    simpan, hapus, pratinjau, gantiNama, gabungkan,
+  };
 }

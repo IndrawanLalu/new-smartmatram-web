@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Loader2, ShieldAlert, TriangleAlert } from "lucide-react";
+import { ArrowRight, Loader2, Merge, OctagonX, ShieldAlert, TriangleAlert } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
-import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
-import type { HasilPratinjau, PratinjauGanti } from "../_hooks/usePenyulangRef";
+import { BTN_GHOST, BTN_PRIMARY, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
+import type { HasilPratinjau, PenyulangBaris, PratinjauGanti } from "../_hooks/usePenyulangRef";
 
 /**
  * Ganti nama penyulang — selalu dilingkupi satu ULP.
@@ -25,6 +25,7 @@ const JUDUL_TINDAKAN: Record<PratinjauGanti["tindakan"], { label: string; warna:
   ganti: { label: "Ganti nama", warna: "bg-navy-50 text-navy-700 border-navy-200" },
   pisah: { label: "Pisah jadi penyulang tersendiri", warna: "bg-amber-50 text-amber-800 border-amber-300" },
   daftar_baru: { label: "Sekalian didaftarkan ke master", warna: "bg-emerald-50 text-emerald-800 border-emerald-200" },
+  gabung: { label: "Gabungkan ke penyulang yang sudah ada", warna: "bg-violet-50 text-violet-800 border-violet-300" },
 };
 
 const KETERANGAN_TINDAKAN: Record<PratinjauGanti["tindakan"], string> = {
@@ -34,21 +35,28 @@ const KETERANGAN_TINDAKAN: Record<PratinjauGanti["tindakan"], string> = {
     "Nama ini juga dipakai ULP lain — berarti dua penyulang berbeda yang kebetulan senama. Penyulang BARU dibuat untuk ULP Anda; punya ULP lain tidak disentuh sama sekali.",
   daftar_baru:
     "Nama ini belum ada di master. Penyulang baru dibuat dengan nama barunya, dan aset ULP Anda dipindahkan ke sana.",
+  gabung:
+    "Nama tujuannya SUDAH ADA di master — jadi yang terjadi bukan penggantian nama, melainkan penggabungan. Aset ULP Anda pindah ke penyulang itu, dan keduanya jadi satu riwayat yang tidak bisa dipisah lagi.",
 };
 
 export default function GantiNamaModal({
   namaLama,
   ulp,
   oleh,
+  kandidat,
   onPratinjau,
   onGanti,
+  onGabung,
   onClose,
 }: {
   namaLama: string;
   ulp: string;
   oleh?: string;
+  /** Penyulang di ULP ini yang TERDAFTAR tapi belum memikul satu gardu pun. */
+  kandidat: PenyulangBaris[];
   onPratinjau: (lama: string, ulp: string, baru: string) => Promise<HasilPratinjau>;
   onGanti: (lama: string, ulp: string, baru: string, oleh?: string) => Promise<PratinjauGanti | null>;
+  onGabung: (lama: string, ulp: string, tujuan: string, oleh?: string) => Promise<PratinjauGanti | null>;
   onClose: () => void;
 }) {
   const [nama, setNama] = useState("");
@@ -90,18 +98,22 @@ export default function GantiNamaModal({
   );
 
   const bersih = nama.trim().toUpperCase();
-  const siap = bersih.length > 1 && bersih !== namaLama && !memuat && !!lihat;
+  const gabung = lihat?.tindakan === "gabung";
+  const siap =
+    bersih.length > 1 && bersih !== namaLama && !memuat && !!lihat && !lihat.terhalang;
 
   const kirim = async () => {
     setSibuk(true);
-    const hasil = await onGanti(namaLama, ulp, bersih, oleh);
+    const hasil = gabung
+      ? await onGabung(namaLama, ulp, bersih, oleh)
+      : await onGanti(namaLama, ulp, bersih, oleh);
     setSibuk(false);
     if (hasil) onClose();
   };
 
   return (
     <ModalShell
-      title="Ganti nama penyulang"
+      title={gabung ? "Gabungkan penyulang" : "Ganti nama penyulang"}
       subtitle={`${namaLama} · ULP ${ulp}`}
       maxWidth="max-w-2xl"
       onClose={onClose}
@@ -115,8 +127,14 @@ export default function GantiNamaModal({
               Batal
             </button>
             <button onClick={() => void kirim()} disabled={!siap || sibuk} className={BTN_PRIMARY}>
-              {sibuk ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} />}
-              Ganti nama sekarang
+              {sibuk ? (
+                <Loader2 size={15} className="animate-spin" />
+              ) : gabung ? (
+                <Merge size={15} />
+              ) : (
+                <ArrowRight size={15} />
+              )}
+              {gabung ? "Gabungkan sekarang" : "Ganti nama sekarang"}
             </button>
           </div>
         </>
@@ -137,9 +155,36 @@ export default function GantiNamaModal({
         </div>
         <p className="text-[11px] text-ink-muted mt-1.5">
           Huruf, angka, spasi, titik, strip, dan garis miring. Nama penyulang unik di seluruh basis
-          data — jadi nama yang sudah dipakai ULP mana pun akan ditolak.
+          data — mengetik nama yang sudah terdaftar berarti <b>menggabungkan</b>, bukan mengganti
+          nama, dan layar ini akan mengatakannya sebelum Anda menekan apa pun.
         </p>
       </div>
+
+      {/* Master ULP ini menyimpan banyak penyulang yang belum memikul satu gardu
+          pun — sebagian besar benda yang sama dengan nama-nama yang belum
+          terdaftar, cuma ditulis dengan kebiasaan penamaan yang berbeda
+          ("OL. BATU LAYAR" vs "BATU LAYAR"). Menyodorkannya di sini mengubah
+          pekerjaan dari mengingat-ingat jadi memilih. */}
+      {kandidat.length > 0 && (
+        <div className="rounded-xl border border-line bg-surface/60 p-4">
+          <p className={EYEBROW}>Sudah terdaftar di ULP {ulp}, tapi belum punya gardu</p>
+          <p className="text-[11px] text-ink-muted mt-1">
+            Kalau salah satunya sebenarnya penyulang yang sama, pilih namanya — yang terjadi nanti
+            penggabungan, bukan penambahan penyulang baru.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {kandidat.map((k) => (
+              <button
+                key={k.penyulang}
+                onClick={() => setNama(k.penyulang)}
+                className={`${CHIP} ${bersih === k.penyulang ? CHIP_ON : CHIP_OFF}`}
+              >
+                {k.penyulang}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {galat && (
         <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
@@ -164,6 +209,58 @@ export default function GantiNamaModal({
             {memuat && <Loader2 size={13} className="animate-spin text-ink-muted" />}
           </div>
           <p className="text-xs text-ink-soft -mt-2">{KETERANGAN_TINDAKAN[lihat.tindakan]}</p>
+
+          {/* Penghalang, bukan peringatan. Bedanya tegas: yang ini membuat
+              tombolnya mati, dan alasannya harus terbaca tanpa dicari. */}
+          {lihat.terhalang && (
+            <div className="rounded-xl border border-rose-300 bg-rose-50 p-4">
+              {lihat.peringatan
+                .filter((p) => p.startsWith("TIDAK BISA:"))
+                .map((p) => (
+                  <div key={p} className="flex items-start gap-2 text-sm text-rose-800">
+                    <OctagonX size={16} className="shrink-0 mt-0.5 text-rose-600" />
+                    <span>{p.replace(/^TIDAK BISA:\s*/, "")}</span>
+                  </div>
+                ))}
+            </div>
+          )}
+
+          {/* Digabung KE APA. Tanpa ini admin cuma tahu bahwa penggabungan akan
+              terjadi, bukan apa yang sudah dipikul penyulang tujuannya. */}
+          {lihat.tujuan && (
+            <div className="rounded-xl border border-violet-200 bg-violet-50/60 p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-800">
+                Digabungkan ke
+              </p>
+              <p className="text-sm font-semibold text-ink mt-1">
+                {lihat.tujuan.penyulang}
+                <span className="font-normal text-ink-soft">
+                  {" "}
+                  · ULP {lihat.tujuan.ulp ?? "—"}
+                  {lihat.tujuan.kode_singkat ? ` · prefiks ${lihat.tujuan.kode_singkat}` : " · belum berprefiks"}
+                </span>
+              </p>
+              {lihat.tujuan.isi.length > 0 ? (
+                <>
+                  <p className="text-xs text-violet-900 mt-2">Yang sudah dipikulnya sekarang:</p>
+                  <div className="mt-1.5 space-y-1">
+                    {lihat.tujuan.isi.map((t) => (
+                      <Baris
+                        key={`${t.tabel}.${t.kolom}`}
+                        kiri={`${t.tabel}${t.kolom && t.kolom !== "penyulang" ? `.${t.kolom}` : ""}`}
+                        kanan={`${t.baris.toLocaleString("id-ID")} baris`}
+                      />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-xs text-ink-soft mt-2">
+                  Belum memikul satu baris pun — jadi yang terjadi praktis cuma pemberian nama yang
+                  benar pada aset Anda.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* ── Yang berubah ── */}
           <Bagian
@@ -252,9 +349,9 @@ export default function GantiNamaModal({
             </div>
           )}
 
-          {lihat.peringatan.length > 0 && (
+          {lihat.peringatan.some((p) => !p.startsWith("TIDAK BISA:")) && (
             <div className="space-y-1.5">
-              {lihat.peringatan.map((p) => (
+              {lihat.peringatan.filter((p) => !p.startsWith("TIDAK BISA:")).map((p) => (
                 <div key={p} className="flex items-start gap-2 text-xs text-amber-800">
                   <TriangleAlert size={14} className="shrink-0 mt-0.5 text-amber-600" />
                   <span>{p}</span>
