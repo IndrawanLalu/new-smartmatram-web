@@ -199,6 +199,15 @@ export function useWoPerabasan() {
     [toast, muat],
   );
 
+  /**
+   * Memindahkan satu segmen ke regu lain.
+   *
+   * Barisnya DIPATCH DI TEMPAT, bukan dengan memuat ulang seluruh halaman.
+   * Versi pertama memanggil `muat()` — lima query sekaligus — sehingga ada
+   * jeda panjang saat dropdown tidak berubah dan tidak ada satu pun tanda
+   * bahwa sesuatu sedang terjadi. Bagi admin itu terbaca sebagai galat, dan
+   * dia menekannya lagi.
+   */
   const tugaskanRegu = useCallback(
     async (itemId: string, namaRegu: string, oleh?: string) => {
       const { error } = await supabaseBrowser.rpc("tugaskan_regu_segmen", {
@@ -210,10 +219,18 @@ export function useWoPerabasan() {
         toast.error(error.message);
         return false;
       }
-      await muat();
+
+      setItem((prev) =>
+        prev.map((i) => (i.id === itemId ? { ...i, regu: namaRegu || null } : i)),
+      );
+      toast.success(
+        namaRegu
+          ? `Ditugaskan ke ${namaRegu}.`
+          : "Regunya dikosongkan — segmen ini tidak lagi muncul di HP siapa pun.",
+      );
       return true;
     },
-    [toast, muat],
+    [toast],
   );
 
   const batalkanItem = useCallback(

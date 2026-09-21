@@ -251,24 +251,32 @@ function PilihRegu({
   }
 
   return (
-    <select
-      value={item.regu ?? ""}
-      disabled={sibuk}
-      onChange={async (e) => {
-        setSibuk(true);
-        await onTugaskan(item.id, e.target.value);
-        setSibuk(false);
-      }}
-      className={`${FIELD} w-[130px] h-8 text-xs ${item.regu ? "" : "border-red-300 text-red-700"}`}
-      aria-label={`Regu untuk ${item.segmen_nama}`}
-    >
-      <option value="">— belum dibagi —</option>
-      {regu.map((g) => (
-        <option key={g.regu} value={g.regu}>
-          {g.regu}
-        </option>
-      ))}
-    </select>
+    <span className="inline-flex items-center gap-1.5">
+      <select
+        value={item.regu ?? ""}
+        disabled={sibuk}
+        onChange={async (e) => {
+          setSibuk(true);
+          await onTugaskan(item.id, e.target.value);
+          setSibuk(false);
+        }}
+        className={`${FIELD} w-[130px] h-8 text-xs disabled:opacity-60 ${
+          item.regu ? "" : "border-red-300 text-red-700"
+        }`}
+        aria-label={`Regu untuk ${item.segmen_nama}`}
+      >
+        <option value="">— belum dibagi —</option>
+        {regu.map((g) => (
+          <option key={g.regu} value={g.regu}>
+            {g.regu}
+          </option>
+        ))}
+      </select>
+      {/* Tanpa pemutar ini, dropdown yang belum berubah selama sepersekian
+          detik terbaca sebagai tombol yang tidak bekerja — dan admin
+          menekannya lagi. */}
+      {sibuk && <Loader2 size={13} className="animate-spin text-ink-muted shrink-0" />}
+    </span>
   );
 }
 

@@ -46,7 +46,11 @@ export interface BarisImpor {
 export interface HasilImpor {
   penyulang: string;
   ulp: string;
+  /** true = pratinjau, tidak satu baris pun ditulis. */
+  uji: boolean;
   dibuat: number;
+  /** Nama segmen yang AKAN (atau sudah) terbentuk — disusun database, bukan ditebak layar. */
+  siap: { nama: string; km: number | null; awal_jenis: string; akhir_jenis: string }[];
   dilewati: { baris: BarisImpor; sebab: string }[];
 }
 
@@ -95,12 +99,37 @@ export function useMasterSegmen() {
     void muat();
   }, [muat]);
 
+  /**
+   * Pratinjau impor — TIDAK menulis apa pun.
+   *
+   * Nama segmen yang akan terbentuk dihitung database lewat `p_uji`, bukan
+   * ditiru di layar. Tiruan akan melenceng cepat atau lambat, dan pratinjau
+   * yang melenceng lebih buruk daripada tidak ada pratinjau sama sekali.
+   */
+  const pratinjauImpor = useCallback(
+    async (namaPenyulang: string, isi: BarisImpor[]) => {
+      const { data, error } = await supabaseBrowser.rpc("impor_segmen", {
+        p_penyulang: namaPenyulang,
+        p_baris: isi,
+        p_oleh: null,
+        p_uji: true,
+      });
+      if (error) {
+        toast.error(error.message);
+        return null;
+      }
+      return data as unknown as HasilImpor;
+    },
+    [toast],
+  );
+
   const impor = useCallback(
     async (namaPenyulang: string, isi: BarisImpor[], oleh?: string) => {
       const { data, error } = await supabaseBrowser.rpc("impor_segmen", {
         p_penyulang: namaPenyulang,
         p_baris: isi,
         p_oleh: oleh ?? null,
+        p_uji: false,
       });
       if (error) {
         // Penjaga di database menerangkan sendiri kenapa ditolak — termasuk
@@ -108,8 +137,10 @@ export function useMasterSegmen() {
         toast.error(error.message);
         return null;
       }
+      const h = data as unknown as HasilImpor;
+      toast.success(`${h.dibuat} segmen dibuat untuk ${h.penyulang}.`);
       await muat();
-      return data as unknown as HasilImpor;
+      return h;
     },
     [toast, muat],
   );
@@ -145,5 +176,5 @@ export function useMasterSegmen() {
     [baris],
   );
 
-  return { baris, penyulang, daftarUlp, loading, muat, impor, ubahPanjang };
+  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang };
 }
