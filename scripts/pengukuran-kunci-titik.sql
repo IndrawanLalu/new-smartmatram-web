@@ -240,6 +240,17 @@ COMMENT ON VIEW public.pengukuran_tertahan IS
 -- Barisnya TETAP terlihat — yang berubah cuma `terealisasi`. Menyembunyikannya
 -- akan membuat WO berbunyi "belum diukur" padahal petugas sudah ke sana, dan
 -- gardu itu akan dikirimi orang untuk kedua kalinya.
+--
+-- ⚠ DEFINISI TERAKHIR VIEW INI ADA DI `wo-pengukuran-koordinat.sql`, BUKAN DI
+-- `wo-pengukuran-schema.sql`. Yang kedua membuatnya pertama kali; yang pertama
+-- menyisipkan `lat` dan `lng` di antara `kva_master` dan `alasan`.
+--
+-- Saya menyalin dari yang lama dan Supabase menolak dengan "cannot change name
+-- of view column lat to alasan" — CREATE OR REPLACE VIEW hanya boleh MENAMBAH
+-- kolom di belakang, tidak boleh menggeser yang sudah ada. Urutan di bawah
+-- karena itu harus persis sama dengan yang hidup sekarang, dan siapa pun yang
+-- menyuntingnya lagi harus berangkat dari daftar kolom yang HIDUP, bukan dari
+-- skrip tertua yang kebetulan ketemu duluan.
 
 CREATE OR REPLACE VIEW public.wo_pengukuran_realisasi AS
 SELECT
@@ -251,6 +262,8 @@ SELECT
   i.alamat,
   i.penyulang,
   i.kva_master,
+  i.lat,
+  i.lng,
   i.alasan,
   i.tgl_ukur_terakhir,
   i.umur_bulan,
