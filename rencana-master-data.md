@@ -201,7 +201,7 @@ perabasan; menaruhnya di dalam JTM menyembunyikannya dari regu rabas.
 | **3** | Web: layar ganti nama + pratinjau per ULP | deploy | **selesai** 21 Sep |
 | **4** | Lengkapi 22 penyulang yang bolong, betulkan 4 nama ULP silang | **kerja Bapak**, lewat layar | |
 | **5** | SQL: kunci asing `ON UPDATE CASCADE` ke `penyulang_ref` | SQL Editor | |
-| **6** | SQL + Web: Master Segmen + impor segmen | SQL + deploy | |
+| **6** | SQL + Web: Master Segmen + impor segmen | SQL + deploy | **selesai** 21 Sep · diuji 9 skenario di PostgreSQL 17 lokal |
 | **7** | WO Perabasan di atas Master Segmen (`rencana-wo-perabasan.md`) | SQL + deploy + OTA | |
 
 ⚠ **Urutannya berubah 21 Sep.** Semula Fase 2 adalah "betulkan 4 nama ULP
