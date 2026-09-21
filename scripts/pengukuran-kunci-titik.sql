@@ -217,7 +217,11 @@ END $fn$;
 
 CREATE OR REPLACE VIEW public.pengukuran_tertahan AS
 SELECT
-  u.sumber_id                                       AS pengukuran_id,
+  -- ⚠ DITERUSKAN SEBAGAI TEKS, bukan UUID. `pengukuran_gardu.id` bertipe TEXT
+  -- (warisan migrasi Firestore — isinya berbentuk UUID tapi kolomnya teks),
+  -- sedangkan `master_usulan.sumber_id` bertipe UUID. Tanpa cast ini,
+  -- penyambungannya gagal dengan "operator does not exist: uuid = text".
+  u.sumber_id::text                                 AS pengukuran_id,
   bool_or(u.field = 'koordinat')                    AS titik_diperbarui,
   bool_or(u.field = 'daya')                         AS beda_kva,
   count(*)                                          AS usulan_menunggu,
@@ -339,7 +343,8 @@ SELECT
 FROM public.master_usulan u
 LEFT JOIN public.gardu g
   ON upper(g.kode) = upper(u.entitas_kode) AND upper(g.ulp) = upper(u.ulp)
-LEFT JOIN public.pengukuran_gardu pg ON pg.id = u.sumber_id
+-- Cast dengan alasan yang sama seperti di `pengukuran_tertahan`.
+LEFT JOIN public.pengukuran_gardu pg ON pg.id = u.sumber_id::text
 WHERE u.sumber_modul = 'pengukuran'
   AND u.status = 'menunggu';
 

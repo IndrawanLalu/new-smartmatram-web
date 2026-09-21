@@ -108,6 +108,51 @@ adalah satu-satunya yang membedakan koreksi dari kekeliruan.
 memindahkan master sejauh 60 m — di layar persetujuan, angka itu yang
 memberi tahu admin bahwa selisihnya mungkin cuma derau alat.
 
+### 3.1 Petugas harus TAHU keadaannya, bukan cuma dihalangi
+
+Bapak 22 Sep: *"pastikan saat user melakukan pengukuran, sistem akan memberi
+tahu user bahwa user sudah berada di gardu yang tepat, diberikan jarak dari
+master jika ada titik, jika belum ada akan di infokan juga. sebelum simpan juga
+akan ada modal konfirmasi bahwa titik kordinat berbeda dan akan di verifikasi
+oleh admin ULP. semacam itu supaya user yakin."*
+
+Ini bukan hiasan. Penjaga yang cuma berkata "tidak bisa" membuat petugas
+berdiri di lapangan menebak apa yang salah — dan yang menebak akan mencoba
+lagi, mematikan aplikasi, atau menuliskan angka asal supaya bisa lewat.
+
+**Pita keadaan, terlihat SEJAK layar dibuka** — bukan baru muncul saat Simpan
+ditekan:
+
+```
+✅  Anda di gardu yang tepat            12 m dari titik master
+⚠️  Jauh dari titik master             340 m — periksa apakah ini gardunya
+ℹ️  Gardu ini belum punya titik        titik Anda akan jadi titik masternya
+⏳  Mencari sinyal GPS…                 ketelitian 45 m
+```
+
+Angka jaraknya **selalu disebut**, tidak hanya saat melanggar. Petugas yang
+melihat "12 m" tahu sistemnya bekerja dan titiknya benar; yang cuma melihat
+layar diam tidak tahu apakah sistemnya memeriksa atau tidak.
+
+**Modal konfirmasi sebelum simpan**, berbunyi apa adanya:
+
+```
+Titik gardu ini akan diperbarui
+
+Titik master sekarang berjarak 340 m dari tempat Anda berdiri.
+Kalau Anda yakin ini gardu yang benar, titiknya akan diperbarui
+memakai titik Anda.
+
+⚠ Pengukuran ini menunggu persetujuan admin ULP dulu, dan BELUM
+  dihitung sebagai realisasi sampai disetujui.
+
+[ Batal, saya periksa lagi ]   [ Ya, perbarui titiknya ]
+```
+
+Kalimat "belum dihitung sebagai realisasi" **wajib ada**. Petugas berhak tahu
+bahwa pekerjaannya belum masuk hitungan — kalau baru ketahuan di akhir bulan
+saat capaiannya kurang, yang rusak bukan cuma angkanya.
+
 ---
 
 ## 4. Tab Persetujuan di `/admin/pengukuran-gardu`
@@ -172,7 +217,7 @@ apa adanya**, bukan ditaruh penanda di tengah laut.
 |---|---|---|
 | **1** | SQL: kolom penahan di `pengukuran_gardu` + view realisasi yang menghormatinya + fungsi putuskan | SQL Editor |
 | **2** | Web: tab Persetujuan (tiga kelompok) | deploy |
-| **3** | HP: penjaga radius + jalur perbarui titik + foto wajib | OTA |
+| **3** | HP: pita keadaan + jarak selalu terlihat + modal konfirmasi + foto wajib | OTA |
 | **4** | Pemantauan: berapa persen gardu sudah bertitik, per ULP | deploy |
 
 Fase 1–2 berguna lebih dulu: yang 7 beda kVA dan anomali yang sudah ada bisa
