@@ -1,6 +1,7 @@
 # Rencana — Enam perbaikan JTM
 
-Status: **Gelombang 1 SELESAI** (butir 3 dan 4) — butir 1, 2, 5, 6 belum.
+Status: **Gelombang 1 dan 2 SELESAI** (butir 1, 2, 3, 4) — butir 5 dan 6 belum.
+Keempatnya tanpa SQL sama sekali: cukup OTA.
 Tanggal: 22 September 2026
 
 Data masih tahap uji, jadi tidak ada risiko migrasi.
@@ -24,39 +25,117 @@ kelihatannya, dan butir 6 bukan soal yang Bapak kira — lihat §6.
 
 ---
 
-## 1. Pilih tiang sebelumnya di peta + modal konfirmasi
+## 1. Pilih tiang sebelumnya di peta + modal konfirmasi — SELESAI
 
-**Sudah setengah jalan.** Mengetuk tiang di peta sudah memilihnya sebagai
-induk. Yang kurang dua hal:
+### Temuan yang membalik arah perbaikannya
 
-```ts
-const induk = terpilih ?? terakhirId;   // ← ini masalahnya
+Saat mengerjakan ini saya membaca `tambah_tiang_jtm`, dan **server yang
+menerima induk kosong ternyata tidak membiarkan tiangnya tanpa induk** — dia
+mencari sendiri:
+
+```sql
+-- Induk otomatis = tiang terdekat MILIK PENYULANG INI
+IF induk IS NULL THEN
+  SELECT t.id INTO induk FROM public.tiang t
+  WHERE upper(t.penyulang) = upper(s.penyulang) AND t.status_hidup = 'aktif'
+    AND public.jarak_meter(p_lat, p_lng, t.lat, t.lng) <= amb.bentang_maks_wajar_m * 3
+  ORDER BY public.jarak_meter(p_lat, p_lng, t.lat, t.lng) LIMIT 1;
+END IF;
 ```
 
-Kalau regu tidak mengetuk apa pun, induknya **diam-diam** jadi tiang terakhir
-yang dititik. Itu benar 90% waktu — dan 10% sisanya melahirkan jalur yang
-salah tanpa ada yang tahu, karena tidak ada satu pun keterangan di layar yang
-menyebut tiang mana yang sedang dipakai sebagai induk.
+Aturan server adalah **tiang terdekat dari tempat regu berdiri** — dan itu
+justru aturan yang BENAR untuk kejadian yang dilaporkan: regu yang kembali ke
+PRM-008 memang berdiri di dekat PRM-008.
 
-Yang dikerjakan: induk **selalu terlihat** (nama tiangnya di bilah atas), dan
-modal konfirmasi sebelum menitik yang menyebutnya apa adanya —
-*"Tiang baru akan bersambung dari MTR-014. Benar?"*
+Yang membuatnya salah adalah HP-nya. `induk = terpilih ?? terakhirId` selalu
+mengirim tiang yang terakhir dititik, jadi bawaan HP **menimpa aturan server
+yang lebih benar dengan tebakan yang lebih buruk.**
 
-Ukuran: **kecil.**
+### Yang dikerjakan
+
+| | Dulu | Sekarang |
+|---|---|---|
+| Bawaan induk | tiang yang terakhir dititik | tiang **terdekat**, sepola aturan server — `bentangMaksM x 3`, angka yang sama |
+| Ketukan regu | menang, lalu terpasang terus | menang sampai tiang berikutnya lahir, lalu **dilepas** kembali ke otomatis |
+| Keterangan di layar | di dalam kartu tiang terpilih — yang **tidak muncul** kalau regu belum mengetuk apa pun | **bilah induk** tetap di bawah peta: nama induk, jaraknya, dan apakah dia dipilih sendiri atau otomatis |
+| Di peta | tidak ditandai | **cincin jingga putus-putus** di tiang induk |
+
+Ketukan sekarang lewat satu fungsi (`ketukTiang`) yang memindahkan pandangan
+**dan** sambungannya sekaligus — tidak ada lagi ketukan yang memindahkan satu
+tanpa yang lain. Tombol **Lepas** di bilah mengembalikannya ke otomatis.
+
+Cincin induk dikirim ke peta lewat **saluran sendiri** (`window.setInduk`),
+bukan ikut di muatan tiang. Sebab: induk bawaan berpindah tiap regu berjalan,
+dan kalau dia menumpang di muatan tiang, satu langkah kaki berarti 250 penanda
+dihapus lalu digambar lagi. Ini pola yang sudah dipakai `setPosisi` di berkas
+yang sama.
+
+### Modalnya TIDAK di setiap penitikan
+
+Ini menyimpang dari yang diminta, dan alasannya: mode nitik dipakai ratusan
+kali per segmen. Pertanyaan yang muncul 250 kali berhenti dibaca sejak yang
+kesepuluh — memasangnya di mana-mana justru **melemahkan** yang benar-benar
+perlu dibaca.
+
+Modalnya muncul pada tiga keadaan yang membuat jalur salah gambar:
+
+1. **Induknya bukan tiang yang terakhir dititik** — inilah kejadian yang
+   dilaporkan (regu berjalan kembali ke percabangan), dan juga penitikan
+   pertama sesudah layar dibuka.
+2. **Bentangnya lebih panjang dari bentang wajar ULP** — `bentangMaksM`, yang
+   sudah bisa disetel dari web dan sebelumnya tidak dipakai sama sekali di HP.
+3. **Tidak ada tiang lain dalam jangkauan** — tiang baru lahir sebagai pangkal
+   jaringan, dan itu disebutkan apa adanya.
+
+Kalau ketiganya tidak berlaku — menyusuri jalur lurus, induk = tiang yang baru
+dititik — tidak ada pertanyaan, karena namanya sudah tertulis di bilah.
+
+Kalau Bapak tetap mau modalnya di SETIAP penitikan, itu satu baris: hapus
+ketiga syarat di `alasanInduk`.
+
+Ukuran: **kecil**, seperti diperkirakan. Tanpa SQL.
 
 ---
 
-## 2. Hapus tiang yang sudah dititik
+## 2. Hapus tiang yang sudah dititik — SELESAI
 
-Fungsi databasenya **sudah ada** (`batalkan_tiang`, minta alasan, dan sudah
-membersihkan `tiang_kode_penyulang`). Yang belum: tombolnya di HP.
+Pemeriksaan SQL-nya sudah dilakukan: **`batalkan_tiang` memang sudah menolak**
+tiang yang punya anak, jadi tidak ada tambahan SQL.
 
-Satu hal yang perlu diputuskan: **tiang yang punya anak tidak boleh dihapus
-begitu saja** — anaknya akan kehilangan induk dan jalurnya terputus. Perlu
-diperiksa apakah `batalkan_tiang` sudah menolaknya; kalau belum, itu tambahan
-SQL kecil.
+```sql
+SELECT count(*) INTO jml FROM public.tiang
+WHERE induk_id = p_id AND status_hidup = 'aktif';
+IF jml > 0 THEN RAISE EXCEPTION
+  'Tiang % masih menyuplai % tiang. Pindahkan dulu sambungannya ke tiang lain.', ...
+```
 
-Ukuran: **kecil**, plus satu pemeriksaan SQL.
+### Dua jalan yang berbeda, dan bedanya bukan kerapian
+
+| Tiang | Jalannya | Kenapa |
+|---|---|---|
+| Sudah di server | `batalkan_tiang` | jejaknya tinggal di `master_audit`, dan nama per penyulangnya dibuang supaya nomornya tidak terkunci selamanya oleh indeks unik |
+| Masih di antrean HP | `buangDariAntrean` (baru) | belum pernah ada di server — tidak ada yang bisa dibatalkan, cukup dikeluarkan dari simpanan |
+
+### Tiga penjaga, bukan satu
+
+1. Tiang server yang masih menyuplai tiang server -> ditolak **database**.
+2. Tiang antrean yang masih jadi induk tiang antrean lain -> ditolak
+   `buangDariAntrean`. Alasannya sama dengan yang dipegang database:
+   `kirimAntrean` menukar `indukRef` lewat peta `idLokal -> id sungguhan`, jadi
+   induk yang tidak pernah terkirim membuat seluruh sisa jalur lahir sebagai
+   pangkal.
+3. Tiang **server** yang jadi induk tiang **antrean** -> diperiksa di layar.
+   Ini yang tidak dilihat siapa pun: database tidak tahu isi antrean HP, dan
+   `buangDariAntrean` tidak dipanggil. Tanpa pemeriksaan ini, penolakannya baru
+   muncul jauh nanti saat antrean dikirim, dalam bentuk kegagalan yang tidak
+   bisa dihubungkan lagi dengan penghapusan tadi.
+
+Tombolnya di kartu tiang terpilih, berwarna merah — dibedakan dari tiga tombol
+bulat di sebelahnya karena hanya yang ini yang membuang pekerjaan. Modalnya
+menyebut bahwa ini untuk tiang yang **salah dititik**, bukan tiang yang memang
+dicabut di lapangan; itu riwayat yang berbeda.
+
+Ukuran: **kecil.** Tanpa SQL.
 
 ---
 
@@ -206,7 +285,7 @@ berapa lama menyimpannya di AsyncStorage (kalau terlalu besar, SQLite).
 | Gelombang | Butir | Alasan |
 |---|---|---|
 | ~~**1**~~ ✅ | ~~3 · 4~~ | **Selesai 22 Sep.** Hampir gratis, tidak ada SQL — cukup OTA. |
-| **2** | 1 · 2 | Kecil, dan keduanya menyentuh alur yang sama (menitik & membatalkan), jadi lebih murah dikerjakan sekali jalan. |
+| ~~**2**~~ SELESAI | ~~1 · 2~~ | **Selesai 22 Sep.** Ternyata juga tanpa SQL: `batalkan_tiang` sudah menolak tiang beranak, dan aturan induk yang benar sudah ada di `tambah_tiang_jtm` sejak awal — HP-nya yang menimpanya. |
 | **3** | 5 | Sedang. Butuh SQL, dan bentuk datanya menentukan apa yang perlu diunduh di gelombang 4. |
 | **4** | 6 | Terbesar. Dikerjakan TERAKHIR justru karena butir 4 dan 5 mengubah bacaan mana yang harus disimpan luring — menyimpan lebih dulu berarti menyimpan yang salah lalu mengulang. |
 
