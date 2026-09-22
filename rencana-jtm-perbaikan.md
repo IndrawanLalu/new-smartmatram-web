@@ -1,6 +1,6 @@
 # Rencana — Enam perbaikan JTM
 
-Status: **analisis, belum dikerjakan.** Menunggu persetujuan urutan.
+Status: **Gelombang 1 SELESAI** (butir 3 dan 4) — butir 1, 2, 5, 6 belum.
 Tanggal: 22 September 2026
 
 Data masih tahap uji, jadi tidak ada risiko migrasi.
@@ -60,34 +60,70 @@ Ukuran: **kecil**, plus satu pemeriksaan SQL.
 
 ---
 
-## 3. Tombol lokasi terkini
+## 3. ✅ Tombol lokasi terkini — SELESAI
 
-Tombol mengapung di peta, ketuk → peta melompat ke posisi petugas. Seperti
-Google Maps.
+Tombol mengapung di kanan bawah peta, ketuk → peta melompat ke posisi petugas.
 
-Seluruhnya di dalam `LeafletMapJtr` — satu tombol HTML, satu `map.setView`.
-Tidak menyentuh data, tidak menyentuh server.
+Dikerjakan di `LeafletMapJtr`, **di dalam HTML petanya** — bukan sebagai tombol
+React Native yang mengapung di atas WebView. Alasannya: tombol RN berarti satu
+pesan menyeberang ke WebView dulu, dan di HP kelas bawah jeda itu cukup lama
+untuk membuat orang menekannya dua kali. Di dalam HTML, `map.setView` jalan
+seketika.
 
-Ukuran: **paling kecil dari semuanya.**
+Dua keputusan kecil yang sengaja:
+
+- Tombol **tetap terlihat sebelum GPS terkunci**, hanya diredupkan. Tombol yang
+  muncul-hilang membuat orang mengira aplikasinya rusak; yang redup lalu
+  ditekan akan MENGATAKAN kenapa dia belum bisa dipakai.
+- Perbesarannya `Math.max(zoom sekarang, 18)` — tidak menarik petugas keluar
+  dari perbesaran yang sudah dia atur sendiri.
+
+Letaknya kanan bawah, tidak bertabrakan: sakelar "mode nitik" dan "tumpang" di
+layar JTM ada di kanan **atas**.
 
 ---
 
-## 4. Opsi "tetap titik di sini" saat tiang berdekatan
+## 4. ✅ Opsi "tetap titik di sini" saat tiang berdekatan — SELESAI
 
-Sekarang Alert-nya cuma menawarkan **Batal** atau **Tumpangi**. Padahal tiang
-yang berjarak 8 m memang bisa dua batang berbeda — di persimpangan, atau saat
-jaringan lama dan baru berjalan sejajar.
+Tanpa SQL, seperti diperkirakan: tidak ada penolakan jarak di
+`tambah_tiang_jtm`, penjaganya murni di HP.
 
-Penjaganya **hanya di HP**, bukan di database (saya periksa: tidak ada
-penolakan jarak di `tambah_tiang_jtm`). Jadi menambah pilihan ketiga cukup di
-layar — tidak perlu SQL.
+`tambah()` dipecah dua: `tambah()` memeriksa, `simpanTiangBaru(pos)`
+melahirkan. Pemisahan itu yang membuat pilihan baru bisa memanggil jalur simpan
+yang sama persis, bukan menyalinnya.
 
-Yang perlu diperhatikan: pilihan ketiga itu harus **paling tidak menonjol** di
-antara ketiganya, dan menyebut akibatnya (*"dua batang terpisah, masing-masing
-dapat nama sendiri"*). Kalau ketiganya terlihat sama gampang, "tetap titik"
-akan jadi jalan keluar dari pertanyaan yang tidak dibaca.
+**Pilihan baru muncul di DUA tempat**, dan yang kedua justru yang lebih sering
+kejadian:
 
-Ukuran: **kecil.**
+| Keadaan | Dulu | Sekarang |
+|---|---|---|
+| Ada tiang **penyulang lain** di dekat sini | Batal · Tumpangi | Batal · **Tiang lain, bukan itu** · Tumpangi |
+| Tiang **segmen ini sendiri** ada di dekat sini | cuma pemberitahuan, mentok | Batal · **Tiang lain, bukan itu** |
+
+Baris kedua itu yang dulu benar-benar mentok — regu menyusuri jalur, dua tiang
+bersebelahan memang lebih dekat daripada radius tumpang, dan tidak ada jalan
+keluar sama sekali.
+
+### Bagaimana dia dibuat tidak menonjol
+
+Bukan dengan warna — Android tidak memberi warna pada tombol Alert. Dua cara:
+
+1. **Dua ketukan.** Pilihan itu tidak langsung menitik; dia membuka pertanyaan
+   kedua yang menyebut akibatnya apa adanya: *lahir tiang baru dengan namanya
+   sendiri; kalau ternyata batangnya sama, di peta ada dua tiang bertumpuk dan
+   pembatalannya lewat admin.*
+2. **Urutan tombol.** Android memetakan tombol **terakhir** ke tombol utama —
+   yang paling kanan, tempat jempol jatuh. Jadi "Tumpangi" ditaruh paling
+   belakang, dan jalan keluarnya duduk di tengah. (Ini sempat salah urutan:
+   menaruh pilihan baru di belakang justru menjadikannya yang paling menonjol.)
+
+### Satu perubahan ikutan
+
+`tiangTerdekat` gagal (butuh sinyal) sekarang **tidak lagi menggagalkan
+penitikan** — penjaganya dilewati dan tiangnya masuk antrean luring. Tiang
+bertumpuk masih bisa dibereskan; setengah hari kerja yang hilang tidak.
+
+Ukuran: **kecil** — tepat seperti diperkirakan.
 
 ---
 
@@ -169,7 +205,7 @@ berapa lama menyimpannya di AsyncStorage (kalau terlalu besar, SQLite).
 
 | Gelombang | Butir | Alasan |
 |---|---|---|
-| **1** | 3 · 4 | Hampir gratis, dan menghapus gangguan yang terasa SETIAP HARI. Tidak ada SQL. Bisa selesai satu sesi. |
+| ~~**1**~~ ✅ | ~~3 · 4~~ | **Selesai 22 Sep.** Hampir gratis, tidak ada SQL — cukup OTA. |
 | **2** | 1 · 2 | Kecil, dan keduanya menyentuh alur yang sama (menitik & membatalkan), jadi lebih murah dikerjakan sekali jalan. |
 | **3** | 5 | Sedang. Butuh SQL, dan bentuk datanya menentukan apa yang perlu diunduh di gelombang 4. |
 | **4** | 6 | Terbesar. Dikerjakan TERAKHIR justru karena butir 4 dan 5 mengubah bacaan mana yang harus disimpan luring — menyimpan lebih dulu berarti menyimpan yang salah lalu mengulang. |
