@@ -232,6 +232,26 @@ Butuh SQL baru: satu fungsi `tiang_sekitar_peta_jtm(ulp, lat, lng, radius)`
 yang memulangkan tiang **dan** bentangnya sekaligus, supaya HP tidak menarik
 dua kali.
 
+### BATASAN — petanya hidup DI DALAM alur menumpang
+
+Ditegaskan Bapak 22 Sep: *"tiang yang di underbuild hanya muncul jika user
+pilih tiang ini underbuild atau menumpang"*.
+
+Jadi peta tiang sekitar ini **menggantikan `TumpangModal`** — dia tetap muncul
+hanya sesudah regu menekan "Tiang ini menumpang". Dia TIDAK dipasang di peta
+segmen utama, dan tiang penyulang lain tidak boleh digambar di sana dengan
+sendirinya.
+
+Sudah diperiksa, yang sekarang memang begitu: `tiangSekitar` (radius longgar,
+lintas penyulang) cuma dipanggil dari `bukaTumpang`, dan `getTiangSegmen` hanya
+memulangkan isi `segmen_tiang` — tiang penyulang lain masuk ke situ HANYA lewat
+`tumpangiTiang`.
+
+Satu yang terlihat seperti pengecualian tapi bukan: `tiangTerdekat` (radius
+sempit, ~10 m) memang memunculkan tiang penyulang lain sebelum menambah tiang.
+Itu PENJAGA — "satu batang beton tidak boleh lahir dua kali" — bukan tampilan,
+dan `tambah_tiang_jtm` menegakkan hal yang sama di database.
+
 Ukuran: **sedang.** SQL + komponen peta baru.
 
 ---
