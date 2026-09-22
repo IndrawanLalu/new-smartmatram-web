@@ -16,10 +16,11 @@ import { kolomPersen, type BarisKinerja } from "../_hooks/useKinerjaYantek";
  *
  * ── TIDAK ADA BARIS TOTAL ───────────────────────────────────────────────────
  * Rekap Tahunan Pengukuran punya baris total karena kolomnya satuan yang sama
- * (gardu). Di sini satuannya bercampur — item segmen, gardu, penyapuan — dan
- * menjumlahkannya melahirkan angka yang terlihat resmi tapi tidak berarti
- * apa-apa. Satuannya ditulis di tiap baris justru supaya tidak ada yang
- * tergoda membandingkannya.
+ * (gardu). Di sini satuannya bercampur — KILOMETER untuk perabasan dan inspeksi
+ * JTM/JTR, GARDU untuk pengukuran, pemeliharaan, dan penyeimbangan. Menjumlah
+ * 12 km dengan 40 gardu melahirkan angka yang terlihat resmi tapi tidak berarti
+ * apa-apa. Satuannya ditulis di tiap baris justru supaya tidak ada yang tergoda
+ * membandingkannya.
  */
 
 function Persen({ b }: { b: BarisKinerja }) {
@@ -34,10 +35,16 @@ function Persen({ b }: { b: BarisKinerja }) {
   return <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${cls}`}>{p}%</span>;
 }
 
-function Angka({ v, nada }: { v: number | null; nada?: string }) {
+/** Angka km ditulis dua desimal berkoma, cacah ditulis bulat.
+ *
+ *  Bukan kerapian: "2,03" dan "2" adalah panjang yang berbeda, dan
+ *  membulatkannya jadi satuan km membuat segmen 300 meter menghilang dari
+ *  laporan sama sekali. */
+function Angka({ v, nada, desimal }: { v: number | null; nada?: string; desimal?: boolean }) {
   if (v === null) return <span className="text-ink-muted">—</span>;
-  if (v === 0) return <span className="text-ink-muted">0</span>;
-  return <span className={`font-semibold ${nada ?? "text-ink"}`}>{v}</span>;
+  if (v === 0) return <span className="text-ink-muted">{desimal ? "0,00" : "0"}</span>;
+  const teks = desimal ? v.toFixed(2).replace(".", ",") : String(v);
+  return <span className={`font-semibold ${nada ?? "text-ink"}`}>{teks}</span>;
 }
 
 const TANDA: Record<BarisKinerja["keadaan"], { teks: string; cls: string } | null> = {
@@ -49,10 +56,12 @@ const TANDA: Record<BarisKinerja["keadaan"], { teks: string; cls: string } | nul
 interface Props {
   baris: BarisKinerja[];
   loading: boolean;
-  tahun: number;
+  /** Sudah dirangkai jadi "September 2026" atau "2026" — periodenya ditulis
+   *  di judul supaya tangkapan layar tabel ini tetap bisa dibaca sendiri. */
+  periode: string;
 }
 
-export default function TabelKinerja({ baris, loading, tahun }: Props) {
+export default function TabelKinerja({ baris, loading, periode }: Props) {
   const TH =
     "px-3 py-2 text-center text-[11px] font-semibold border-b border-r border-line whitespace-nowrap text-ink-soft";
   const TD = "px-3 py-3 text-center text-xs border-b border-r border-line";
@@ -63,7 +72,7 @@ export default function TabelKinerja({ baris, loading, tahun }: Props) {
     <div className={`${CARD} overflow-hidden`}>
       <div className="px-5 py-3.5 border-b border-line flex items-center justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-ink">Rekap Kinerja {tahun}</h3>
+          <h3 className="text-sm font-semibold text-ink">Rekap Kinerja {periode}</h3>
           <p className="text-xs text-ink-soft mt-0.5">
             Delapan jenis pekerjaan Pelayanan Teknik · {belum} di antaranya belum lengkap
           </p>
@@ -119,13 +128,13 @@ export default function TabelKinerja({ baris, loading, tahun }: Props) {
                     )}
                   </td>
                   <td className={TD}>
-                    <Angka v={b.woTerbit} />
+                    <Angka v={b.woTerbit} desimal={b.desimal} />
                   </td>
                   <td className={TD}>
-                    <Angka v={b.realisasi} nada="text-emerald-700" />
+                    <Angka v={b.realisasi} nada="text-emerald-700" desimal={b.desimal} />
                   </td>
                   <td className={TD}>
-                    <Angka v={b.belumApprove} nada="text-amber-700" />
+                    <Angka v={b.belumApprove} nada="text-amber-700" desimal={b.desimal} />
                   </td>
                   <td className={TD}>
                     <Persen b={b} />

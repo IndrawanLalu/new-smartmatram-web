@@ -3,7 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
-import { useKinerjaYantek } from "./_hooks/useKinerjaYantek";
+import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
 
 /**
@@ -23,8 +23,11 @@ import TabelKinerja from "./_components/TabelKinerja";
 export default function KinerjaYantekPage() {
   const user = useCurrentUser();
   const {
-    baris, loading, tahun, setTahun, ulp, setUlp, daftarUlp, daftarTahun, muatUlang,
+    baris, loading, tahun, setTahun, bulan, setBulan,
+    ulp, setUlp, daftarUlp, daftarTahun, muatUlang,
   } = useKinerjaYantek(user);
+
+  const periode = bulan === 0 ? String(tahun) : `${BULAN[bulan - 1]} ${tahun}`;
 
   return (
     <div className="text-ink flex flex-col gap-4">
@@ -37,6 +40,20 @@ export default function KinerjaYantekPage() {
         >
           {daftarTahun.map((t) => (
             <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+
+        {/* Bulan sebelum ULP: yang paling sering diganti ditaruh paling dekat
+            dengan tahun, dan ULP jarang berubah dalam satu sesi. */}
+        <select
+          value={bulan}
+          onChange={(e) => setBulan(Number(e.target.value))}
+          className={`${FIELD} w-[150px]`}
+          aria-label="Bulan"
+        >
+          <option value={0}>Seluruh tahun</option>
+          {BULAN.map((b, i) => (
+            <option key={b} value={i + 1}>{b}</option>
           ))}
         </select>
 
@@ -58,7 +75,7 @@ export default function KinerjaYantekPage() {
         </button>
       </div>
 
-      <TabelKinerja baris={baris} loading={loading} tahun={tahun} />
+      <TabelKinerja baris={baris} loading={loading} periode={periode} />
     </div>
   );
 }
