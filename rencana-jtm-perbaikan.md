@@ -1,7 +1,7 @@
 # Rencana — Enam perbaikan JTM
 
-Status: **Gelombang 1 dan 2 SELESAI** (butir 1, 2, 3, 4) — butir 5 dan 6 belum.
-Keempatnya tanpa SQL sama sekali: cukup OTA.
+Status: **Gelombang 1-3 SELESAI** (butir 1-5) — tinggal butir 6 (luring).
+Gelombang 1-2 tanpa SQL. Gelombang 3 butuh `scripts/jtm-tumpang-peta.sql`.
 Tanggal: 22 September 2026
 
 Data masih tahap uji, jadi tidak ada risiko migrasi.
@@ -206,7 +206,7 @@ Ukuran: **kecil** — tepat seperti diperkirakan.
 
 ---
 
-## 5. Tiang menumpang: di peta, bukan daftar
+## 5. Tiang menumpang: di peta, bukan daftar — SELESAI
 
 Sekarang `tiangSekitar` memulangkan daftar. Yang diminta: petanya, supaya regu
 yakin dia sedang berdiri di dekat tiang yang mana — **beserta jalurnya**.
@@ -252,7 +252,81 @@ sempit, ~10 m) memang memunculkan tiang penyulang lain sebelum menambah tiang.
 Itu PENJAGA — "satu batang beton tidak boleh lahir dua kali" — bukan tampilan,
 dan `tambah_tiang_jtm` menegakkan hal yang sama di database.
 
-Ukuran: **sedang.** SQL + komponen peta baru.
+### Yang dikerjakan
+
+`scripts/jtm-tumpang-peta.sql` — kolom `radius_peta_tumpang_m` (per ULP,
+bawaan 120 m) + fungsi `tiang_sekitar_peta_jtm` yang memulangkan tiang **dan**
+bentang dalam satu JSONB. Satu panggilan, bukan dua: HP di lapangan membayar
+tiap perjalanan bolak-balik dengan detik yang terasa, dan garis yang datang
+belakangan berarti peta yang berubah bentuk di depan mata regu.
+
+Mobile: `PetaTumpangJtm.tsx` baru, `TumpangModal` dirombak jadi peta + daftar
+pendek, `getPetaTumpang` di layanan. `tiangSekitar` yang lama dibuang dari
+layanan (fungsi SQL-nya dibiarkan hidup — tidak mengganggu, dan masih enak
+untuk memeriksa cepat lewat SQL Editor).
+
+### DUA RADIUS — ini inti rancangannya, dan angkanya dari data nyata
+
+Diukur dari 277 tiang JTM bertitik, 22 Sep:
+
+| | |
+|---|---|
+| bentang | median **31 m**, p90 51 m, terpanjang 78 m |
+| tiang dalam radius **25 m** | rata-rata **1,6** (p90 3, terbanyak 5) |
+| tiang dalam radius **120 m** | rata-rata **9,1** (p90 14, terbanyak 17) |
+
+Baris tengah itu yang mematikan gagasan "tinggal gambar radius pencarian di
+peta": pada 25 m, petanya berisi **satu titik**. Itu bukan peta — itu daftar
+dengan langkah tambahan.
+
+Jadi petanya memakai dua radius sekaligus:
+
+- **radius pilih (25 m)** — lingkaran putus-putus. Cuma tiang di dalamnya yang
+  boleh dinyatakan menumpang. Digambar besar, bernama tetap, bisa diketuk.
+- **radius peta (120 m)** — latar. Tiang beserta bentangnya digambar kecil dan
+  tidak bisa dipilih; namanya muncul kalau diketuk. Inilah yang menjawab
+  "saya sedang di dekat tiang mana".
+
+Warna membedakan **penyulang**, bukan status: jalur yang sedang disapu navy,
+penyulang lain jingga. Di persimpangan pertanyaan regu selalu "jalur yang mana
+ini", dan itu yang dijawabnya dalam sekali lihat.
+
+Pandangan awal tidak dipaskan ke 120 m penuh (tiang yang bisa dipilih jadi
+titik kecil di tengah) dan tidak ke 25 m saja (konteksnya hilang), melainkan ke
+sekitar 60 m — kira-kira empat bentang.
+
+### Soal lag
+
+Bentang disaring dengan aturan **kedua ujungnya di dalam radius**, pola yang
+sudah terbukti di `perabasan_segmen_bentang`. Jumlah garis jadi membatasi
+dirinya sendiri, dan tidak ada garis yang ditarik ke tiang yang tidak ikut
+digambar. Ada LIMIT 120 sebagai jaring pengaman, dan kalau kena dia
+**mengatakannya** lewat `terpotong` — peta yang diam-diam memotong isinya lebih
+berbahaya daripada peta yang mengaku tidak lengkap.
+
+Pada kepadatan sekarang, jaring itu jauh dari kena: 17 tiang pada titik
+terpadat.
+
+### Daftarnya tidak dihapus, tapi menyusut
+
+Tinggal yang **bisa dipilih** — rata-rata 1-2 baris, di bawah peta. Alasannya
+jujur: mengetuk baris jauh lebih pasti daripada mengetuk titik 16 piksel sambil
+berdiri di bawah tiang. Peta memberi keyakinan, baris memberi ketepatan.
+
+Kalau tidak ada satu pun dalam radius pilih, layar mengatakannya dan menyuruh
+berdiri lebih dekat — bukan diam dengan peta penuh titik yang tak satu pun bisa
+disentuh.
+
+### Diuji di harness lokal
+
+PostgreSQL 17 lokal, dua jalur sejajar berjarak 9 m (persimpangan tiruan yang
+membuat daftar tidak bisa dibedakan). Lolos: penyaringan ULP lain, tiang
+`batal`, tiang gardu, `kode_di_sini` kosong untuk tiang yang belum dinamai di
+penyulang ini, `dipikul` yang menyebut underbuild, hasil kosong di tengah
+sawah, penolakan posisi kosong, penolakan segmen tak dikenal, penjaga radius
+latar yang lebih sempit dari radius pilih, CHECK 30-1000 m, dan idempotensi.
+
+Ukuran: **sedang** — tepat seperti diperkirakan.
 
 ---
 
@@ -306,7 +380,7 @@ berapa lama menyimpannya di AsyncStorage (kalau terlalu besar, SQLite).
 |---|---|---|
 | ~~**1**~~ ✅ | ~~3 · 4~~ | **Selesai 22 Sep.** Hampir gratis, tidak ada SQL — cukup OTA. |
 | ~~**2**~~ SELESAI | ~~1 · 2~~ | **Selesai 22 Sep.** Ternyata juga tanpa SQL: `batalkan_tiang` sudah menolak tiang beranak, dan aturan induk yang benar sudah ada di `tambah_tiang_jtm` sejak awal — HP-nya yang menimpanya. |
-| **3** | 5 | Sedang. Butuh SQL, dan bentuk datanya menentukan apa yang perlu diunduh di gelombang 4. |
+| ~~**3**~~ SELESAI | ~~5~~ | **Selesai 22 Sep.** Butuh `scripts/jtm-tumpang-peta.sql`. Bentuk datanya kini menentukan apa yang perlu diunduh di gelombang 4. |
 | **4** | 6 | Terbesar. Dikerjakan TERAKHIR justru karena butir 4 dan 5 mengubah bacaan mana yang harus disimpan luring — menyimpan lebih dulu berarti menyimpan yang salah lalu mengulang. |
 
 ### Kalau kehilangan pekerjaan sudah terjadi sekarang
