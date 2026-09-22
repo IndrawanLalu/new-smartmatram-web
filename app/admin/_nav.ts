@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, Spline, Trees,
+  Globe, Zap, Spline, Trees, Activity,
   type LucideIcon,
 } from "lucide-react";
 
@@ -56,17 +56,34 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
+    // Delapan jenis pekerjaan yang kinerjanya dilaporkan sebagai satu kesatuan.
+    // Sebelumnya tersebar di Monitoring dan Operasional — dikelompokkan menurut
+    // BENTUK layarnya (peta, tabel, WO), bukan menurut pekerjaannya. Akibatnya
+    // tidak ada satu tempat pun yang bisa menjawab "berapa capaian Yantek bulan
+    // ini", dan tiap jenis pekerjaan harus dibuka satu per satu lalu dijumlah
+    // di kepala.
+    //
+    // Rekap Kinerja ditaruh PALING ATAS: dialah yang menyebut mana di antara
+    // kedelapan yang sudah ada dan mana yang belum.
+    key: "yantek",
+    label: "Kinerja Pelayanan Teknik",
+    items: [
+      { href: "/admin/kinerja-yantek",   label: "Rekap Kinerja",             icon: Activity },
+      { href: "/admin/wo-perabasan",     label: "Perabasan Pohon",           icon: Trees },
+      { href: "/admin/hargardu",         label: "Pemeliharaan Gardu",        icon: Wrench },
+      { href: "/admin/pengukuran-gardu", label: "Pengukuran Gardu",          icon: Gauge },
+      { href: "/admin/jtm",              label: "Inspeksi JTM",              icon: Waypoints },
+      { href: "/admin/jtr",              label: "Inspeksi JTR",              icon: Network },
+    ],
+  },
+  {
     key: "monitoring",
     label: "Monitoring",
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck },
-      { href: "/admin/pengukuran-gardu",    label: "Pengukuran Gardu",     icon: Gauge },
       { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
       { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },
       { href: "/admin/peta",                label: "Peta Jaringan",        icon: Globe },
-      { href: "/admin/jtr",                 label: "Inspeksi JTR",         icon: Network },
-      { href: "/admin/jtm",                 label: "Jaringan JTM",         icon: Waypoints },
-      { href: "/admin/hargardu",            label: "Pemeliharaan Gardu",   icon: Wrench },
     ],
   },
   {
@@ -74,7 +91,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Operasional",
     items: [
       { href: "/admin/work-order",            label: "Work Order",           icon: ClipboardList },
-      { href: "/admin/wo-perabasan",          label: "WO Perabasan",         icon: Trees },
       { href: "/admin/morning-brief",         label: "Morning Brief",        icon: FileText },
       { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target },
       { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench },

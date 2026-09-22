@@ -150,7 +150,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "pengukuranGardu", label: "Pengukuran Gardu" },
   { id: "riwayatGardu",    label: "Riwayat Gardu" },
   { id: "scanMeter",       label: "Scan Meter" },
-  { id: "penyeimbangan",   label: "Penyeimbangan Beban" },
+  { id: "penyeimbangan",   label: "Penyeimbangan Beban Trafo" },
   { id: "jtr",             label: "Inspeksi JTR" },
   // Harus SAMA PERSIS dengan `id` di menuConfig aplikasi HP. Daftar ini yang
   // dipakai Kelola Role; menu yang tidak ada di sini tidak akan pernah bisa
@@ -158,7 +158,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   // pernah muncul — terbaca seperti OTA yang gagal.
   { id: "jtm",             label: "Inspeksi JTM" },
   { id: "hargardu",        label: "Pemeliharaan Gardu" },
-  { id: "perabasan",       label: "Perabasan" },
+  { id: "perabasan",       label: "Perabasan Pohon" },
 ];
 // ⚠ Daftar ini HARUS sejalan dengan `menuConfig.ts` di repo mobile. Menambah
 // menu di sana saja tidak cukup: menu yang tidak terdaftar di sini tidak bisa
