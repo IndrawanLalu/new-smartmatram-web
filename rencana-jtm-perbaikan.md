@@ -1,7 +1,7 @@
 # Rencana — Enam perbaikan JTM
 
-Status: **Gelombang 1-3 SELESAI** (butir 1-5) — tinggal butir 6 (luring).
-Gelombang 1-2 tanpa SQL. Gelombang 3 butuh `scripts/jtm-tumpang-peta.sql`.
+Status: **SELESAI SEMUA** — keenam butir dikerjakan 22 September 2026.
+Satu-satunya SQL: `scripts/jtm-tumpang-peta.sql` (sudah dijalankan). Sisanya OTA.
 Tanggal: 22 September 2026
 
 Data masih tahap uji, jadi tidak ada risiko migrasi.
@@ -330,7 +330,7 @@ Ukuran: **sedang** — tepat seperti diperkirakan.
 
 ---
 
-## 6. ⚠ Luring: bukan yang Bapak kira — yang hilang BUKAN tiangnya
+## 6. Luring: yang hilang BUKAN tiangnya — SELESAI
 
 Ini temuan terpenting dari analisis ini.
 
@@ -354,23 +354,77 @@ Kelimanya memanggil server saat layar dibuka. Jadi kalau regu membuka layar
 karena tiang yang sudah ada tidak pernah termuat. Dan `tiangTerdekat` yang
 gagal berarti penjaga tiang berdekatan mati diam-diam.
 
-### Yang dikerjakan
+### Yang dikerjakan — SELESAI
 
-Unduh master per ULP ke HP: `segmen`, `tiang` + bentangnya, `penyulang`,
-`jtm_item_ref`, `ambang`. Lalu:
+Berkas baru `src/services/jtmLuring.ts`: lapisan luring yang duduk di ANTARA
+layar dan `jtmService`. Layar tidak lagi memanggil bacaan master langsung.
 
-- Semua bacaan di atas **membaca simpanan lokal lebih dulu**, server cuma
-  menyegarkan.
-- `tiangTerdekat` dihitung **di HP** dari tiang yang terunduh — itu cuma
-  hitungan jarak, tidak perlu server sama sekali.
-- Tombol **Unduh master** dengan tanggal unduhan terakhir, dan tombol
-  **Kirim** untuk antrean.
+### Satu perubahan arah dari rencana ini
 
-### Ukuran dan risikonya
+Rencana di atas menulis "unduh tabel lalu susun ulang di HP". Itu berarti
+menulis ulang `getTiangSegmen` — lima query dengan gabungan berlapis — untuk
+kedua kalinya, di bahasa yang berbeda. **Dua salinan aturan yang sama akan
+menyimpang**, dan yang menyimpang diam-diam adalah yang di HP, tempatnya paling
+sulit diperiksa.
 
-**Terbesar dari keenamnya**, dan yang paling mengubah cara layar membaca data.
-Satu ULP bisa ribuan tiang — perlu diukur dulu berapa besar berkasnya dan
-berapa lama menyimpannya di AsyncStorage (kalau terlalu besar, SQLite).
+Jadi yang disimpan adalah **hasil bacaannya**, apa adanya. Tidak ada aturan yang
+disalin, dan yang terbaca luring sama persis dengan yang terbaca daring.
+
+Kecualinya dua — `tiangTerdekat` dan `getPetaTumpang` menghitung dari **titik
+sembarang**, tempat regu berdiri, yang tidak diketahui saat mengunduh. Dua itu
+memang dihitung di HP dari indeks tiang yang ramping.
+
+### Server DULU, bukan simpanan dulu
+
+Bacaan selalu mencoba server lebih dahulu; simpanan cuma dipakai kalau
+**jaringannya** yang mati — bukan kalau servernya menolak. Data lama yang tampil
+padahal sinyalnya ada adalah cacat yang jauh lebih sulit disadari daripada layar
+yang lambat.
+
+Dan kalau yang tampil memang dari simpanan, layar **mengatakannya**: pita di
+daftar segmen, pita di layar penyapuan, pita di peta menumpang.
+
+### Dua salinan aturan itu DIUJI, bukan diharapkan
+
+Risiko yang saya sebut sendiri di atas berlaku untuk dua hitungan yang memang
+disalin. Jadi keduanya dibandingkan lawan server pada data produksi: **91 titik
+uji** (tiap tiang AMPENAN yang jadi anggota segmen), membandingkan himpunan
+tiang, jarak, `bisa_dipilih`, `sudah_anggota`, `dipikul`, jumlah bentang, dan
+urutan `tiangTerdekat`. Hasilnya **sama persis**.
+
+Pembandingan itu menemukan dua beda halus yang tidak akan ketahuan dari membaca
+kode:
+
+| | server | luring semula |
+|---|---|---|
+| `tiang_terdekat_jtm` | `penyulang IS NOT NULL`, `LIMIT 10` | tanpa keduanya |
+| tiang gardu (JTR) | ikut di penjaga, disaring di peta menumpang | disaring sejak unduhan |
+
+Yang kedua berbahaya: menyaring tiang gardu sejak unduhan membuat **penjaga
+luring lebih lemah daripada penjaga daring** — dan penjaga yang melemah
+diam-diam adalah cara tiang kembar lahir. Sekarang tiang gardu ikut diunduh dan
+`garduKode` dibawa serta, supaya tiap pemakainya menerapkan aturannya sendiri.
+
+### Ukurannya ternyata bukan soal
+
+Diukur dari data nyata: **seluruh** master JTM sekarang 201 KB (277 tiang).
+Indeksnya sendiri ramping — enam medan per tiang. Jadi SQLite tidak diperlukan,
+dan AsyncStorage jauh dari batasnya.
+
+Kartu unduhan menampilkan **besarnya dalam KB** apa adanya. Itu yang akan
+memberi tahu kapan asumsi ini kedaluwarsa, tanpa perlu ada yang mengukurnya
+lagi dari luar.
+
+### Yang TIDAK dicakup, dan ini harus jelas
+
+**Memulai inspeksi baru tetap butuh sinyal** — `mulai_inspeksi_jtm` yang
+menerbitkan id inspeksinya ada di server. Alur lapangan yang sebenarnya tidak
+terganggu: regu membuka segmennya selagi masih ada sinyal, lalu kehilangan
+sinyal di tengah pekerjaan, dan kasus itu tercakup penuh.
+
+Tulisan selain menitik dan menilai (menumpang, koreksi titik, menandai
+percabangan, menyatakan selesai) juga masih butuh sinyal. Tombol **Kirim**
+untuk antrean sudah ada sejak sebelum gelombang ini.
 
 ---
 
@@ -381,14 +435,22 @@ berapa lama menyimpannya di AsyncStorage (kalau terlalu besar, SQLite).
 | ~~**1**~~ ✅ | ~~3 · 4~~ | **Selesai 22 Sep.** Hampir gratis, tidak ada SQL — cukup OTA. |
 | ~~**2**~~ SELESAI | ~~1 · 2~~ | **Selesai 22 Sep.** Ternyata juga tanpa SQL: `batalkan_tiang` sudah menolak tiang beranak, dan aturan induk yang benar sudah ada di `tambah_tiang_jtm` sejak awal — HP-nya yang menimpanya. |
 | ~~**3**~~ SELESAI | ~~5~~ | **Selesai 22 Sep.** Butuh `scripts/jtm-tumpang-peta.sql`. Bentuk datanya kini menentukan apa yang perlu diunduh di gelombang 4. |
-| **4** | 6 | Terbesar. Dikerjakan TERAKHIR justru karena butir 4 dan 5 mengubah bacaan mana yang harus disimpan luring — menyimpan lebih dulu berarti menyimpan yang salah lalu mengulang. |
+| ~~**4**~~ SELESAI | ~~6~~ | **Selesai 22 Sep.** Mendahulukannya memang akan salah: `getPetaTumpang` dari gelombang 3 ikut jadi bacaan yang harus dipulihkan luring, dan dia belum ada waktu rencana ini ditulis. |
 
-### Kalau kehilangan pekerjaan sudah terjadi sekarang
+---
 
-Urutan di atas menaruh luring paling belakang, dan itu keputusan yang bisa
-salah kalau regu **sudah** kehilangan pekerjaan saat uji lapangan.
+## Yang tersisa sesudah keenamnya
 
-Ada versi sempit butir 6 yang bisa didahulukan — hanya menyimpan **segmen yang
-sedang dibuka beserta tiangnya**, tanpa unduh master seluruh ULP. Itu sekitar
-sepersepuluh pekerjaannya dan sudah menghentikan kehilangan yang paling sering.
-Sebutkan saja kalau memang sudah kejadian.
+Tidak ada dari daftar ini. Tiga hal yang muncul di sepanjang pengerjaan dan
+sengaja **tidak** dikerjakan:
+
+1. **Memulai inspeksi baru saat luring.** Butuh id inspeksi lokal beserta
+   pemetaannya ke id sungguhan, sepola `idLokal` pada antrean tiang. Bukan
+   pekerjaan kecil, dan alur lapangan yang sebenarnya belum menuntutnya.
+2. **Tulisan lain masuk antrean** — menumpang, koreksi titik, menandai
+   percabangan, menyatakan selesai. Sekarang keempatnya masih butuh sinyal.
+3. **Layar pengatur ambang JTM di web.** Seluruh angka `jtm_settings`
+   (`radius_tumpang_m`, `radius_cari_tumpang_m`, `radius_peta_tumpang_m`,
+   `bentang_maks_wajar_m`, `akurasi_minimum_m`, `jarak_maks_nilai_m`) disetel
+   lewat SQL Editor — belum pernah punya layar. `PengaturanJtm.tsx` yang ada
+   mengurus `jtm_ref` (penanda, penghantar, ukuran), bukan ambang.
