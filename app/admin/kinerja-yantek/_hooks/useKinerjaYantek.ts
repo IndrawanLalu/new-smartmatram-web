@@ -180,6 +180,15 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qGardu = qGardu.eq("ulp", unit);
 
+    // ── 3b. Pemeliharaan Jaringan JTM/JTR ─────────────────────────────────
+    let qHarJar = supabaseBrowser
+      .from("pemeliharaan_jaringan")
+      .select("status")
+      .neq("status", "Dibatalkan")
+      .gte("tgl", awal)
+      .lte("tgl", akhir);
+    if (unit) qHarJar = qHarJar.eq("ulp", unit);
+
     // ── 4. Penyeimbangan Beban Trafo ──────────────────────────────────────
     let qSeimbang = supabaseBrowser
       .from("penyeimbangan_gardu")
@@ -207,8 +216,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qJtr = qJtr.eq("ulp", unit);
 
-    const [rabas, ukur, gardu, seimbang, jtm, jtr] = await Promise.all([
-      qRabas, qUkur, qGardu, qSeimbang, qJtm, qJtr,
+    const [rabas, ukur, gardu, harjar, seimbang, jtm, jtr] = await Promise.all([
+      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qJtm, qJtr,
     ]);
 
     // Enam kueri untuk enam sumber, dan tahun/bulan bisa diganti di tengahnya.
@@ -225,6 +234,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     const r1 = isi<BarisRabas>(rabas);
     const r2 = isi<BarisUkur>(ukur);
     const r3 = isi<BarisStatus>(gardu);
+    const r3b = isi<BarisStatus>(harjar);
     const r4 = isi<{ id: string }>(seimbang);
     const r5 = isi<BarisJtm>(jtm);
     const r6 = isi<BarisJtr>(jtr);
@@ -293,16 +303,16 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       },
       {
         kunci: "harjtm",
-        jenis: "Pemeliharaan JTM/JTR",
-        href: null,
-        keadaan: "belumAda",
-        satuan: "—",
+        jenis: "Pemeliharaan Jaringan",
+        href: "/admin/pemeliharaan-jaringan",
+        keadaan: "tanpaWo",
+        satuan: "pekerjaan",
         desimal: false,
         woTerbit: null,
-        realisasi: null,
-        belumApprove: null,
+        realisasi: r3b.length,
+        belumApprove: hitung(r3b, (x) => x.status === "Selesai"),
         catatan:
-          "Belum ada modulnya. Temuan inspeksi JTM/JTR sudah tercatat, tapi eksekusi perbaikannya belum punya WO sendiri.",
+          "Dicatat regu dari lapangan berikut foto sebelum-sesudah. Belum diterbitkan lewat WO, jadi belum ada pembanding target.",
       },
       {
         kunci: "hargardu",

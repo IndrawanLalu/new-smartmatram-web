@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, Spline, Trees, Activity,
+  Globe, Zap, Spline, Trees, Activity, HardHat,
   type LucideIcon,
 } from "lucide-react";
 
@@ -70,6 +70,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/kinerja-yantek",   label: "Rekap Kinerja",             icon: Activity },
       { href: "/admin/wo-perabasan",     label: "Perabasan Pohon",           icon: Trees },
+      { href: "/admin/pemeliharaan-jaringan", label: "Pemeliharaan Jaringan", icon: HardHat },
       { href: "/admin/hargardu",         label: "Pemeliharaan Gardu",        icon: Wrench },
       { href: "/admin/pengukuran-gardu", label: "Pengukuran Gardu",          icon: Gauge },
       { href: "/admin/jtm",              label: "Inspeksi JTM",              icon: Waypoints },
