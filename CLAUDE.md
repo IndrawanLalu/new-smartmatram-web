@@ -4,6 +4,12 @@
 Rewrite dari React+Vite+Firebase → Next.js 16 + Supabase.
 Aplikasi monitoring aset jaringan distribusi listrik PLN ULP Ampenan/Mataram.
 
+## ⚠ Baca dulu sebelum membuat fitur
+`teknisaplikasi.md` (akar proyek ini) — aturan yang berlaku di SEMUA modul, web
+maupun HP: alur isi→selesai→periksa→kirim, catatan wajib bisa dibuka kembali,
+papan ketik tidak boleh menutupi isian. Isinya hal-hal yang sudah berulang kali
+salah, jadi melewatinya berarti mengulanginya.
+
 ## Stack
 - **Framework:** Next.js 16, App Router, TypeScript
 - **Database & Auth:** Supabase (PostgreSQL + Supabase Auth)
