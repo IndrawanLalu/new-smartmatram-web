@@ -93,5 +93,61 @@ baru ketahuan setelah papan ketik ditutup — kalau sempat diperiksa.
 
 ---
 
+## 4. Ukuran foto bukti: 1024 px / mutu 0,60, sekali kompres
+
+**Aturan.** Foto bukti pekerjaan (sebelum–sesudah, bukti selesai) diunggah pada
+**lebar 1024 px, mutu 0,60, JPEG** — satu kali kompresi saja, tepat di titik
+unggah. Jangan mengompres dua kali di jalur yang sama.
+
+Yang TIDAK ikut diturunkan: foto yang menilai **kondisi peralatan** (retak
+isolator, karat traverse) — JTM dan JTR tetap 1600/0,70 dan 1280/0,70, karena di
+situ ketajaman menentukan apa yang bisa dinilai dari fotonya.
+
+**Kenapa.** Angka ini bukan tebakan, ini keputusan Bapak 21 Sep 2026 di modul
+perabasan: pada 1280/0,70 satu objek berbiaya ±570 KB, dan dua foto per objek ×
+dua puluh objek sehari = 11 MB — justru dari ruas jaringan yang sinyalnya paling
+buruk. 1024/0,60 memotongnya jadi sekitar separuh, dan untuk membuktikan "ada,
+lalu sudah dikerjakan" 1024 titik masih jelas.
+
+**Cara menerapkan.**
+- `ImageManipulator.manipulateAsync(uri, [{ resize: { width: 1024 } }],
+  { compress: 0.6, format: JPEG, base64: true })`, lalu base64 → `Uint8Array` →
+  `supabase.storage.upload`.
+- **Jangan** `fetch(file://)` untuk membaca berkas — gagal di Hermes.
+- Pemotretan: `launchCameraAsync({ quality: 0.7 })`. Bukan 1: bitmap penuh dari
+  kamera 50 MP memakan memori HP kelas bawah, dan mutu akhirnya toh ditentukan
+  pass kedua.
+- Modul yang mengunggah DUA foto per objek wajib memakai angka ini.
+
+**Contoh nyata.** Perabasan (21 Sep 2026) lalu Pemeliharaan Jaringan (23 Sep).
+
+---
+
+## 5. Foto draf tinggal di penyimpanan sementara — sebut itu saat gagal
+
+**Aturan.** Selama sebuah catatan menunggu dikirim (butir 1), foto lokalnya ada
+di **cache** HP, dan sistem operasi boleh mengosongkannya kapan saja. Alur kirim
+harus menerjemahkan kehilangan itu jadi kalimat yang bisa ditindaklanjuti regu,
+bukan galat teknis dari pustaka gambar.
+
+**Kenapa.** Draf yang menginap semalam bisa kehilangan fotonya. Regu yang cuma
+melihat "manipulateAsync failed" tidak tahu harus berbuat apa, dan yang terjadi
+berikutnya biasanya: pekerjaan diinput ulang dari awal, atau dianggap sudah
+terkirim padahal tidak.
+
+**Cara menerapkan.**
+- Bedakan dua kegagalan: unggah yang gagal karena **jaringan** (coba lagi nanti,
+  draf aman) dan foto yang **sudah tidak ada** (harus dipotret ulang).
+- Kalimatnya menyebut jalan keluarnya: "buka catatan ini, potret ulang fotonya,
+  lalu kirim lagi".
+- Draf **tidak** dihapus dalam dua-duanya.
+- Menyimpan foto ke tempat yang tahan lama butuh `expo-file-system` —
+  dependensi native, jadi perlu build baru, **tidak bisa lewat OTA**. Selama
+  belum dipasang, penjaga kalimat di atas itulah yang ada.
+
+**Contoh nyata.** Pemeliharaan Jaringan (23 Sep 2026), saat alur draf dipasang.
+
+---
+
 *Ditulis 23 September 2026. Tambahkan butir baru di bawah, dengan bentuk yang
 sama: aturan, kenapa, cara menerapkan, contoh nyata.*
