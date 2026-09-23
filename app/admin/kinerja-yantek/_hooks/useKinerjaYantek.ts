@@ -204,6 +204,27 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qSeimbang = qSeimbang.eq("ulp", unit);
 
+    // ── 4b. Optimasi Trafo — per gardu ────────────────────────────────────
+    // WO terbit = gardu yang DITANDAI "OPTIMASI TRAFO" di Tindak Lanjut
+    // Anomali pada periode ini — penandaannya itulah WO-nya. Realisasi =
+    // catatan yang sudah TERKIRIM dari HP, termasuk yang di luar WO; draf yang
+    // masih di HP belum dihitung (teknisaplikasi.md butir 1).
+    let qOptWo = supabaseBrowser
+      .from("pengukuran_gardu")
+      .select("id")
+      .eq("jenis_pemeliharaan", "OPTIMASI TRAFO")
+      .gte("wo_sent_at", awal)
+      .lte("wo_sent_at", akhirJam);
+    if (unit) qOptWo = qOptWo.eq("petugas_unit", unit);
+
+    let qOpt = supabaseBrowser
+      .from("optimasi_trafo")
+      .select("status")
+      .neq("status", "Dibatalkan")
+      .gte("tgl_operasi", awal)
+      .lte("tgl_operasi", akhir);
+    if (unit) qOpt = qOpt.eq("ulp", unit);
+
     // ── 5. Inspeksi JTM & JTR — KMS ───────────────────────────────────────
     // Panjangnya tidak ada di tabel inspeksi; dia milik segmen (JTM) dan gardu
     // (JTR). Jadi ditarik dua langkah: inspeksinya dulu, lalu panjang yang
@@ -223,11 +244,11 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qJtr = qJtr.eq("ulp", unit);
 
-    const [rabas, ukur, gardu, harjar, seimbang, jtm, jtr] = await Promise.all([
-      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qJtm, qJtr,
+    const [rabas, ukur, gardu, harjar, seimbang, optWo, opt, jtm, jtr] = await Promise.all([
+      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qOptWo, qOpt, qJtm, qJtr,
     ]);
 
-    // Enam kueri untuk enam sumber, dan tahun/bulan bisa diganti di tengahnya.
+    // Sembilan kueri untuk delapan sumber, dan tahun/bulan bisa diganti di tengahnya.
     // Tanpa penjaga ini, jawaban rentang lama yang datang belakangan akan
     // menimpa yang baru — tabelnya terlihat wajar, angkanya milik bulan yang
     // salah, dan tidak ada apa pun di layar yang menunjukkan itu terjadi.
@@ -267,6 +288,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     const r3 = isi<BarisStatus>(gardu, "hargardu");
     const r3b = isi<BarisStatus>(harjar, "harjtm");
     const r4 = isi<{ id: string }>(seimbang, "penyeimbangan");
+    const r4bWo = isi<{ id: string }>(optWo, "optimasi");
+    const r4b = isi<BarisStatus>(opt, "optimasi");
     const r5 = isi<BarisJtm>(jtm, "jtm");
     const r6 = isi<BarisJtr>(jtr, "jtr");
 
@@ -374,14 +397,15 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       {
         kunci: "optimasi",
         jenis: "Optimasi Trafo",
-        href: null,
-        keadaan: "belumAda",
-        satuan: "—",
+        href: "/admin/optimasi-trafo",
+        keadaan: "lengkap",
+        satuan: "gardu",
         desimal: false,
-        woTerbit: null,
-        realisasi: null,
-        belumApprove: null,
-        catatan: "Belum ada modulnya, di web maupun di HP.",
+        woTerbit: r4bWo.length,
+        realisasi: r4b.length,
+        belumApprove: hitung(r4b, (x) => x.status === "Selesai"),
+        catatan:
+          "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
       },
       {
         kunci: "pengukuran",

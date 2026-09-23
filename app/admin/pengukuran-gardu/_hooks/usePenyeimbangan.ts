@@ -299,8 +299,31 @@ export function usePenyeimbangan(ulp: string) {
       .not("pengukuran_id", "is", null);
     if (ulp) query = query.eq("ulp", ulp);
 
-    const rows = await fetchAllRows<{ pengukuran_id: string }>(() => query);
-    setPengukuranSeimbang(new Set(rows.map((r) => r.pengukuran_id)));
+    // WO OPTIMASI TRAFO selesai bukan karena ada baris penyeimbangan, tapi
+    // karena optimasinya sudah TERKIRIM dari HP. Dua sumber, satu himpunan:
+    // kolom Status di tabel WO cukup bertanya "WO ini sudah dikerjakan?".
+    const buatOpt = () => {
+      let q = supabaseBrowser
+        .from("optimasi_trafo")
+        .select("pengukuran_id")
+        .not("pengukuran_id", "is", null)
+        .neq("status", "Dibatalkan")
+        .order("id");
+      if (ulp) q = q.eq("ulp", ulp);
+      return q;
+    };
+
+    const [rows, opt] = await Promise.all([
+      fetchAllRows<{ pengukuran_id: string }>(() => query),
+      // Tabelnya lahir dari `scripts/optimasi-trafo.sql`. Sebelum skrip itu
+      // dijalankan, WO optimasi memang belum bisa selesai — himpunan kosong
+      // di sini berkata benar, bukan menutupi galat.
+      fetchAllRows<{ pengukuran_id: string }>(buatOpt).catch((e: Error) => {
+        if (/Could not find the table|does not exist/i.test(e.message)) return [];
+        throw e;
+      }),
+    ]);
+    setPengukuranSeimbang(new Set([...rows, ...opt].map((r) => r.pengukuran_id)));
   }, [ulp]);
 
   useEffect(() => { fetchData(); }, [fetchData]);

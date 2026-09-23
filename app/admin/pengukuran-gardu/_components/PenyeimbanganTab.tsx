@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import Link from "next/link";
 import {
   Search, Trash2, Pencil, ChevronLeft, ChevronRight,
   Scale, FileCheck, AlertTriangle, TrendingUp, Download,
@@ -154,6 +155,14 @@ export default function PenyeimbanganTab({
     }),
     [latestData, filterWoJenis, filterWoStatus, pengukuranSeimbang]
   );
+
+  // Penandaan OPTIMASI TRAFO dulu cuma label; sejak modulnya ada, penandaan
+  // itu WO yang dikerjakan regu dari HP. Angkanya ditampilkan supaya admin yang
+  // menandai langsung melihat berapa yang sudah ditindaklanjuti.
+  const woOptimasi = useMemo(() => {
+    const wo = latestData.filter((d) => d.jenis_pemeliharaan === "OPTIMASI TRAFO");
+    return { terbit: wo.length, dikerjakan: wo.filter((d) => pengukuranSeimbang.has(d.id)).length };
+  }, [latestData, pengukuranSeimbang]);
 
   // Memoize detectAnomali results — hindari hitung ulang tiap render
   const anomaliBelumWoMap = useMemo(
@@ -425,6 +434,15 @@ export default function PenyeimbanganTab({
             <FileCheck size={16} className="text-emerald-600 shrink-0" />
             <h3 className="text-sm font-semibold text-emerald-600">Gardu Sudah di-WO</h3>
             <span className="text-xs text-ink-muted">({anomaliSudahWo.length} gardu)</span>
+            {woOptimasi.terbit > 0 && (
+              <Link
+                href="/admin/optimasi-trafo"
+                className="text-xs text-blue-700 hover:underline"
+                title="Dikerjakan = optimasinya sudah terkirim dari HP"
+              >
+                Optimasi Trafo: {woOptimasi.terbit} WO · {woOptimasi.dikerjakan} dikerjakan
+              </Link>
+            )}
             <select
               value={filterWoJenis}
               onChange={(e) => setFilterWoJenis(e.target.value)}
