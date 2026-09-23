@@ -122,6 +122,14 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
                           {tanda.teks}
                         </span>
                       )}
+                      {/* Baris yang sumbernya tidak terbaca harus mengaku
+                          begitu. Sel kosong tanpa tanda terbaca sebagai
+                          "memang belum ada pekerjaannya". */}
+                      {b.gagal && (
+                        <span className="px-1.5 py-0.5 rounded-md border border-amber-300 bg-amber-50 text-[10px] font-semibold text-amber-700">
+                          gagal dimuat
+                        </span>
+                      )}
                     </div>
                     {!mati && (
                       <span className="text-[10px] text-ink-muted">satuan: {b.satuan}</span>

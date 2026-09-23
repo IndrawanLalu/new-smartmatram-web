@@ -1,6 +1,6 @@
 "use client";
 
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
@@ -23,7 +23,7 @@ import TabelKinerja from "./_components/TabelKinerja";
 export default function KinerjaYantekPage() {
   const user = useCurrentUser();
   const {
-    baris, loading, tahun, setTahun, bulan, setBulan,
+    baris, loading, adaGagal, tahun, setTahun, bulan, setBulan,
     ulp, setUlp, daftarUlp, daftarTahun, muatUlang,
   } = useKinerjaYantek(user);
 
@@ -74,6 +74,20 @@ export default function KinerjaYantekPage() {
           Muat ulang
         </button>
       </div>
+
+      {adaGagal && !loading && (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800">Sebagian data gagal dibaca dari server</p>
+            <p className="mt-0.5 text-amber-700">
+              Baris yang bertanda <span className="font-semibold">gagal dimuat</span> angkanya
+              dikosongkan, bukan ditulis nol — rekap ini belum lengkap dan belum bisa dipakai
+              sebagai dasar penilaian. Coba muat ulang.
+            </p>
+          </div>
+        </div>
+      )}
 
       <TabelKinerja baris={baris} loading={loading} periode={periode} />
     </div>

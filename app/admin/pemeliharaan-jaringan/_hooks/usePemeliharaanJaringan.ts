@@ -47,6 +47,8 @@ interface Hasil {
   baris: BarisPemeliharaan[];
   kategori: KategoriRef[];
   loading: boolean;
+  /** Daftar gagal dibaca — bukan daftar yang kosong. */
+  galat: string | null;
   ulp: string;
   setUlp: (u: string) => void;
   daftarUlp: string[];
@@ -66,6 +68,7 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
   const [baris, setBaris] = useState<BarisPemeliharaan[]>([]);
   const [kategori, setKategori] = useState<KategoriRef[]>([]);
   const [loading, setLoading] = useState(true);
+  const [galat, setGalat] = useState<string | null>(null);
   const [ulp, setUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [jenis, setJenis] = useState<"SEMUA" | JenisJaringan>("SEMUA");
 
@@ -76,6 +79,7 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
 
   const muat = useCallback(async () => {
     setLoading(true);
+    setGalat(null);
 
     let q = supabaseBrowser
       .from("pemeliharaan_jaringan_daftar")
@@ -93,6 +97,16 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
         .select("kode,label,jenis,urutan,aktif")
         .order("urutan"),
     ]);
+
+    // Daftar kosong karena server tidak terbaca TIDAK boleh terlihat sama
+    // dengan daftar yang memang belum berisi apa-apa — lihat
+    // `teknisaplikasi.md` butir 6.
+    if (dat.error) {
+      setBaris([]);
+      setGalat(dat.error.message);
+      setLoading(false);
+      return;
+    }
 
     setBaris(
       (dat.data ?? []).map((r) => ({
@@ -180,7 +194,7 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
   };
 
   return {
-    baris, kategori, loading, ulp, setUlp, daftarUlp, jenis, setJenis,
+    baris, kategori, loading, galat, ulp, setUlp, daftarUlp, jenis, setJenis,
     muat, verifikasi, batalkan, simpanKategori,
   };
 }

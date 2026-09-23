@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ListChecks, Settings2 } from "lucide-react";
+import { ListChecks, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { usePemeliharaanJaringan, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
@@ -34,8 +34,8 @@ export default function PemeliharaanJaringanPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
   const {
-    baris, kategori, loading, ulp, setUlp, daftarUlp, jenis, setJenis,
-    verifikasi, batalkan, simpanKategori,
+    baris, kategori, loading, galat, ulp, setUlp, daftarUlp, jenis, setJenis,
+    muat, verifikasi, batalkan, simpanKategori,
   } = usePemeliharaanJaringan(user);
 
   const oleh = user.name ?? user.email ?? "";
@@ -87,6 +87,24 @@ export default function PemeliharaanJaringanPage() {
               </span>
             )}
           </div>
+
+          {galat && !loading && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
+              <div className="text-sm">
+                <p className="font-semibold text-amber-800">Daftar gagal dimuat</p>
+                <p className="mt-0.5 text-amber-700">
+                  {galat} — kosongnya tabel di bawah bukan berarti tidak ada pekerjaan.
+                </p>
+                <button
+                  onClick={() => void muat()}
+                  className="mt-2 font-semibold text-navy-600 hover:text-navy-500"
+                >
+                  Muat ulang
+                </button>
+              </div>
+            </div>
+          )}
 
           <DaftarPemeliharaan
             baris={baris}

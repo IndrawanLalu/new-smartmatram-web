@@ -56,6 +56,9 @@ export interface BarisKinerja {
   woTerbit: number | null;
   realisasi: number | null;
   belumApprove: number | null;
+  /** Sumbernya gagal dibaca. Angkanya dikosongkan, BUKAN ditulis nol —
+   *  nol yang dikarang tidak bisa dibedakan dari kinerja yang benar nihil. */
+  gagal?: boolean;
   /** Kenapa belum ada, atau apa persisnya yang dihitung. */
   catatan: string;
 }
@@ -96,6 +99,9 @@ export const BULAN = [
 interface Hasil {
   baris: BarisKinerja[];
   loading: boolean;
+  /** Ada sumber yang gagal dibaca — tabelnya belum lengkap, dan itu harus
+   *  terlihat di layar, bukan cuma di baris yang bersangkutan. */
+  adaGagal: boolean;
   tahun: number;
   setTahun: (t: number) => void;
   /** 0 = seluruh tahun. */
@@ -126,6 +132,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [ulp, setUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [baris, setBaris] = useState<BarisKinerja[]>([]);
   const [loading, setLoading] = useState(true);
+  const [adaGagal, setAdaGagal] = useState(false);
   const [nonce, setNonce] = useState(0);
 
   const daftarUlp = useMemo(
@@ -228,16 +235,40 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
 
     // Galat tidak dilempar: satu tabel yang belum ada tidak boleh mengosongkan
     // seluruh tabel rekap. Barisnya saja yang jadi kosong.
-    const isi = <T,>(r: { data: T[] | null; error: unknown }): T[] =>
-      r.error ? [] : (r.data ?? []);
+    //
+    // TAPI "tabelnya belum dibuat" dan "servernya tidak menjawab" adalah dua
+    // hal yang berbeda, dan sampai 23 Sep 2026 keduanya sama-sama jadi ANGKA
+    // NOL di layar manajemen. Nol yang dikarang begitu tidak bisa dibedakan
+    // dari unit yang benar-benar tidak bekerja — dan yang membacanya mengambil
+    // keputusan dengan tenang. Yang bukan soal skema dicatat di sini, lalu
+    // barisnya dikosongkan dan ditandai.
+    const gagal = new Set<string>();
 
-    const r1 = isi<BarisRabas>(rabas);
-    const r2 = isi<BarisUkur>(ukur);
-    const r3 = isi<BarisStatus>(gardu);
-    const r3b = isi<BarisStatus>(harjar);
-    const r4 = isi<{ id: string }>(seimbang);
-    const r5 = isi<BarisJtm>(jtm);
-    const r6 = isi<BarisJtr>(jtr);
+    const belumDibuat = (e: unknown): boolean => {
+      const kode = String((e as { code?: string })?.code ?? "");
+      const pesan = String((e as { message?: string })?.message ?? "");
+      return (
+        kode === "42P01" ||
+        kode.startsWith("PGRST20") ||
+        /does not exist|Could not find the table/i.test(pesan)
+      );
+    };
+
+    const isi = <T,>(r: { data: T[] | null; error: unknown }, kunci: string): T[] => {
+      if (r.error) {
+        if (!belumDibuat(r.error)) gagal.add(kunci);
+        return [];
+      }
+      return r.data ?? [];
+    };
+
+    const r1 = isi<BarisRabas>(rabas, "perabasan");
+    const r2 = isi<BarisUkur>(ukur, "pengukuran");
+    const r3 = isi<BarisStatus>(gardu, "hargardu");
+    const r3b = isi<BarisStatus>(harjar, "harjtm");
+    const r4 = isi<{ id: string }>(seimbang, "penyeimbangan");
+    const r5 = isi<BarisJtm>(jtm, "jtm");
+    const r6 = isi<BarisJtr>(jtr, "jtr");
 
     const jum = <T,>(a: T[], f: (x: T) => number) => a.reduce((n, x) => n + f(x), 0);
     const hitung = <T,>(a: T[], f: (x: T) => boolean) => a.filter(f).length;
@@ -288,7 +319,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
 
     if (!masihBerlaku()) return;
 
-    setBaris([
+    const susun: BarisKinerja[] = [
       {
         kunci: "perabasan",
         jenis: "Perabasan Pohon",
@@ -391,7 +422,23 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         catatan:
           "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. Sama seperti JTM: belum diterbitkan lewat WO.",
       },
-    ]);
+    ];
+
+    setBaris(
+      susun.map((b) =>
+        gagal.has(b.kunci)
+          ? {
+              ...b,
+              woTerbit: null,
+              realisasi: null,
+              belumApprove: null,
+              gagal: true,
+              catatan: "Data gagal dibaca dari server, jadi angkanya dikosongkan — bukan berarti nol.",
+            }
+          : b,
+      ),
+    );
+    setAdaGagal(gagal.size > 0);
     setLoading(false);
   }, [tahun, bulan, ulp]);
 
@@ -406,6 +453,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   return {
     baris,
     loading,
+    adaGagal,
     tahun,
     setTahun,
     bulan,
