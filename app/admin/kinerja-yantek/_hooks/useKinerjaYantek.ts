@@ -217,6 +217,11 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("wo_sent_at", akhirJam);
     if (unit) qOptWo = qOptWo.eq("petugas_unit", unit);
 
+    // WO yang dibatalkan admin (salah terbit, atau sudah beres lewat pecah
+    // beban) bukan WO terbit — menghitungnya menurunkan capaian unit untuk
+    // pekerjaan yang memang tidak perlu dikerjakan.
+    const qOptBatal = supabaseBrowser.from("optimasi_wo_batal").select("pengukuran_id");
+
     let qOpt = supabaseBrowser
       .from("optimasi_trafo")
       .select("status")
@@ -244,8 +249,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qJtr = qJtr.eq("ulp", unit);
 
-    const [rabas, ukur, gardu, harjar, seimbang, optWo, opt, jtm, jtr] = await Promise.all([
-      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qOptWo, qOpt, qJtm, qJtr,
+    const [rabas, ukur, gardu, harjar, seimbang, optWo, opt, optBatal, jtm, jtr] = await Promise.all([
+      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qOptWo, qOpt, qOptBatal, qJtm, qJtr,
     ]);
 
     // Sembilan kueri untuk delapan sumber, dan tahun/bulan bisa diganti di tengahnya.
@@ -288,7 +293,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     const r3 = isi<BarisStatus>(gardu, "hargardu");
     const r3b = isi<BarisStatus>(harjar, "harjtm");
     const r4 = isi<{ id: string }>(seimbang, "penyeimbangan");
-    const r4bWo = isi<{ id: string }>(optWo, "optimasi");
+    const batalOpt = new Set(isi<{ pengukuran_id: string }>(optBatal, "optimasi").map((x) => x.pengukuran_id));
+    const r4bWo = isi<{ id: string }>(optWo, "optimasi").filter((x) => !batalOpt.has(x.id));
     const r4b = isi<BarisStatus>(opt, "optimasi");
     const r5 = isi<BarisJtm>(jtm, "jtm");
     const r6 = isi<BarisJtr>(jtr, "jtr");
@@ -405,7 +411,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         realisasi: r4b.length,
         belumApprove: hitung(r4b, (x) => x.status === "Selesai"),
         catatan:
-          "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
+          "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini, tanpa WO yang dibatalkan. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
       },
       {
         kunci: "pengukuran",

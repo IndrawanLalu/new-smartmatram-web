@@ -27,8 +27,10 @@ export default function ConfirmDialog({
       : "bg-linear-to-r from-[#004D40] to-[#00897B] hover:opacity-90";
   const iconCls = tone === "danger" ? "bg-red-50 text-red-600" : "bg-[#E0F2F1] text-[#00897B]";
 
+  // z-[2050]: dialog ini juga dibuka DARI DALAM ModalShell (z-[2000]); di bawah
+  // angka itu dia tertimbun modal induknya. Tetap di bawah notifikasi (2100).
   return (
-    <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-[2050] bg-black/50 flex items-center justify-center p-4" onClick={onClose}>
       <div
         className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-5"
         onClick={(e) => e.stopPropagation()}

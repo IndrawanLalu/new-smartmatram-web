@@ -196,5 +196,170 @@ console (Beranda, Tugas, Work Order, Riwayat Gardu, Peta Pohon), dan
 
 ---
 
-*Ditulis 23 September 2026. Tambahkan butir baru di bawah, dengan bentuk yang
-sama: aturan, kenapa, cara menerapkan, contoh nyata.*
+## 7. Daftar pekerjaan di web = TABEL, rinciannya = MODAL
+
+**Aturan.** Daftar pekerjaan (WO, catatan lapangan, verifikasi) tampil sebagai
+**tabel** berkolom lengkap: 20 baris per halaman, penyaring ULP + periode
+(bawaan **bulan berjalan**) + status + cari. Klik baris → **modal detail**.
+Semua keputusan admin (verifikasi, koreksi, batal) ada di kaki modal itu.
+Bukan kartu bertumpuk, bukan halaman terpisah.
+
+**Kenapa.** Admin memeriksa puluhan pekerjaan sekaligus. Kartu bertumpuk
+memaksanya menggulir jauh, tanpa bisa membandingkan satu pekerjaan dengan yang
+lain. Modul yang menyimpang dari pola ini harus dibongkar ulang.
+
+**Cara menerapkan.**
+- Kerangka modal: `app/admin/_components/ModalShell.tsx`, lebar `max-w-4xl`
+  untuk detail. Isi yang panjang dipecah ke komponen `Isi…`, dan formulir koreksi
+  ke komponen sendiri. Tombol "Simpan koreksi" di kaki modal memakai
+  `form={ID_FORM}`.
+- **Modal membaca data hidup**: simpan `kunci` baris yang dibuka, lalu cari
+  barisnya dari daftar LENGKAP (bukan daftar yang tersaring). Setelah verifikasi,
+  status di modal langsung berubah, dan baris yang keluar dari saringan tidak
+  ikut menutup modalnya.
+- Pekerjaan yang punya "sebelum" dan "sesudah" ditaruh **berdampingan**, bukan
+  berurutan. Yang dinilai admin adalah bedanya.
+- Kalau ada WO yang belum dikerjakan, WO itu tampil di tabel yang sama dengan
+  status "Belum dikerjakan". **WO yang belum dikerjakan selalu tampil, apa pun
+  bulan yang dipilih**: itu tunggakan, dan tunggakan yang hilang karena bulan
+  berganti tidak akan pernah ditagih.
+- Setelah mutasi satu baris, **ambil ulang baris itu saja** dari view lalu tambal
+  di tempat. Kolom turunan (beban, jejak, jumlah usulan) dihitung server; jangan
+  ditebak di peramban.
+
+**Contoh nyata.** Optimasi Trafo (24 Sep 2026): versi pertama berupa kartu
+dengan `window.prompt`, lalu dirombak total atas permintaan user. Acuan yang
+benar sekarang: `app/admin/optimasi-trafo/`.
+
+---
+
+## 8. Konfirmasi dan alasan: `ConfirmDialog` & `BatalkanModal`, bukan `window.*`
+
+**Aturan.** `window.confirm`, `window.prompt`, dan `window.alert` **tidak
+dipakai**. Tindakan yang perlu ditegaskan memakai `ConfirmDialog`. Tindakan yang
+butuh alasan (batal, salah input, batalkan WO) memakai `BatalkanModal`.
+
+**Kenapa.** Kotak dialog bawaan peramban tidak bisa diberi gaya, tidak bisa
+menerangkan akibatnya, dan di sebagian peramban bisa diblokir diam-diam.
+Alasan yang diketik di `prompt` satu baris cenderung asal-asalan, padahal
+alasan itu dibaca orang enam bulan kemudian.
+
+**Cara menerapkan.**
+- `app/admin/_components/ConfirmDialog.tsx`: `title`, `message` (sebutkan
+  **akibatnya**, misalnya "3 isian master gardu akan langsung diubah"),
+  `confirmLabel`, `tone="danger"` untuk yang merusak.
+- `app/admin/_components/BatalkanModal.tsx`: `judul`, `keterangan` (apa yang
+  terjadi), `peringatan` (yang tidak bisa dipulihkan), `labelTombol`.
+  `onBatalkan` mengembalikan `Promise<boolean>`. Kalau gagal, modal **tetap
+  terbuka** supaya alasan tidak perlu diketik ulang.
+- "Batalkan" ≠ "Hapus". Barisnya tetap ada dengan status `Dibatalkan` beserta
+  alasannya (lihat juga butir 2).
+- **Lapisan z-index** (jangan dilanggar, atau dialog tertimbun):
+  peta Leaflet ≤ 1000 · `ModalShell` 2000 · `ConfirmDialog`/`BatalkanModal` 2050
+  · Toast 2100.
+
+**Contoh nyata.** Optimasi Trafo (24 Sep 2026): `BatalkanModal` masih `z-50`
+dan `ConfirmDialog` `z-[60]`. Keduanya tertimbun kalau dibuka dari dalam
+`ModalShell`, lalu dinaikkan ke 2050.
+
+---
+
+## 9. Hasil tindakan dilaporkan lewat Toast
+
+**Aturan.** Setiap tindakan admin yang menyentuh server berakhir dengan toast:
+`toast.success(...)` kalau berhasil, `toast.error(pesan dari server)` kalau
+gagal. Tidak ada tindakan yang selesai tanpa kabar.
+
+**Cara menerapkan.**
+- `const toast = useToast()` dari `app/admin/_components/Toast.tsx`
+  (`success` · `error` · `info`). Error bertahan 6 detik, success 3,2 detik.
+- Kalimat sukses menyebut **hasilnya**, bukan sekadar "Berhasil". Contoh:
+  "Diverifikasi — 2 isian master diperbarui."
+- Kalimat gagal = pesan penjaga dari database (`RAISE EXCEPTION` di SQL sudah
+  ditulis dalam bahasa lapangan), jadi tidak perlu diterjemahkan ulang.
+- Satu pembungkus `jalankan(kerja)` di komponen: set sibuk → toast → matikan
+  sibuk. Contoh: `DetailOptimasiModal.tsx`.
+
+---
+
+## 10. Unduhan Excel: satu gaya, isinya = yang tampil
+
+**Aturan.** Setiap tabel pekerjaan punya tombol **Download XLSX** di ujung
+kanan baris penyaring. Isinya **persis baris yang sedang tampil**, mengikuti
+penyaring yang dipilih.
+
+**Kenapa.** Excel dibawa ke rapat dan dibandingkan dengan layar. Kalau isinya
+berbeda dari yang tampil, yang dipercaya salah satunya, dan dua-duanya
+berhenti dipercaya.
+
+**Cara menerapkan.**
+- Gaya bersama: `lib/xlsxGaya.ts` (`styleCell`, `mergeSet`, `downloadBuffer`,
+  warna `CLR_*`). **Jangan menyalin fungsi gaya ke berkas baru.**
+- Model: kepala kuning (`CLR_HEADER`), kolom WO biru muda, blok **SEBELUM**
+  merah muda (`CLR_PINK`) dan **SESUDAH** hijau (`CLR_GREEN`) berkepala dua
+  baris, % beban ≥ 80 disorot merah (`FFCDD2`), baris berselang warna, kolom
+  identitas dan kepala dibekukan (`ws.views` frozen), halaman landscape.
+- Pembuat Excel ditaruh di `_lib/unduhExcel.ts` halaman itu, dan **dimuat lewat
+  `await import(...)` saat tombol ditekan**. exceljs berukuran ratusan KB dan
+  kebanyakan kunjungan tidak pernah mengunduh.
+- Nama berkas: `Modul_ULP_Periode.xlsx`, misalnya
+  `Optimasi_Trafo_AMPENAN_2026-09.xlsx`.
+- Contoh lengkap: `app/admin/optimasi-trafo/_lib/unduhExcel.ts`. Model
+  sebelum/sesudah yang lebih tua: Rekap Penyeimbangan di
+  `pengukuran-gardu/_utils/downloadXlsx.ts`.
+
+---
+
+## 11. Periksa tipe kolom dan data NYATA sebelum menulis SQL
+
+**Aturan.** Sebelum menulis SQL yang menyambung ke tabel lama, periksa dulu
+**tipe kolom sebenarnya** dan **bentuk datanya** lewat database, bukan dari
+nama kolom atau kebiasaan.
+
+**Kenapa.** Tabel warisan migrasi Firestore tidak bertipe seperti yang
+diduga. Menduga membuat skrip gagal di SQL Editor, dan user yang harus
+menjalankannya ulang berkali-kali.
+
+**Yang sudah diketahui (24 Sep 2026):**
+- `pengukuran_gardu.id` → **TEXT**, bukan UUID. FK harus TEXT.
+- `pengukuran_gardu.tanggal_pengukuran` → **TEXT** berformat `YYYY-MM-DD`
+  (seluruh 2.170 baris). Dibandingkan dengan `to_char(tgl, 'YYYY-MM-DD')`,
+  jangan `<=` langsung dengan DATE.
+- `gardu.no_seri` baru terisi sejak `optimasi-trafo.sql`. Sebelumnya nomor seri
+  hanya ada di `data_amg->>'NO SERI'`, dan 110 di antaranya kembar.
+
+**Cara menerapkan.** Kueri kecil lewat REST dengan service key (hanya baca):
+ambil beberapa baris, dan hitung pola formatnya kalau kolomnya teks.
+`CREATE OR REPLACE VIEW` hanya boleh **menambah kolom di akhir**, jadi view
+yang diperluas harus mempertahankan urutan kolom lamanya.
+
+---
+
+## 12. WO yang tidak jadi dikerjakan dibatalkan dengan alasan, bukan dihapus
+
+**Aturan.** WO yang salah terbit, atau yang masalahnya sudah beres dengan cara
+lain (pecah beban, manuver), **dibatalkan** dengan alasan wajib. WO itu tetap
+tersimpan, hilang dari daftar tugas regu, dan **tidak dihitung sebagai WO
+terbit** di Rekap Kinerja.
+
+**Kenapa.** Kalau dihapus atau penandanya dikosongkan, gardunya muncul lagi
+sebagai anomali "belum di-WO" dan alasannya hilang. Kalau tetap dihitung,
+capaian unit turun karena pekerjaan yang memang tidak perlu dikerjakan.
+
+**Cara menerapkan.**
+- Tabel pembatalan sendiri (contoh: `optimasi_wo_batal`, PK = id WO) dan
+  fungsi SQL penjaga: WO yang sudah dikerjakan tidak bisa dibatalkan (yang
+  dibatalkan catatannya, lewat "Salah input").
+- **Pekerjaan tidak boleh hilang.** Kalau regu telanjur mengirim draf untuk WO
+  yang sudah dibatalkan, catatannya diterima sebagai "di luar WO".
+- **Satu gardu, satu pekerjaan, satu baris.** Catatan "di luar WO" untuk gardu
+  yang punya WO terbuka dikaitkan otomatis ke WO itu oleh server.
+
+**Contoh nyata.** Optimasi Trafo (24 Sep 2026): AM053 dicatat di luar WO
+padahal WO-nya terbuka, lalu muncul dua baris di tabel.
+
+---
+
+*Ditulis 23 September 2026, butir 7–12 ditambahkan 24 September 2026.
+Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
+menerapkan, contoh nyata.*

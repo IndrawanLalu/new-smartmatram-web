@@ -228,6 +228,27 @@ COMMENT ON TABLE public.optimasi_trafo IS
   'Penggantian trafo (uprating/downrating) — satu baris satu gardu. Menghasilkan usulan koreksi master yang menunggu persetujuan.';
 
 
+-- ── 2b. WO yang dibatalkan admin ────────────────────────────────────────────
+-- Diminta 24 Sep 2026: WO bisa salah terbit, atau masalahnya sudah beres
+-- dengan cara lain (pecah beban, manuver) sehingga trafonya tidak perlu diganti.
+--
+-- Tabel sendiri, BUKAN mengosongkan `jenis_pemeliharaan`: WO yang dikosongkan
+-- akan muncul lagi sebagai anomali "belum di-WO", dan alasan pembatalannya
+-- hilang. Yang dibatalkan harus tetap bisa diterangkan enam bulan kemudian.
+-- Satu pengukuran paling banyak satu pembatalan (PK).
+
+CREATE TABLE IF NOT EXISTS public.optimasi_wo_batal (
+  pengukuran_id TEXT PRIMARY KEY REFERENCES public.pengukuran_gardu (id) ON DELETE CASCADE,
+  alasan        TEXT NOT NULL CHECK (btrim(alasan) <> ''),
+  oleh_uid      UUID,
+  oleh_nama     TEXT,
+  dibatalkan_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+COMMENT ON TABLE public.optimasi_wo_batal IS
+  'WO Optimasi Trafo yang dibatalkan admin berikut alasannya. Tidak dihitung sebagai WO terbit.';
+
+
 -- ── 3. WO yang masih terbuka ────────────────────────────────────────────────
 -- Tiruan `v_wo_pemerataan_terbuka`, dengan satu beda: tidak ada tahap klaim.
 -- Optimasi dikerjakan dalam satu kali datang, jadi WO hilang dari daftar
@@ -260,9 +281,21 @@ LEFT JOIN public.gardu g
   ON upper(g.kode) = upper(pg.no_gardu) AND upper(g.ulp) = upper(pg.petugas_unit)
 WHERE pg.jenis_pemeliharaan = 'OPTIMASI TRAFO'
   AND pg.hasil_penyeimbangan_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM public.optimasi_wo_batal b WHERE b.pengukuran_id = pg.id)
   AND NOT EXISTS (
     SELECT 1 FROM public.optimasi_trafo o
-    WHERE o.pengukuran_id = pg.id AND o.status <> 'Dibatalkan'
+    WHERE o.status <> 'Dibatalkan'
+      AND (
+        o.pengukuran_id = pg.id
+        -- Gardunya sudah dioptimasi SESUDAH pengukuran yang menerbitkan WO ini
+        -- — lewat WO lain atau dicatat di luar WO. Trafonya sudah diganti; WO
+        -- ini tidak punya pekerjaan lagi. (Ditemukan 24 Sep 2026: AM053
+        -- dicatat di luar WO, lalu muncul dua kali di tabel.)
+        OR (upper(o.kode_gardu) = upper(pg.no_gardu)
+            AND upper(o.ulp) = upper(pg.petugas_unit)
+            -- tanggal_pengukuran bertipe TEXT berformat YYYY-MM-DD.
+            AND to_char(o.tgl_operasi, 'YYYY-MM-DD') >= pg.tanggal_pengukuran)
+      )
   );
 
 GRANT SELECT ON public.v_wo_optimasi_terbuka TO authenticated;
@@ -501,6 +534,8 @@ DECLARE
   g        RECORD;
   v_id     UUID;
   v_usulan INT;
+  v_ukur   TEXT := p_pengukuran_id;
+  v_wo_batal BOOLEAN := false;
 BEGIN
   PERFORM public._optimasi_periksa(
     p_kode_gardu, p_ulp, p_kva_lama, p_kva_baru,
@@ -512,14 +547,44 @@ BEGIN
     RAISE EXCEPTION 'Foto papan nama trafo lama dan baru dua-duanya wajib';
   END IF;
 
+  -- WO-nya sudah dibatalkan admin sementara regu telanjur mengerjakannya dari
+  -- draf. Pekerjaannya nyata — trafonya sudah diganti — jadi catatannya
+  -- DITERIMA sebagai pekerjaan di luar WO, bukan ditolak dan hilang.
+  IF v_ukur IS NOT NULL AND EXISTS (
+    SELECT 1 FROM public.optimasi_wo_batal WHERE pengukuran_id = v_ukur
+  ) THEN
+    v_ukur := NULL;
+    v_wo_batal := true;
+  END IF;
+
   -- WO yang sama tidak boleh terkirim dua kali. Ini terjadi kalau Kirim
   -- ditekan dua kali di sinyal yang lambat — respons pertama belum kembali,
   -- drafnya belum terhapus, dan regu menekan lagi.
-  IF p_pengukuran_id IS NOT NULL AND EXISTS (
+  IF v_ukur IS NOT NULL AND EXISTS (
     SELECT 1 FROM public.optimasi_trafo
-    WHERE pengukuran_id = p_pengukuran_id AND status <> 'Dibatalkan'
+    WHERE pengukuran_id = v_ukur AND status <> 'Dibatalkan'
   ) THEN
     RAISE EXCEPTION 'WO ini sudah punya catatan optimasi yang terkirim';
+  END IF;
+
+  -- Dicatat "di luar WO" padahal gardunya punya WO terbuka → kaitkan ke WO
+  -- itu. Regu tidak selalu membuka lewat daftar WO, dan dari sisi pekerjaan
+  -- itu tetap WO yang sama: satu gardu, satu penggantian trafo, satu baris.
+  IF v_ukur IS NULL AND NOT v_wo_batal THEN
+    SELECT pg.id INTO v_ukur
+    FROM public.pengukuran_gardu pg
+    WHERE pg.jenis_pemeliharaan = 'OPTIMASI TRAFO'
+      AND pg.hasil_penyeimbangan_id IS NULL
+      AND upper(pg.no_gardu) = upper(p_kode_gardu)
+      AND upper(pg.petugas_unit) = upper(p_ulp)
+      AND pg.tanggal_pengukuran <= to_char(COALESCE(p_tgl_operasi, CURRENT_DATE), 'YYYY-MM-DD')
+      AND NOT EXISTS (SELECT 1 FROM public.optimasi_wo_batal b WHERE b.pengukuran_id = pg.id)
+      AND NOT EXISTS (
+        SELECT 1 FROM public.optimasi_trafo x
+        WHERE x.pengukuran_id = pg.id AND x.status <> 'Dibatalkan'
+      )
+    ORDER BY pg.tanggal_pengukuran DESC
+    LIMIT 1;
   END IF;
 
   -- Identitas gardu diambil dari MASTER, bukan dari kiriman HP.
@@ -538,7 +603,7 @@ BEGIN
     foto_nameplate_lama_url, foto_nameplate_baru_url,
     lat, lng, akurasi, petugas_uid, petugas_nama, catatan
   ) VALUES (
-    p_pengukuran_id, upper(g.kode), upper(g.ulp), g.feeder, g.alamat,
+    v_ukur, upper(g.kode), upper(g.ulp), g.feeder, g.alamat,
     p_kva_lama, p_kva_baru, g.daya::numeric,
     NULLIF(btrim(COALESCE(p_no_seri_lama, '')), ''),
     COALESCE(p_seri_lama_tak_terbaca, false) AND public.seri_norm(p_no_seri_lama) IS NULL,
@@ -561,11 +626,49 @@ BEGIN
 
   v_usulan := public._optimasi_susun_usulan(v_id);
 
-  RETURN jsonb_build_object('id', v_id, 'usulan', v_usulan);
+  RETURN jsonb_build_object('id', v_id, 'usulan', v_usulan, 'pengukuran_id', v_ukur,
+                            'wo_dibatalkan', v_wo_batal);
 END $$;
 
 COMMENT ON FUNCTION public.simpan_optimasi_trafo IS
-  'Mengirim satu optimasi trafo dari HP. Identitas gardu dari master; usulan koreksi master dibuat otomatis dan menunggu persetujuan.';
+  'Mengirim satu optimasi trafo dari HP. Identitas gardu dari master; catatan di luar WO dikaitkan ke WO terbuka gardu yang sama; usulan koreksi master dibuat otomatis dan menunggu persetujuan.';
+
+-- ── 7b. Kaitkan catatan lama yang telanjur terkirim "di luar WO" ────────────
+-- Sekali jalan, untuk catatan yang terkirim sebelum aturan di atas ada.
+-- Aman diulang: yang sudah punya WO tidak disentuh. Satu WO paling banyak
+-- satu catatan — kalau dua catatan berebut WO yang sama, yang lebih dulu
+-- terkirim yang mendapatkannya.
+WITH calon AS (
+  SELECT DISTINCT ON (pg.id) o.id AS optimasi_id, pg.id AS pengukuran_id
+  FROM public.optimasi_trafo o
+  JOIN public.pengukuran_gardu pg
+    ON pg.jenis_pemeliharaan = 'OPTIMASI TRAFO'
+   AND pg.hasil_penyeimbangan_id IS NULL
+   AND upper(pg.no_gardu) = upper(o.kode_gardu)
+   AND upper(pg.petugas_unit) = upper(o.ulp)
+   AND pg.tanggal_pengukuran <= to_char(o.tgl_operasi, 'YYYY-MM-DD')
+   AND NOT EXISTS (SELECT 1 FROM public.optimasi_wo_batal b WHERE b.pengukuran_id = pg.id)
+  WHERE o.pengukuran_id IS NULL
+    AND o.status <> 'Dibatalkan'
+    AND NOT EXISTS (
+      SELECT 1 FROM public.optimasi_trafo x
+      WHERE x.pengukuran_id = pg.id AND x.status <> 'Dibatalkan'
+    )
+  ORDER BY pg.id, o.created_at
+)
+UPDATE public.optimasi_trafo o
+SET pengukuran_id = c.pengukuran_id, updated_at = now()
+FROM calon c
+WHERE o.id = c.optimasi_id
+  -- Satu catatan cukup satu WO: kalau gardunya punya beberapa WO terbuka,
+  -- ambil yang paling akhir diukur.
+  AND c.pengukuran_id = (
+    SELECT c2.pengukuran_id FROM calon c2
+    JOIN public.pengukuran_gardu p2 ON p2.id = c2.pengukuran_id
+    WHERE c2.optimasi_id = o.id
+    ORDER BY p2.tanggal_pengukuran DESC
+    LIMIT 1
+  );
 
 
 -- ── 8. Koreksi dari HP ──────────────────────────────────────────────────────
@@ -731,6 +834,69 @@ BEGIN
 END $$;
 
 
+-- ── 9b. Membatalkan WO yang belum dikerjakan ────────────────────────────────
+-- Hanya WO yang BELUM punya catatan terkirim. Yang sudah dikerjakan tidak
+-- dibatalkan lewat WO-nya — catatannya yang ditandai "Salah input".
+
+CREATE OR REPLACE FUNCTION public.batalkan_wo_optimasi(
+  p_pengukuran_id TEXT,
+  p_alasan        TEXT,
+  p_nama          TEXT DEFAULT NULL
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF btrim(COALESCE(p_alasan, '')) = '' THEN
+    RAISE EXCEPTION 'Alasan pembatalan WO wajib diisi';
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM public.pengukuran_gardu
+    WHERE id = p_pengukuran_id AND jenis_pemeliharaan = 'OPTIMASI TRAFO'
+  ) THEN
+    RAISE EXCEPTION 'WO Optimasi Trafo tidak ditemukan';
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM public.optimasi_trafo
+    WHERE pengukuran_id = p_pengukuran_id AND status <> 'Dibatalkan'
+  ) THEN
+    RAISE EXCEPTION 'WO ini sudah dikerjakan — yang dibatalkan catatannya (Salah input), bukan WO-nya';
+  END IF;
+  IF EXISTS (SELECT 1 FROM public.optimasi_wo_batal WHERE pengukuran_id = p_pengukuran_id) THEN
+    RAISE EXCEPTION 'WO ini sudah dibatalkan sebelumnya';
+  END IF;
+
+  INSERT INTO public.optimasi_wo_batal (pengukuran_id, alasan, oleh_uid, oleh_nama)
+  VALUES (p_pengukuran_id, btrim(p_alasan), auth.uid(), p_nama);
+END $$;
+
+-- Daftar WO yang dibatalkan, sebentuk dengan `v_wo_optimasi_terbuka` supaya
+-- web bisa menaruh keduanya di tabel yang sama.
+CREATE OR REPLACE VIEW public.v_wo_optimasi_batal
+WITH (security_invoker = true) AS
+SELECT
+  pg.id                  AS pengukuran_id,
+  pg.no_gardu,
+  pg.alamat,
+  pg.penyulang,
+  pg.petugas_unit        AS ulp,
+  pg.kva_trafo,
+  pg.tanggal_pengukuran,
+  pg.wo_sent_at,
+  pg.persen_beban,
+  pg.beban_kva,
+  pg.suhu_trafo,
+  g.daya                 AS kva_master,
+  g.no_seri              AS no_seri_master,
+  g.merk                 AS merk_master,
+  g.nama                 AS nama_gardu,
+  b.alasan               AS batal_alasan,
+  b.oleh_nama            AS batal_oleh,
+  b.dibatalkan_at
+FROM public.optimasi_wo_batal b
+JOIN public.pengukuran_gardu pg ON pg.id = b.pengukuran_id
+LEFT JOIN public.gardu g
+  ON upper(g.kode) = upper(pg.no_gardu) AND upper(g.ulp) = upper(pg.petugas_unit);
+
+
 -- ── 10. Daftar untuk web dan HP ─────────────────────────────────────────────
 -- Label alasan diambil dari acuan, jadi menyuntingnya langsung terbaca di
 -- catatan lama. Status usulan diringkas di sini supaya daftar tidak perlu
@@ -742,6 +908,22 @@ END $$;
 --   · tujuan GARDU → di gardu tujuan ada catatan yang MEMASANG seri ini
 -- 'bersambung' | 'dipastikan' (admin menyatakannya) | 'terbuka' | NULL (tidak
 -- melibatkan gardu lain).
+
+-- Beban SEBELUM & SESUDAH (diminta 24 Sep 2026):
+--   SEBELUM = pengukuran yang menerbitkan WO; di luar WO: pengukuran terakhir
+--             pada/sebelum tanggal pekerjaan.
+--   SESUDAH = pengukuran TERAKHIR gardu itu, kapan pun diukurnya, dihitung
+--             terhadap kVA BARU. `sesudah_diukur_ulang` = false kalau
+--             pengukuran itu masih dari sebelum pekerjaan.
+-- ⚠ `pengukuran_gardu.tanggal_pengukuran` bertipe TEXT (YYYY-MM-DD di seluruh
+-- 2.170 baris, diperiksa 24 Sep 2026) — dibandingkan lewat to_char().
+
+-- Dua pencarian per baris ("pengukuran terakhir gardu ini") memakai
+-- upper(kode)+upper(ulp). Tanpa indeks berbentuk sama, tiap baris daftar
+-- menyapu seluruh tabel pengukuran.
+CREATE INDEX IF NOT EXISTS pengukuran_gardu_gardu_tgl_idx
+  ON public.pengukuran_gardu (upper(no_gardu), upper(petugas_unit), tanggal_pengukuran DESC, created_at DESC)
+  WHERE hasil_penyeimbangan_id IS NULL;
 
 CREATE OR REPLACE VIEW public.optimasi_trafo_daftar
 WITH (security_invoker = true) AS
@@ -775,9 +957,46 @@ SELECT
     ) THEN 'bersambung'
     WHEN o.jejak_dipastikan_at IS NOT NULL THEN 'dipastikan'
     ELSE 'terbuka'
-  END AS jejak_tujuan
+  END AS jejak_tujuan,
+
+  -- ── Sebelum ──
+  sb.persen_beban        AS sebelum_persen,
+  sb.beban_kva           AS sebelum_kva_beban,
+  sb.kva_trafo           AS sebelum_kva_trafo,
+  sb.suhu_trafo          AS sebelum_suhu,
+  sb.tanggal_pengukuran  AS sebelum_tgl,
+
+  -- ── Sesudah ──
+  ak.beban_kva           AS sesudah_kva_beban,
+  ak.tanggal_pengukuran  AS sesudah_tgl,
+  ak.suhu_trafo          AS sesudah_suhu,
+  CASE WHEN ak.beban_kva IS NOT NULL AND o.kva_baru > 0
+       THEN round(ak.beban_kva::numeric / o.kva_baru * 100, 1) END AS sesudah_persen,
+  (ak.tanggal_pengukuran >= to_char(o.tgl_operasi, 'YYYY-MM-DD')) AS sesudah_diukur_ulang
 FROM public.optimasi_trafo o
-LEFT JOIN public.optimasi_alasan_ref r ON r.kode = o.alasan;
+LEFT JOIN public.optimasi_alasan_ref r ON r.kode = o.alasan
+LEFT JOIN LATERAL (
+  SELECT p.persen_beban, p.beban_kva, p.kva_trafo, p.suhu_trafo, p.tanggal_pengukuran
+  FROM public.pengukuran_gardu p
+  WHERE (o.pengukuran_id IS NOT NULL AND p.id = o.pengukuran_id)
+     OR (o.pengukuran_id IS NULL
+         AND upper(p.no_gardu) = upper(o.kode_gardu)
+         AND upper(p.petugas_unit) = upper(o.ulp)
+         AND p.hasil_penyeimbangan_id IS NULL
+         AND p.tanggal_pengukuran <= to_char(o.tgl_operasi, 'YYYY-MM-DD'))
+  ORDER BY p.tanggal_pengukuran DESC, p.created_at DESC
+  LIMIT 1
+) sb ON true
+LEFT JOIN LATERAL (
+  SELECT p.beban_kva, p.suhu_trafo, p.tanggal_pengukuran
+  FROM public.pengukuran_gardu p
+  WHERE upper(p.no_gardu) = upper(o.kode_gardu)
+    AND upper(p.petugas_unit) = upper(o.ulp)
+    AND p.hasil_penyeimbangan_id IS NULL
+  ORDER BY p.tanggal_pengukuran DESC, p.created_at DESC
+  LIMIT 1
+) ak ON true;
+
 
 COMMENT ON VIEW public.optimasi_trafo_daftar IS
   'Optimasi trafo berikut label alasan, ringkasan usulan master, dan apakah perpindahan trafonya sudah bersambung lewat nomor seri.';
@@ -841,6 +1060,15 @@ GRANT EXECUTE ON FUNCTION public.ubah_optimasi_trafo(
 GRANT EXECUTE ON FUNCTION public.verifikasi_optimasi_trafo(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.batalkan_optimasi_trafo(UUID, TEXT, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.pastikan_jejak_optimasi(UUID, TEXT) TO authenticated;
+
+-- WO batal: dibaca siapa saja yang masuk, ditulis HANYA lewat fungsi di atas.
+ALTER TABLE public.optimasi_wo_batal ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS optimasi_wo_batal_baca ON public.optimasi_wo_batal;
+CREATE POLICY optimasi_wo_batal_baca ON public.optimasi_wo_batal
+  FOR SELECT TO authenticated USING (true);
+GRANT SELECT ON public.optimasi_wo_batal TO authenticated;
+GRANT SELECT ON public.v_wo_optimasi_batal TO authenticated;
+GRANT EXECUTE ON FUNCTION public.batalkan_wo_optimasi(TEXT, TEXT, TEXT) TO authenticated;
 
 
 -- ── 13. Role dan menu ───────────────────────────────────────────────────────

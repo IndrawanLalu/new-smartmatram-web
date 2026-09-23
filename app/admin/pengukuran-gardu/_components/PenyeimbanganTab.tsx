@@ -83,6 +83,7 @@ export default function PenyeimbanganTab({
 
   const {
     pengukuranSeimbang,
+    woBatal,
     filteredData: rekapData,
     loading: rekapLoading,
     error: rekapError,
@@ -160,9 +161,10 @@ export default function PenyeimbanganTab({
   // itu WO yang dikerjakan regu dari HP. Angkanya ditampilkan supaya admin yang
   // menandai langsung melihat berapa yang sudah ditindaklanjuti.
   const woOptimasi = useMemo(() => {
-    const wo = latestData.filter((d) => d.jenis_pemeliharaan === "OPTIMASI TRAFO");
+    // WO yang dibatalkan admin tidak dihitung sebagai WO terbit.
+    const wo = latestData.filter((d) => d.jenis_pemeliharaan === "OPTIMASI TRAFO" && !woBatal.has(d.id));
     return { terbit: wo.length, dikerjakan: wo.filter((d) => pengukuranSeimbang.has(d.id)).length };
-  }, [latestData, pengukuranSeimbang]);
+  }, [latestData, pengukuranSeimbang, woBatal]);
 
   // Memoize detectAnomali results — hindari hitung ulang tiap render
   const anomaliBelumWoMap = useMemo(
@@ -536,7 +538,14 @@ export default function PenyeimbanganTab({
                         </td>
                       )}
                       <td className="px-4 py-2.5 text-center">
-                        {sudahSeimbang ? (
+                        {woBatal.has(row.id) && !sudahSeimbang ? (
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 border border-gray-200 font-semibold"
+                            title="WO dibatalkan admin — alasannya di halaman Optimasi Trafo"
+                          >
+                            Dibatalkan
+                          </span>
+                        ) : sudahSeimbang ? (
                           <span className="text-xs px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 font-semibold">
                             Selesai
                           </span>
@@ -547,7 +556,7 @@ export default function PenyeimbanganTab({
                         )}
                       </td>
                       <td className="px-4 py-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        {!sudahSeimbang && (
+                        {!sudahSeimbang && !woBatal.has(row.id) && (
                           <button
                             onClick={() => setSelectedGardu(row)}
                             className="text-xs px-2 py-1 rounded-lg bg-navy-50 border border-navy-300 text-accent-deep hover:bg-navy-50 transition-colors whitespace-nowrap"

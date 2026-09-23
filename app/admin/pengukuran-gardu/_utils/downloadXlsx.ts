@@ -1,63 +1,14 @@
 import ExcelJS from "exceljs";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import type { PenyeimbanganGardu } from "../_hooks/usePenyeimbangan";
+import {
+  CLR_PINK, CLR_TEAL, CLR_GREEN, CLR_HEADER, CLR_WHITE,
+  styleCell, mergeSet, downloadBuffer,
+} from "@/lib/xlsxGaya";
 
-// ── Warna ──────────────────────────────────────────────────────────────────────
-const CLR_PINK   = "F8BBD9";
-const CLR_TEAL   = "B2DFDB";
-const CLR_GREEN  = "C8E6C9";
-const CLR_HEADER = "FFD966";
-const CLR_BORDER = "BDBDBD";
-const CLR_WHITE  = "FFFFFF";
+// Warna, garis, dan cara mengunduh ada di `lib/xlsxGaya.ts` — dipakai bersama
+// unduhan Optimasi Trafo.
 
-// ── Helpers bersama ────────────────────────────────────────────────────────────
-
-function styleCell(
-  c: ExcelJS.Cell,
-  opts: {
-    bold?: boolean;
-    size?: number;
-    bgColor?: string;
-    fontColor?: string;
-    align?: ExcelJS.Alignment["horizontal"];
-    wrap?: boolean;
-  }
-) {
-  c.font = { bold: opts.bold ?? false, size: opts.size ?? 9, color: { argb: "FF" + (opts.fontColor ?? "000000") } };
-  if (opts.bgColor) {
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + opts.bgColor } };
-  }
-  c.alignment = { horizontal: opts.align ?? "center", vertical: "middle", wrapText: opts.wrap ?? true };
-  c.border = {
-    top:    { style: "thin", color: { argb: "FF" + CLR_BORDER } },
-    left:   { style: "thin", color: { argb: "FF" + CLR_BORDER } },
-    bottom: { style: "thin", color: { argb: "FF" + CLR_BORDER } },
-    right:  { style: "thin", color: { argb: "FF" + CLR_BORDER } },
-  };
-}
-
-function mergeSet(
-  ws: ExcelJS.Worksheet,
-  r1: number, c1: number, r2: number, c2: number,
-  value: string,
-  opts: Parameters<typeof styleCell>[1]
-) {
-  if (r1 !== r2 || c1 !== c2) ws.mergeCells(r1, c1, r2, c2);
-  const cell = ws.getCell(r1, c1);
-  cell.value = value;
-  styleCell(cell, opts);
-}
-
-async function downloadBuffer(wb: ExcelJS.Workbook, filename: string) {
-  const buffer = await wb.xlsx.writeBuffer();
-  const blob = new Blob([buffer], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-  const url = URL.createObjectURL(blob);
-  const a   = document.createElement("a");
-  a.href = url; a.download = filename; a.click();
-  URL.revokeObjectURL(url);
-}
 
 // ── buildJurusanSection ────────────────────────────────────────────────────────
 // Shared builder: jurusan arus + beban total + teg gardu + % beban + suhu +

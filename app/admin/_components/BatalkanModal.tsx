@@ -51,9 +51,11 @@ export default function BatalkanModal({
     // database muncul sebagai toast, dan alasannya tidak perlu diketik ulang.
   };
 
+  // z-[2050]: dialog ini juga dibuka DARI DALAM ModalShell (z-[2000]); di bawah
+  // angka itu dia tertimbun modal induknya. Tetap di bawah notifikasi (2100).
   return (
     <div
-      className="fixed inset-0 z-50 bg-ink/40 flex items-center justify-center p-4"
+      className="fixed inset-0 z-[2050] bg-ink/40 flex items-center justify-center p-4"
       onClick={onTutup}
     >
       <div

@@ -253,6 +253,8 @@ export function usePenyeimbangan(ulp: string) {
    *  `data`, sehingga gardu yang diratakan Juli tampak belum seimbang begitu
    *  rekap dipindah ke Agustus — pekerjaannya seolah hilang. */
   const [pengukuranSeimbang, setPengukuranSeimbang] = useState<Set<string>>(new Set());
+  /** WO OPTIMASI TRAFO yang dibatalkan admin — bukan "Proses" selamanya. */
+  const [woBatal, setWoBatal] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -313,7 +315,7 @@ export function usePenyeimbangan(ulp: string) {
       return q;
     };
 
-    const [rows, opt] = await Promise.all([
+    const [rows, opt, batal] = await Promise.all([
       fetchAllRows<{ pengukuran_id: string }>(() => query),
       // Tabelnya lahir dari `scripts/optimasi-trafo.sql`. Sebelum skrip itu
       // dijalankan, WO optimasi memang belum bisa selesai — himpunan kosong
@@ -322,8 +324,15 @@ export function usePenyeimbangan(ulp: string) {
         if (/Could not find the table|does not exist/i.test(e.message)) return [];
         throw e;
       }),
+      fetchAllRows<{ pengukuran_id: string }>(() =>
+        supabaseBrowser.from("optimasi_wo_batal").select("pengukuran_id").order("pengukuran_id"),
+      ).catch((e: Error) => {
+        if (/Could not find the table|does not exist/i.test(e.message)) return [];
+        throw e;
+      }),
     ]);
     setPengukuranSeimbang(new Set([...rows, ...opt].map((r) => r.pengukuran_id)));
+    setWoBatal(new Set(batal.map((r) => r.pengukuran_id)));
   }, [ulp]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -627,5 +636,5 @@ export function usePenyeimbangan(ulp: string) {
     await fetchSeimbang();
   }, [fetchData, fetchSeimbang]);
 
-  return { data, filteredData, pengukuranSeimbang, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, kirimKeAmg, deleteItem, refresh: fetchData };
+  return { data, filteredData, pengukuranSeimbang, woBatal, loading, error, month, setMonth, year, setYear, filterJenis, setFilterJenis, savePenyeimbangan, updatePenyeimbangan, kirimKeAmg, deleteItem, refresh: fetchData };
 }
