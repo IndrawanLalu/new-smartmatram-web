@@ -149,5 +149,52 @@ terkirim padahal tidak.
 
 ---
 
+## 6. Server mati harus TERBACA sebagai server mati
+
+**Aturan.** Saat server atau databasenya tidak bisa dihubungi, tidak satu pun
+layar boleh tampil seperti biasa dengan data kosong. Tiga hal wajib:
+
+1. **Ada batasnya.** Permintaan yang tidak dijawab harus menyerah sendiri
+   (±15 detik), bukan berputar selamanya.
+2. **Kosong karena gagal ≠ kosong karena memang tidak ada.** Daftar yang gagal
+   dimuat menampilkan keadaan gagal berikut tombol "Muat ulang" — bukan
+   "tidak ada pekerjaan hari ini".
+3. **Angka nol tidak boleh dikarang.** Kueri yang gagal TIDAK boleh diubah jadi
+   `[]` lalu dihitung sebagai 0 di rekap. Rekap yang menampilkan nol realisasi
+   padahal databasenya mati adalah laporan palsu, dan tidak ada yang bisa
+   membedakannya dari kinerja yang benar-benar nol.
+
+**Kenapa.** Regu yang membuka Tugas lalu melihat daftar kosong akan pulang.
+Manajemen yang membuka Rekap Kinerja lalu melihat nol akan menegur unit yang
+sebenarnya bekerja. Dua-duanya keputusan salah yang diambil dengan tenang,
+karena layarnya tidak kelihatan sedang gagal. Ini makin penting begitu Supabase
+pindah ke **self-hosting**: server sendiri lebih sering mati daripada layanan
+terkelola, dan matinya sering setengah — HTTP-nya hidup, databasenya tidak.
+
+**Cara menerapkan.**
+- Batas waktu dipasang SEKALI di `src/config/supabase.ts` lewat `global.fetch`
+  ber-`AbortController`, bukan satu per satu di tiap layar.
+- Tiap layar daftar punya tiga keadaan terpisah: `memuat`, `galat`, `kosong`.
+  `catch` yang isinya cuma `console.error` sama saja dengan tidak menangani —
+  di aplikasi terpasang, console tidak dilihat siapa pun.
+- Pesan galat menyebut apa yang terjadi dan apa yang bisa dilakukan: "server
+  tidak menjawab — coba lagi sebentar", bukan "Terjadi kesalahan".
+- **Jangan menuduh pengguna atau datanya saat sebabnya server.** Contoh salah
+  yang pernah ada: galat jaringan saat login berakhir jadi "User tidak memiliki
+  role. Hubungi administrator" — regu menelepon admin padahal servernya mati.
+- **Sesi lokal jangan dihapus** karena server menolak menyegarkan token. Yang
+  boleh mengeluarkan pengguna cuma tombol Keluar. Kalau tidak, regu terkunci di
+  luar tepat saat server mati — berikut draf yang belum terkirim.
+- Pekerjaan yang sudah diisi tidak boleh hilang karena server mati: itu dijamin
+  butir 1 (simpan di HP dulu), dan modul yang belum memakainya jadi rentan.
+- Membedakan "HP tanpa sinyal" dari "server mati" butuh `@react-native-community/netinfo`
+  — dependensi native, perlu build baru, tidak bisa lewat OTA.
+
+**Contoh nyata.** Audit 23 September 2026: lima layar HP menelan galat ke
+console (Beranda, Tugas, Work Order, Riwayat Gardu, Peta Pohon), dan
+`useKinerjaYantek` di web mengubah kueri gagal jadi angka nol.
+
+---
+
 *Ditulis 23 September 2026. Tambahkan butir baru di bawah, dengan bentuk yang
 sama: aturan, kenapa, cara menerapkan, contoh nyata.*
