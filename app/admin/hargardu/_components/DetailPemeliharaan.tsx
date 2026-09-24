@@ -3,11 +3,10 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Loader2, CheckCircle2, XCircle, TriangleAlert, User, Calendar,
-  Camera, ShieldCheck, Wrench, ClipboardList, ArrowLeft,
-  Ban,
+  Camera, ShieldCheck, Wrench, ClipboardList,
 } from "lucide-react";
-import { CARD, BTN_PRIMARY, BTN_GHOST, EYEBROW, FIELD } from "@/app/admin/_ui";
-import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import { BTN_PRIMARY, BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
+import { useToast } from "@/app/admin/_components/Toast";
 import {
   ambilRincian,
   ketidakseimbangan,
@@ -49,42 +48,39 @@ const NAMA_FIELD: Record<string, string> = {
   nama: "Nama gardu", alamat: "Alamat",
 };
 
+/**
+ * ISI modal detail pemeliharaan gardu (bingkai & tombol keputusan ada di
+ * `DetailPemeliharaanModal`). Dulu komponen ini menggantikan seluruh daftar
+ * dengan tombol "Kembali"; sejak 24 Sep 2026 polanya modal seperti modul
+ * Kinerja Pelayanan Teknik lain (teknisaplikasi.md butir 7).
+ *
+ * Usulan koreksi master tetap diputuskan DI SINI, satu per satu — sengaja
+ * tidak ikut terbawa keputusan atas pekerjaannya.
+ */
+
 interface Props {
   aktif: PemeliharaanMenunggu;
   memproses: string | null;
-  error: string | null;
-  onKembali: () => void;
-  putuskan: (id: string, setuju: boolean, catatan?: string) => Promise<boolean>;
-  batalkan: (id: string, alasan: string) => Promise<boolean>;
-  putuskanUsulan: (id: string, setuju: boolean, alasan?: string) => Promise<boolean>;
+  putuskanUsulan: (idUsulan: string, setuju: boolean, alasan?: string) => Promise<void>;
 }
 
-export default function DetailPemeliharaan({
-  aktif, memproses, error, onKembali, putuskan, batalkan, putuskanUsulan,
-}: Props) {
+export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }: Props) {
+  const toast = useToast();
   const [rincian, setRincian] = useState<Rincian | null>(null);
-  const [memuatRincian, setMemuatRincian] = useState(false);
-  const [catatan, setCatatan] = useState("");
-  const [batalTerbuka, setBatalTerbuka] = useState(false);
+  const [galatRincian, setGalatRincian] = useState<string | null>(null);
   const [sudahDiputus, setSudahDiputus] = useState<Record<string, "disetujui" | "ditolak">>({});
 
+  // Modal dipasang ulang per pekerjaan (key = id), jadi keadaan awal di atas
+  // selalu segar; di sini cukup menarik rinciannya.
   useEffect(() => {
     let hidup = true;
-    setMemuatRincian(true);
-    setSudahDiputus({});
-    setCatatan("");
-    void (async () => {
-      try {
-        const hasil = await ambilRincian(aktif.id);
-        if (hidup) setRincian(hasil);
-      } finally {
-        if (hidup) setMemuatRincian(false);
-      }
-    })();
-    return () => {
-      hidup = false;
-    };
+    ambilRincian(aktif.id).then(
+      (hasil) => { if (hidup) setRincian(hasil); },
+      (e: Error) => { if (hidup) setGalatRincian(e.message); },
+    );
+    return () => { hidup = false; };
   }, [aktif.id]);
+  const memuatRincian = !rincian && !galatRincian;
 
   const perKelompok = useMemo(() => {
     if (!rincian) return [];
@@ -110,28 +106,17 @@ export default function DetailPemeliharaan({
   );
 
   async function putusUsulan(u: UsulanSpek, setuju: boolean) {
-    const ok = await putuskanUsulan(
-      u.id, setuju,
-      setuju ? "Nama plat terbaca saat pemeliharaan" : "Ditolak admin",
-    );
-    if (ok) setSudahDiputus((s) => ({ ...s, [u.id]: setuju ? "disetujui" : "ditolak" }));
+    try {
+      await putuskanUsulan(u.id, setuju, setuju ? "Nama plat terbaca saat pemeliharaan" : "Ditolak admin");
+      setSudahDiputus((s) => ({ ...s, [u.id]: setuju ? "disetujui" : "ditolak" }));
+      toast.success(setuju ? "Koreksi master disetujui." : "Koreksi master ditolak.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal memutuskan usulan.");
+    }
   }
-
-  async function putusPekerjaan(setuju: boolean) {
-    if (!setuju && !catatan.trim()) return;
-    const ok = await putuskan(aktif.id, setuju, catatan.trim() || undefined);
-    if (ok) onKembali();
-  }
-
-  const sudahDiverifikasi = aktif.status === "Diverifikasi";
 
   return (
-    <div className="space-y-3">
-      <button onClick={onKembali} className={BTN_GHOST}>
-        <ArrowLeft size={15} /> Kembali ke daftar
-      </button>
-
-    <div className={`${CARD} p-5 space-y-5`}>
+    <div className="space-y-5">
       <div>
         <h2 className="text-xl font-semibold text-ink">{aktif.gardu_kode}</h2>
         <p className="text-sm text-ink-soft">
@@ -156,6 +141,7 @@ export default function DetailPemeliharaan({
           <Loader2 size={16} className="animate-spin" /> Memuat rincian…
         </div>
       )}
+      {galatRincian && <p className="text-sm text-amber-700">Rincian gagal dimuat: {galatRincian}</p>}
 
       {rincian && (
         <>
@@ -403,84 +389,6 @@ export default function DetailPemeliharaan({
         </>
       )}
 
-      {/* ── Keputusan ── */}
-      {/* Yang sudah diverifikasi cuma bisa dilihat. Menampilkan tombolnya akan
-          membuat admin menekan sesuatu yang pasti ditolak fungsi database. */}
-      {sudahDiverifikasi ? (
-        <section className="border-t border-line pt-4">
-          <p className="text-sm text-emerald-700 font-semibold">
-            Sudah disetujui{aktif.verified_note ? ` — ${aktif.verified_note}` : ""}
-          </p>
-          <p className="text-[11px] text-ink-muted mt-1">
-            Catatan pemeliharaan tidak pernah ditulis ulang. Kalau ada yang keliru, yang
-            membetulkannya adalah pemeliharaan berikutnya — dan yang berubah masternya.
-          </p>
-        </section>
-      ) : (
-      <section className="border-t border-line pt-4 space-y-2">
-        <label className={EYEBROW}>Catatan keputusan</label>
-        <input
-          value={catatan}
-          onChange={(e) => setCatatan(e.target.value)}
-          placeholder="Wajib diisi kalau menolak — regu perlu tahu apa yang harus diperbaiki"
-          className={`${FIELD} w-full`}
-        />
-        <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            onClick={() => void putusPekerjaan(true)}
-            disabled={memproses === aktif.id}
-            className={BTN_PRIMARY}
-          >
-            {memproses === aktif.id ? (
-              <Loader2 size={15} className="animate-spin" />
-            ) : (
-              <CheckCircle2 size={15} />
-            )}
-            Setujui pemeliharaan
-          </button>
-          <button
-            onClick={() => void putusPekerjaan(false)}
-            disabled={memproses === aktif.id || !catatan.trim()}
-            className={BTN_GHOST}
-            title={!catatan.trim() ? "Isi catatan dulu — penolakan harus beralasan" : ""}
-          >
-            <XCircle size={15} /> Kembalikan ke regu
-          </button>
-          {/* Dipisahkan ke kanan, jauh dari "Kembalikan". Keduanya tampak mirip
-              padahal berlawanan: yang satu menyuruh mengulang, yang ini justru
-              menyatakan tidak perlu dikerjakan sama sekali. */}
-          <button
-            onClick={() => setBatalTerbuka(true)}
-            disabled={memproses === aktif.id}
-            className={`${BTN_GHOST} ml-auto text-ink-muted hover:text-red-600`}
-          >
-            <Ban size={15} /> Batalkan
-          </button>
-        </div>
-        <p className="text-[11px] text-ink-muted">
-          Menyetujui menandai master gardu ini sudah dikonfirmasi orang yang berdiri di
-          bawahnya. Mengembalikan membuat gardu muncul lagi di daftar tugas regu, dan
-          usulan koreksi yang lahir dari pekerjaan ini ikut gugur.
-          <br />
-          <b>Batalkan</b> dipakai kalau pekerjaannya salah gardu atau uji coba — tidak
-          dikerjakan ulang, dan tidak ikut dihitung.
-        </p>
-      </section>
-      )}
-
-      {batalTerbuka && (
-        <BatalkanModal
-          judul={`Batalkan pemeliharaan gardu ${aktif.gardu_kode}?`}
-          keterangan="Catatannya dibuang dari hitungan dan dari daftar. Hasil ukur serta foto tetap tersimpan sebagai riwayat."
-          peringatan="Kalau pemeliharaan inilah yang dulu mengonfirmasi master gardu ini, penanda konfirmasinya ikut dicabut."
-          labelTombol="Batalkan pemeliharaan"
-          onTutup={() => setBatalTerbuka(false)}
-          onBatalkan={(alasan) => batalkan(aktif.id, alasan)}
-        />
-      )}
-
-      {error && <p className="text-sm text-danger">{error}</p>}
-      </div>
     </div>
   );
 }

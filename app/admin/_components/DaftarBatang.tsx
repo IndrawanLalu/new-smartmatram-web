@@ -24,9 +24,14 @@ interface Props {
   item: ItemBatang[];
   satuan: string;
   kosong?: string;
+  /** Nama dua bagian batang di legenda. Bawaannya bahasa verifikasi. */
+  labelUtama?: string;
+  labelBagian?: string;
 }
 
-export default function DaftarBatang({ judul, ikon: Ikon, item, satuan, kosong = "Belum ada data" }: Props) {
+export default function DaftarBatang({
+  judul, ikon: Ikon, item, satuan, kosong = "Belum ada data", labelUtama = "diverifikasi", labelBagian = "menunggu",
+}: Props) {
   const maks = Math.max(1, ...item.map((i) => i.jumlah));
   const adaMenunggu = item.some((i) => (i.menunggu ?? 0) > 0);
 
@@ -46,7 +51,7 @@ export default function DaftarBatang({ judul, ikon: Ikon, item, satuan, kosong =
                 <span className="font-semibold text-ink truncate">{i.label}</span>
                 <span className="text-ink-soft tabular-nums shrink-0">
                   {i.jumlah.toLocaleString("id-ID")} {satuan}
-                  {(i.menunggu ?? 0) > 0 && <span className="text-amber-700"> · {i.menunggu} menunggu</span>}
+                  {(i.menunggu ?? 0) > 0 && <span className="text-amber-700"> · {i.menunggu} {labelBagian}</span>}
                 </span>
               </div>
               <div className="mt-1 h-2 rounded-full bg-surface overflow-hidden flex">
@@ -58,8 +63,8 @@ export default function DaftarBatang({ judul, ikon: Ikon, item, satuan, kosong =
         )}
         {adaMenunggu && (
           <div className="flex items-center gap-3 text-[10px] text-ink-muted pt-1">
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-navy-500" /> diverifikasi</span>
-            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> menunggu</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-navy-500" /> {labelUtama}</span>
+            <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded-sm bg-amber-400" /> {labelBagian}</span>
           </div>
         )}
       </div>

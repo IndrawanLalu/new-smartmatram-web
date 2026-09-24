@@ -1,215 +1,176 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import {
-  Loader2, ShieldCheck, Wrench, Gauge, CalendarClock, TriangleAlert, Inbox,
+  CalendarClock, ClipboardList, Clock, Gauge, Inbox, Layers, ShieldCheck, TriangleAlert, Wrench,
 } from "lucide-react";
-import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
-import { CARD, FIELD, EYEBROW, BTN_GHOST } from "@/app/admin/_ui";
+import type { CurrentUser } from "@/lib/roles";
+import { CARD, PANEL_HEAD } from "@/app/admin/_ui";
+import StatTile from "@/app/admin/_components/StatTile";
+import TrenBulananArsir from "@/app/admin/_components/TrenBulananArsir";
+import DaftarBatang, { type ItemBatang } from "@/app/admin/_components/DaftarBatang";
 import { useHargarduRekap, type Batang } from "../_hooks/useHargarduRekap";
 import { usePerluPerbaikan } from "../_hooks/usePerluPerbaikan";
-
-const tgl = (iso: string | null) =>
-  iso
-    ? new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })
-    : "—";
+import { useDashboardHargardu } from "../_hooks/useDashboardHargardu";
 
 /**
- * Warna potongan batang.
+ * Dashboard ringkas Pemeliharaan Gardu — pola Kinerja Pelayanan Teknik
+ * (teknisaplikasi.md butir 7): kartu angka, tren bulanan, lalu dua hal khas
+ * modul ini:
  *
- * Yang belum diperiksa ABU-ABU dan bergaris, bukan warna netral yang bisa
- * disangka "aman". Dia bukan keadaan gardu — dia ketiadaan data, dan itu harus
- * terlihat berbeda jenisnya dari dua yang lain.
+ *   · KEADAAN GARDU per item (tekep ada/tidak, dst.) — item yang tampil
+ *     diatur dari Pengaturan (`tampil_dashboard`). Dihitung dari pemeliharaan
+ *     yang sudah disetujui; "belum diperiksa" jadi potongan sendiri.
+ *   · Temuan perbaikan teratas, bersumber sama dengan tab Perlu Perbaikan.
+ *
+ * Ikut penyaring ULP & tahun halaman. Tren & kartu pekerjaan per tahun;
+ * keadaan gardu dan cakupan adalah keadaan TERKINI.
+ */
+
+/**
+ * Warna potongan batang keadaan gardu. Yang belum diperiksa ABU-ABU bergaris,
+ * bukan warna netral yang bisa disangka "aman" — dia ketiadaan data.
  */
 const WARNA_NORMAL = ["#1D3573", "#2A4A9C", "#5878C4", "#8FA8DC"];
 const WARNA_TIDAK = ["#C77700", "#C62828", "#8E24AA", "#00695C"];
 
-export default function DashboardHargardu({ user }: { user: CurrentUser }) {
-  const [ulp, setUlp] = useState("");
-  const { batang, cakupanTotal, loading, error, muat } = useHargarduRekap(user, ulp);
+const persen = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1)}%` : "—");
+const tgl = (iso: string | null) =>
+  iso ? new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
-  // Temuan menggantung dibaca dari hook yang sama dengan tab Perlu Perbaikan —
-  // satu daftar, dua tampilan. Di sini cuma ringkasannya.
-  const saringPerbaikan = useMemo(
-    () => ({ ulp, item: "", wo: "semua" as const, cari: "" }),
-    [ulp],
-  );
-  const {
-    semua: perbaikan,
-    loading: memuatPerbaikan,
-    muat: muatPerbaikan,
-  } = usePerluPerbaikan(user, saringPerbaikan);
+interface Props {
+  user: CurrentUser;
+  ulp: string;
+  tahun: number;
+}
 
-  const perbaikanTeratas = useMemo(() => {
-    const m = new Map<string, { nama: string; jumlah: number; belumWo: number }>();
+export default function DashboardHargardu({ user, ulp, tahun }: Props) {
+  const ulpRekap = ulp === "SEMUA" ? "" : ulp;
+  const d = useDashboardHargardu(ulp, tahun);
+  const { batang, cakupanTotal, loading: memuatRekap, error: galatRekap } = useHargarduRekap(user, ulpRekap);
+  const saringPerbaikan = useMemo(() => ({ ulp: ulpRekap, item: "", wo: "semua" as const, cari: "" }), [ulpRekap]);
+  const { semua: perbaikan, loading: memuatPerbaikan } = usePerluPerbaikan(user, saringPerbaikan);
+
+  // Temuan paling sering — satu daftar dengan tab Perlu Perbaikan, di sini
+  // cuma ringkasannya. Bagian amber = yang belum dijadikan WO.
+  const perbaikanTeratas = useMemo<ItemBatang[]>(() => {
+    const m = new Map<string, ItemBatang>();
     for (const p of perbaikan) {
-      const k = `${p.item_nama}|${p.nilai_label ?? "—"}`;
-      const a = m.get(k) ?? { nama: `${p.item_nama}: ${p.nilai_label ?? "—"}`, jumlah: 0, belumWo: 0 };
+      const label = `${p.item_nama}: ${p.nilai_label ?? "—"}`;
+      const a = m.get(label) ?? { label, jumlah: 0, menunggu: 0 };
       a.jumlah += 1;
-      if (!p.sudah_di_wo) a.belumWo += 1;
-      m.set(k, a);
+      if (!p.sudah_di_wo) a.menunggu = (a.menunggu ?? 0) + 1;
+      m.set(label, a);
     }
     return [...m.values()].sort((a, b) => b.jumlah - a.jumlah).slice(0, 8);
   }, [perbaikan]);
 
-  if (loading || memuatPerbaikan) {
+  const galat = d.galat ?? galatRekap;
+  if (galat) {
     return (
-      <div className="flex items-center justify-center py-24 gap-2 text-ink-soft text-sm">
-        <Loader2 size={18} className="animate-spin" /> Memuat rekap…
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+        <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
+        <p className="text-amber-800">Dashboard gagal dimuat: {galat} — angka nol di sini tidak berarti tidak ada pekerjaan.</p>
       </div>
     );
   }
 
-  return (
-    <div className="space-y-4">
-      {canSeeAllUnits(user.role) && (
-        <div className={`${CARD} p-4 flex flex-wrap items-end gap-3`}>
-          <div>
-            <label className={EYEBROW}>ULP</label>
-            <select
-              value={ulp}
-              onChange={(e) => setUlp(e.target.value)}
-              className={`${FIELD} mt-1 block`}
-            >
-              <option value="">Semua ULP</option>
-              {UNITS.map((u) => (
-                <option key={u.value} value={u.value}>
-                  {u.label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button
-            onClick={() => {
-              void muat();
-              void muatPerbaikan();
-            }}
-            className={BTN_GHOST}
-          >
-            Muat ulang
-          </button>
-        </div>
-      )}
+  const nol = d.loading ? "…" : undefined;
+  const nolRekap = memuatRekap ? "…" : undefined;
+  const pct = d.laluSetara > 0 ? ((d.total - d.laluSetara) / d.laluSetara) * 100 : undefined;
 
-      {/* ── Cakupan: seberapa jauh masternya sudah dikonfirmasi orang ── */}
+  return (
+    <div className="flex flex-col gap-4">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <Kartu
-          ikon={<Wrench size={15} />}
-          label="Gardu"
-          nilai={cakupanTotal.jumlah_gardu.toLocaleString("id-ID")}
+        <StatTile
+          label={`Pemeliharaan ${tahun}`}
+          value={nol ?? d.total.toLocaleString("id-ID")}
+          icon={Wrench}
+          tone="navy"
+          delta={pct !== undefined ? { pct, vs: `${tahun - 1} periode sama` } : undefined}
+          hint="Menurut tanggal selesai, tanpa yang dibatalkan"
         />
-        <Kartu
-          ikon={<ShieldCheck size={15} />}
-          label="Pernah dipelihara"
-          nilai={cakupanTotal.pernah_dipelihara.toLocaleString("id-ID")}
-          bantu={`${persen(cakupanTotal.pernah_dipelihara, cakupanTotal.jumlah_gardu)} dari seluruh gardu`}
+        <StatTile
+          label="Menunggu persetujuan"
+          value={nol ?? d.menunggu.toLocaleString("id-ID")}
+          icon={Clock}
+          tone="attention"
+          hint="Sudah dikirim regu, belum diperiksa"
         />
-        <Kartu
-          ikon={<Gauge size={15} />}
+        <StatTile
           label="Master terkonfirmasi"
-          nilai={cakupanTotal.master_terverifikasi.toLocaleString("id-ID")}
-          bantu={`${persen(cakupanTotal.master_terverifikasi, cakupanTotal.jumlah_gardu)} sudah dilihat orang di lapangan`}
+          value={nolRekap ?? persen(cakupanTotal.master_terverifikasi, cakupanTotal.jumlah_gardu)}
+          icon={ShieldCheck}
+          tone="green"
+          hint={`${cakupanTotal.master_terverifikasi.toLocaleString("id-ID")} dari ${cakupanTotal.jumlah_gardu.toLocaleString("id-ID")} gardu dilihat orang di lapangan`}
         />
-        <Kartu
-          ikon={<CalendarClock size={15} />}
-          label="12 bulan terakhir"
-          nilai={cakupanTotal.dipelihara_12_bulan.toLocaleString("id-ID")}
-          bantu={`terakhir ${tgl(cakupanTotal.terakhir)}`}
+        <StatTile
+          label="Pernah dipelihara"
+          value={nolRekap ?? persen(cakupanTotal.pernah_dipelihara, cakupanTotal.jumlah_gardu)}
+          icon={CalendarClock}
+          tone="accent"
+          hint={`${cakupanTotal.dipelihara_12_bulan.toLocaleString("id-ID")} dalam 12 bulan terakhir · terakhir ${tgl(cakupanTotal.terakhir)}`}
         />
       </div>
 
-      {/* ── Batang per item ── */}
-      <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>Keadaan gardu</p>
-        <p className="text-xs text-ink-soft mt-1">
-          Angka di bawah dihitung dari pemeliharaan yang <b>sudah disetujui</b>. Bagian abu-abu
-          adalah gardu yang <b>belum pernah diperiksa</b> — bukan gardu yang bermasalah, dan
-          bukan gardu yang aman. Sengaja tidak digabung ke salah satunya.
-        </p>
-
-        {batang.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 py-10 text-center">
-            <Inbox size={32} className="text-ink-muted" />
-            <p className="text-sm text-ink-soft max-w-md">
-              Belum ada pemeliharaan yang disetujui. Angka muncul setelah admin menyetujui
-              pekerjaan pertama.
-            </p>
-          </div>
-        ) : (
-          <div className="mt-4 space-y-5">
-            {batang.map((b) => (
-              <BatangItem key={b.itemKode} b={b} />
-            ))}
-          </div>
-        )}
+      <div className="h-[320px]">
+        <TrenBulananArsir
+          data={d.bulanan}
+          tahun={tahun}
+          judul="Pemeliharaan Gardu"
+          satuan="gardu"
+          ikon={Wrench}
+          loading={d.loading}
+          idArsir="arsirHargardu"
+        />
       </div>
 
-      {/* ── Temuan yang paling sering ── */}
-      <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>Perlu perbaikan</p>
-        <p className="text-xs text-ink-soft mt-1">
-          Diturunkan dari kondisi terakhir tiap gardu — hilang sendiri begitu pemeliharaan
-          berikutnya mencatatnya normal. Tidak ada yang perlu menutupnya manual. Rincian per
-          gardu dan tombol jadikan WO ada di tab <b>Perlu Perbaikan</b>.
-        </p>
-
-        {perbaikanTeratas.length === 0 ? (
-          <p className="text-sm text-ink-soft mt-3">Tidak ada temuan yang menggantung.</p>
-        ) : (
-          <div className="mt-3 rounded-xl border border-line overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-surface text-left text-ink-soft">
-                  <th className="px-4 py-2 font-semibold">Temuan</th>
-                  <th className="px-4 py-2 font-semibold text-right">Gardu</th>
-                  <th className="px-4 py-2 font-semibold text-right">Belum di-WO</th>
-                </tr>
-              </thead>
-              <tbody>
-                {perbaikanTeratas.map((p) => (
-                  <tr key={p.nama} className="border-t border-line">
-                    <td className="px-4 py-2 text-ink">{p.nama}</td>
-                    <td className="px-4 py-2 text-right tabular-nums text-ink-soft">{p.jumlah}</td>
-                    <td className="px-4 py-2 text-right tabular-nums">
-                      {p.belumWo > 0 ? (
-                        <span className="text-attention font-semibold">{p.belumWo}</span>
-                      ) : (
-                        <span className="text-ink-muted">—</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+      {/* ── Keadaan gardu per item ── */}
+      <div className={`${CARD} overflow-hidden`}>
+        <div className={PANEL_HEAD}>
+          <Gauge size={14} className="text-white/80" />
+          <div className="flex flex-col leading-tight">
+            <span className="text-white font-semibold text-xs">Keadaan gardu</span>
+            <span className="text-white/70 text-[10px]">
+              Dari pemeliharaan yang sudah disetujui · item yang tampil diatur di tab Pengaturan
+            </span>
           </div>
-        )}
+        </div>
+        <div className="p-5">
+          {memuatRekap ? (
+            <p className="text-sm text-ink-muted">Memuat…</p>
+          ) : batang.length === 0 ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <Inbox size={30} className="text-ink-muted" />
+              <p className="text-sm text-ink-soft max-w-md">
+                Belum ada pemeliharaan yang disetujui, atau belum ada item yang dicentang “tampil di
+                dashboard” di Pengaturan.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-8 gap-y-5">
+              {batang.map((b) => <BatangItem key={b.itemKode} b={b} />)}
+            </div>
+          )}
+          <p className="text-[11px] text-ink-muted mt-4">
+            Bagian abu-abu bergaris adalah gardu yang <b>belum pernah diperiksa</b> — bukan gardu yang
+            bermasalah, dan bukan gardu yang aman.
+          </p>
+        </div>
       </div>
 
-      {error && <p className="text-sm text-danger">{error}</p>}
-    </div>
-  );
-}
-
-const persen = (a: number, b: number) => (b > 0 ? `${((a / b) * 100).toFixed(1)}%` : "—");
-
-function Kartu({
-  ikon,
-  label,
-  nilai,
-  bantu,
-}: {
-  ikon: React.ReactNode;
-  label: string;
-  nilai: string;
-  bantu?: string;
-}) {
-  return (
-    <div className={`${CARD} p-4`}>
-      <p className="text-[11px] text-ink-muted flex items-center gap-1.5">
-        {ikon} {label}
-      </p>
-      <p className="text-2xl font-semibold text-ink mt-1 tabular-nums">{nilai}</p>
-      {bantu && <p className="text-[11px] text-ink-muted mt-0.5">{bantu}</p>}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DaftarBatang judul={`Per ULP · ${tahun}`} ikon={Layers} item={d.perUlp} satuan="gardu" labelUtama="disetujui" />
+        <DaftarBatang
+          judul={memuatPerbaikan ? "Perlu perbaikan · memuat…" : "Perlu perbaikan · temuan teratas"}
+          ikon={ClipboardList}
+          item={perbaikanTeratas}
+          satuan="gardu"
+          labelUtama="sudah di-WO"
+          labelBagian="belum di-WO"
+          kosong="Tidak ada temuan yang menggantung."
+        />
+      </div>
     </div>
   );
 }
