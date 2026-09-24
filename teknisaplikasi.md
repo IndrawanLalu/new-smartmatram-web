@@ -59,15 +59,22 @@ mengirim ulang pekerjaan yang sama — dan realisasinya terhitung dua kali. Yang
 **Cara menerapkan.**
 - Draf: ketuk kartunya → formulir yang sama terbuka berisi isian lama, bisa
   diubah, bisa dibuang.
-- Sudah terkirim: ketuk kartunya → tampilan rincian, foto bisa diperbesar.
-- Koreksi setelah terkirim boleh, **selama belum diverifikasi admin**. Setelah
-  diverifikasi, koreksinya lewat admin — kalau tidak, yang sudah diperiksa bisa
-  berubah diam-diam di belakang pemeriksanya.
+- Sudah terkirim: ketuk kartunya → tampilan rincian **hanya-baca**.
+- **Yang sudah terkirim tidak bisa diubah petugas** (diubah 25 Sep 2026,
+  keputusan user). Koreksinya lewat admin **"Kembalikan ke petugas"** di web
+  beserta alasannya. Yang dikembalikan muncul lagi di HP sebagai draf berisi
+  isian lama (tab *Sudah dikerjakan*), diperbaiki, lalu dikirim ulang — dan
+  kiriman ulang itu memperbarui catatan yang sama, bukan membuat baru.
 - Menghapus catatan yang sudah terkirim: **tidak**. Statusnya jadi `Dibatalkan`
   berikut alasannya — yang dihapus tidak bisa diterangkan lagi.
 
+**Kenapa terkirim tidak boleh diubah sendiri.** Admin bisa sedang memeriksanya
+saat petugas mengubahnya, lalu menyetujui sesuatu yang sudah tidak ada. Lewat
+"Kembalikan", selalu jelas siapa yang memegang catatan itu saat ini.
+
 **Contoh nyata.** Pemeliharaan Jaringan (Sep 2026): catatan yang sudah dibuat
-tidak bisa dibuka sama sekali. Dilaporkan user.
+tidak bisa dibuka sama sekali. Dilaporkan user. Aturan hanya-baca lahir dari
+Pemeliharaan Gardu (25 Sep 2026).
 
 ---
 
@@ -463,6 +470,103 @@ ketahuan.
 
 ---
 
-*Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026.
+## 15. Daftar kerja di HP = empat tab, tampilan WO Pengukuran
+
+**Aturan.** Setiap fitur kerja lapangan di HP punya daftar dengan empat tab:
+
+| Tab | Isi | Ketuk |
+|---|---|---|
+| **WO bulan ini** | seluruh pekerjaan WO bulan berjalan + progres | formulir / lihat |
+| **Belum dikerjakan** | WO yang belum disentuh + draf yang belum lengkap ("sedang diisi") | formulir |
+| **Sudah dikerjakan** | tersimpan di HP, belum dikirim (WO maupun di luar WO) + yang dikembalikan admin (label merah + alasan). Tombol **Kirim** per kartu dan **Kirim semua** | formulir, bisa diubah |
+| **Sudah dikirim** | terkirim bulan ini se-ULP, dengan nama tim dan status persetujuan | hanya-baca (butir 2) |
+
+Pekerjaan **di luar WO** dikerjakan lewat pencarian: hasil yang tidak ada di tab
+aktif muncul di bagian "Gardu lain / objek lain". Tampilannya meniru layar
+**WO Pengukuran**: kepala dengan progres WO, kartu angka yang sekaligus jadi
+tab, kotak cari + urutan Terdekat, kartu bergaris warna tahap.
+
+Luring mengikuti butir 6: daftar disimpan di HP dengan spanduk "data dari HP,
+terakhir diperbarui …"; tanpa salinan sama sekali → keadaan gagal, bukan kosong.
+
+**Kenapa.** Regu perlu menjawab tiga pertanyaan tanpa berpikir: apa tugas saya
+bulan ini, apa yang belum saya kirim, dan apa yang sudah diterima. Tiap modul
+yang menyusun daftarnya sendiri-sendiri membuat regu belajar ulang di tiap
+menu — dan yang paling sering terlewat justru draf yang belum dikirim.
+
+**Cara menerapkan.**
+- Tab dihitung dari tiga sumber: WO (server), draf (HP), terkirim (server).
+  Satu kartu = satu objek; tahapnya diturunkan, tidak disimpan.
+- Status di tab WO memakai keadaan **di bulan WO**, bukan catatan terakhir
+  kapan pun — objek masuk WO justru karena catatan terakhirnya sudah lama.
+- Bulan WITA dihitung manual (UTC + 8 jam), bukan `toLocaleDateString` dengan
+  `timeZone` — Hermes tidak menjaminnya, dan hasilnya diam-diam NaN.
+
+**Contoh nyata.** Pemeliharaan Gardu (25 Sep 2026), permintaan user; urutan
+penerapan berikutnya: Pengukuran → Optimasi → Perabasan → Harjar → JTM/JTR.
+
+---
+
+## 16. Nama petugas = tim yang dipilih saat login
+
+**Aturan.** Nama petugas pada setiap pekerjaan diambil dari tim yang dipilih
+saat masuk (`user.petugasName`, mis. "Budi & Andi"), **ditampilkan terkunci**
+di formulir, dan **tidak ada isian nama/regu yang diketik**. Akun tanpa tim
+(admin/UP3 uji coba) memakai email.
+
+**Kenapa.** Nama yang diketik ulang melahirkan dua versi untuk orang yang sama
+("Masri", "masri", "Masri S") — rekap per tim jadi pecah, dan push notif yang
+dialamatkan per nama tidak sampai.
+
+**Cara menerapkan.**
+- Formulir menampilkan "Petugas (dari login)" dengan ikon gembok; ganti tim =
+  keluar lalu masuk lagi.
+- Server menerima nama dari kiriman dan menyalinnya ke kolom lama bila ada
+  (mis. `regu_1`), supaya layar web yang membaca kolom itu tetap benar.
+- Layar web menampilkan kolom **Petugas** = nama tim; isian regu terketik hanya
+  sebagai cadangan untuk catatan versi HP lama.
+
+**Contoh nyata.** Pemeliharaan Gardu (25 Sep 2026): isian Regu 1/Regu 2
+diketik bebas; diganti nama tim login.
+
+---
+
+## 17. Kirim = unggah foto dulu, lalu SATU transaksi di server
+
+**Aturan.** Tidak ada baris server sebelum petugas menekan **Kirim**. Kirim
+terdiri dari dua langkah:
+
+1. Unggah foto satu per satu dengan kabar kemajuan ("foto 3 dari 10"); URL yang
+   berhasil **ditulis balik ke draf** — kirim ulang setelah putus tidak
+   mengunggah dua kali.
+2. **Satu RPC** yang menyimpan seluruh catatan (kepala, jawaban, ukur, foto,
+   koreksi master, status) dalam satu transaksi: jadi seluruhnya, atau tidak
+   sama sekali.
+
+**Kenapa.** Kiriman berupa lima panggilan berurutan meninggalkan catatan
+setengah jadi di server saat sinyal putus di panggilan ketiga — tampil
+"sedang dikerjakan" selamanya, dan kiriman ulangnya menabrak sisa itu.
+
+**Cara menerapkan.**
+- Id catatan dibuat HP saat draf lahir (`uuidAcak()`), sekaligus jadi nama
+  folder fotonya. Pekerjaan yang dikembalikan admin memakai id lamanya,
+  sehingga RPC memperbarui baris yang sama.
+- RPC **memakai ulang** fungsi validasi yang sudah ada (isian wajib, koreksi
+  master), bukan menyalinnya.
+- RPC yang sama menjaga: hak per ULP, objek harus ada di master, yang sudah
+  terkirim tidak bisa diubah, dan **objek yang sama tidak bisa dikirim dua regu
+  di periode yang sama** (dengan kunci advisory, bukan pemeriksaan di layar).
+- Tanggal kerja = saat regu menekan Simpan di HP (dipotong ke `now()` bila jam
+  HP di masa depan), bukan saat sinyal akhirnya ada.
+- Foto URI lokal yang sampai ke RPC ditolak dengan pesan — lebih baik gagal
+  daripada tersimpan tautan mati.
+
+**Contoh nyata.** `kirim_pemeliharaan_gardu` (25 Sep 2026,
+`scripts/hp-kirim-rekap.sql`).
+
+---
+
+*Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
+diubah dan butir 15–17 ditambahkan 25 September 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*
