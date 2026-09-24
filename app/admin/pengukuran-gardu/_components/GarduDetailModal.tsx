@@ -14,7 +14,11 @@ import {
   CheckCircle2,
   Trash2,
   MapPin,
+  Undo2,
 } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import { useToast } from "@/app/admin/_components/Toast";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
 import { antreKeAmg } from "../_lib/amgQueue";
@@ -149,6 +153,9 @@ export default function GarduDetailModal({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [showKirimWA, setShowKirimWA] = useState(false);
+  const [dialogKembali, setDialogKembali] = useState(false);
+  const toast = useToast();
+  const pengguna = useCurrentUser();
   const [amgLoading, setAmgLoading] = useState(false);
   const [amgMarked, setAmgMarked] = useState(false);
   const [amgReset, setAmgReset] = useState(false);
@@ -301,6 +308,11 @@ export default function GarduDetailModal({
                   WO DIKIRIM
                 </span>
               )}
+              {row.dikembalikan_at && (
+                <span className="bg-red-600 text-white text-xs font-bold px-2 py-0.5 rounded-full">
+                  DIKEMBALIKAN
+                </span>
+              )}
               {isSent && (
                 <span className="bg-blue-700 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                   AMG ✅
@@ -384,6 +396,17 @@ export default function GarduDetailModal({
             >
               <Pencil size={13} /> Edit Data Terbaru
             </button>
+            {/* Kembalikan ke petugas (butir 2): yang harus diukur/diisi ulang
+                petugasnya sendiri. Salah ketik kecil cukup lewat Edit. Tidak
+                untuk yang sudah ke AMG — AMG tidak menarik data kembali. */}
+            {!row.dikembalikan_at && !isSent && !isQueued && (
+              <button
+                onClick={() => setDialogKembali(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors"
+              >
+                <Undo2 size={13} /> Kembalikan ke petugas
+              </button>
+            )}
             <button
               onClick={onClose}
               className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white hover:bg-white/20 transition-colors"
@@ -395,6 +418,12 @@ export default function GarduDetailModal({
 
         {/* Body — scrollable */}
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
+          {row.dikembalikan_at && (
+            <p className="text-xs rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+              <b>Dikembalikan ke petugas:</b> {row.dikembalikan_alasan ?? "—"}. Tidak dihitung sebagai keadaan
+              terkini gardu maupun realisasi WO sampai petugas mengirim ulang dari HP.
+            </p>
+          )}
           {/* Info Dasar */}
           <section>
             <h3 className="text-xs font-semibold text-ink-soft uppercase tracking-wider mb-2">
@@ -1124,6 +1153,29 @@ export default function GarduDetailModal({
         </div>
       </div>
 
+      {dialogKembali && (
+        <BatalkanModal
+          judul={`Kembalikan pengukuran ${row.no_gardu} ke petugas?`}
+          keterangan={`Muncul lagi di HP ${row.petugas_nama ?? "petugas"} sebagai draf berisi isian lama untuk diperbaiki dan dikirim ulang. Selama itu pengukuran ini tidak dihitung.`}
+          labelTombol="Kembalikan ke petugas"
+          placeholder="Apa yang harus diperbaiki — mis. arus fasa T tertukar dengan N, ukur ulang saat beban puncak"
+          onTutup={() => setDialogKembali(false)}
+          onBatalkan={async (alasan) => {
+            const { error } = await supabaseBrowser.rpc("kembalikan_pengukuran", {
+              p_id: row.id,
+              p_alasan: alasan,
+              p_nama: pengguna.name ?? pengguna.email ?? null,
+            });
+            if (error) {
+              toast.error(error.message);
+              return false;
+            }
+            onPatchRow?.(row.id, { dikembalikan_at: new Date().toISOString(), dikembalikan_alasan: alasan });
+            toast.success(`Pengukuran ${row.no_gardu} dikembalikan ke petugas.`);
+            return true;
+          }}
+        />
+      )}
       {showKirimWA && (
         <KirimWAGarduModal
           data={row}

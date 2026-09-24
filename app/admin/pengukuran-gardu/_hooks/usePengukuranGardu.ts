@@ -50,7 +50,7 @@ import {
  * adalah cara termudah membuatnya melenceng.
  */
 export const KOLOM_PENGUKURAN =
-  "id,no_gardu,alamat,penyulang,kva_trafo,tanggal_pengukuran,jam_pengukuran,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,total_teg_rs,total_teg_st,total_teg_rt,perjurusan,beban_kva,persen_beban,suhu_trafo,petugas_nama,petugas_unit,created_at,wo_sent_at,jenis_pemeliharaan,amg_sent_at,amg_queued_at,amg_error,amg_attempts,lokasi_lat,lokasi_lng,lokasi_akurasi";
+  "id,no_gardu,alamat,penyulang,kva_trafo,tanggal_pengukuran,jam_pengukuran,total_arus_r,total_arus_s,total_arus_t,total_arus_n,total_teg_rn,total_teg_sn,total_teg_tn,total_teg_rs,total_teg_st,total_teg_rt,perjurusan,beban_kva,persen_beban,suhu_trafo,petugas_nama,petugas_unit,created_at,wo_sent_at,jenis_pemeliharaan,amg_sent_at,amg_queued_at,amg_error,amg_attempts,lokasi_lat,lokasi_lng,lokasi_akurasi,dikembalikan_at,dikembalikan_alasan";
 
 export const bebanTampil = (v: number | null | undefined) => Math.round(v ?? 0);
 
@@ -122,6 +122,9 @@ export interface PengukuranGardu {
   amg_queued_at: string | null;
   amg_error: string | null;
   amg_attempts: number | null;
+  /** Diisi = dikembalikan ke petugas (keluar dari hitungan sampai dikirim ulang). */
+  dikembalikan_at?: string | null;
+  dikembalikan_alasan?: string | null;
   /** Titik tempat petugas berdiri saat menyimpan pengukuran. NULL = GPS tidak
    *  tersedia — sengaja tidak diwajibkan, sebab gardu di dalam gedung sering
    *  tidak dapat sinyal dan pengukurannya tetap harus bisa tersimpan. */

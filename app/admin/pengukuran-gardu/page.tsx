@@ -753,6 +753,14 @@ export default function PengukuranGarduPage() {
                           {row.wo_sent_at && (
                             <span className="ml-1.5 text-[10px] bg-navy-50 text-navy-600 border border-navy-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">WO</span>
                           )}
+                          {row.dikembalikan_at && (
+                            <span
+                              className="ml-1 text-[10px] bg-red-50 text-red-700 border border-red-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
+                              title={row.dikembalikan_alasan ?? ""}
+                            >
+                              DIKEMBALIKAN
+                            </span>
+                          )}
                           {statusAmg(row) === "terkirim" && (
                             <span className="ml-1 text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
                               AMG

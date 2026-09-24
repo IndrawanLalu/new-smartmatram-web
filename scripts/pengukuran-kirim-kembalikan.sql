@@ -123,7 +123,11 @@ BEGIN
   IF v_tgl > hari THEN
     RAISE EXCEPTION 'Tanggal ukur % ada di masa depan. Periksa tanggal di formulir.', to_char(v_tgl, 'DD-MM-YYYY');
   END IF;
-  IF v_tgl < hari - 7 THEN
+  -- Batas 7 hari TIDAK berlaku untuk kiriman ulang pengukuran yang
+  -- dikembalikan admin: tanggal aslinya bisa sudah lewat seminggu saat
+  -- dikembalikan, dan tanpa pengecualian ini ia tidak akan pernah bisa dikirim.
+  IF v_tgl < hari - 7 AND NOT EXISTS (
+       SELECT 1 FROM public.pengukuran_gardu WHERE id = v_id AND dikembalikan_at IS NOT NULL) THEN
     RAISE EXCEPTION 'Tanggal ukur % lebih dari 7 hari lalu. Minta admin mencatatnya dari web.', to_char(v_tgl, 'DD-MM-YYYY');
   END IF;
 
