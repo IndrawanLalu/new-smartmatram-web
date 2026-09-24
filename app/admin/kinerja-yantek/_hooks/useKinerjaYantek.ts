@@ -249,7 +249,12 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         woTerbit: angka(r.wo_terbit),
         realisasi: angka(r.realisasi),
         belumApprove: angka(r.belum_disetujui),
-        catatan: luar > 0 ? `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.` : m.catatan,
+        catatan:
+          luar <= 0
+            ? m.catatan
+            : m.kunci === "perabasan"
+              ? `${m.catatan} Di luar WO: ${luar} pohon dirabas (tidak dihitung km).`
+              : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
       };
     });
   }, [data]);

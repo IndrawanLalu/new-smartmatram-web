@@ -204,3 +204,72 @@ memanggilnya**. Sekalian menutup kueri web yang belum dipaginasi.
 - **Foto di tembolok** masih bisa dibersihkan OS sampai `expo-file-system`
   dipasang lewat build native (ditunda, lihat rencana build).
 - **Dua regu satu gardu:** dicegah di RPC (bagian 5), bukan di layar.
+
+---
+
+## 10. Riwayat pekerjaan — gaya riwayat GoPay (usulan user 25 Sep 2026; keputusan a–c, e diambil hari itu)
+
+### Keadaan sekarang
+Tab ke-4 di bilah bawah **bergantung role** (`useIsEksekutor`, bendera
+`roles.is_eksekutor`):
+
+| Role | Tab ke-4 | Isinya sekarang |
+|---|---|---|
+| Eksekutor (HARJAR, HARGAR, PERABASAN, YANGU, PDKB, …) | **Tugas** | temuan inspeksi (tabel `inspeksi`) yang ditugaskan ke tim/eksekutornya — Ditugaskan · Dalam Proses · Selesai |
+| Lainnya (admin, inspektor, UP3) | **Riwayat** | hanya inspeksi lama (`inspeksi` + `inspeksi_pohon`), saringan Hari ini/Minggu/Bulan/Semua |
+
+Jadi regu eksekutor **tidak punya riwayat sama sekali**, dan Riwayat yang ada
+tidak memuat Pemeliharaan Gardu, Pengukuran, Optimasi, Perabasan, dst.
+
+### Rancangan (permintaan user)
+```
+┌──────────────────────────────────────┐
+│ Riwayat                              │
+│ [📅 7 hari terakhir ▾] [Semua jenis ▾] [Semua status ▾] │
+├──────────────────────────────────────┤
+│ Hari ini · Kamis, 25 Sep 2026        │  ← kartu per tanggal
+│  ✂ Perabasan · PRM seg. 3   Menunggu │
+│     1,20 km · 14 pohon · RABAS 1     │
+│  ─────────────────────────────────── │
+│  ⚡ Pengukuran · AM053      Diterima  │
+│     09.12 · Budi & Andi              │
+├──────────────────────────────────────┤
+│ Kemarin · Rabu, 24 Sep 2026          │
+│  …                                   │
+└──────────────────────────────────────┘
+```
+1. **Kepala + tiga saringan**. Tiap saringan membuka **lembar layar penuh**
+   (bukan dropdown kecil), pilih lalu **Terapkan**.
+   - **Tanggal:** 7 hari terakhir (bawaan) · 30 hari terakhir · Pilih rentang
+     tanggal. **Tidak ada "tampilkan semua"** — sekaligus menjaga butir 13.
+   - **Jenis pekerjaan:** hanya jenis yang diizinkan role (dari `roles.menus`,
+     sumber yang sama dengan gerbang menu): Pemeliharaan Gardu, Pengukuran
+     Gardu, Optimasi Trafo, Perabasan, Pemeliharaan Jaringan, Penyeimbangan
+     Beban, Inspeksi JTM, Inspeksi JTR.
+   - **Status:** label seragam lintas modul (lihat pertanyaan c).
+2. **Isi:** daftar dikelompokkan **per tanggal pekerjaan**, satu **kartu per
+   tanggal** dengan kepala tanggalnya ("Hari ini", "Kemarin", lalu tanggal
+   lengkap); di dalamnya baris-baris pekerjaan: ikon jenis, objek (kode gardu /
+   segmen / penyulang), jam, tim, lencana status; km untuk perabasan.
+3. **Ketuk baris → rincian** hanya-baca (butir 2) — memakai ulang rincian yang
+   sudah ada di tiap modul (dipindah jadi komponen bersama).
+4. **Muat bertahap** 20 baris per gulir, dengan "menampilkan N dari M" (butir 13).
+5. **Luring:** hasil saringan terakhir disimpan di HP, spanduk "data dari HP,
+   terakhir diperbarui …" (butir 6).
+
+### Sumber data — satu kueri, bukan delapan
+View **`riwayat_pekerjaan`** (`security_invoker`, jadi RLS tabel asal tetap
+berlaku) yang menyatukan semua modul ke kolom seragam: `jenis, id, ulp, tgl,
+waktu, judul, keterangan, status, petugas, km`. HP cukup satu kueri
+berpaginasi dengan saringan tanggal/jenis/status/ULP/tim — ringan, dan modul
+baru tinggal ditambah satu cabang `UNION ALL`. Web bisa memakai view yang sama
+kelak.
+
+### Keputusan user (25 Sep 2026, jangan ditawar ulang)
+| # | Keputusan |
+|---|---|
+| a | Role eksekutor mendapat **Tugas DAN Riwayat** di bilah bawah; **Profil pindah ke ikon avatar di kepala Beranda** supaya bilah tetap 5 tombol |
+| b | Cakupan: **regu = tim login saja**; admin/inspektor = se-ULP; **UP3 = semua ULP + pilihan ULP** di saringan |
+| c | Status seragam: **Belum dikirim · Menunggu verifikasi · Diterima · Dikembalikan · Dibatalkan**; **draf di HP ikut tampil** (Belum dikirim → ketuk membuka formulir modulnya) |
+| d | Batas rentang pilihan tanggal: usul maks. 3 bulan — belum ditanyakan |
+| e | Dikerjakan **sesudah Harjar dan JTM/JTR** selesai berpola 4 tab, supaya view dibuat sekali jadi |
