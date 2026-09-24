@@ -9,9 +9,8 @@ import { statusTampil, type PemeliharaanMenunggu, type StatusHargardu } from "..
  * Daftar pemeliharaan gardu — tabel 20 baris, klik baris → modal
  * (teknisaplikasi.md butir 7).
  *
- * Kolom WO: pemeliharaan gardu belum punya WO sendiri. Yang terjadwal
- * (`sumber = 'jadwal'`) tampil "Jadwal" dengan tanggal rencananya; yang
- * dicatat langsung dari lapangan bertanda "-".
+ * Kolom WO: WO Pemeliharaan bulanan yang memuat pekerjaan ini (tab WO
+ * Pemeliharaan); pekerjaan di luar WO bertanda "-".
  */
 
 const PAGE_SIZE = 20;
@@ -101,7 +100,6 @@ export default function TabelHargardu({ baris, loading, onDetail }: Props) {
             {tampil.map((d) => {
               const status = statusTampil(d.status);
               const regu = [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", ");
-              const jadwal = d.sumber === "jadwal";
               return (
                 <tr key={d.id} onClick={() => onDetail(d)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
                   <td className={TD}>
@@ -109,8 +107,8 @@ export default function TabelHargardu({ baris, loading, onDetail }: Props) {
                     <p className="text-[11px] text-ink-muted truncate max-w-48">{d.gardu_nama ?? "—"} · {d.ulp}</p>
                   </td>
                   <td className={`${TD} text-xs text-ink-soft`}>{d.penyulang ?? "—"}</td>
-                  <td className={`${TD} text-xs text-ink-soft`}>{jadwal ? "Jadwal" : "-"}</td>
-                  <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{jadwal ? tgl(d.tgl_rencana) : "-"}</td>
+                  <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{d.wo_label ?? "-"}</td>
+                  <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{d.wo_tgl ? tgl(d.wo_tgl) : "-"}</td>
                   <td className={`${TD} text-xs text-ink font-medium whitespace-nowrap`}>{rentangKerja(d.tgl_padam, d.tgl_selesai)}</td>
                   <td className={`${TD} text-xs text-ink-soft max-w-44`}>
                     <p className="line-clamp-2">{regu || d.petugas_nama || "—"}</p>

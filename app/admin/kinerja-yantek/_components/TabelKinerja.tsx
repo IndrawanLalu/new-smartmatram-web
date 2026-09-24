@@ -195,7 +195,7 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
       <div className="px-5 py-3 bg-surface/60 border-t border-line">
         <p className="text-[11px] text-ink-soft leading-relaxed">
           <b>Capaian hanya muncul kalau ada WO-nya.</b> Pekerjaan yang lahir dari lapangan —
-          inspeksi JTM/JTR, pemeliharaan gardu, penyeimbangan — belum punya angka target, jadi
+          inspeksi JTM/JTR, penyeimbangan — belum punya angka target, jadi
           realisasinya tidak punya pembanding. Selama itu belum ada, persentasenya sengaja
           dikosongkan daripada dihitung terhadap angka yang dikarang.
         </p>

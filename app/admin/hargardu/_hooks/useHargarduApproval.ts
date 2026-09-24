@@ -31,6 +31,35 @@ export interface PemeliharaanMenunggu {
   jumlah_foto: number;
   foto_wajib: number;
   usulan_menunggu: number;
+  /** WO Pemeliharaan yang memuat pekerjaan ini ("WO Sep 2026"); tidak ada = null. */
+  wo_label?: string | null;
+  wo_tgl?: string | null;
+}
+
+const BLN_WO = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
+
+/**
+ * Tempelkan WO Pemeliharaan ke tiap pekerjaan. Sambungannya dibaca dari view
+ * `wo_hargardu_realisasi` (pekerjaan yang mewakili baris WO di bulannya) —
+ * tidak ada kolom WO di `pemeliharaan_gardu`, dan memang tidak perlu.
+ */
+async function tempelWo(rows: PemeliharaanMenunggu[]): Promise<PemeliharaanMenunggu[]> {
+  const ids = rows.map((r) => r.id);
+  const peta = new Map<string, { bulan: number; tahun: number; tgl_wo: string }>();
+  for (let i = 0; i < ids.length; i += 100) {
+    const { data, error } = await supabaseBrowser
+      .from("wo_hargardu_realisasi")
+      .select("pemeliharaan_id,bulan,tahun,tgl_wo")
+      .in("pemeliharaan_id", ids.slice(i, i + 100));
+    // View belum terpasang (SQL WO belum dijalankan) tidak boleh menggagalkan
+    // daftar pemeliharaan — kolom WO saja yang tetap "-".
+    if (error) return rows;
+    for (const d of data ?? []) peta.set(d.pemeliharaan_id as string, d as { bulan: number; tahun: number; tgl_wo: string });
+  }
+  return rows.map((r) => {
+    const w = peta.get(r.id);
+    return w ? { ...r, wo_label: `WO ${BLN_WO[w.bulan - 1]} ${w.tahun}`, wo_tgl: w.tgl_wo } : r;
+  });
 }
 
 /** Satu jawaban pemeriksaan, sudah dipasangkan dengan acuannya. */
@@ -188,7 +217,7 @@ export function useHargarduApproval(user: CurrentUser) {
             .or(`gardu_kode.ilike.%${kataCari}%,gardu_nama.ilike.%${kataCari}%`)
             .order("id"),
         );
-      return fetchAllRows<PemeliharaanMenunggu>(q);
+      return tempelWo(await fetchAllRows<PemeliharaanMenunggu>(q));
     }
 
     const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
@@ -206,7 +235,7 @@ export function useHargarduApproval(user: CurrentUser) {
           .order("id"),
       );
     const [a, t] = await Promise.all([fetchAllRows<PemeliharaanMenunggu>(aktif), fetchAllRows<PemeliharaanMenunggu>(tertutup)]);
-    return [...a, ...t];
+    return tempelWo([...a, ...t]);
   }, [ulp, bulan, tahun, kataCari]);
 
   useEffect(() => {
@@ -245,7 +274,11 @@ export function useHargarduApproval(user: CurrentUser) {
   /** Ambil ulang SATU baris lalu tambal di tempat. */
   const segarkanSatu = async (id: string) => {
     const { data } = await supabaseBrowser.from("pemeliharaan_gardu_ringkas").select("*").eq("id", id).maybeSingle();
-    if (data) setSemua((p) => p.map((x) => (x.id === id ? (data as unknown as PemeliharaanMenunggu) : x)));
+    if (data) {
+      setSemua((p) =>
+        p.map((x) => (x.id === id ? { ...(data as unknown as PemeliharaanMenunggu), wo_label: x.wo_label, wo_tgl: x.wo_tgl } : x)),
+      );
+    }
   };
 
   const oleh = user.name ?? user.email ?? null;

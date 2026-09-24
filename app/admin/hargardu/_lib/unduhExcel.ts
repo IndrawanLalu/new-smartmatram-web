@@ -41,14 +41,13 @@ export async function unduhExcelHargardu(baris: PemeliharaanMenunggu[], namaBerk
       c.value = val;
       styleCell(c, { bgColor: bg, size: 9, ...extra });
     };
-    const jadwal = d.sumber === "jadwal";
     set(1, idx + 1);
     set(2, d.gardu_kode);
     set(3, d.gardu_nama ?? "", { align: "left" });
     set(4, d.ulp);
     set(5, d.penyulang ?? "", { align: "left" });
-    set(6, jadwal ? "Jadwal" : "-");
-    set(7, jadwal ? tgl(d.tgl_rencana) : "-");
+    set(6, d.wo_label ?? "-");
+    set(7, d.wo_tgl ? tgl(d.wo_tgl) : "-");
     set(8, rentangKerja(d.tgl_padam, d.tgl_selesai));
     set(9, [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", ") || (d.petugas_nama ?? ""), { align: "left" });
     set(10, d.item_tidak_normal);

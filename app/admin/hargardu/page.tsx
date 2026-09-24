@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Download, LayoutDashboard, ListChecks, Loader2, Search, SlidersHorizontal, TriangleAlert, Wrench, X } from "lucide-react";
+import { CalendarClock, Download, LayoutDashboard, ListChecks, Loader2, Search, SlidersHorizontal, TriangleAlert, Wrench, X } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { useHargarduApproval, BULAN, STATUS_HARGARDU } from "./_hooks/useHargarduApproval";
@@ -10,10 +10,11 @@ import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardHargardu from "./_components/DashboardHargardu";
 import PerluPerbaikan from "./_components/PerluPerbaikan";
 import PengaturanItem from "./_components/PengaturanItem";
+import WoPemeliharaan from "./_components/WoPemeliharaan";
 
 /**
  * Pemeliharaan Gardu — pola Kinerja Pelayanan Teknik (teknisaplikasi.md
- * butir 7): Daftar → Dashboard → Perlu Perbaikan → Pengaturan. Persetujuan
+ * butir 7): Daftar → Dashboard → Perlu Perbaikan → WO Pemeliharaan → Pengaturan. Persetujuan
  * bukan tab lagi, melainkan chip status di daftar; keputusannya di modal.
  */
 
@@ -21,6 +22,7 @@ const TABS = [
   { key: "daftar", label: "Daftar Pemeliharaan", icon: ListChecks, hanyaUp3: false },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, hanyaUp3: false },
   { key: "perbaikan", label: "Perlu Perbaikan", icon: Wrench, hanyaUp3: false },
+  { key: "wo", label: "WO Pemeliharaan", icon: CalendarClock, hanyaUp3: false },
   // Daftar isian berlaku untuk SEMUA ULP, jadi penanya cuma satu. ULP mengisi,
   // tidak bisa mengarang — kalau tiap unit menyusun kosakatanya sendiri, angka
   // se-UP3 tidak bisa dijumlahkan lagi.
@@ -70,6 +72,20 @@ export default function HargarduPage() {
 
       {tab === "perbaikan" && <PerluPerbaikan user={user} />}
       {tab === "pengaturan" && up3 && <PengaturanItem user={user} />}
+      {tab === "wo" && (
+        <>
+          <select
+            value={o.ulp}
+            onChange={(e) => o.setUlp(e.target.value)}
+            className={`${FIELD} w-[170px]`}
+            disabled={o.daftarUlp.length <= 1}
+            aria-label="ULP"
+          >
+            {o.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
+          </select>
+          <WoPemeliharaan user={user} ulp={o.ulp} daftarUlp={o.daftarUlp} />
+        </>
+      )}
 
       {(tab === "daftar" || tab === "dashboard") && (
         <>

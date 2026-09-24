@@ -187,6 +187,15 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qGardu = qGardu.eq("ulp", unit);
 
+    // WO Pemeliharaan bulanan (`wo-hargardu.sql`) — realisasinya diturunkan
+    // view, dihitung SAAT DIKIRIM (keputusan user 24 Sep 2026).
+    let qGarduWo = supabaseBrowser
+      .from("wo_hargardu_realisasi")
+      .select("terealisasi,disetujui")
+      .eq("tahun", tahun);
+    if (bulan !== 0) qGarduWo = qGarduWo.eq("bulan", bulan);
+    if (unit) qGarduWo = qGarduWo.eq("ulp", unit);
+
     // ── 3b. Pemeliharaan Jaringan JTM/JTR ─────────────────────────────────
     let qHarJar = supabaseBrowser
       .from("pemeliharaan_jaringan")
@@ -249,8 +258,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       .lte("created_at", akhirJam);
     if (unit) qJtr = qJtr.eq("ulp", unit);
 
-    const [rabas, ukur, gardu, harjar, seimbang, optWo, opt, optBatal, jtm, jtr] = await Promise.all([
-      qRabas, qUkur, qGardu, qHarJar, qSeimbang, qOptWo, qOpt, qOptBatal, qJtm, qJtr,
+    const [rabas, ukur, gardu, garduWo, harjar, seimbang, optWo, opt, optBatal, jtm, jtr] = await Promise.all([
+      qRabas, qUkur, qGardu, qGarduWo, qHarJar, qSeimbang, qOptWo, qOpt, qOptBatal, qJtm, qJtr,
     ]);
 
     // Sembilan kueri untuk delapan sumber, dan tahun/bulan bisa diganti di tengahnya.
@@ -291,6 +300,9 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     const r1 = isi<BarisRabas>(rabas, "perabasan");
     const r2 = isi<BarisUkur>(ukur, "pengukuran");
     const r3 = isi<BarisStatus>(gardu, "hargardu");
+    const r3Wo = isi<{ terealisasi: boolean; disetujui: boolean }>(garduWo, "hargardu");
+    const r3Jadi = r3Wo.filter((x) => x.terealisasi).length;
+    const r3Luar = Math.max(0, r3.filter((x) => x.status === "Selesai" || x.status === "Diverifikasi").length - r3Jadi);
     const r3b = isi<BarisStatus>(harjar, "harjtm");
     const r4 = isi<{ id: string }>(seimbang, "penyeimbangan");
     const batalOpt = new Set(isi<{ pengukuran_id: string }>(optBatal, "optimasi").map((x) => x.pengukuran_id));
@@ -378,14 +390,14 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         kunci: "hargardu",
         jenis: "Pemeliharaan Gardu",
         href: "/admin/hargardu",
-        keadaan: "tanpaWo",
+        keadaan: "lengkap",
         satuan: "gardu",
         desimal: false,
-        woTerbit: null,
-        realisasi: r3.length,
-        belumApprove: hitung(r3, (x) => x.status === "Selesai"),
+        woTerbit: r3Wo.length,
+        realisasi: r3Jadi,
+        belumApprove: hitung(r3Wo, (x) => x.terealisasi && !x.disetujui),
         catatan:
-          "Pekerjaannya tercatat, tapi belum ada WO yang menerbitkannya — jadi capaian belum bisa dihitung terhadap target.",
+          `WO Pemeliharaan bulanan. Realisasi = gardu WO yang pemeliharaannya sudah dikirim regu di bulan WO-nya.${r3Luar > 0 ? ` Di luar WO: ${r3Luar} pemeliharaan lain terkirim.` : ""}`,
       },
       {
         kunci: "penyeimbangan",
