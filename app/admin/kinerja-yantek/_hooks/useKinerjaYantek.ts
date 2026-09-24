@@ -254,7 +254,10 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
             ? m.catatan
             : m.kunci === "perabasan"
               ? `${m.catatan} Di luar WO: ${luar} pohon dirabas (tidak dihitung km).`
-              : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
+              : m.kunci === "harjtm"
+                // Baris ini: `luar_wo` = berapa dari realisasi yang berasal dari tugas temuan.
+                ? `${m.catatan} ${luar} di antaranya dari tugas temuan.`
+                : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
       };
     });
   }, [data]);

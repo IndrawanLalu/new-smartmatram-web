@@ -18,10 +18,12 @@ export type JenisJaringan = "JTM" | "JTR";
 
 /** Nama status yang tampil. `Selesai` di database = "Menunggu verifikasi"
  *  dari sisi admin — sama dengan Optimasi Trafo. */
-export type StatusTabel = "Menunggu verifikasi" | "Diverifikasi" | "Dibatalkan";
-export const STATUS_TABEL: StatusTabel[] = ["Menunggu verifikasi", "Diverifikasi", "Dibatalkan"];
+export type StatusTabel = "Menunggu verifikasi" | "Dikembalikan" | "Diverifikasi" | "Dibatalkan";
+export const STATUS_TABEL: StatusTabel[] = ["Menunggu verifikasi", "Dikembalikan", "Diverifikasi", "Dibatalkan"];
 const STATUS_DB: Record<string, StatusTabel> = {
   Selesai: "Menunggu verifikasi",
+  // Dikembalikan ke petugas (25 Sep 2026): muncul lagi di HP sebagai draf.
+  Dikembalikan: "Dikembalikan",
   Diverifikasi: "Diverifikasi",
   Dibatalkan: "Dibatalkan",
 };
@@ -46,11 +48,15 @@ export interface BarisPemeliharaan {
   tgl: string;
   verifiedAt: string | null;
   verifiedBy: string | null;
-  /** WO asal pekerjaan ini — temuan inspeksi yang ditugaskan ke HARJAR di
-   *  Monitoring Inspeksi. null = dikerjakan tanpa WO (tampil "-"). Diisi view
-   *  `pemeliharaan_jaringan_daftar` begitu sambungannya ke `inspeksi` ada. */
+  /** WO asal pekerjaan ini — tugas temuan (baris `inspeksi`) yang dikerjakan
+   *  HARJAR (rencana-mobile-harjar.md). null = di luar tugas (tampil "-"). */
+  inspeksiId: string | null;
   woLabel: string | null;
   woTgl: string | null;
+  tugasDeskripsi: string | null;
+  tugasFoto: string | null;
+  dikembalikanAlasan: string | null;
+  dikembalikanOleh: string | null;
 }
 
 export interface KategoriRef {
@@ -114,8 +120,13 @@ const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     tgl: (r.tgl as string) ?? "",
     verifiedAt: teks(r.verified_at),
     verifiedBy: teks(r.verified_by),
-    woLabel: teks(r.wo_label),
-    woTgl: teks(r.wo_tgl),
+    inspeksiId: teks(r.inspeksi_id),
+    woLabel: teks(r.tugas_temuan),
+    woTgl: teks(r.tugas_ditugaskan),
+    tugasDeskripsi: teks(r.tugas_deskripsi),
+    tugasFoto: teks(r.tugas_foto),
+    dikembalikanAlasan: teks(r.dikembalikan_alasan),
+    dikembalikanOleh: teks(r.dikembalikan_oleh),
   };
 };
 
@@ -247,6 +258,18 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
+  /** Kembalikan ke petugas (teknisaplikasi.md butir 2): catatan muncul lagi
+   *  di HP sebagai draf berisi isian lama; tugasnya kembali "Dalam Proses". */
+  const kembalikan = async (id: string, alasan: string, oleh: string) => {
+    const { error } = await supabaseBrowser.rpc("kembalikan_pemeliharaan_jaringan", {
+      p_id: id,
+      p_alasan: alasan,
+      p_nama: oleh,
+    });
+    if (error) throw new Error(error.message);
+    await segarkanSatu(id);
+  };
+
   /** Koreksi admin — hanya selama menunggu verifikasi (dijaga server juga). */
   const koreksi = async (id: string, v: KoreksiPemeliharaan) => {
     const { error } = await supabaseBrowser.rpc("ubah_pemeliharaan_jaringan", {
@@ -275,6 +298,6 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     semua, baris, hitung, kategori, loading, galat,
     ulp, setUlp, daftarUlp, jenis, setJenis, status, setStatus, cari, setCari,
     bulan, setBulan, tahun, setTahun, daftarTahun,
-    muat, verifikasi, batalkan, koreksi, simpanKategori,
+    muat, verifikasi, batalkan, kembalikan, koreksi, simpanKategori,
   };
 }

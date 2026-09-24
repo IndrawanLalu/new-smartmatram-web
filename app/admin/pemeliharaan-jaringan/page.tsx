@@ -170,6 +170,7 @@ export default function PemeliharaanJaringanPage() {
           onTutup={() => setIdDetail(null)}
           onVerifikasi={o.verifikasi}
           onBatalkan={o.batalkan}
+          onKembalikan={o.kembalikan}
           onKoreksi={o.koreksi}
         />
       )}

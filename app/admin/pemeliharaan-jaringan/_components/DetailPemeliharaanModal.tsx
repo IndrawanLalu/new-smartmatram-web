@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, Check, Loader2, MapPin, Pencil } from "lucide-react";
+import { Ban, Check, Loader2, MapPin, Pencil, Undo2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useToast } from "@/app/admin/_components/Toast";
@@ -26,6 +26,7 @@ interface Props {
   onTutup: () => void;
   onVerifikasi: (id: string, oleh: string) => Promise<void>;
   onBatalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
+  onKembalikan: (id: string, alasan: string, oleh: string) => Promise<void>;
   onKoreksi: (id: string, v: KoreksiPemeliharaan) => Promise<void>;
 }
 
@@ -57,11 +58,12 @@ function Nilai({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function DetailPemeliharaanModal({
-  b, kategori, oleh, onTutup, onVerifikasi, onBatalkan, onKoreksi,
+  b, kategori, oleh, onTutup, onVerifikasi, onBatalkan, onKembalikan, onKoreksi,
 }: Props) {
   const toast = useToast();
   const [mode, setMode] = useState<"lihat" | "koreksi">("lihat");
   const [batal, setBatal] = useState(false);
+  const [kembali, setKembali] = useState(false);
   const [sibuk, setSibuk] = useState(false);
 
   const jalankan = async (kerja: () => Promise<string>) => {
@@ -95,6 +97,9 @@ export default function DetailPemeliharaanModal({
           </button>
           <button onClick={() => setMode("koreksi")} className={BTN_GHOST} disabled={sibuk}>
             <Pencil size={14} /> Koreksi
+          </button>
+          <button onClick={() => setKembali(true)} className={BTN_GHOST} disabled={sibuk}>
+            <Undo2 size={14} /> Kembalikan ke petugas
           </button>
         </div>
         <button
@@ -136,6 +141,30 @@ export default function DetailPemeliharaanModal({
           />
         ) : (
           <>
+            {b.statusDb === "Dikembalikan" && (
+              <p className="text-xs rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+                <b>Dikembalikan ke petugas{b.dikembalikanOleh ? ` oleh ${b.dikembalikanOleh}` : ""}:</b>{" "}
+                {b.dikembalikanAlasan ?? "—"} — menunggu dikirim ulang dari HP, belum dihitung.
+              </p>
+            )}
+
+            {b.inspeksiId && (
+              <div className="flex gap-3 rounded-xl border border-navy-100 bg-navy-50/40 p-3">
+                {b.tugasFoto && (
+                  <a href={b.tugasFoto} target="_blank" rel="noreferrer" title="Foto temuan inspektur">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage / Firebase lama */}
+                    <img src={b.tugasFoto} alt="Foto temuan" className="w-20 h-20 object-cover rounded-lg border border-line" />
+                  </a>
+                )}
+                <div className="text-xs">
+                  <p className={EYEBROW}>Tugas temuan</p>
+                  <p className="text-sm font-semibold text-ink mt-0.5">{b.woLabel ?? "Temuan"}</p>
+                  {b.tugasDeskripsi && <p className="text-ink-soft mt-0.5">{b.tugasDeskripsi}</p>}
+                  {b.woTgl && <p className="text-ink-muted mt-0.5">ditugaskan {tanggal(b.woTgl)}</p>}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-col sm:flex-row gap-3">
               <Foto url={b.fotoSebelum} label="Sebelum" />
               <Foto url={b.fotoSesudah} label="Sesudah" />
@@ -178,6 +207,22 @@ export default function DetailPemeliharaanModal({
           </>
         )}
       </ModalShell>
+
+      {kembali && (
+        <BatalkanModal
+          judul={`Kembalikan pemeliharaan ${b.penyulang} ke petugas?`}
+          keterangan={`Catatan ini muncul lagi di HP regu sebagai draf berisi isian lama untuk diperbaiki dan dikirim ulang. Selama itu tidak dihitung sebagai realisasi.${b.inspeksiId ? " Tugas temuannya kembali Dalam Proses." : ""}`}
+          labelTombol="Kembalikan ke petugas"
+          placeholder="Apa yang harus diperbaiki — mis. foto sesudah buram, kategori salah"
+          onTutup={() => setKembali(false)}
+          onBatalkan={(alasan) =>
+            jalankan(async () => {
+              await onKembalikan(b.id, alasan, oleh);
+              return "Dikembalikan ke petugas.";
+            })
+          }
+        />
+      )}
 
       {batal && (
         <BatalkanModal

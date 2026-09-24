@@ -13,7 +13,8 @@ import type { KategoriRef } from "./usePemeliharaanJaringan";
  * kategori, status), dua tahun (tahun terpilih + pembanding), dan dipaginasi
  * penuh (teknisaplikasi.md butir 13).
  *
- * Catatan Dibatalkan TIDAK dihitung — salah input bukan pekerjaan.
+ * Catatan Dibatalkan TIDAK dihitung — salah input bukan pekerjaan. Yang
+ * Dikembalikan juga tidak, sampai dikirim ulang (sama dengan rekap_kinerja).
  */
 
 interface Baris {
@@ -37,7 +38,7 @@ export function useDashboardPemeliharaan(ulp: string, tahun: number, kategori: K
       let x = supabaseBrowser
         .from("pemeliharaan_jaringan")
         .select("tgl,ulp,jenis,kategori,status")
-        .neq("status", "Dibatalkan")
+        .not("status", "in", "(Dibatalkan,Dikembalikan)")
         .gte("tgl", `${tahun - 1}-01-01`)
         .lte("tgl", `${tahun}-12-31`)
         .order("id");
