@@ -127,8 +127,8 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <Fakta ikon={<User size={14} />} label="Regu"
-          nilai={[...(aktif.regu_1 ?? []), ...(aktif.regu_2 ?? [])].join(", ") || (aktif.petugas_nama ?? "—")} />
+        <Fakta ikon={<User size={14} />} label="Petugas"
+          nilai={aktif.petugas_nama || [...(aktif.regu_1 ?? []), ...(aktif.regu_2 ?? [])].join(", ") || "—"} />
         <Fakta ikon={<Calendar size={14} />} label="Selesai" nilai={tgl(aktif.tgl_selesai)} />
         <Fakta ikon={<TriangleAlert size={14} />} label="Tidak normal"
           nilai={String(aktif.item_tidak_normal)} />

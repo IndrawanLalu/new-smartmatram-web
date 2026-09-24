@@ -72,7 +72,7 @@ export default function TabelHargardu({ baris, loading, onDetail }: Props) {
       <div className={`${CARD} p-10 text-center`}>
         <p className="text-sm font-semibold text-ink">Tidak ada pemeliharaan gardu</p>
         <p className="text-xs text-ink-soft mt-1.5 max-w-md mx-auto">
-          Pekerjaan muncul di sini setelah regu menekan “Selesai &amp; kirim” di aplikasi. Yang masih
+          Pekerjaan muncul di sini setelah regu menekan “Kirim” di aplikasi. Yang masih
           berjalan selalu tampil; yang sudah disetujui mengikuti periode yang dipilih.
         </p>
       </div>
@@ -90,7 +90,7 @@ export default function TabelHargardu({ baris, loading, onDetail }: Props) {
               <th className={TH}>WO</th>
               <th className={TH}>Tgl WO</th>
               <th className={TH}>Tgl pekerjaan</th>
-              <th className={TH}>Regu</th>
+              <th className={TH}>Petugas</th>
               <th className={`${TH} text-right`}>Tidak normal</th>
               <th className={`${TH} text-right`}>Koreksi master</th>
               <th className={TH}>Status</th>
@@ -99,7 +99,8 @@ export default function TabelHargardu({ baris, loading, onDetail }: Props) {
           <tbody>
             {tampil.map((d) => {
               const status = statusTampil(d.status);
-              const regu = [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", ");
+              // Nama tim login lebih dulu; regu terketik hanya untuk catatan versi HP lama.
+              const regu = d.petugas_nama || [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", ");
               return (
                 <tr key={d.id} onClick={() => onDetail(d)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
                   <td className={TD}>

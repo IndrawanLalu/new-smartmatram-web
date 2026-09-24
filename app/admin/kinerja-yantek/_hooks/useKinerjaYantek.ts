@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 
@@ -25,6 +25,12 @@ import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
  * dihitung per GARDU, karena pekerjaannya memang per gardu.
  *
  * Satuan ditulis di tiap baris justru supaya tidak ada yang menjumlahkannya.
+ *
+ * ── ANGKANYA LAHIR DI DATABASE (sejak 25 Sep 2026) ──────────────────────────
+ * Dihitung fungsi `rekap_kinerja` (`scripts/hp-kirim-rekap.sql`), yang juga
+ * dipakai Beranda HP. Dulu dihitung di sini dari sebelas kueri — menyalinnya
+ * ke HP berarti dua salinan yang pasti melenceng. Label, satuan, dan
+ * keterangan tiap baris tetap milik layar ini.
  *
  * ── TABEL INI SEKALIGUS DAFTAR PEKERJAAN RUMAH ──────────────────────────────
  * Itu disengaja dan diminta. Baris yang modulnya belum dibangun tidak
@@ -63,27 +69,6 @@ export interface BarisKinerja {
   catatan: string;
 }
 
-/** Bentuk baris yang ditarik tiap sumber — sempit, cuma yang dipakai. */
-interface BarisRabas {
-  target_km: number | null;
-  capaian_km: number | null;
-}
-interface BarisUkur {
-  terealisasi: boolean | null;
-  tertahan: boolean | null;
-}
-interface BarisStatus {
-  status: string | null;
-}
-interface BarisJtm {
-  status: string | null;
-  segmen_id: string | null;
-}
-interface BarisJtr {
-  status: string | null;
-  gardu_kode: string | null;
-}
-
 const persen = (r: number | null, w: number | null) =>
   r === null || w === null || w === 0 ? null : Math.round((r / w) * 100);
 
@@ -96,11 +81,101 @@ export const BULAN = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
+/** Label & keterangan tiap baris — urutan di sini = urutan di layar. */
+const META: Omit<BarisKinerja, "woTerbit" | "realisasi" | "belumApprove">[] = [
+  {
+    kunci: "perabasan",
+    jenis: "Perabasan Pohon",
+    href: "/admin/wo-perabasan",
+    keadaan: "lengkap",
+    satuan: "km",
+    desimal: true,
+    catatan: "Target dan capaian km dari WO Perabasan. Belum punya tahap persetujuan.",
+  },
+  {
+    kunci: "harjtm",
+    jenis: "Pemeliharaan Jaringan",
+    href: "/admin/pemeliharaan-jaringan",
+    keadaan: "tanpaWo",
+    satuan: "pekerjaan",
+    desimal: false,
+    catatan:
+      "Dicatat regu dari lapangan berikut foto sebelum-sesudah. Belum diterbitkan lewat WO, jadi belum ada pembanding target.",
+  },
+  {
+    kunci: "hargardu",
+    jenis: "Pemeliharaan Gardu",
+    href: "/admin/hargardu",
+    keadaan: "lengkap",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "WO Pemeliharaan bulanan. Realisasi = gardu WO yang pemeliharaannya sudah dikirim regu di bulan WO-nya.",
+  },
+  {
+    kunci: "penyeimbangan",
+    jenis: "Penyeimbangan Beban Trafo",
+    href: "/admin/pengukuran-gardu",
+    keadaan: "tanpaWo",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "Tercatat sebagai tindak lanjut anomali pengukuran, belum sebagai pekerjaan ber-WO sendiri.",
+  },
+  {
+    kunci: "optimasi",
+    jenis: "Optimasi Trafo",
+    href: "/admin/optimasi-trafo",
+    keadaan: "lengkap",
+    satuan: "gardu",
+    desimal: false,
+    catatan:
+      "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini, tanpa WO yang dibatalkan. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
+  },
+  {
+    kunci: "pengukuran",
+    jenis: "Pengukuran beban & tegangan ujung",
+    href: "/admin/pengukuran-gardu",
+    keadaan: "lengkap",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "Angka ini BEBAN saja. Tegangan ujung belum punya tempat sendiri — belum diukur, belum tercatat.",
+  },
+  {
+    kunci: "jtm",
+    jenis: "Inspeksi JTM",
+    href: "/admin/jtm",
+    keadaan: "tanpaWo",
+    satuan: "km",
+    desimal: true,
+    catatan:
+      "Panjang segmen yang penyapuannya selesai. Penyapuan lahir saat regu membuka segmennya, belum diterbitkan lewat WO — jadi belum ada pembanding target.",
+  },
+  {
+    kunci: "jtr",
+    jenis: "Inspeksi JTR",
+    href: "/admin/jtr",
+    keadaan: "tanpaWo",
+    satuan: "km",
+    desimal: true,
+    catatan:
+      "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. Sama seperti JTM: belum diterbitkan lewat WO.",
+  },
+];
+
+interface BarisRpc {
+  kunci: string;
+  wo_terbit: number | string | null;
+  realisasi: number | string | null;
+  belum_disetujui: number | string | null;
+  luar_wo: number | null;
+}
+
+const angka = (v: number | string | null) => (v === null ? null : Number(v));
+
 interface Hasil {
   baris: BarisKinerja[];
   loading: boolean;
-  /** Ada sumber yang gagal dibaca — tabelnya belum lengkap, dan itu harus
-   *  terlihat di layar, bukan cuma di baris yang bersangkutan. */
+  /** Rekap gagal dibaca — tabelnya kosong karena gagal, dan itu harus
+   *  terlihat di layar, bukan tampil sebagai nol. */
   adaGagal: boolean;
   tahun: number;
   setTahun: (t: number) => void;
@@ -116,23 +191,15 @@ interface Hasil {
 
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
-/** Hari terakhir sebuah bulan — dihitung, bukan ditabelkan, supaya Februari
- *  kabisat tidak jadi kasus khusus yang terlewat sekali dalam empat tahun. */
-const akhirBulan = (tahun: number, bulan: number) =>
-  new Date(tahun, bulan, 0).getDate();
-
-const dua = (n: number) => String(n).padStart(2, "0");
-
 export function useKinerjaYantek(user: CurrentUser): Hasil {
   const bolehSemua = canSeeAllUnits(user.role);
   const tahunIni = new Date().getFullYear();
 
-  const [tahun, setTahun] = useState(tahunIni);
-  const [bulan, setBulan] = useState(0);
-  const [ulp, setUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
-  const [baris, setBaris] = useState<BarisKinerja[]>([]);
+  const [tahun, gantiTahun] = useState(tahunIni);
+  const [bulan, gantiBulan] = useState(0);
+  const [ulp, gantiUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
+  const [data, setData] = useState<BarisRpc[] | null>(null);
   const [loading, setLoading] = useState(true);
-  const [adaGagal, setAdaGagal] = useState(false);
   const [nonce, setNonce] = useState(0);
 
   const daftarUlp = useMemo(
@@ -141,361 +208,56 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   );
   const daftarTahun = useMemo(() => [tahunIni, tahunIni - 1, tahunIni - 2], [tahunIni]);
 
-  const muat = useCallback(async (masihBerlaku: () => boolean) => {
-    setLoading(true);
-
-    // Saringan ULP dipasang PER KUERI dengan `let`, bukan lewat satu pembantu
-    // bergenerik. Pembantu itu sempat ditulis dan TypeScript menyerah padanya —
-    // "type instantiation is excessively deep": tipe pembangun kueri PostgREST
-    // sudah berlapis-lapis sendiri, dan membungkusnya dalam generik membuatnya
-    // berulang tanpa henti. Beberapa baris `if` lebih panjang, tapi tipenya utuh.
-    const unit = ulp === "SEMUA" ? null : ulp;
-
-    // Rentang tanggal ditutup di satu tempat: bulan 0 berarti seluruh tahun.
-    const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
-    const akhir =
-      bulan === 0
-        ? `${tahun}-12-31`
-        : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`;
-    const akhirJam = `${akhir}T23:59:59`;
-
-    // ── 1. Perabasan Pohon — KMS ──────────────────────────────────────────
-    // `target_km` yang dibandingkan, bukan `rencana_km`: capaian_persen di view
-    // perabasan juga memakai target_km, dan dua angka capaian yang berbeda
-    // untuk pekerjaan yang sama adalah cara tercepat membuat orang berhenti
-    // mempercayai keduanya.
-    let qRabas = supabaseBrowser
-      .from("wo_perabasan_capaian")
-      .select("target_km,capaian_km")
-      .gte("tgl_wo", awal)
-      .lte("tgl_wo", akhir);
-    if (unit) qRabas = qRabas.eq("ulp", unit);
-
-    // ── 2. Pengukuran beban — per gardu ───────────────────────────────────
-    let qUkur = supabaseBrowser
-      .from("wo_pengukuran_realisasi")
-      .select("terealisasi,tertahan")
-      .eq("tahun", tahun);
-    if (bulan !== 0) qUkur = qUkur.eq("bulan", bulan);
-    if (unit) qUkur = qUkur.eq("ulp", unit);
-
-    // ── 3. Pemeliharaan Gardu ─────────────────────────────────────────────
-    let qGardu = supabaseBrowser
-      .from("pemeliharaan_gardu")
-      .select("status")
-      .gte("created_at", awal)
-      .lte("created_at", akhirJam);
-    if (unit) qGardu = qGardu.eq("ulp", unit);
-
-    // WO Pemeliharaan bulanan (`wo-hargardu.sql`) — realisasinya diturunkan
-    // view, dihitung SAAT DIKIRIM (keputusan user 24 Sep 2026).
-    let qGarduWo = supabaseBrowser
-      .from("wo_hargardu_realisasi")
-      .select("terealisasi,disetujui")
-      .eq("tahun", tahun);
-    if (bulan !== 0) qGarduWo = qGarduWo.eq("bulan", bulan);
-    if (unit) qGarduWo = qGarduWo.eq("ulp", unit);
-
-    // ── 3b. Pemeliharaan Jaringan JTM/JTR ─────────────────────────────────
-    let qHarJar = supabaseBrowser
-      .from("pemeliharaan_jaringan")
-      .select("status")
-      .neq("status", "Dibatalkan")
-      .gte("tgl", awal)
-      .lte("tgl", akhir);
-    if (unit) qHarJar = qHarJar.eq("ulp", unit);
-
-    // ── 4. Penyeimbangan Beban Trafo ──────────────────────────────────────
-    let qSeimbang = supabaseBrowser
-      .from("penyeimbangan_gardu")
-      .select("id")
-      .gte("created_at", awal)
-      .lte("created_at", akhirJam);
-    if (unit) qSeimbang = qSeimbang.eq("ulp", unit);
-
-    // ── 4b. Optimasi Trafo — per gardu ────────────────────────────────────
-    // WO terbit = gardu yang DITANDAI "OPTIMASI TRAFO" di Tindak Lanjut
-    // Anomali pada periode ini — penandaannya itulah WO-nya. Realisasi =
-    // catatan yang sudah TERKIRIM dari HP, termasuk yang di luar WO; draf yang
-    // masih di HP belum dihitung (teknisaplikasi.md butir 1).
-    let qOptWo = supabaseBrowser
-      .from("pengukuran_gardu")
-      .select("id")
-      .eq("jenis_pemeliharaan", "OPTIMASI TRAFO")
-      .gte("wo_sent_at", awal)
-      .lte("wo_sent_at", akhirJam);
-    if (unit) qOptWo = qOptWo.eq("petugas_unit", unit);
-
-    // WO yang dibatalkan admin (salah terbit, atau sudah beres lewat pecah
-    // beban) bukan WO terbit — menghitungnya menurunkan capaian unit untuk
-    // pekerjaan yang memang tidak perlu dikerjakan.
-    const qOptBatal = supabaseBrowser.from("optimasi_wo_batal").select("pengukuran_id");
-
-    let qOpt = supabaseBrowser
-      .from("optimasi_trafo")
-      .select("status")
-      .neq("status", "Dibatalkan")
-      .gte("tgl_operasi", awal)
-      .lte("tgl_operasi", akhir);
-    if (unit) qOpt = qOpt.eq("ulp", unit);
-
-    // ── 5. Inspeksi JTM & JTR — KMS ───────────────────────────────────────
-    // Panjangnya tidak ada di tabel inspeksi; dia milik segmen (JTM) dan gardu
-    // (JTR). Jadi ditarik dua langkah: inspeksinya dulu, lalu panjang yang
-    // menyangkut inspeksi itu saja lewat `.in(...)` — bukan seluruh tabel
-    // panjang, yang kelak berisi ribuan baris untuk menjawab sepuluh.
-    let qJtm = supabaseBrowser
-      .from("inspeksi_jtm")
-      .select("status,segmen_id")
-      .gte("created_at", awal)
-      .lte("created_at", akhirJam);
-    if (unit) qJtm = qJtm.eq("ulp", unit);
-
-    let qJtr = supabaseBrowser
-      .from("inspeksi_jtr")
-      .select("status,gardu_kode")
-      .gte("created_at", awal)
-      .lte("created_at", akhirJam);
-    if (unit) qJtr = qJtr.eq("ulp", unit);
-
-    const [rabas, ukur, gardu, garduWo, harjar, seimbang, optWo, opt, optBatal, jtm, jtr] = await Promise.all([
-      qRabas, qUkur, qGardu, qGarduWo, qHarJar, qSeimbang, qOptWo, qOpt, qOptBatal, qJtm, qJtr,
-    ]);
-
-    // Sembilan kueri untuk delapan sumber, dan tahun/bulan bisa diganti di tengahnya.
-    // Tanpa penjaga ini, jawaban rentang lama yang datang belakangan akan
-    // menimpa yang baru — tabelnya terlihat wajar, angkanya milik bulan yang
-    // salah, dan tidak ada apa pun di layar yang menunjukkan itu terjadi.
-    if (!masihBerlaku()) return;
-
-    // Galat tidak dilempar: satu tabel yang belum ada tidak boleh mengosongkan
-    // seluruh tabel rekap. Barisnya saja yang jadi kosong.
-    //
-    // TAPI "tabelnya belum dibuat" dan "servernya tidak menjawab" adalah dua
-    // hal yang berbeda, dan sampai 23 Sep 2026 keduanya sama-sama jadi ANGKA
-    // NOL di layar manajemen. Nol yang dikarang begitu tidak bisa dibedakan
-    // dari unit yang benar-benar tidak bekerja — dan yang membacanya mengambil
-    // keputusan dengan tenang. Yang bukan soal skema dicatat di sini, lalu
-    // barisnya dikosongkan dan ditandai.
-    const gagal = new Set<string>();
-
-    const belumDibuat = (e: unknown): boolean => {
-      const kode = String((e as { code?: string })?.code ?? "");
-      const pesan = String((e as { message?: string })?.message ?? "");
-      return (
-        kode === "42P01" ||
-        kode.startsWith("PGRST20") ||
-        /does not exist|Could not find the table/i.test(pesan)
-      );
-    };
-
-    const isi = <T,>(r: { data: T[] | null; error: unknown }, kunci: string): T[] => {
-      if (r.error) {
-        if (!belumDibuat(r.error)) gagal.add(kunci);
-        return [];
-      }
-      return r.data ?? [];
-    };
-
-    const r1 = isi<BarisRabas>(rabas, "perabasan");
-    const r2 = isi<BarisUkur>(ukur, "pengukuran");
-    const r3 = isi<BarisStatus>(gardu, "hargardu");
-    const r3Wo = isi<{ terealisasi: boolean; disetujui: boolean }>(garduWo, "hargardu");
-    const r3Jadi = r3Wo.filter((x) => x.terealisasi).length;
-    const r3Luar = Math.max(0, r3.filter((x) => x.status === "Selesai" || x.status === "Diverifikasi").length - r3Jadi);
-    const r3b = isi<BarisStatus>(harjar, "harjtm");
-    const r4 = isi<{ id: string }>(seimbang, "penyeimbangan");
-    const batalOpt = new Set(isi<{ pengukuran_id: string }>(optBatal, "optimasi").map((x) => x.pengukuran_id));
-    const r4bWo = isi<{ id: string }>(optWo, "optimasi").filter((x) => !batalOpt.has(x.id));
-    const r4b = isi<BarisStatus>(opt, "optimasi");
-    const r5 = isi<BarisJtm>(jtm, "jtm");
-    const r6 = isi<BarisJtr>(jtr, "jtr");
-
-    const jum = <T,>(a: T[], f: (x: T) => number) => a.reduce((n, x) => n + f(x), 0);
-    const hitung = <T,>(a: T[], f: (x: T) => boolean) => a.filter(f).length;
-    const bulat3 = (v: number) => Math.round(v * 1000) / 1000;
-
-    // Selesai = sudah dikerjakan; Diverifikasi = sudah disetujui admin.
-    // "Belum approve" adalah selisihnya, dan itulah angka yang menunjukkan
-    // pekerjaan yang menunggu di meja admin, bukan di lapangan.
-    const usai = (s: string | null) => s === "Selesai" || s === "Diverifikasi";
-
-    // ── Panjang JTM ───────────────────────────────────────────────────────
-    const segUsai = r5.filter((x) => usai(x.status) && x.segmen_id).map((x) => x.segmen_id!);
-    const segNunggu = r5.filter((x) => x.status === "Selesai" && x.segmen_id).map((x) => x.segmen_id!);
-    let kmJtm = 0;
-    let kmJtmNunggu = 0;
-    if (segUsai.length > 0) {
-      const { data } = await supabaseBrowser
-        .from("segmen_panjang")
-        .select("segmen_id,panjang_pakai_km")
-        .in("segmen_id", [...new Set(segUsai)]);
-      const peta = new Map((data ?? []).map((s) => [s.segmen_id as string, Number(s.panjang_pakai_km ?? 0)]));
-      kmJtm = bulat3(jum(segUsai, (id) => peta.get(id) ?? 0));
-      kmJtmNunggu = bulat3(jum(segNunggu, (id) => peta.get(id) ?? 0));
-    }
-
-    // ── Panjang JTR ───────────────────────────────────────────────────────
-    // Panjang per gardu dijumlah dari `gardu_jtr_penghantar`, yang sudah
-    // memecahnya per jurusan dan per nomor kabel. Nomor kabel >1 adalah
-    // underbuild — ikut dijumlah, karena kabel kedua di tiang yang sama tetap
-    // penghantar yang harus disisir.
-    const garduUsai = r6.filter((x) => usai(x.status) && x.gardu_kode).map((x) => x.gardu_kode!);
-    const garduNunggu = r6.filter((x) => x.status === "Selesai" && x.gardu_kode).map((x) => x.gardu_kode!);
-    let kmJtr = 0;
-    let kmJtrNunggu = 0;
-    if (garduUsai.length > 0) {
-      const { data } = await supabaseBrowser
-        .from("gardu_jtr_penghantar")
-        .select("gardu_kode,panjang_km")
-        .in("gardu_kode", [...new Set(garduUsai)]);
-      const peta = new Map<string, number>();
-      for (const g of data ?? []) {
-        const k = g.gardu_kode as string;
-        peta.set(k, (peta.get(k) ?? 0) + Number(g.panjang_km ?? 0));
-      }
-      kmJtr = bulat3(jum(garduUsai, (k) => peta.get(k) ?? 0));
-      kmJtrNunggu = bulat3(jum(garduNunggu, (k) => peta.get(k) ?? 0));
-    }
-
-    if (!masihBerlaku()) return;
-
-    const susun: BarisKinerja[] = [
-      {
-        kunci: "perabasan",
-        jenis: "Perabasan Pohon",
-        href: "/admin/wo-perabasan",
-        keadaan: "lengkap",
-        satuan: "km",
-        desimal: true,
-        woTerbit: bulat3(jum(r1, (x) => Number(x.target_km ?? 0))),
-        realisasi: bulat3(jum(r1, (x) => Number(x.capaian_km ?? 0))),
-        belumApprove: 0,
-        catatan: "Target dan capaian km dari WO Perabasan. Belum punya tahap persetujuan.",
-      },
-      {
-        kunci: "harjtm",
-        jenis: "Pemeliharaan Jaringan",
-        href: "/admin/pemeliharaan-jaringan",
-        keadaan: "tanpaWo",
-        satuan: "pekerjaan",
-        desimal: false,
-        woTerbit: null,
-        realisasi: r3b.length,
-        belumApprove: hitung(r3b, (x) => x.status === "Selesai"),
-        catatan:
-          "Dicatat regu dari lapangan berikut foto sebelum-sesudah. Belum diterbitkan lewat WO, jadi belum ada pembanding target.",
-      },
-      {
-        kunci: "hargardu",
-        jenis: "Pemeliharaan Gardu",
-        href: "/admin/hargardu",
-        keadaan: "lengkap",
-        satuan: "gardu",
-        desimal: false,
-        woTerbit: r3Wo.length,
-        realisasi: r3Jadi,
-        belumApprove: hitung(r3Wo, (x) => x.terealisasi && !x.disetujui),
-        catatan:
-          `WO Pemeliharaan bulanan. Realisasi = gardu WO yang pemeliharaannya sudah dikirim regu di bulan WO-nya.${r3Luar > 0 ? ` Di luar WO: ${r3Luar} pemeliharaan lain terkirim.` : ""}`,
-      },
-      {
-        kunci: "penyeimbangan",
-        jenis: "Penyeimbangan Beban Trafo",
-        href: "/admin/pengukuran-gardu",
-        keadaan: "tanpaWo",
-        satuan: "gardu",
-        desimal: false,
-        woTerbit: null,
-        realisasi: r4.length,
-        belumApprove: null,
-        catatan:
-          "Tercatat sebagai tindak lanjut anomali pengukuran, belum sebagai pekerjaan ber-WO sendiri.",
-      },
-      {
-        kunci: "optimasi",
-        jenis: "Optimasi Trafo",
-        href: "/admin/optimasi-trafo",
-        keadaan: "lengkap",
-        satuan: "gardu",
-        desimal: false,
-        woTerbit: r4bWo.length,
-        realisasi: r4b.length,
-        belumApprove: hitung(r4b, (x) => x.status === "Selesai"),
-        catatan:
-          "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini, tanpa WO yang dibatalkan. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
-      },
-      {
-        kunci: "pengukuran",
-        jenis: "Pengukuran beban & tegangan ujung",
-        href: "/admin/pengukuran-gardu",
-        keadaan: "lengkap",
-        satuan: "gardu",
-        desimal: false,
-        woTerbit: r2.length,
-        realisasi: hitung(r2, (x) => !!x.terealisasi),
-        belumApprove: hitung(r2, (x) => !!x.tertahan),
-        catatan:
-          "Angka ini BEBAN saja. Tegangan ujung belum punya tempat sendiri — belum diukur, belum tercatat.",
-      },
-      {
-        kunci: "jtm",
-        jenis: "Inspeksi JTM",
-        href: "/admin/jtm",
-        keadaan: "tanpaWo",
-        satuan: "km",
-        desimal: true,
-        woTerbit: null,
-        realisasi: kmJtm,
-        belumApprove: kmJtmNunggu,
-        catatan:
-          "Panjang segmen yang penyapuannya selesai. Penyapuan lahir saat regu membuka segmennya, belum diterbitkan lewat WO — jadi belum ada pembanding target.",
-      },
-      {
-        kunci: "jtr",
-        jenis: "Inspeksi JTR",
-        href: "/admin/jtr",
-        keadaan: "tanpaWo",
-        satuan: "km",
-        desimal: true,
-        woTerbit: null,
-        realisasi: kmJtr,
-        belumApprove: kmJtrNunggu,
-        catatan:
-          "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. Sama seperti JTM: belum diterbitkan lewat WO.",
-      },
-    ];
-
-    setBaris(
-      susun.map((b) =>
-        gagal.has(b.kunci)
-          ? {
-              ...b,
-              woTerbit: null,
-              realisasi: null,
-              belumApprove: null,
-              gagal: true,
-              catatan: "Data gagal dibaca dari server, jadi angkanya dikosongkan — bukan berarti nol.",
-            }
-          : b,
-      ),
-    );
-    setAdaGagal(gagal.size > 0);
-    setLoading(false);
-  }, [tahun, bulan, ulp]);
+  // Pemicu menyalakan "memuat" di tempat, bukan di dalam efek.
+  const mulai = () => setLoading(true);
+  const setTahun = (t: number) => { mulai(); gantiTahun(t); };
+  const setBulan = (b: number) => { mulai(); gantiBulan(b); };
+  const setUlp = (u: string) => { mulai(); gantiUlp(u); };
 
   useEffect(() => {
     let hidup = true;
-    void muat(() => hidup);
-    return () => {
-      hidup = false;
-    };
-  }, [muat, nonce]);
+    supabaseBrowser
+      .rpc("rekap_kinerja", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
+      .then(({ data: rows, error }) => {
+        // Jawaban rentang lama yang datang belakangan tidak boleh menimpa yang baru.
+        if (!hidup) return;
+        setData(error ? null : ((rows ?? []) as BarisRpc[]));
+        setLoading(false);
+      });
+    return () => { hidup = false; };
+  }, [tahun, bulan, ulp, nonce]);
+
+  const baris = useMemo<BarisKinerja[]>(() => {
+    const peta = new Map((data ?? []).map((r) => [r.kunci, r]));
+    return META.map((m) => {
+      const r = peta.get(m.kunci);
+      // Gagal atau baris tidak ada: angkanya DIKOSONGKAN, bukan ditulis nol —
+      // nol yang dikarang tidak bisa dibedakan dari kinerja yang benar nihil.
+      if (!r) {
+        return {
+          ...m,
+          woTerbit: null,
+          realisasi: null,
+          belumApprove: null,
+          gagal: true,
+          catatan: "Data gagal dibaca dari server, jadi angkanya dikosongkan — bukan berarti nol.",
+        };
+      }
+      const luar = r.luar_wo ?? 0;
+      return {
+        ...m,
+        woTerbit: angka(r.wo_terbit),
+        realisasi: angka(r.realisasi),
+        belumApprove: angka(r.belum_disetujui),
+        catatan: luar > 0 ? `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.` : m.catatan,
+      };
+    });
+  }, [data]);
 
   return {
     baris,
     loading,
-    adaGagal,
+    adaGagal: !loading && data === null,
     tahun,
     setTahun,
     bulan,
@@ -504,6 +266,6 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     setUlp,
     daftarUlp,
     daftarTahun,
-    muatUlang: () => setNonce((n) => n + 1),
+    muatUlang: () => { mulai(); setNonce((n) => n + 1); },
   };
 }

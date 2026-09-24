@@ -14,7 +14,7 @@ const KOLOM: { judul: string; lebar: number }[] = [
   { judul: "WO", lebar: 10 },
   { judul: "Tgl WO", lebar: 12 },
   { judul: "Tgl pekerjaan", lebar: 20 },
-  { judul: "Regu", lebar: 26 },
+  { judul: "Petugas", lebar: 26 },
   { judul: "Tidak normal", lebar: 9 },
   { judul: "Koreksi master\nmenunggu", lebar: 11 },
   { judul: "Foto", lebar: 9 },
@@ -49,7 +49,7 @@ export async function unduhExcelHargardu(baris: PemeliharaanMenunggu[], namaBerk
     set(6, d.wo_label ?? "-");
     set(7, d.wo_tgl ? tgl(d.wo_tgl) : "-");
     set(8, rentangKerja(d.tgl_padam, d.tgl_selesai));
-    set(9, [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", ") || (d.petugas_nama ?? ""), { align: "left" });
+    set(9, d.petugas_nama || [...(d.regu_1 ?? []), ...(d.regu_2 ?? [])].join(", "), { align: "left" });
     set(10, d.item_tidak_normal);
     set(11, d.usulan_menunggu);
     set(12, `${d.jumlah_foto}/${d.foto_wajib}`);
