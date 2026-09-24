@@ -129,6 +129,31 @@ export function calcDurasiNyalaSmt(row: YantekRow): string | null {
   } catch { return null; }
 }
 
+/**
+ * Satu nomor gangguan per petugas = SATU baris.
+ *
+ * `detailCheckInCheckOutIndividu` APKT mengembalikan satu baris per CHECK-IN,
+ * bukan per gangguan: petugas yang mengerjakan satu gangguan di dua shift
+ * (check-in 1 Sep lalu check-in lagi 2 Sep) muncul dua kali — dan terhitung dua
+ * WO, dua rating. Ditemukan 24 Sep 2026 lewat G4426090100193; 218 dari 18.969
+ * baris adalah baris kedua semacam ini.
+ *
+ * Yang dipertahankan baris PERTAMA (shift saat pekerjaan dimulai). Baris tanpa
+ * nomor laporan tidak disentuh — tanpa nomor, tidak ada yang bisa disebut kembar.
+ * Dipakai di pratinjau tempel DAN di server saat menyimpan, supaya jumlah yang
+ * tampil sebelum Simpan sama dengan yang tersimpan.
+ */
+export function satuPerPetugas<T extends Pick<YantekRow, "no_laporan" | "personil_yantek">>(rows: T[]): T[] {
+  const sudah = new Set<string>();
+  return rows.filter((r) => {
+    if (!r.no_laporan) return true;
+    const k = `${r.no_laporan}|${r.personil_yantek ?? ""}`;
+    if (sudah.has(k)) return false;
+    sudah.add(k);
+    return true;
+  });
+}
+
 export function parseInput(raw: string): { rows: YantekRow[]; error: string | null } {
   if (!raw.trim()) return { rows: [], error: null };
   try {
@@ -143,7 +168,7 @@ export function parseInput(raw: string): { rows: YantekRow[]; error: string | nu
     }
     if (!Array.isArray(parsed))
       return { rows: [], error: "Data harus berupa array JSON ([ { ... }, ... ])" };
-    return { rows: parsed as YantekRow[], error: null };
+    return { rows: satuPerPetugas(parsed as YantekRow[]), error: null };
   } catch (e) {
     return { rows: [], error: (e as Error).message };
   }

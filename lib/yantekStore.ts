@@ -1,5 +1,6 @@
 import "server-only";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { satuPerPetugas, type YantekRow } from "@/app/admin/yantek/_lib/yantek";
 
 /**
  * Penyimpanan data yantek APKT — tabel `yantek_harian`, satu baris per
@@ -122,7 +123,9 @@ export async function ambilRentang(
  */
 export async function simpanTanggal(sb: Supa, tanggal: string, label: string, rows: unknown[], oleh: string) {
   const perPosko = new Map<number, unknown[]>();
-  for (const r of rows) {
+  // Dijaga di server juga — pemanggil lain (skrip, API langsung) tidak lewat
+  // pratinjau tempel.
+  for (const r of satuPerPetugas(rows as YantekRow[])) {
     const p = poskoDari(r);
     perPosko.set(p, [...(perPosko.get(p) ?? []), r]);
   }
