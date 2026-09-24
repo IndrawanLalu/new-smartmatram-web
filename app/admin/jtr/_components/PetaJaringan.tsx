@@ -221,7 +221,9 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           </p>
         </div>
       ) : (
-        <div className="flex-1 min-h-0">
+        // `isolate`: panel Leaflet ber-z-index 400–1000; tanpa lapisan sendiri
+        // daftar pencarian gardu di atas tenggelam di bawah peta.
+        <div className="flex-1 min-h-0 isolate">
           <PetaJaringanInner tiang={tersaring} />
         </div>
       )}

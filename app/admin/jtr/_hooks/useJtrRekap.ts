@@ -67,81 +67,57 @@ interface TiangRingkas {
     | null;
 }
 
-export interface InspeksiGardu {
-  id: string;
-  gardu_kode: string;
-  ulp: string;
-  penyulang: string | null;
-  tgl_selesai: string | null;
-  status: string;
-  inspektor_nama: string | null;
-  tiang_aktif: number;
-  sudah_diperiksa: number;
-  tiang_baru: number;
-  jumlah_temuan: number;
-  panjang_km: number;
-  gardu_nama: string | null;
-}
-
 export interface Temuan {
   label: string;
   jumlah: number;
   urgensi: "Tinggi" | "Sedang";
 }
 
-export function useJtrRekap(user: CurrentUser) {
+/**
+ * `ulpPilihan`: "SEMUA" atau kode ULP — penyaring halaman. Role selain UP3
+ * selalu terkunci ke unitnya sendiri.
+ */
+export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
   const [perUlp, setPerUlp] = useState<RekapUlp[]>([]);
   const [perGardu, setPerGardu] = useState<RekapGardu[]>([]);
   const [cakupan, setCakupan] = useState<Cakupan[]>([]);
   const [tiang, setTiang] = useState<TiangRingkas[]>([]);
-  const [penyapuan, setPenyapuan] = useState<InspeksiGardu[]>([]);
   const [belumBertitik, setBelumBertitik] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const unit = canSeeAllUnits(user.role) ? null : (user.unit ?? null);
+  const unit = canSeeAllUnits(user.role) ? (ulpPilihan !== "SEMUA" ? ulpPilihan : null) : (user.unit ?? null);
 
   const muat = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const q = <T,>(nama: string, kolom: string) => {
-        let b = supabaseBrowser.from(nama).select(kolom);
-        if (unit) b = b.eq("ulp", unit);
-        return b as unknown as PromiseLike<{ data: T[] | null; error: { message: string } | null }>;
-      };
+      // Semua dipaginasi (teknisaplikasi.md butir 13): `gardu_jtr_panjang`
+      // berisi satu baris per gardu × jurusan dan sudah melewati 1.000 baris —
+      // tanpa paginasi, gardu di urutan belakang hilang dari hitungan tanpa tanda.
+      const semuaDari = <T,>(nama: string, urut: string[]) =>
+        fetchAllRows<T>(() => {
+          let b = supabaseBrowser.from(nama).select("*");
+          if (unit) b = b.eq("ulp", unit);
+          for (const k of urut) b = b.order(k);
+          return b;
+        });
 
-      const [ulpRes, garduRes, cakupanRes, titikRes, sapuRes] = await Promise.all([
-        q<RekapUlp>("ulp_jtr_panjang", "*"),
-        q<RekapGardu>("gardu_jtr_panjang", "*"),
-        q<Cakupan>("jtr_cakupan", "*"),
-        (() => {
-          let b = supabaseBrowser
-            .from("gardu_tanpa_titik")
-            .select("kode", { count: "exact", head: true });
-          if (unit) b = b.eq("ulp", unit);
-          return b;
-        })(),
-        (() => {
-          let b = supabaseBrowser
-            .from("jtr_inspeksi")
-            .select("*")
-            .order("tgl_selesai", { ascending: false, nullsFirst: false })
-            .limit(50);
-          if (unit) b = b.eq("ulp", unit);
-          return b;
-        })(),
+      let qTitik = supabaseBrowser.from("gardu_tanpa_titik").select("kode", { count: "exact", head: true });
+      if (unit) qTitik = qTitik.eq("ulp", unit);
+
+      const [ulpRes, garduRes, cakupanRes, titikRes] = await Promise.all([
+        semuaDari<RekapUlp>("ulp_jtr_panjang", ["ulp"]),
+        semuaDari<RekapGardu>("gardu_jtr_panjang", ["gardu_kode", "ulp", "jurusan"]),
+        semuaDari<Cakupan>("jtr_cakupan", ["ulp"]),
+        qTitik,
       ]);
 
-      if (ulpRes.error) throw new Error(ulpRes.error.message);
-      setPerUlp(ulpRes.data ?? []);
-      setPerGardu(garduRes.data ?? []);
-      setCakupan(cakupanRes.data ?? []);
+      setPerUlp(ulpRes);
+      setPerGardu(garduRes);
+      setCakupan(cakupanRes);
       setBelumBertitik(titikRes.count ?? 0);
-      setPenyapuan((sapuRes.data ?? []) as unknown as InspeksiGardu[]);
 
-      // Tiang dipakai untuk rekap temuan. Paginasi penuh — satu ULP bisa ribuan
-      // tiang, dan PostgREST diam-diam memotong di 1.000 baris.
       const barisTiang = await fetchAllRows<TiangRingkas>(() => {
         let b = supabaseBrowser
           .from("tiang")
@@ -228,7 +204,7 @@ export function useJtrRekap(user: CurrentUser) {
   }, [perUlp, cakupan, perGardu]);
 
   return {
-    perUlp, perGardu, cakupan, temuan, penghalang, total, penyapuan,
+    perUlp, perGardu, cakupan, temuan, penghalang, total,
     belumBertitik, tiang, loading, error, muat,
   };
 }
