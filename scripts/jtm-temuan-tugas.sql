@@ -244,12 +244,17 @@ BEGIN
     k.penemu, k.penemu, k.penemu,
     CASE WHEN k.lat IS NOT NULL AND k.lng IS NOT NULL THEN k.lat || ', ' || k.lng END,
     k.foto_url, k.foto_url,
-    'Ditugaskan', p_eksekutor, now(),
+    -- Eksekutor diisi lewat UPDATE di bawah, bukan di sini: pemicu push
+    -- notifikasi HP (`trg_notify_wo_assignment`) hanya menyala saat UPDATE
+    -- yang mengisi eksekutor dari kosong. INSERT langsung = tugas tanpa notif.
+    'Ditugaskan', '', now(),
     (k.ditemukan_pada AT TIME ZONE 'Asia/Makassar')::date,
     NULLIF(btrim(p_catatan), ''), 'inspeksi_jtm', p_nama,
     k.tiang_id, k.item_kode, k.bagian, k.sirkit_segmen_id
   )
   RETURNING id INTO baru;
+
+  UPDATE public.inspeksi SET eksekutor = p_eksekutor WHERE id = baru;
 
   RETURN baru;
 END $$;
