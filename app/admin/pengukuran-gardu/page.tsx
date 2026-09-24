@@ -67,9 +67,9 @@ const MONTHS = [
 ];
 
 const TABS = [
+  { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "dashboard",      label: "Dashboard",            icon: LayoutDashboard },
   { key: "data-gardu",     label: "Data Gardu → pindah",  icon: Database },
-  { key: "realisasi",      label: "Realisasi Pengukuran", icon: TableProperties },
   { key: "filter",         label: "Filter Pengukuran",    icon: SlidersHorizontal },
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
   { key: "wo-pengukuran",  label: "WO Pengukuran",        icon: ClipboardList },
@@ -141,7 +141,7 @@ function ArusCell({ r, s, t, kva }: { r: number; s: number; t: number; kva?: num
 
 export default function PengukuranGarduPage() {
   const user = useCurrentUser();
-  const [activeTab, setActiveTab] = useState<TabKey>("dashboard");
+  const [activeTab, setActiveTab] = useState<TabKey>("realisasi");
   const [page, setPage]           = useState(1);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch]           = useState("");
