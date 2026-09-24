@@ -227,9 +227,28 @@ lain. Modul yang menyimpang dari pola ini harus dibongkar ulang.
   di tempat. Kolom turunan (beban, jejak, jumlah usulan) dihitung server; jangan
   ditebak di peramban.
 
+- **Urutan tab** (arahan user, 24 Sep 2026): **Daftar pekerjaan → Dashboard
+  → tab lain (Peta, Segmen, Susun WO, …) → Pengaturan paling akhir.** Tab
+  bergaya `CHIP`.
+- **Status verifikasi/persetujuan adalah CHIP penyaring** di baris kedua di
+  bawah penyaring utama, lengkap dengan jumlahnya. Bukan tab "Persetujuan"
+  tersendiri.
+- **Setiap daftar pekerjaan punya kolom WO dan Tgl WO**, diisi dari sumber
+  WO-nya (WO modul sendiri, atau temuan inspeksi yang ditugaskan ke regu
+  eksekutor di Monitoring Inspeksi, dengan Tgl WO = `inspeksi.assigned_at`).
+  Pekerjaan tanpa WO bertanda **"-"**. (Arahan user 24 Sep 2026; sempat
+  ditulis "WO belum terbit", lalu diganti.)
+- **Tab Dashboard ringkas** berisi empat `StatTile`, satu `TrenBulananArsir`
+  (Januari–Desember, batang berarsir dengan garis tahun lalu), dan dua
+  `DaftarBatang` (per ULP, per kategori/regu). Ketiganya komponen bersama di
+  `app/admin/_components/`. Dashboard mengikuti penyaring ULP dan tahun;
+  penyaring bulan disembunyikan di sana karena dashboard selalu setahun.
+- Pengecualian: Pengukuran Gardu tetap dengan bentuknya sendiri.
+
 **Contoh nyata.** Optimasi Trafo (24 Sep 2026): versi pertama berupa kartu
 dengan `window.prompt`, lalu dirombak total atas permintaan user. Acuan yang
-benar sekarang: `app/admin/optimasi-trafo/`.
+benar sekarang: `app/admin/optimasi-trafo/` (daftar + modal) dan
+`app/admin/pemeliharaan-jaringan/` (lengkap dengan tab Dashboard).
 
 ---
 

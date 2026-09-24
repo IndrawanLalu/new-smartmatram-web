@@ -6,14 +6,25 @@ import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
- * Pemeliharaan Jaringan JTM/JTR — daftar dan acuan kategorinya.
+ * Pemeliharaan Jaringan JTM/JTR — daftar, verifikasi, koreksi, dan acuan
+ * kategorinya. Pola tampilannya sama dengan Optimasi Trafo (tabel + modal).
  *
- * Pengisiannya di HP; web memantau dan memverifikasi. Jadi hook ini tidak
- * punya "tambah catatan" sama sekali — yang ada cuma membaca, memverifikasi,
- * dan membatalkan yang salah input.
+ * Pengisiannya di HP; web memeriksa. Tidak ada "tambah catatan" di sini —
+ * pekerjaan ini dibuktikan oleh foto sebelum-sesudah dan titiknya, dan ketiganya
+ * cuma berarti kalau diambil di tempat kejadian.
  */
 
 export type JenisJaringan = "JTM" | "JTR";
+
+/** Nama status yang tampil. `Selesai` di database = "Menunggu verifikasi"
+ *  dari sisi admin — sama dengan Optimasi Trafo. */
+export type StatusTabel = "Menunggu verifikasi" | "Diverifikasi" | "Dibatalkan";
+export const STATUS_TABEL: StatusTabel[] = ["Menunggu verifikasi", "Diverifikasi", "Dibatalkan"];
+const STATUS_DB: Record<string, StatusTabel> = {
+  Selesai: "Menunggu verifikasi",
+  Diverifikasi: "Diverifikasi",
+  Dibatalkan: "Dibatalkan",
+};
 
 export interface BarisPemeliharaan {
   id: string;
@@ -28,12 +39,18 @@ export interface BarisPemeliharaan {
   lng: number | null;
   fotoSebelum: string;
   fotoSesudah: string;
-  status: string;
+  statusDb: string;
+  status: StatusTabel;
   petugasNama: string | null;
   catatan: string | null;
   tgl: string;
   verifiedAt: string | null;
   verifiedBy: string | null;
+  /** WO asal pekerjaan ini — temuan inspeksi yang ditugaskan ke HARJAR di
+   *  Monitoring Inspeksi. null = dikerjakan tanpa WO (tampil "-"). Diisi view
+   *  `pemeliharaan_jaringan_daftar` begitu sambungannya ke `inspeksi` ada. */
+  woLabel: string | null;
+  woTgl: string | null;
 }
 
 export interface KategoriRef {
@@ -44,28 +61,17 @@ export interface KategoriRef {
   aktif: boolean;
 }
 
-interface Hasil {
-  baris: BarisPemeliharaan[];
-  kategori: KategoriRef[];
-  loading: boolean;
-  /** Daftar gagal dibaca — bukan daftar yang kosong. */
-  galat: string | null;
-  ulp: string;
-  setUlp: (u: string) => void;
-  daftarUlp: string[];
-  jenis: "SEMUA" | JenisJaringan;
-  setJenis: (j: "SEMUA" | JenisJaringan) => void;
-  /** 0 = sepanjang tahun. */
-  bulan: number;
-  setBulan: (b: number) => void;
-  tahun: number;
-  setTahun: (t: number) => void;
-  daftarTahun: number[];
-  muat: () => Promise<void>;
-  verifikasi: (id: string, oleh: string) => Promise<void>;
-  batalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
-  simpanKategori: (k: KategoriRef, baru: boolean) => Promise<void>;
+/** Isian yang boleh dikoreksi admin. Foto & titik tidak — bukti lapangan. */
+export interface KoreksiPemeliharaan {
+  jenis: JenisJaringan;
+  penyulang: string;
+  kategori: string;
+  pekerjaan: string;
+  alamat: string | null;
+  catatan: string | null;
 }
+
+export type SaringStatus = "SEMUA" | StatusTabel;
 
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
@@ -77,37 +83,78 @@ export const BULAN = [
 const dua = (n: number) => String(n).padStart(2, "0");
 const akhirBulan = (tahun: number, bulan: number) => new Date(tahun, bulan, 0).getDate();
 
-export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
-  const bolehSemua = canSeeAllUnits(user.role);
+/** Rentang tanggal sebuah periode. bulan 0 = sepanjang tahun. */
+export const rentangPeriode = (tahun: number, bulan: number) => ({
+  awal: bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`,
+  akhir: bulan === 0 ? `${tahun}-12-31` : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`,
+});
 
-  const [baris, setBaris] = useState<BarisPemeliharaan[]>([]);
+const angka = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
+
+const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
+  const statusDb = (r.status as string) ?? "Selesai";
+  return {
+    id: r.id as string,
+    jenis: r.jenis as JenisJaringan,
+    penyulang: (r.penyulang as string) ?? "",
+    ulp: (r.ulp as string) ?? "",
+    kategori: (r.kategori as string) ?? "",
+    kategoriLabel: teks(r.kategori_label),
+    pekerjaan: (r.pekerjaan as string) ?? "",
+    alamat: teks(r.alamat),
+    lat: angka(r.lat),
+    lng: angka(r.lng),
+    fotoSebelum: (r.foto_sebelum_url as string) ?? "",
+    fotoSesudah: (r.foto_sesudah_url as string) ?? "",
+    statusDb,
+    status: STATUS_DB[statusDb] ?? "Menunggu verifikasi",
+    petugasNama: teks(r.petugas_nama),
+    catatan: teks(r.catatan),
+    tgl: (r.tgl as string) ?? "",
+    verifiedAt: teks(r.verified_at),
+    verifiedBy: teks(r.verified_by),
+    woLabel: teks(r.wo_label),
+    woTgl: teks(r.wo_tgl),
+  };
+};
+
+export function usePemeliharaanJaringan(user: CurrentUser) {
+  const bolehSemua = canSeeAllUnits(user.role);
+  const sekarang = new Date();
+  const tahunIni = sekarang.getFullYear();
+
+  const [semua, setSemua] = useState<BarisPemeliharaan[]>([]);
   const [kategori, setKategori] = useState<KategoriRef[]>([]);
   const [loading, setLoading] = useState(true);
+  /** Daftar gagal dibaca — bukan daftar yang kosong (teknisaplikasi.md butir 6). */
   const [galat, setGalat] = useState<string | null>(null);
-  const [ulp, setUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
+  const [ulp, gantiUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [jenis, setJenis] = useState<"SEMUA" | JenisJaringan>("SEMUA");
-  // Bawaan bulan berjalan — teknisaplikasi.md butir 13. Dulu tanpa periode dan
-  // dipotong `.limit(500)`: catatan ke-501 ada di database tapi tidak tampil.
-  const sekarang = new Date();
-  const [bulan, setBulan] = useState(sekarang.getMonth() + 1);
-  const [tahun, setTahun] = useState(sekarang.getFullYear());
-  const tahunIni = sekarang.getFullYear();
-  const daftarTahun = useMemo(() => [tahunIni, tahunIni - 1, tahunIni - 2], [tahunIni]);
+  const [status, setStatus] = useState<SaringStatus>("SEMUA");
+  const [cari, setCari] = useState("");
+  // Bawaan bulan berjalan — teknisaplikasi.md butir 13.
+  const [bulan, gantiBulan] = useState(sekarang.getMonth() + 1);
+  const [tahun, gantiTahun] = useState(tahunIni);
+  const [nonce, setNonce] = useState(0);
 
   const daftarUlp = useMemo(
     () => (bolehSemua ? ["SEMUA", ...UNIT] : [user.unit ?? ""]),
     [bolehSemua, user.unit],
   );
+  const daftarTahun = useMemo(() => [tahunIni, tahunIni - 1, tahunIni - 2], [tahunIni]);
 
-  const muat = useCallback(async () => {
-    setLoading(true);
-    setGalat(null);
+  // "Memuat" dinyalakan oleh PEMICUNYA, bukan di dalam efek.
+  const mulai = () => { setLoading(true); setGalat(null); };
+  const setUlp = (u: string) => { mulai(); gantiUlp(u); };
+  const setBulan = (b: number) => { mulai(); gantiBulan(b); };
+  const setTahun = (t: number) => { mulai(); gantiTahun(t); };
+  const muat = () => { mulai(); setNonce((n) => n + 1); };
 
-    const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
-    const akhir = bulan === 0 ? `${tahun}-12-31` : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`;
-
-    // Kueri dibangun baru tiap halaman, diurutkan sampai kolom unik supaya
-    // baris bertanggal sama tidak tertukar antarhalaman.
+  // Jenis, status, dan cari disaring di peramban: datanya sudah di tangan
+  // untuk periode itu, dan mengganti chip tidak boleh memuat ulang dari server.
+  const tarik = useCallback(async () => {
+    const { awal, akhir } = rentangPeriode(tahun, bulan);
     const q = () => {
       let x = supabaseBrowser
         .from("pemeliharaan_jaringan_daftar")
@@ -117,84 +164,77 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
         .order("tgl", { ascending: false })
         .order("id");
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
-      if (jenis !== "SEMUA") x = x.eq("jenis", jenis);
       return x;
     };
-
     const [dat, ref] = await Promise.all([
       fetchAllRows<Record<string, unknown>>(q).then(
-        (data) => ({ data, error: null as { message: string } | null }),
-        (e: Error) => ({ data: null as Record<string, unknown>[] | null, error: { message: e.message } }),
+        (data) => ({ data, error: null as string | null }),
+        (e: Error) => ({ data: [] as Record<string, unknown>[], error: e.message }),
       ),
-      supabaseBrowser
-        .from("pemeliharaan_jaringan_ref")
-        .select("kode,label,jenis,urutan,aktif")
-        .order("urutan"),
+      supabaseBrowser.from("pemeliharaan_jaringan_ref").select("kode,label,jenis,urutan,aktif").order("urutan"),
     ]);
-
-    // Daftar kosong karena server tidak terbaca TIDAK boleh terlihat sama
-    // dengan daftar yang memang belum berisi apa-apa — lihat
-    // `teknisaplikasi.md` butir 6.
-    if (dat.error) {
-      setBaris([]);
-      setGalat(dat.error.message);
-      setLoading(false);
-      return;
-    }
-
-    setBaris(
-      (dat.data ?? []).map((r) => ({
-        id: r.id as string,
-        jenis: r.jenis as JenisJaringan,
-        penyulang: (r.penyulang as string) ?? "",
-        ulp: (r.ulp as string) ?? "",
-        kategori: (r.kategori as string) ?? "",
-        kategoriLabel: (r.kategori_label as string) ?? null,
-        pekerjaan: (r.pekerjaan as string) ?? "",
-        alamat: (r.alamat as string) ?? null,
-        lat: r.lat === null ? null : Number(r.lat),
-        lng: r.lng === null ? null : Number(r.lng),
-        fotoSebelum: (r.foto_sebelum_url as string) ?? "",
-        fotoSesudah: (r.foto_sesudah_url as string) ?? "",
-        status: (r.status as string) ?? "Selesai",
-        petugasNama: (r.petugas_nama as string) ?? null,
-        catatan: (r.catatan as string) ?? null,
-        tgl: (r.tgl as string) ?? "",
-        verifiedAt: (r.verified_at as string) ?? null,
-        verifiedBy: (r.verified_by as string) ?? null,
-      })),
-    );
-    setKategori(
-      (ref.data ?? []).map((r) => ({
-        kode: r.kode as string,
-        label: r.label as string,
-        jenis: r.jenis as KategoriRef["jenis"],
-        urutan: Number(r.urutan ?? 100),
-        aktif: !!r.aktif,
-      })),
-    );
-    setLoading(false);
-  }, [ulp, jenis, bulan, tahun]);
+    return { dat, ref };
+  }, [ulp, bulan, tahun]);
 
   useEffect(() => {
-    void muat();
-  }, [muat]);
+    let hidup = true;
+    // State diisi di callback, bukan di badan efek; jawaban lama yang datang
+    // belakangan (penyaring sudah diganti) dibuang.
+    tarik().then(({ dat, ref }) => {
+      if (!hidup) return;
+      setGalat(dat.error);
+      setSemua(dat.data.map(petaBaris));
+      setKategori(
+        (ref.data ?? []).map((r) => ({
+          kode: r.kode as string,
+          label: r.label as string,
+          jenis: r.jenis as KategoriRef["jenis"],
+          urutan: Number(r.urutan ?? 100),
+          aktif: !!r.aktif,
+        })),
+      );
+      setLoading(false);
+    });
+    return () => { hidup = false; };
+  }, [tarik, nonce]);
+
+  /** Tersaring jenis + cari, BELUM status — dasar hitungan chip status. */
+  const dasarChip = useMemo(() => {
+    const k = cari.trim().toUpperCase();
+    return semua.filter(
+      (b) =>
+        (jenis === "SEMUA" || b.jenis === jenis) &&
+        (!k ||
+          [b.penyulang, b.pekerjaan, b.alamat ?? "", b.petugasNama ?? "", b.kategoriLabel ?? ""]
+            .some((v) => v.toUpperCase().includes(k))),
+    );
+  }, [semua, jenis, cari]);
+
+  const baris = useMemo(
+    () => dasarChip.filter((b) => status === "SEMUA" || b.status === status),
+    [dasarChip, status],
+  );
+
+  const hitung = useMemo(() => {
+    const h = Object.fromEntries(STATUS_TABEL.map((s) => [s, 0])) as Record<StatusTabel, number>;
+    for (const b of dasarChip) h[b.status] += 1;
+    return h;
+  }, [dasarChip]);
+
+  /** Ambil ulang SATU baris dari view lalu tambal di tempat. */
+  const segarkanSatu = async (id: string) => {
+    const { data } = await supabaseBrowser
+      .from("pemeliharaan_jaringan_daftar")
+      .select("*")
+      .eq("id", id)
+      .maybeSingle();
+    if (data) setSemua((p) => p.map((x) => (x.id === id ? petaBaris(data) : x)));
+  };
 
   const verifikasi = async (id: string, oleh: string) => {
-    const { error } = await supabaseBrowser.rpc("verifikasi_pemeliharaan_jaringan", {
-      p_id: id,
-      p_nama: oleh,
-    });
+    const { error } = await supabaseBrowser.rpc("verifikasi_pemeliharaan_jaringan", { p_id: id, p_nama: oleh });
     if (error) throw new Error(error.message);
-    // Ditambal di tempat: yang berubah satu baris, dan memuat ulang 500 baris
-    // untuk satu tombol membuat urutan tabel melompat di bawah jari admin.
-    setBaris((p) =>
-      p.map((b) =>
-        b.id === id
-          ? { ...b, status: "Diverifikasi", verifiedBy: oleh, verifiedAt: new Date().toISOString() }
-          : b,
-      ),
-    );
+    await segarkanSatu(id);
   };
 
   const batalkan = async (id: string, alasan: string, oleh: string) => {
@@ -204,32 +244,37 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
       p_nama: oleh,
     });
     if (error) throw new Error(error.message);
-    setBaris((p) => p.map((b) => (b.id === id ? { ...b, status: "Dibatalkan" } : b)));
+    await segarkanSatu(id);
+  };
+
+  /** Koreksi admin — hanya selama menunggu verifikasi (dijaga server juga). */
+  const koreksi = async (id: string, v: KoreksiPemeliharaan) => {
+    const { error } = await supabaseBrowser.rpc("ubah_pemeliharaan_jaringan", {
+      p_id: id,
+      p_jenis: v.jenis,
+      p_penyulang: v.penyulang,
+      p_kategori: v.kategori,
+      p_pekerjaan: v.pekerjaan,
+      p_alamat: v.alamat,
+      p_catatan: v.catatan,
+    });
+    if (error) throw new Error(error.message);
+    await segarkanSatu(id);
   };
 
   const simpanKategori = async (k: KategoriRef, baru: boolean) => {
-    const isi = {
-      kode: k.kode,
-      label: k.label,
-      jenis: k.jenis,
-      urutan: k.urutan,
-      aktif: k.aktif,
-      updated_at: new Date().toISOString(),
-    };
+    const isi = { ...k, updated_at: new Date().toISOString() };
     const { error } = baru
       ? await supabaseBrowser.from("pemeliharaan_jaringan_ref").insert(isi)
       : await supabaseBrowser.from("pemeliharaan_jaringan_ref").update(isi).eq("kode", k.kode);
     if (error) throw new Error(error.message);
-
-    setKategori((p) => {
-      const lain = p.filter((x) => x.kode !== k.kode);
-      return [...lain, k].sort((a, b) => a.urutan - b.urutan);
-    });
+    setKategori((p) => [...p.filter((x) => x.kode !== k.kode), k].sort((a, b) => a.urutan - b.urutan));
   };
 
   return {
-    baris, kategori, loading, galat, ulp, setUlp, daftarUlp, jenis, setJenis,
+    semua, baris, hitung, kategori, loading, galat,
+    ulp, setUlp, daftarUlp, jenis, setJenis, status, setStatus, cari, setCari,
     bulan, setBulan, tahun, setTahun, daftarTahun,
-    muat, verifikasi, batalkan, simpanKategori,
+    muat, verifikasi, batalkan, koreksi, simpanKategori,
   };
 }
