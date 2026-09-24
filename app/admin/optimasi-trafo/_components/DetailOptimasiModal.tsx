@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, Check, Loader2, Pencil } from "lucide-react";
+import { Ban, Check, Loader2, Pencil, Undo2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
@@ -32,6 +32,7 @@ interface Props {
   onTutup: () => void;
   onVerifikasi: (id: string, oleh: string) => Promise<number>;
   onBatalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
+  onKembalikan: (id: string, alasan: string, oleh: string) => Promise<void>;
   onBatalkanWo: (w: WoTerbuka, alasan: string, oleh: string) => Promise<void>;
   onPastikan: (id: string, oleh: string) => Promise<void>;
   onKoreksi: (id: string, v: KoreksiOptimasi) => Promise<void>;
@@ -39,12 +40,12 @@ interface Props {
 }
 
 export default function DetailOptimasiModal({
-  b, alasan, oleh, onTutup, onVerifikasi, onBatalkan, onBatalkanWo, onPastikan, onKoreksi, ambilUsulan,
+  b, alasan, oleh, onTutup, onVerifikasi, onBatalkan, onKembalikan, onBatalkanWo, onPastikan, onKoreksi, ambilUsulan,
 }: Props) {
   const toast = useToast();
   const c = b.catatan;
   const [mode, setMode] = useState<"lihat" | "koreksi">("lihat");
-  const [dialog, setDialog] = useState<"verifikasi" | "batal" | "batalWo" | null>(null);
+  const [dialog, setDialog] = useState<"verifikasi" | "batal" | "batalWo" | "kembalikan" | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [usulan, setUsulan] = useState<UsulanMaster[] | null>(null);
   const [galatUsulan, setGalatUsulan] = useState<string | null>(null);
@@ -101,6 +102,9 @@ export default function DetailOptimasiModal({
       <div className="flex gap-2">
         <button onClick={() => setDialog("batal")} className={BTN_GHOST} disabled={sibuk}>
           <Ban size={14} /> Salah input
+        </button>
+        <button onClick={() => setDialog("kembalikan")} className={BTN_GHOST} disabled={sibuk}>
+          <Undo2 size={14} /> Kembalikan ke petugas
         </button>
         <button onClick={() => setMode("koreksi")} className={BTN_GHOST} disabled={sibuk}>
           <Pencil size={14} /> Koreksi
@@ -190,6 +194,22 @@ export default function DetailOptimasiModal({
             jalankan(async () => {
               await onBatalkanWo(b.wo!, alasanBatal, oleh);
               return "WO dibatalkan.";
+            })
+          }
+        />
+      )}
+
+      {c && dialog === "kembalikan" && (
+        <BatalkanModal
+          judul={`Kembalikan optimasi ${c.kodeGardu} ke petugas?`}
+          keterangan="Catatan ini muncul lagi di HP regu sebagai draf berisi isian lama untuk diperbaiki dan dikirim ulang. Selama itu tidak dihitung sebagai realisasi. Usulan master-nya tetap menunggu."
+          labelTombol="Kembalikan ke petugas"
+          placeholder="Apa yang harus diperbaiki — mis. foto papan nama baru buram, nomor seri lama salah ketik"
+          onTutup={() => setDialog(null)}
+          onBatalkan={(alasanKembali) =>
+            jalankan(async () => {
+              await onKembalikan(c.id, alasanKembali, oleh);
+              return "Dikembalikan ke petugas.";
             })
           }
         />

@@ -21,14 +21,16 @@ export type Jejak = "bersambung" | "dipastikan" | "terbuka" | null;
 
 /** Nama status yang tampil — disepakati 24 Sep 2026. `Selesai` di database
  *  tampil sebagai "Menunggu verifikasi": dari sisi admin, itulah artinya. */
-export type StatusTabel = "Belum dikerjakan" | "Menunggu verifikasi" | "Diverifikasi" | "Dibatalkan";
+export type StatusTabel = "Belum dikerjakan" | "Menunggu verifikasi" | "Dikembalikan" | "Diverifikasi" | "Dibatalkan";
 
 export const STATUS_TABEL: StatusTabel[] = [
-  "Belum dikerjakan", "Menunggu verifikasi", "Diverifikasi", "Dibatalkan",
+  "Belum dikerjakan", "Menunggu verifikasi", "Dikembalikan", "Diverifikasi", "Dibatalkan",
 ];
 
 const STATUS_DB: Record<string, StatusTabel> = {
   Selesai: "Menunggu verifikasi",
+  // Dikembalikan ke petugas (25 Sep 2026): muncul lagi di HP sebagai draf.
+  Dikembalikan: "Dikembalikan",
   Diverifikasi: "Diverifikasi",
   Dibatalkan: "Dibatalkan",
 };
@@ -476,6 +478,18 @@ export function useOptimasiTrafo(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
+  /** Kembalikan ke petugas (teknisaplikasi.md butir 2): catatan muncul lagi
+   *  di HP sebagai draf berisi isian lama; tidak dihitung sampai dikirim ulang. */
+  const kembalikan = async (id: string, alasanKembali: string, oleh: string) => {
+    const { error } = await supabaseBrowser.rpc("kembalikan_optimasi_trafo", {
+      p_id: id,
+      p_alasan: alasanKembali,
+      p_nama: oleh,
+    });
+    if (error) throw new Error(error.message);
+    await segarkanSatu(id);
+  };
+
   const pastikanJejak = async (id: string, oleh: string) => {
     const { error } = await supabaseBrowser.rpc("pastikan_jejak_optimasi", {
       p_id: id,
@@ -557,6 +571,6 @@ export function useOptimasiTrafo(user: CurrentUser) {
     baris, semua, hitung, alasan, loading, galat, galatWo,
     ulp, setUlp, daftarUlp, status, setStatus, cari, setCari,
     bulan, setBulan, tahun, setTahun, daftarTahun,
-    muat, verifikasi, batalkan, batalkanWo, pastikanJejak, koreksi, ambilUsulan, simpanAlasan,
+    muat, verifikasi, batalkan, kembalikan, batalkanWo, pastikanJejak, koreksi, ambilUsulan, simpanAlasan,
   };
 }

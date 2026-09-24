@@ -176,6 +176,7 @@ export default function OptimasiTrafoPage() {
           onTutup={() => setKunciDetail(null)}
           onVerifikasi={o.verifikasi}
           onBatalkan={o.batalkan}
+          onKembalikan={o.kembalikan}
           onBatalkanWo={o.batalkanWo}
           onPastikan={o.pastikanJejak}
           onKoreksi={o.koreksi}

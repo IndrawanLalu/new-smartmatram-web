@@ -4,6 +4,7 @@ import type { CatatanOptimasi, StatusTabel } from "../_hooks/useOptimasiTrafo";
 export const NADA_STATUS: Record<StatusTabel, string> = {
   "Belum dikerjakan": "bg-slate-100 text-slate-600 border-slate-200",
   "Menunggu verifikasi": "bg-amber-50 text-amber-700 border-amber-200",
+  Dikembalikan: "bg-red-50 text-red-700 border-red-200",
   Diverifikasi: "bg-emerald-50 text-emerald-700 border-emerald-200",
   Dibatalkan: "bg-gray-100 text-gray-500 border-gray-200",
 };
