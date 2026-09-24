@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ListChecks, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
-import { usePemeliharaanJaringan, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
+import { usePemeliharaanJaringan, BULAN, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
 import DaftarPemeliharaan from "./_components/DaftarPemeliharaan";
 import PengaturanKategori from "./_components/PengaturanKategori";
 
@@ -35,6 +35,7 @@ export default function PemeliharaanJaringanPage() {
   const [tab, setTab] = useState<TabKey>("daftar");
   const {
     baris, kategori, loading, galat, ulp, setUlp, daftarUlp, jenis, setJenis,
+    bulan, setBulan, tahun, setTahun, daftarTahun,
     muat, verifikasi, batalkan, simpanKategori,
   } = usePemeliharaanJaringan(user);
 
@@ -67,6 +68,28 @@ export default function PemeliharaanJaringanPage() {
             >
               {daftarUlp.map((u) => (
                 <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>
+              ))}
+            </select>
+
+            <select
+              value={bulan}
+              onChange={(e) => setBulan(Number(e.target.value))}
+              className={`${FIELD} w-[160px]`}
+              aria-label="Bulan"
+            >
+              <option value={0}>Sepanjang tahun</option>
+              {BULAN.map((b, i) => (
+                <option key={b} value={i + 1}>{b}</option>
+              ))}
+            </select>
+            <select
+              value={tahun}
+              onChange={(e) => setTahun(Number(e.target.value))}
+              className={`${FIELD} w-[100px]`}
+              aria-label="Tahun"
+            >
+              {daftarTahun.map((t) => (
+                <option key={t} value={t}>{t}</option>
               ))}
             </select>
 

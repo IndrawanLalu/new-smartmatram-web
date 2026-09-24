@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
  * Pemeliharaan Jaringan JTM/JTR — daftar dan acuan kategorinya.
@@ -54,6 +55,12 @@ interface Hasil {
   daftarUlp: string[];
   jenis: "SEMUA" | JenisJaringan;
   setJenis: (j: "SEMUA" | JenisJaringan) => void;
+  /** 0 = sepanjang tahun. */
+  bulan: number;
+  setBulan: (b: number) => void;
+  tahun: number;
+  setTahun: (t: number) => void;
+  daftarTahun: number[];
   muat: () => Promise<void>;
   verifikasi: (id: string, oleh: string) => Promise<void>;
   batalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
@@ -61,6 +68,14 @@ interface Hasil {
 }
 
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
+
+export const BULAN = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+
+const dua = (n: number) => String(n).padStart(2, "0");
+const akhirBulan = (tahun: number, bulan: number) => new Date(tahun, bulan, 0).getDate();
 
 export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
   const bolehSemua = canSeeAllUnits(user.role);
@@ -71,6 +86,13 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
   const [galat, setGalat] = useState<string | null>(null);
   const [ulp, setUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [jenis, setJenis] = useState<"SEMUA" | JenisJaringan>("SEMUA");
+  // Bawaan bulan berjalan — teknisaplikasi.md butir 13. Dulu tanpa periode dan
+  // dipotong `.limit(500)`: catatan ke-501 ada di database tapi tidak tampil.
+  const sekarang = new Date();
+  const [bulan, setBulan] = useState(sekarang.getMonth() + 1);
+  const [tahun, setTahun] = useState(sekarang.getFullYear());
+  const tahunIni = sekarang.getFullYear();
+  const daftarTahun = useMemo(() => [tahunIni, tahunIni - 1, tahunIni - 2], [tahunIni]);
 
   const daftarUlp = useMemo(
     () => (bolehSemua ? ["SEMUA", ...UNIT] : [user.unit ?? ""]),
@@ -81,17 +103,29 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
     setLoading(true);
     setGalat(null);
 
-    let q = supabaseBrowser
-      .from("pemeliharaan_jaringan_daftar")
-      .select("*")
-      .order("tgl", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (ulp !== "SEMUA") q = q.eq("ulp", ulp);
-    if (jenis !== "SEMUA") q = q.eq("jenis", jenis);
+    const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
+    const akhir = bulan === 0 ? `${tahun}-12-31` : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`;
+
+    // Kueri dibangun baru tiap halaman, diurutkan sampai kolom unik supaya
+    // baris bertanggal sama tidak tertukar antarhalaman.
+    const q = () => {
+      let x = supabaseBrowser
+        .from("pemeliharaan_jaringan_daftar")
+        .select("*")
+        .gte("tgl", awal)
+        .lte("tgl", akhir)
+        .order("tgl", { ascending: false })
+        .order("id");
+      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
+      if (jenis !== "SEMUA") x = x.eq("jenis", jenis);
+      return x;
+    };
 
     const [dat, ref] = await Promise.all([
-      q,
+      fetchAllRows<Record<string, unknown>>(q).then(
+        (data) => ({ data, error: null as { message: string } | null }),
+        (e: Error) => ({ data: null as Record<string, unknown>[] | null, error: { message: e.message } }),
+      ),
       supabaseBrowser
         .from("pemeliharaan_jaringan_ref")
         .select("kode,label,jenis,urutan,aktif")
@@ -140,7 +174,7 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
       })),
     );
     setLoading(false);
-  }, [ulp, jenis]);
+  }, [ulp, jenis, bulan, tahun]);
 
   useEffect(() => {
     void muat();
@@ -195,6 +229,7 @@ export function usePemeliharaanJaringan(user: CurrentUser): Hasil {
 
   return {
     baris, kategori, loading, galat, ulp, setUlp, daftarUlp, jenis, setJenis,
+    bulan, setBulan, tahun, setTahun, daftarTahun,
     muat, verifikasi, batalkan, simpanKategori,
   };
 }

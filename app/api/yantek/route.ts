@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { getCurrentUser } from "@/lib/auth";
+import { canSeeAllUnits } from "@/lib/roles";
+import { POSKO_MAP } from "@/app/admin/yantek/_lib/yantek";
 import { ambilRentang, ambilTanggal, daftarTanggal, hapusTanggal, simpanTanggal } from "@/lib/yantekStore";
 
 /**
@@ -82,17 +85,34 @@ export async function POST(req: Request) {
 }
 
 // ── DELETE ────────────────────────────────────────────────────────────────────
-// ?date=2026-05-29  → hapus tanggal itu
+// ?date=2026-05-29&posko=441501  → hapus tanggal itu, posko itu saja
+// ?date=2026-05-29                → semua posko (hanya UP3)
+//
+// Admin ULP DIPAKSA ke posko ULP-nya sendiri di sini, bukan cuma di layar:
+// kalau tidak, cacat yang sama dengan penimpaan 24 Sep 2026 — satu ULP
+// menghapus data ULP lain — tinggal lewat pintu yang berbeda.
 
 export async function DELETE(req: Request) {
   const { sb, user } = await masuk();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const date = new URL(req.url).searchParams.get("date");
+  const { searchParams } = new URL(req.url);
+  const date = searchParams.get("date");
   if (!date || !sahTanggal(date)) return NextResponse.json({ error: "date wajib diisi" }, { status: 400 });
 
+  const saya = await getCurrentUser();
+  let posko = Number(searchParams.get("posko")) || undefined;
+  if (!saya || !canSeeAllUnits(saya.role)) {
+    const milik = POSKO_MAP.find((p) => p.ulp === saya?.unit)?.idPosko;
+    if (!milik) return NextResponse.json({ error: "ULP Anda tidak punya posko yantek" }, { status: 403 });
+    if (posko && posko !== milik) {
+      return NextResponse.json({ error: "Hanya data posko ULP sendiri yang boleh dihapus" }, { status: 403 });
+    }
+    posko = milik;
+  }
+
   try {
-    await hapusTanggal(sb, date);
+    await hapusTanggal(sb, date, posko);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return gagal(e);

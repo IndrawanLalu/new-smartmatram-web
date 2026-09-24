@@ -276,9 +276,19 @@ export default function YantekPage() {
     [refreshDates],
   );
 
+  /** Posko yang terkena hapus: filter ULP yang dipilih; admin ULP selalu
+   *  posko sendiri (dipaksa juga di server). Tanpa keduanya = semua posko. */
+  const poskoHapus =
+    POSKO_MAP.find((p) => p.kode === filterPosko)
+    ?? (canSeeAllUnits(user.role) ? undefined : POSKO_MAP.find((p) => p.ulp === user.unit));
+
   async function handleDelete(date: string) {
-    await fetch(`/api/yantek?date=${date}`, { method: "DELETE" });
+    const q = new URLSearchParams({ date });
+    if (poskoHapus) q.set("posko", String(poskoHapus.idPosko));
+    await bacaJson(await fetch(`/api/yantek?${q}`, { method: "DELETE" }));
+    // Bulan itu dibaca ulang: posko lain di tanggal yang sama harus tetap tampil.
     setRowCache((prev) => { const n = { ...prev }; delete n[date]; return n; });
+    setBulanTermuat((prev) => { const n = new Set(prev); n.delete(date.slice(0, 7)); return n; });
     await refreshDates();
   }
 
@@ -513,6 +523,7 @@ export default function YantekPage() {
                   filterYear={filterYear}
                   filterMonth={filterMonth}
                   onDelete={handleDelete}
+                  cakupanHapus={poskoHapus ? `ULP ${poskoHapus.label}` : "SEMUA ULP"}
                   onSelectMonth={(y, m) => { setFilterYear(y); setFilterMonth(m); setTab("juara"); }}
                 />
               )}

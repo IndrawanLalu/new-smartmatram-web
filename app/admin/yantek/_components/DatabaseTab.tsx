@@ -12,12 +12,15 @@ interface DatabaseTabProps {
   filterYear: string;
   filterMonth: string;
   onDelete: (date: string) => Promise<void>;
+  /** Siapa yang ikut terhapus — disebut di konfirmasi, karena satu tanggal
+   *  berisi data beberapa ULP. */
+  cakupanHapus: string;
   onSelectMonth: (year: string, month: string) => void;
 }
 
 
 
-export default function DatabaseTab({ dates, rowCache, filterYear, filterMonth, onDelete, onSelectMonth }: DatabaseTabProps) {
+export default function DatabaseTab({ dates, rowCache, filterYear, filterMonth, onDelete, cakupanHapus, onSelectMonth }: DatabaseTabProps) {
   const [deletingDate, setDeletingDate] = useState<string | null>(null);
 
   // Kelompokkan dates per tahun-bulan
@@ -131,7 +134,7 @@ export default function DatabaseTab({ dates, rowCache, filterYear, filterMonth, 
                         <td className="py-2.5 px-3 text-center">
                           <button
                             onClick={async () => {
-                              if (!confirm(`Hapus data ${d.label}?`)) return;
+                              if (!confirm(`Hapus data ${d.label} — ${cakupanHapus}?`)) return;
                               setDeletingDate(d.date);
                               await onDelete(d.date);
                               setDeletingDate(null);

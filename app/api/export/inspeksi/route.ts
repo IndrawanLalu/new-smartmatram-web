@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import ExcelJS from "exceljs";
+import { fetchAllRows } from "@/lib/supabasePaginate";
+
+/**
+ * Foto disematkan hanya kalau barisnya sedikit. Tiap baris menarik dua foto
+ * satu per satu; ribuan baris berarti berkas ratusan MB dan permintaan yang
+ * kehabisan waktu. Di atas batas ini foto ditulis sebagai TAUTAN.
+ *
+ * Dulu yang dibatasi BARISNYA (`.limit(500)`), sehingga ekspor terpotong diam-
+ * diam di baris ke-500 — isi berkas tidak lengkap dan tidak ada yang tahu
+ * (teknisaplikasi.md butir 13). Sekarang barisnya selalu lengkap.
+ */
+const SEMATKAN_FOTO_MAKS = 500;
 
 const INSPEKSI_FIELDS =
   "id, penyulang, lokasi, temuan, status, category, tgl_inspeksi, nama_inspektor, eksekutor, ulp, koordinat, foto_sebelum_url, foto_lokasi_url";
@@ -51,26 +63,42 @@ export async function GET(req: NextRequest) {
   const table      = isJaringan ? "inspeksi" : "inspeksi_pohon";
   const fields     = isJaringan ? INSPEKSI_FIELDS : POHON_FIELDS;
 
-  let qb = supabaseAdmin.from(table).select(fields);
+  // Dibangun ulang tiap halaman — fetchAllRows butuh kueri BARU per panggilan.
+  const buatKueri = () => {
+    let qb = supabaseAdmin.from(table).select(fields);
 
-  if (user.role !== "UP3" && user.unit) qb = qb.eq("ulp", user.unit);
-  if (ulp)          qb = qb.eq("ulp", ulp);
-  if (penyulang)    qb = qb.ilike("penyulang", `%${penyulang}%`);
-  if (status)       qb = qb.eq("status", status);
-  if (startDate)    qb = qb.gte("tgl_inspeksi", startDate);
-  if (endDate)      qb = qb.lte("tgl_inspeksi", endDate);
-  if (isJaringan && category)     qb = qb.eq("category", category);
-  if (!isJaringan && tingkatRisiko) qb = qb.eq("tingkat_risiko", tingkatRisiko);
-  if (search) {
-    const q = `%${search}%`;
-    qb = isJaringan
-      ? qb.or(`penyulang.ilike.${q},lokasi.ilike.${q},temuan.ilike.${q}`)
-      : qb.or(`penyulang.ilike.${q},lokasi.ilike.${q},deskripsi.ilike.${q}`);
+    if (user.role !== "UP3" && user.unit) qb = qb.eq("ulp", user.unit);
+    if (ulp)          qb = qb.eq("ulp", ulp);
+    if (penyulang)    qb = qb.ilike("penyulang", `%${penyulang}%`);
+    if (status)       qb = qb.eq("status", status);
+    if (startDate)    qb = qb.gte("tgl_inspeksi", startDate);
+    if (endDate)      qb = qb.lte("tgl_inspeksi", endDate);
+    if (isJaringan && category)     qb = qb.eq("category", category);
+    if (!isJaringan && tingkatRisiko) qb = qb.eq("tingkat_risiko", tingkatRisiko);
+    if (search) {
+      const q = `%${search}%`;
+      qb = isJaringan
+        ? qb.or(`penyulang.ilike.${q},lokasi.ilike.${q},temuan.ilike.${q}`)
+        : qb.or(`penyulang.ilike.${q},lokasi.ilike.${q},deskripsi.ilike.${q}`);
+    }
+
+    // Diakhiri kolom unik supaya baris bertanggal sama tidak tertukar antarhalaman.
+    return qb.order("tgl_inspeksi", { ascending: false }).order("id");
+  };
+
+  let rows: Record<string, string>[];
+  try {
+    rows = await fetchAllRows<Record<string, string>>(buatKueri);
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "Gagal membaca data" }, { status: 500 });
   }
+  const sematkanFoto = rows.length <= SEMATKAN_FOTO_MAKS;
 
-  const { data, error } = await qb.order("tgl_inspeksi", { ascending: false }).limit(500);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const rows = (data ?? []) as Record<string, string>[];
+  /** Foto sebagai tautan — dipakai saat baris terlalu banyak, atau fotonya gagal diunduh. */
+  const tautan = (cell: ExcelJS.Cell, url: string) => {
+    cell.value = { text: url, hyperlink: url };
+    cell.font = { color: { argb: "FF0563C1" }, underline: true };
+  };
 
   // ── Build Excel ──────────────────────────────────────────────────────────────
 
@@ -137,7 +165,8 @@ export async function GET(req: NextRequest) {
     const fotoSebelum = r.foto_sebelum_url;
     const fotoLokasi  = r.foto_lokasi_url;
 
-    if (fotoSebelum) {
+    if (fotoSebelum && !sematkanFoto) tautan(row.getCell("foto1"), fotoSebelum);
+    else if (fotoSebelum) {
       const img = await fetchImageBuffer(fotoSebelum);
       if (img) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -146,12 +175,12 @@ export async function GET(req: NextRequest) {
         sheet.addImage(imgId, { tl: { col: 7, row: i + 1 }, br: { col: 8, row: i + 2 } } as any);
         hasImage = true;
       } else {
-        row.getCell("foto1").value = fotoSebelum;
-        row.getCell("foto1").font  = { color: { argb: "FF0563C1" }, underline: true };
+        tautan(row.getCell("foto1"), fotoSebelum);
       }
     }
 
-    if (fotoLokasi) {
+    if (fotoLokasi && !sematkanFoto) tautan(row.getCell("foto2"), fotoLokasi);
+    else if (fotoLokasi) {
       const img = await fetchImageBuffer(fotoLokasi);
       if (img) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -160,13 +189,21 @@ export async function GET(req: NextRequest) {
         sheet.addImage(imgId, { tl: { col: 8, row: i + 1 }, br: { col: 9, row: i + 2 } } as any);
         hasImage = true;
       } else {
-        row.getCell("foto2").value = fotoLokasi;
-        row.getCell("foto2").font  = { color: { argb: "FF0563C1" }, underline: true };
+        tautan(row.getCell("foto2"), fotoLokasi);
       }
     }
 
     if (hasImage) row.height = 85;
     else          row.height = 18;
+  }
+
+  // Dikatakan di berkasnya sendiri, supaya yang membuka tidak mengira fotonya hilang.
+  if (!sematkanFoto) {
+    const catatan = sheet.getRow(rows.length + 3);
+    catatan.getCell(1).value =
+      `Catatan: ekspor berisi ${rows.length} baris (lebih dari ${SEMATKAN_FOTO_MAKS}), ` +
+      "jadi foto ditulis sebagai tautan, bukan gambar. Persempit penyaring untuk mendapat gambar.";
+    catatan.getCell(1).font = { italic: true, color: { argb: "FF8494AB" } };
   }
 
   const buffer   = await workbook.xlsx.writeBuffer();

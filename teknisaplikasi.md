@@ -408,12 +408,42 @@ ada yang bisa membedakannya dari data yang memang sedikit.
 - Yantek: `?all=true` di setiap kunjungan → sekarang per bulan, dan "Semua
   Tahun" dihapus.
 - Optimasi Trafo: `.limit(500)` → sekarang `fetchAllRows`.
-- **Masih tersisa, belum diperbaiki:** `usePemeliharaanJaringan.ts`
-  (`.limit(500)`, tanpa penyaring periode) dan `app/api/export/inspeksi`
-  (`.limit(500)` di **unduhan**, jadi ekspornya terpotong diam-diam).
+- Pemeliharaan Jaringan: `.limit(500)` tanpa periode → sekarang penyaring
+  bulan (bawaan bulan berjalan) + `fetchAllRows`.
+- Ekspor inspeksi (`app/api/export/inspeksi`): unduhannya terpotong di 500
+  baris. Sekarang barisnya selalu lengkap; yang dibatasi hanya **foto yang
+  disematkan** (> 500 baris → foto jadi tautan, dan berkasnya menyebutkannya).
+  Kalau sesuatu memang harus dibatasi demi ukuran, batasi yang **berat**, bukan
+  **barisnya**.
 
 ---
 
-*Ditulis 23 September 2026, butir 7–13 ditambahkan 24 September 2026.
+## 14. Kunci penyimpanan = satuan data yang masuk
+
+**Aturan.** Sebelum menentukan PRIMARY KEY atau kunci `upsert`, tanyakan:
+**satu kiriman itu mewakili apa?** Kuncinya harus memuat setiap pembeda
+kiriman. Kalau satu tarikan = satu tanggal **untuk satu posko**, kuncinya
+`(tanggal, id_posko)`, bukan `tanggal`.
+
+**Kenapa.** Kunci yang kurang satu kolom tidak menghasilkan galat. `upsert`
+berjalan mulus, dan kiriman kedua **menimpa** kiriman pertama tanpa jejak. Yang
+tahu hanya orang yang kebetulan membuka data yang hilang.
+
+**Cara menerapkan.**
+- Cari pembeda kiriman di parameter tarikannya (posko, ULP, penyulang, jenis),
+  bukan hanya di tanggalnya.
+- Hapus juga mengikuti kunci yang sama: admin ULP hanya menghapus data
+  ULP-nya, dan ini **dipaksa di server**, bukan cuma disembunyikan di layar.
+- Pemulihan data lama memakai `resolution=ignore-duplicates`, supaya tidak
+  menimpa kiriman yang lebih baru.
+
+**Contoh nyata.** Yantek (24 Sep 2026): tabel `yantek_harian` berkunci
+`tanggal` saja. User menarik Ampenan lalu Cakra, dan Ampenan 1–24 Sep hilang.
+Berkas JSON lama (satu berkas per tanggal) punya cacat yang sama, hanya belum
+ketahuan.
+
+---
+
+*Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*
