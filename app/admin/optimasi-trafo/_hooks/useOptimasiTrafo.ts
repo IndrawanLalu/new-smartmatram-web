@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
  * Optimasi Trafo — satu tabel untuk WO yang belum dikerjakan DAN catatan yang
@@ -170,6 +171,21 @@ const dua = (n: number) => String(n).padStart(2, "0");
 /** Hari terakhir bulan — dihitung, supaya Februari kabisat tidak terlewat. */
 const akhirBulan = (tahun: number, bulan: number) => new Date(tahun, bulan, 0).getDate();
 
+/**
+ * Seluruh baris sebuah kueri, dipaginasi per 1.000 — lalu dikemas ke bentuk
+ * `{ data, error }` seperti jawaban Supabase biasa.
+ *
+ * Bukan `.limit(500)`: batas diam-diam membuat catatan ke-501 ada di database
+ * tapi tidak pernah tampil, tanpa tanda apa pun (teknisaplikasi.md butir 13).
+ * Jumlahnya tetap terkendali karena setiap kueri dibatasi periode/penyaring.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- pembangun kueri PostgREST
+const semuaBaris = (buat: () => any) =>
+  fetchAllRows<Record<string, unknown>>(buat).then(
+    (data) => ({ data, error: null as { message: string } | null }),
+    (e: Error) => ({ data: null as Record<string, unknown>[] | null, error: { message: e.message } }),
+  );
+
 const angka = (v: unknown) => (v === null || v === undefined || v === "" ? null : Number(v));
 const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
 
@@ -314,37 +330,49 @@ export function useOptimasiTrafo(user: CurrentUser) {
     const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
     const akhir = bulan === 0 ? `${tahun}-12-31` : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`;
 
-    let q = supabaseBrowser
-      .from("optimasi_trafo_daftar")
-      .select("*")
-      .gte("tgl_operasi", awal)
-      .lte("tgl_operasi", akhir)
-      .order("tgl_operasi", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(500);
-    if (ulp !== "SEMUA") q = q.eq("ulp", ulp);
+    // Urutan diakhiri kolom UNIK: tanpa itu, baris bertanggal sama bisa
+    // tertukar antarhalaman — ada yang muncul dua kali, ada yang hilang.
+    const q = () => {
+      let x = supabaseBrowser
+        .from("optimasi_trafo_daftar")
+        .select("*")
+        .gte("tgl_operasi", awal)
+        .lte("tgl_operasi", akhir)
+        .order("tgl_operasi", { ascending: false })
+        .order("id");
+      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
+      return x;
+    };
 
-    let qWo = supabaseBrowser
-      .from("v_wo_optimasi_terbuka")
-      .select("*")
-      .order("wo_sent_at", { ascending: false });
-    if (ulp !== "SEMUA") qWo = qWo.eq("ulp", ulp);
+    const qWo = () => {
+      let x = supabaseBrowser
+        .from("v_wo_optimasi_terbuka")
+        .select("*")
+        .order("wo_sent_at", { ascending: false })
+        .order("pengukuran_id");
+      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
+      return x;
+    };
 
     // WO batal disaring menurut TANGGAL DIBATALKAN — keputusan itulah
     // peristiwanya, bukan tanggal WO terbit.
-    let qBatal = supabaseBrowser
-      .from("v_wo_optimasi_batal")
-      .select("*")
-      .gte("dibatalkan_at", awal)
-      .lte("dibatalkan_at", `${akhir}T23:59:59`)
-      .order("dibatalkan_at", { ascending: false });
-    if (ulp !== "SEMUA") qBatal = qBatal.eq("ulp", ulp);
+    const qBatal = () => {
+      let x = supabaseBrowser
+        .from("v_wo_optimasi_batal")
+        .select("*")
+        .gte("dibatalkan_at", awal)
+        .lte("dibatalkan_at", `${akhir}T23:59:59`)
+        .order("dibatalkan_at", { ascending: false })
+        .order("pengukuran_id");
+      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
+      return x;
+    };
 
     const [dat, w, ref, bt] = await Promise.all([
-      q,
-      qWo,
+      semuaBaris(q),
+      semuaBaris(qWo),
       supabaseBrowser.from("optimasi_alasan_ref").select("kode,label,urutan,aktif").order("urutan"),
-      qBatal,
+      semuaBaris(qBatal),
     ]);
     return { dat, w, ref, bt };
   }, [ulp, bulan, tahun]);
@@ -356,7 +384,8 @@ export function useOptimasiTrafo(user: CurrentUser) {
     setGalatWo(w.error ? w.error.message : null);
     setWo(w.error ? [] : (w.data ?? []).map(petaWo));
     // Gagal dibaca = digabung ke galat WO; yang terbaca tetap tampil.
-    if (bt.error) setGalatWo((g) => g ?? bt.error.message);
+    const galatBatal = bt.error?.message;
+    if (galatBatal) setGalatWo((g) => g ?? galatBatal);
     setWoBatal(
       bt.error
         ? []

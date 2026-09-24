@@ -132,7 +132,15 @@ export function calcDurasiNyalaSmt(row: YantekRow): string | null {
 export function parseInput(raw: string): { rows: YantekRow[]; error: string | null } {
   if (!raw.trim()) return { rows: [], error: null };
   try {
-    const parsed = JSON.parse(raw);
+    // Yang ditempel biasanya larik dari `copy(yantekData)`. Tapi sejak APKT
+    // membungkus hasilnya (`{ data, totalCount }`, 24 Sep 2026), respons utuh
+    // juga sering ikut tertempel — dibuka di sini daripada ditolak.
+    let parsed = JSON.parse(raw);
+    for (const kunci of ["data", "detailCheckInCheckOutIndividu", "data"]) {
+      if (!Array.isArray(parsed) && parsed && typeof parsed === "object" && kunci in parsed) {
+        parsed = parsed[kunci];
+      }
+    }
     if (!Array.isArray(parsed))
       return { rows: [], error: "Data harus berupa array JSON ([ { ... }, ... ])" };
     return { rows: parsed as YantekRow[], error: null };

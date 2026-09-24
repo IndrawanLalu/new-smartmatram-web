@@ -360,6 +360,60 @@ padahal WO-nya terbuka, lalu muncul dua baris di tabel.
 
 ---
 
-*Ditulis 23 September 2026, butir 7–12 ditambahkan 24 September 2026.
+## 13. Jangan tarik semua data sekaligus, dan jangan ada data yang tak tampil
+
+**Aturan.** Dua hal yang kedengarannya berlawanan tapi harus berlaku
+**bersamaan**:
+
+1. **Tidak menarik seluruh data sekaligus.** Halaman memuat data sebatas
+   penyaring yang dipilih (bawaan: **bulan berjalan**), bukan seluruh isi tabel
+   "supaya gampang disaring di peramban". Tidak ada pilihan "semua tahun" /
+   `?all=true` untuk data yang terus bertambah.
+2. **Tidak ada baris yang ada di database tapi tidak tampil.** Setiap kueri
+   yang mengisi daftar atau angka rekap harus mengambil **semua** baris dalam
+   rentang yang dipilih, lewat paginasi, bukan terpotong diam-diam.
+
+**Kenapa.** Yang pertama: data tumbuh setiap hari. Halaman Yantek dulu
+menarik seluruh data di setiap kunjungan, 20 MB setelah lima bulan, dan
+diperkirakan ±145 MB per tahun kalau sebulan 10.000 WO. Halaman seperti itu
+tidak mati mendadak, tapi makin lambat sampai berhenti dibuka.
+Yang kedua: **PostgREST memotong jawaban di 1.000 baris tanpa memberi tahu**,
+dan `.limit(500)` memotong di 500. Dua-duanya tidak menghasilkan galat. Yang
+terlihat hanya angka yang lebih kecil atau daftar yang lebih pendek, dan tidak
+ada yang bisa membedakannya dari data yang memang sedikit.
+
+**Cara menerapkan.**
+- **Batasi rentang di kueri** (server), bukan di peramban setelah semuanya
+  ditarik: `.gte/.lte` tanggal, `.eq("ulp")`. Kalau data per bulan besar, muat
+  per bulan dan simpan di cache selama halaman terbuka (contoh: halaman Yantek,
+  `?month=YYYY-MM`).
+- **Tarik seluruh baris dalam rentang itu** dengan
+  `fetchAllRows(() => kueriBaru())` dari `lib/supabasePaginate.ts`. Pembangun
+  kueri harus dibuat **baru** di setiap panggilan (fungsi, bukan objek), dan
+  urutannya **diakhiri kolom unik** (`.order("id")`). Tanpa itu, baris
+  bertanggal sama bisa tertukar antarhalaman.
+- **`.limit(n)` dilarang** untuk daftar atau rekap. Kalau memang harus
+  dibatasi (misalnya "30 terakhir" di HP), layar wajib mengatakannya:
+  "menampilkan 30 terbaru dari 412", dengan `count: "exact"`.
+- **Tabel di layar dipaginasi** (20 baris per halaman, butir 7). Paginasi layar
+  menjaga DOM tetap ringan; paginasi kueri menjaga datanya lengkap. Keduanya
+  berbeda dan keduanya perlu.
+- **Daftar yang tumbuh satu baris per hari juga kena batas 1.000.** Contoh:
+  daftar tanggal Yantek akan kehilangan tanggal terbarunya setelah ±2,7 tahun
+  kalau tidak dipaginasi.
+- Angka rekap dihitung dari **data yang sama** dengan yang ditampilkan. Jangan
+  satu dari kueri terbatas dan yang lain dari kueri penuh.
+
+**Contoh nyata (24 Sep 2026).**
+- Yantek: `?all=true` di setiap kunjungan → sekarang per bulan, dan "Semua
+  Tahun" dihapus.
+- Optimasi Trafo: `.limit(500)` → sekarang `fetchAllRows`.
+- **Masih tersisa, belum diperbaiki:** `usePemeliharaanJaringan.ts`
+  (`.limit(500)`, tanpa penyaring periode) dan `app/api/export/inspeksi`
+  (`.limit(500)` di **unduhan**, jadi ekspornya terpotong diam-diam).
+
+---
+
+*Ditulis 23 September 2026, butir 7–13 ditambahkan 24 September 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*

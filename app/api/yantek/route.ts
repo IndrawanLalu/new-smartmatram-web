@@ -1,145 +1,100 @@
 import { NextResponse } from "next/server";
 import { createSupabaseServer } from "@/lib/supabase-server";
-import fs from "fs/promises";
-import path from "path";
+import { ambilRentang, ambilTanggal, daftarTanggal, hapusTanggal, simpanTanggal } from "@/lib/yantekStore";
 
-const DATA_DIR = path.join(process.cwd(), "data", "yantek");
+/**
+ * Data yantek APKT per tanggal — tabel `yantek_harian` di Supabase.
+ *
+ * Sampai 24 Sep 2026 disimpan sebagai berkas `data/yantek/*.json`; di Docker
+ * homelab berkas itu tidak bisa ditulis (EACCES) dan hilang setiap rebuild.
+ * Bentuk jawaban API ini DIPERTAHANKAN persis, jadi halaman Yantek dan
+ * pemanggil lain tidak perlu tahu datanya pindah.
+ *
+ * Galat server dijawab 500 berikut pesannya — bukan daftar kosong
+ * (teknisaplikasi.md butir 6).
+ */
 
-async function ensureDir() {
-  await fs.mkdir(DATA_DIR, { recursive: true });
+const TGL = /^\d{4}-\d{2}-\d{2}$/;
+const sahTanggal = (d: string) => TGL.test(d) || d === "unknown";
+
+async function masuk() {
+  const sb = await createSupabaseServer();
+  const { data: { user } } = await sb.auth.getUser();
+  return { sb, user };
 }
 
-async function checkAuth() {
-  const supabase = await createSupabaseServer();
-  const { data: { user } } = await supabase.auth.getUser();
-  return user;
-}
+const gagal = (e: unknown) =>
+  NextResponse.json({ error: e instanceof Error ? e.message : "Gagal membaca data yantek" }, { status: 500 });
 
 // ── GET ───────────────────────────────────────────────────────────────────────
 // ?date=2026-05-29  → rows untuk tanggal itu
-// ?month=2026-05    → rows sebulan (berkas yang namanya berawalan itu saja)
-// ?all=true         → semua rows dari semua tanggal
+// ?month=2026-05    → rows sebulan
+// (tidak ada ?all=true — menarik seluruh data sepanjang masa sekaligus tidak
+//  boleh; lihat teknisaplikasi.md butir 13)
 // (kosong)          → daftar tanggal + jumlah baris
 
 export async function GET(req: Request) {
-  const user = await checkAuth();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  await ensureDir();
-  const { searchParams } = new URL(req.url);
-  const date  = searchParams.get("date");
-  const month = searchParams.get("month");
-  const all   = searchParams.get("all");
-
-  // Kembalikan rows 1 tanggal
-  if (date) {
-    const filePath = path.join(DATA_DIR, `${date}.json`);
-    try {
-      const raw = await fs.readFile(filePath, "utf-8");
-      return NextResponse.json(JSON.parse(raw));
-    } catch {
-      return NextResponse.json({ label: date, rows: [], savedAt: null });
-    }
-  }
-
-  // Kembalikan rows satu bulan. Dashboard SLA hanya butuh sebulan; tanpa ini
-  // ia ikut membaca seluruh berkas yang ada (35 berkas ≈ 4.900 baris) padahal
-  // yang dipakai cuma sebagian kecil.
-  if (month) {
-    // Cegah "../" dan sejenisnya ikut jadi nama berkas.
-    if (!/^\d{4}-\d{2}$/.test(month)) {
-      return NextResponse.json({ error: "Format month harus YYYY-MM" }, { status: 400 });
-    }
-    let files: string[] = [];
-    try {
-      files = (await fs.readdir(DATA_DIR)).filter((f) => f.startsWith(month) && f.endsWith(".json")).sort();
-    } catch { /* dir belum ada */ }
-
-    const rows: unknown[] = [];
-    for (const f of files) {
-      try {
-        const raw = await fs.readFile(path.join(DATA_DIR, f), "utf-8");
-        const parsed = JSON.parse(raw) as { rows?: unknown[] };
-        rows.push(...(parsed.rows ?? []));
-      } catch { /* skip berkas rusak */ }
-    }
-    return NextResponse.json({ rows });
-  }
-
-  // Kembalikan semua rows gabungan
-  if (all === "true") {
-    const files = (await fs.readdir(DATA_DIR)).filter(f => f.endsWith(".json")).sort();
-    const rows: unknown[] = [];
-    for (const f of files) {
-      try {
-        const raw = await fs.readFile(path.join(DATA_DIR, f), "utf-8");
-        const parsed = JSON.parse(raw) as { rows?: unknown[] };
-        rows.push(...(parsed.rows ?? []));
-      } catch { /* skip corrupt file */ }
-    }
-    return NextResponse.json({ rows });
-  }
-
-  // Kembalikan daftar tanggal + row count
-  let files: string[] = [];
-  try {
-    files = (await fs.readdir(DATA_DIR)).filter(f => f.endsWith(".json")).sort();
-  } catch { /* dir belum ada */ }
-
-  const summary = await Promise.all(
-    files.map(async (f) => {
-      const date = f.replace(".json", "");
-      try {
-        const raw  = await fs.readFile(path.join(DATA_DIR, f), "utf-8");
-        const data = JSON.parse(raw) as { label?: string; rows?: unknown[]; savedAt?: number };
-        return { date, label: data.label ?? date, count: data.rows?.length ?? 0, savedAt: data.savedAt ?? null };
-      } catch {
-        return { date, label: date, count: 0, savedAt: null };
-      }
-    }),
-  );
-
-  return NextResponse.json(summary);
-}
-
-// ── POST ──────────────────────────────────────────────────────────────────────
-// Body: { date, label, rows }
-// Tulis / timpa file data/yantek/{date}.json
-
-export async function POST(req: Request) {
-  const user = await checkAuth();
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  await ensureDir();
-
-  const body = await req.json() as { date: string; label: string; rows: unknown[] };
-  const { date, label, rows } = body;
-
-  if (!date || !Array.isArray(rows)) {
-    return NextResponse.json({ error: "date dan rows wajib diisi" }, { status: 400 });
-  }
-
-  const filePath = path.join(DATA_DIR, `${date}.json`);
-  await fs.writeFile(filePath, JSON.stringify({ label, rows, savedAt: Date.now() }), "utf-8");
-
-  return NextResponse.json({ ok: true, date, count: rows.length });
-}
-
-// ── DELETE ────────────────────────────────────────────────────────────────────
-// ?date=2026-05-29  → hapus file tanggal itu
-
-export async function DELETE(req: Request) {
-  const user = await checkAuth();
+  const { sb, user } = await masuk();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
-  if (!date) return NextResponse.json({ error: "date wajib diisi" }, { status: 400 });
+  const month = searchParams.get("month");
 
-  const filePath = path.join(DATA_DIR, `${date}.json`);
   try {
-    await fs.unlink(filePath);
-  } catch { /* file tidak ada, ok */ }
+    if (date) {
+      if (!sahTanggal(date)) return NextResponse.json({ error: "Format date harus YYYY-MM-DD" }, { status: 400 });
+      return NextResponse.json(await ambilTanggal(sb, date));
+    }
 
-  return NextResponse.json({ ok: true });
+    if (month) {
+      if (!/^\d{4}-\d{2}$/.test(month)) {
+        return NextResponse.json({ error: "Format month harus YYYY-MM" }, { status: 400 });
+      }
+      const isi = await ambilRentang(sb, `${month}-01`, `${month}-31`);
+      return NextResponse.json({ rows: isi.flatMap((x) => x.rows) });
+    }
+
+    return NextResponse.json(await daftarTanggal(sb));
+  } catch (e) {
+    return gagal(e);
+  }
+}
+
+// ── POST ──────────────────────────────────────────────────────────────────────
+// Body: { date, label, rows } — tulis / timpa satu tanggal.
+
+export async function POST(req: Request) {
+  const { sb, user } = await masuk();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { date, label, rows } = (await req.json()) as { date: string; label: string; rows: unknown[] };
+  if (!date || !sahTanggal(date) || !Array.isArray(rows)) {
+    return NextResponse.json({ error: "date (YYYY-MM-DD) dan rows wajib diisi" }, { status: 400 });
+  }
+
+  try {
+    await simpanTanggal(sb, date, label ?? date, rows, user.id);
+    return NextResponse.json({ ok: true, date, count: rows.length });
+  } catch (e) {
+    return gagal(e);
+  }
+}
+
+// ── DELETE ────────────────────────────────────────────────────────────────────
+// ?date=2026-05-29  → hapus tanggal itu
+
+export async function DELETE(req: Request) {
+  const { sb, user } = await masuk();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const date = new URL(req.url).searchParams.get("date");
+  if (!date || !sahTanggal(date)) return NextResponse.json({ error: "date wajib diisi" }, { status: 400 });
+
+  try {
+    await hapusTanggal(sb, date);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return gagal(e);
+  }
 }

@@ -65,7 +65,12 @@ export default function AmbilDataTab({ unit, onTersimpan }: AmbilDataTabProps) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ date, label, rows: isi }),
         });
-        if (!res.ok) throw new Error(`Gagal menyimpan ${date}`);
+        if (!res.ok) {
+          // Pesan server disertakan — "gagal menyimpan" saja tidak memberi tahu
+          // apakah servernya mati, sesinya habis, atau datanya ditolak.
+          const j = (await res.json().catch(() => null)) as { error?: string } | null;
+          throw new Error(`Gagal menyimpan ${date}${j?.error ? `: ${j.error}` : ` (server menjawab ${res.status})`}`);
+        }
       }
       setInput("");
       const terakhir = Object.keys(grup).filter((d) => d !== "unknown").sort().pop() ?? null;

@@ -30,6 +30,14 @@ function bulanSebelumnya(key: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
+/** Jawaban API yang gagal dilempar sebagai galat berpesan, bukan dibaca
+ *  seolah data (`{ error }` tidak punya `rows`). */
+async function bacaJson(res: Response): Promise<unknown> {
+  const j = await res.json().catch(() => null);
+  if (!res.ok) throw new Error((j as { error?: string } | null)?.error ?? `Server menjawab ${res.status}`);
+  return j;
+}
+
 export default function YantekPage() {
   const user = useCurrentUser();
 
@@ -40,6 +48,9 @@ export default function YantekPage() {
   const [filterPosko, setFilterPosko] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("juara");
   const [loading, setLoading] = useState(true);
+  /** Data gagal dimuat — BUKAN "belum ada data" (teknisaplikasi.md butir 6). */
+  const [galatMuat, setGalatMuat] = useState<string | null>(null);
+  const [nonceMuat, setNonceMuat] = useState(0);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [aturSla, setAturSla] = useState(false);
 
@@ -54,21 +65,17 @@ export default function YantekPage() {
 
   // ── Muat data ─────────────────────────────────────────────────────────────
 
-  const loadAllIntoCache = useCallback(async () => {
-    const res = await fetch("/api/yantek?all=true");
-    const data = (await res.json()) as { rows: YantekRow[] };
-    const grouped: Record<string, YantekRow[]> = {};
-    for (const row of data.rows) {
-      const d = row.waktu_lapor ? toDateStr(row.waktu_lapor) : "unknown";
-      if (!grouped[d]) grouped[d] = [];
-      grouped[d].push(row);
-    }
-    return grouped;
-  }, []);
+  // ── PER BULAN, bukan seluruh data (24 Sep 2026) ──────────────────────────
+  // Dulu halaman ini menarik `?all=true` — seluruh data sepanjang masa — di
+  // setiap kunjungan: 20 MB saat lima bulan terisi, dan tumbuh ±145 MB per
+  // tahun kalau sebulan 10.000 WO. Sekarang yang dimuat hanya bulan yang
+  // dibutuhkan filter, dan disimpan di cache selama halaman terbuka.
+  const [bulanTermuat, setBulanTermuat] = useState<Set<string>>(new Set());
+
 
   const refreshDates = useCallback(async () => {
     const res = await fetch("/api/yantek");
-    const data = (await res.json()) as DateSummary[];
+    const data = (await bacaJson(res)) as DateSummary[];
     setDates(data);
     return data;
   }, []);
@@ -76,10 +83,10 @@ export default function YantekPage() {
   useEffect(() => {
     async function init() {
       setLoading(true);
+      setGalatMuat(null);
       try {
         const dateList = await refreshDates();
         if (dateList.length > 0) {
-          setRowCache(await loadAllIntoCache());
           const latestDate = dateList.map((d) => d.date).sort().pop()!;
           const [y, m] = latestDate.split("-");
           setFilterYear(y);
@@ -88,12 +95,64 @@ export default function YantekPage() {
           // Belum ada apa-apa untuk dilihat — langsung antar ke cara mengisinya.
           setTab("ambil");
         }
+      } catch (e) {
+        setGalatMuat(e instanceof Error ? e.message : "Data yantek gagal dimuat");
       } finally {
         setLoading(false);
       }
     }
     init();
-  }, [refreshDates, loadAllIntoCache]);
+  }, [refreshDates, nonceMuat]);
+
+  /** Bulan yang dibutuhkan tampilan: bulan terpilih + bulan sebelumnya (garis
+   *  pembanding SLA), atau semua bulan tahun itu kalau "Semua Bulan". */
+  const bulanPerlu = useMemo(() => {
+    if (!filterYear) return [];
+    if (filterMonth) {
+      const kini = `${filterYear}-${filterMonth}`;
+      return [kini, bulanSebelumnya(kini)];
+    }
+    return [...new Set(dates.filter((d) => d.date.startsWith(filterYear)).map((d) => d.date.slice(0, 7)))];
+  }, [filterYear, filterMonth, dates]);
+
+  const bulanKurang = useMemo(
+    () => bulanPerlu.filter((b) => !bulanTermuat.has(b)).sort().join(","),
+    [bulanPerlu, bulanTermuat],
+  );
+
+  // "Sedang memuat bulan" DITURUNKAN, bukan disimpan: masih ada bulan yang
+  // dibutuhkan tapi belum ada di cache. State terpisah akan menyala terus
+  // kalau bulan yang dipilih ternyata sudah termuat.
+  const memuatBulan = bulanKurang !== "" && !galatMuat;
+
+  useEffect(() => {
+    if (!bulanKurang) return;
+    let hidup = true;
+    const daftar = bulanKurang.split(",");
+    Promise.all(
+      daftar.map(async (b) => {
+        const res = await fetch(`/api/yantek?month=${b}`);
+        return (await bacaJson(res)) as { rows: YantekRow[] };
+      }),
+    ).then(
+      (hasil) => {
+        if (!hidup) return;
+        const grouped: Record<string, YantekRow[]> = {};
+        for (const row of hasil.flatMap((h) => h.rows)) {
+          const d = row.waktu_lapor ? toDateStr(row.waktu_lapor) : "unknown";
+          (grouped[d] ??= []).push(row);
+        }
+        setRowCache((p) => ({ ...p, ...grouped }));
+        setBulanTermuat((p) => new Set([...p, ...daftar]));
+      },
+      (e: Error) => {
+        if (!hidup) return;
+        setGalatMuat(e.message);
+      },
+    );
+    return () => { hidup = false; };
+    // nonceMuat: tombol "Muat ulang" harus mencoba lagi bulan yang gagal.
+  }, [bulanKurang, nonceMuat]);
 
   // ── Turunan ───────────────────────────────────────────────────────────────
 
@@ -202,15 +261,19 @@ export default function YantekPage() {
    *  cache & filter, jadi pemuatan ulangnya dikerjakan di sini. */
   const handleTersimpan = useCallback(
     async (tanggalTerakhir: string | null) => {
-      const [, grouped] = await Promise.all([refreshDates(), loadAllIntoCache()]);
-      setRowCache(grouped);
+      await refreshDates();
+      // Cache dibuang: bulan yang baru ditimpa harus dibaca ulang, dan efek
+      // pemuat per bulan mengisinya lagi sesuai filter.
+      setRowCache({});
+      setBulanTermuat(new Set());
+     
       if (tanggalTerakhir) {
         setFilterYear(tanggalTerakhir.slice(0, 4));
         setFilterMonth(tanggalTerakhir.slice(5, 7));
         setTab("juara");
       }
     },
-    [refreshDates, loadAllIntoCache],
+    [refreshDates],
   );
 
   async function handleDelete(date: string) {
@@ -297,12 +360,11 @@ export default function YantekPage() {
               onChange={(e) => { setFilterYear(e.target.value); setFilterMonth(""); }}
               className={`${FIELD} text-xs`}
             >
-              <option value="">Semua Tahun</option>
               {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
             </select>
             <select
               value={filterMonth}
-              onChange={(e) => setFilterMonth(e.target.value)}
+              onChange={(e) => { setFilterMonth(e.target.value); }}
               className={`${FIELD} text-xs`}
               disabled={!filterYear}
             >
@@ -344,10 +406,26 @@ export default function YantekPage() {
         </div>
       )}
 
-      {loading ? (
+      {loading || memuatBulan ? (
         <div className="flex items-center justify-center py-12 gap-3 text-ink-muted">
           <Loader2 className="w-5 h-5 animate-spin text-navy-600" />
           <span className="text-sm">Memuat data...</span>
+        </div>
+      ) : galatMuat ? (
+        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
+          <div className="text-sm">
+            <p className="font-semibold text-amber-800">Data yantek gagal dimuat</p>
+            <p className="mt-0.5 text-amber-700">
+              {galatMuat} — kosongnya halaman ini bukan berarti belum ada data.
+            </p>
+            <button
+              onClick={() => setNonceMuat((n) => n + 1)}
+              className="mt-2 font-semibold text-navy-600 hover:text-navy-500"
+            >
+              Muat ulang
+            </button>
+          </div>
         </div>
       ) : (
         <>

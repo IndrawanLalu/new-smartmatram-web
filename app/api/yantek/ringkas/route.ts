@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
 import { createSupabaseServer } from "@/lib/supabase-server";
+import { ambilRentang } from "@/lib/yantekStore";
 import {
   POSKO_MAP, extractNama, extractPrefix, durasiSah, median,
   type YantekRow,
@@ -10,8 +9,8 @@ import {
 /**
  * Ringkasan Analisis Yantek untuk dashboard.
  *
- * Datanya berupa 70 berkas JSON di `data/yantek/` — 9.924 baris berisi ~45
- * kolom. Mengirim semuanya ke browser hanya untuk dijadikan enam angka jelas
+ * Datanya ada di tabel `yantek_harian` (dulu berkas JSON di `data/yantek/`,
+ * pindah 24 Sep 2026) — belasan ribu baris berisi ~45 kolom. Mengirim semuanya ke browser hanya untuk dijadikan enam angka jelas
  * pemborosan, dan `/api/yantek?all=true` memang sudah dihindari untuk alasan
  * yang sama. Jadi berkasnya dibaca di sisi server dan yang keluar hanya
  * ringkasannya — beberapa kilobyte.
@@ -22,8 +21,6 @@ import {
  * salinan rumus yang "seharusnya sama" adalah cara paling mudah menghasilkan
  * dua angka berbeda untuk hal yang sama.
  */
-
-const DATA_DIR = path.join(process.cwd(), "data", "yantek");
 
 /** "44150" → "AMPENAN". Prefix menempel pada `personil_yantek`. */
 const ULP_DARI_PREFIX = new Map(POSKO_MAP.map((p) => [p.kode, p.ulp]));
@@ -46,17 +43,16 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "from/to harus YYYY-MM-DD" }, { status: 400 });
   }
 
-  let berkas: string[] = [];
+  // Galat server dijawab 500, bukan ringkasan bernilai nol — nol yang dikarang
+  // tidak bisa dibedakan dari hari tanpa gangguan (teknisaplikasi.md butir 6).
+  let hari: { tanggal: string; rows: unknown[] }[];
   try {
-    berkas = (await fs.readdir(DATA_DIR))
-      .filter((f) => f.endsWith(".json"))
-      .filter((f) => {
-        const tgl = f.slice(0, 10);
-        return tgl >= from && tgl <= to;
-      })
-      .sort();
-  } catch {
-    // Direktori belum ada — bukan galat, memang belum ada data yang disimpan.
+    hari = await ambilRentang(supabase, from, to);
+  } catch (e) {
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : "Data yantek gagal dibaca" },
+      { status: 500 },
+    );
   }
 
   const perHari: Harian[] = [];
@@ -74,14 +70,8 @@ export async function GET(req: Request) {
   const lewat = (v: number | null | undefined, target: number | null) =>
     target !== null && typeof v === "number" && Number.isFinite(v) && v > target;
 
-  for (const f of berkas) {
-    let rows: YantekRow[] = [];
-    try {
-      const isi = JSON.parse(await fs.readFile(path.join(DATA_DIR, f), "utf-8"));
-      rows = Array.isArray(isi?.rows) ? isi.rows : [];
-    } catch {
-      continue; // berkas rusak dilewati, bukan menggagalkan seluruh ringkasan
-    }
+  for (const h of hari) {
+    let rows = h.rows as YantekRow[];
 
     if (ulp) {
       rows = rows.filter(
@@ -90,7 +80,7 @@ export async function GET(req: Request) {
     }
     if (rows.length === 0) continue;
 
-    const tgl = f.slice(0, 10);
+    const tgl = h.tanggal;
     terakhir = tgl;
     total += rows.length;
 

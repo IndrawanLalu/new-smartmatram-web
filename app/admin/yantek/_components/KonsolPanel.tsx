@@ -5,8 +5,17 @@ import { Check, ChevronDown, Copy, Terminal } from "lucide-react";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { POSKO_MAP } from "../_lib/yantek";
 
-/** Query GraphQL APKT untuk data yantek (1 baris, supaya bisa ditempel utuh). */
-const GQL = `query detailCheckInCheckOutIndividu($dateFrom: Date!, $dateTo: Date!, $idPosko: [Int], $idUid: [Int], $idUp3: [Int], $personilYantek: String!, $userRegu: String!) { detailCheckInCheckOutIndividu(dateFrom: $dateFrom, dateTo: $dateTo, idPosko: $idPosko, idUid: $idUid, idUp3: $idUp3, personilYantek: $personilYantek, userRegu: $userRegu) { id id_uid nama_uid id_up3 nama_up3 id_posko nama_posko media pembuat_laporan dispatch_by durasi_waktu_dispatch user_regu nama_regu personil_yantek shift check_in_petugas no_laporan durasi_wo waktu_lapor waktu_dispatch waktu_perjalanan waktu_nyala_sementara waktu_nyala waktu_selesai waktu_response check_out_petugas durasi_menit_response durasi_menit_recovery rating jml_pelanggan_padam fasilitas sub_fasilitas peralatan dampak_kerusakan kelompok_penyebab cuaca keterangan_pelapor keterangan penyebab tindakan status_akhir referensi_marking blth durasi_menit_perjalanan } }`;
+/** Query GraphQL APKT untuk data yantek (1 baris, supaya bisa ditempel utuh).
+ *
+ *  Berubah per 24 Sep 2026: APKT kini memakai paginasi — hasilnya terbungkus
+ *  `{ data, totalCount }` dan menerima `skip/take`. Tanpa `take`, APKT hanya
+ *  mengirim halaman pertama, dan kekurangannya tidak kelihatan di mana pun. */
+const GQL = `query detailCheckInCheckOutIndividu($dateFrom: Date!, $dateTo: Date!, $idPosko: [Int], $idUid: [Int], $idUp3: [Int], $personilYantek: String!, $userRegu: String!, $skip: Int, $take: Int, $requireTotalCount: Boolean) { detailCheckInCheckOutIndividu(dateFrom: $dateFrom, dateTo: $dateTo, idPosko: $idPosko, idUid: $idUid, idUp3: $idUp3, personilYantek: $personilYantek, userRegu: $userRegu, skip: $skip, take: $take, requireTotalCount: $requireTotalCount) { data { id id_uid nama_uid id_up3 nama_up3 id_posko nama_posko media pembuat_laporan dispatch_by durasi_waktu_dispatch user_regu nama_regu personil_yantek shift check_in_petugas no_laporan durasi_wo waktu_lapor waktu_dispatch waktu_perjalanan waktu_nyala_sementara waktu_nyala waktu_selesai waktu_response check_out_petugas durasi_menit_response durasi_menit_recovery rating jml_pelanggan_padam fasilitas sub_fasilitas peralatan dampak_kerusakan kelompok_penyebab cuaca keterangan_pelapor keterangan penyebab tindakan status_akhir referensi_marking blth durasi_menit_perjalanan } totalCount } }`;
+
+/** Batas satu tarikan. ⚠ Sebulan satu posko sudah mencapai 4.421 baris (Juli
+ *  2026) — dekat sekali dengan batas ini. Kalau terlewati, console menampilkan
+ *  "baru X dari Y baris"; tarik ulang dengan rentang tanggal yang lebih pendek. */
+const TAKE = 5000;
 
 function buildSnippet(from: string, to: string, idPosko: number): string {
   const vars = {
@@ -18,8 +27,11 @@ function buildSnippet(from: string, to: string, idPosko: number): string {
     // Dikosongkan = semua personil / semua regu.
     personilYantek: "",
     userRegu: "",
+    skip: 0,
+    take: TAKE,
+    requireTotalCount: true,
   };
-  return `fetch("https://new-apktservice.pln.co.id:32183/graphql",{method:"POST",headers:{accept:"application/json","content-type":"application/json"},body:JSON.stringify({query:${JSON.stringify(GQL)},variables:${JSON.stringify(vars)}})}).then(r=>r.json()).then(d=>{const a=d.data.detailCheckInCheckOutIndividu;window.yantekData=JSON.stringify(a);console.log("✅ "+a.length+" baris siap. Sekarang ketik:  copy(yantekData)  lalu Enter, lalu paste di Smart.");}).catch(e=>console.error(e));`;
+  return `fetch("https://new-apktservice.pln.co.id:32183/graphql",{method:"POST",headers:{accept:"application/json","content-type":"application/json"},body:JSON.stringify({query:${JSON.stringify(GQL)},variables:${JSON.stringify(vars)}})}).then(r=>r.json()).then(d=>{if(d.errors){console.error("❌ APKT menolak:",d.errors);return;}const h=d.data.detailCheckInCheckOutIndividu;const a=h.data;window.yantekData=JSON.stringify(a);if(h.totalCount>a.length)console.warn("⚠ Baru "+a.length+" dari "+h.totalCount+" baris. Persempit rentang tanggal lalu tarik lagi.");console.log("✅ "+a.length+" baris siap. Sekarang ketik:  copy(yantekData)  lalu Enter, lalu paste di Smart.");}).catch(e=>console.error(e));`;
 }
 
 /** Tanggal hari ini & awal bulan, format YYYY-MM-DD. */
