@@ -27,6 +27,8 @@ interface Props {
   /** Peringatan tambahan — mis. penanda master yang tidak bisa dipulihkan. */
   peringatan?: string;
   labelTombol?: string;
+  /** Contoh isian kotak alasan — bawaannya untuk pembatalan. */
+  placeholder?: string;
   onTutup: () => void;
   onBatalkan: (alasan: string) => Promise<boolean>;
 }
@@ -36,6 +38,7 @@ export default function BatalkanModal({
   keterangan,
   peringatan,
   labelTombol = "Batalkan",
+  placeholder = "Alasan pembatalan — mis. salah gardu, data uji coba, tiang ganda",
   onTutup,
   onBatalkan,
 }: Props) {
@@ -80,7 +83,7 @@ export default function BatalkanModal({
           onChange={(e) => setAlasan(e.target.value)}
           rows={3}
           autoFocus
-          placeholder="Alasan pembatalan — mis. salah gardu, data uji coba, tiang ganda"
+          placeholder={placeholder}
           className="mt-4 w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15"
         />
 

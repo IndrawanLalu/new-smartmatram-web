@@ -41,12 +41,14 @@ interface Props {
   /** id unik se-halaman — id pola SVG bersifat global. */
   idArsir: string;
   warna?: string;
+  /** Satuan pecahan (km) — sumbu boleh berangka desimal. */
+  desimal?: boolean;
 }
 
 const AXIS = { fontSize: 11, fill: SURFACE.inkSoft };
 
 export default function TrenBulananArsir({
-  data, tahun, judul, satuan, ikon: Ikon, loading, idArsir, warna = CHART_SERIES[0],
+  data, tahun, judul, satuan, ikon: Ikon, loading, idArsir, warna = CHART_SERIES[0], desimal = false,
 }: Props) {
   const kosong = !loading && data.every((p) => !p.kini && !p.lalu);
   const adaPembanding = data.some((p) => p.lalu > 0);
@@ -90,7 +92,7 @@ export default function TrenBulananArsir({
               </defs>
               <CartesianGrid stroke={SURFACE.line} strokeDasharray="3 3" vertical={false} />
               <XAxis dataKey="label" tick={AXIS} tickLine={false} axisLine={{ stroke: SURFACE.line }} />
-              <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} allowDecimals={false} />
+              <YAxis tick={AXIS} tickLine={false} axisLine={false} width={44} allowDecimals={desimal} />
               <Tooltip
                 cursor={{ fill: SURFACE.page }}
                 contentStyle={TOOLTIP_LIGHT}

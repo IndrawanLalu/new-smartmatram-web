@@ -3,8 +3,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
+ * WO Perabasan — bahan tab Susun WO dan tombol-tombol aksinya. Daftar segmen
+ * untuk dilihat & diputuskan ada di `useDaftarPerabasan` (per periode).
+ *
  * WO Perabasan — bersatuan segmen, diukur KILOMETER.
  *
  * Seluruh angka capaian datang dari view `wo_perabasan_capaian`, tidak satu pun
@@ -100,34 +104,46 @@ export function useWoPerabasan() {
   const [wo, setWo] = useState<WoRingkas[]>([]);
   const [item, setItem] = useState<WoItem[]>([]);
   const [segmen, setSegmen] = useState<SegmenPilihan[]>([]);
-  const [realisasi, setRealisasi] = useState<Realisasi[]>([]);
   const [regu, setRegu] = useState<Regu[]>([]);
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
     try {
-      const [w, i, s, r, g] = await Promise.all([
-        supabaseBrowser.from("wo_perabasan_capaian").select(KOLOM_WO).order("tgl_wo", { ascending: false }),
-        supabaseBrowser.from("wo_perabasan_item").select(KOLOM_ITEM).order("urutan"),
-        supabaseBrowser
-          .from("master_segmen")
-          .select(KOLOM_SEGMEN)
-          .eq("status", "aktif")
-          .order("penyulang")
-          .order("nama"),
-        supabaseBrowser.from("perabasan_realisasi").select("*").order("dikerjakan_at"),
+      // Dipaginasi penuh (teknisaplikasi.md butir 13): master segmen aktif saja
+      // sudah bisa melewati 1.000 baris, dan segmen yang terpotong tidak akan
+      // pernah bisa dipilih di Susun WO — tanpa pesan apa pun. Item yang dimuat
+      // hanya yang MASIH MENGIKAT segmen (bahan `segmenTerikat`).
+      const [w, i, s, g] = await Promise.all([
+        fetchAllRows<WoRingkas>(() =>
+          supabaseBrowser.from("wo_perabasan_capaian").select(KOLOM_WO).order("tgl_wo", { ascending: false }).order("wo_id"),
+        ),
+        fetchAllRows<WoItem>(() =>
+          supabaseBrowser
+            .from("wo_perabasan_item")
+            .select(KOLOM_ITEM)
+            .in("status", ["Dijadwalkan", "Dalam Proses", "Selesai", "Ditolak"])
+            .order("id"),
+        ),
+        fetchAllRows<SegmenPilihan>(() =>
+          supabaseBrowser
+            .from("master_segmen")
+            .select(KOLOM_SEGMEN)
+            .eq("status", "aktif")
+            .order("penyulang")
+            .order("nama")
+            .order("segmen_id"),
+        ),
         supabaseBrowser
           .from("regu_perabasan")
           .select("regu,ulp,segmen_berjalan,km_berjalan")
           .order("ulp")
           .order("regu"),
       ]);
-      for (const x of [w, i, s, r, g]) if (x.error) throw new Error(x.error.message);
+      if (g.error) throw new Error(g.error.message);
 
-      setWo((w.data ?? []) as unknown as WoRingkas[]);
-      setItem((i.data ?? []) as unknown as WoItem[]);
-      setSegmen((s.data ?? []) as unknown as SegmenPilihan[]);
-      setRealisasi((r.data ?? []) as unknown as Realisasi[]);
+      setWo(w);
+      setItem(i);
+      setSegmen(s);
       setRegu((g.data ?? []) as unknown as Regu[]);
     } catch (e) {
       const pesan = e instanceof Error ? e.message : String(e);
@@ -296,24 +312,21 @@ export function useWoPerabasan() {
     [item],
   );
 
-  /** Item yang menunggu keputusan admin. */
-  const menunggu = useMemo(() => item.filter((i) => i.status === "Selesai"), [item]);
-
-  /**
-   * Segmen yang sudah terbit tapi BELUM ditugaskan ke regu mana pun.
-   *
-   * Angka ini harus nol. Selama tidak, ada pekerjaan yang tidak muncul di HP
-   * siapa pun — dan dari layar WO ia terlihat persis sama dengan pekerjaan
-   * yang sedang dikerjakan.
-   */
-  const tanpaRegu = useMemo(
-    () => item.filter((i) => !i.regu && ["Dijadwalkan", "Dalam Proses", "Ditolak"].includes(i.status)),
-    [item],
-  );
+  /** Bukti pohon satu segmen — dimuat saat modalnya dibuka, bukan seluruh
+   *  tabel realisasi di setiap kunjungan. */
+  const ambilRealisasi = useCallback(async (itemId: string): Promise<Realisasi[]> => {
+    const { data, error } = await supabaseBrowser
+      .from("perabasan_realisasi")
+      .select("*")
+      .eq("item_id", itemId)
+      .order("dikerjakan_at");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as Realisasi[];
+  }, []);
 
   return {
-    wo, item, segmen, realisasi, regu, loading, muat,
-    terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu,
-    segmenTerikat, menunggu, tanpaRegu,
+    wo, item, segmen, regu, loading, muat,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu, ambilRealisasi,
+    segmenTerikat,
   };
 }
