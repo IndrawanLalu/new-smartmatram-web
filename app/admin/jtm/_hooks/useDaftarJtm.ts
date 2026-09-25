@@ -43,6 +43,9 @@ export interface InspeksiJtm {
 /** Baris daftar = inspeksi + panjang segmennya + catatan kembar. */
 export interface BarisJtm extends InspeksiJtm {
   panjang_km: number;
+  /** WO asal (J4): nama & tanggal WO inspeksi yang tersambung. null = di luar WO. */
+  wo_nama: string | null;
+  tgl_wo: string | null;
   /** Jumlah catatan terbuka lain di segmen & tier yang sama (lahir sebelum `jtm-lanjut.sql`). */
   kembar: number;
 }
@@ -81,6 +84,7 @@ export function useDaftarJtm(user: CurrentUser) {
 
   const [data, setData] = useState<InspeksiJtm[]>([]);
   const [panjang, setPanjang] = useState<Map<string, number>>(new Map());
+  const [woPeta, setWoPeta] = useState<Map<string, { nama: string; tgl: string }>>(new Map());
   const [loading, setLoading] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
   const [memproses, setMemproses] = useState<string | null>(null);
@@ -130,12 +134,26 @@ export function useDaftarJtm(user: CurrentUser) {
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     };
-    const [a, t, s] = await Promise.all([
+    // Sambungan inspeksi → WO. Dua tabel kecil (hanya yang ber-WO), jadi
+    // ditarik utuh daripada mengubah view daftar.
+    const sambung = () =>
+      supabaseBrowser.from("inspeksi_jtm").select("id,wo_item_id").not("wo_item_id", "is", null).order("id");
+    const itemWo = () => supabaseBrowser.from("wo_inspeksi_item_status").select("id,wo_nama,tgl_wo").order("id");
+    const [a, t, s, sb, iw] = await Promise.all([
       fetchAllRows<InspeksiJtm>(aktif),
       fetchAllRows<InspeksiJtm>(tertutup),
       fetchAllRows<{ segmen_id: string; panjang_km: number | null }>(segmen),
+      fetchAllRows<{ id: string; wo_item_id: string }>(sambung).catch(() => []),
+      fetchAllRows<{ id: string; wo_nama: string; tgl_wo: string }>(itemWo).catch(() => []),
     ]);
-    return { rows: [...a, ...t], km: new Map(s.map((x) => [x.segmen_id, Number(x.panjang_km ?? 0)])) };
+    const woItem = new Map(iw.map((x) => [x.id, x]));
+    const wo = new Map(
+      sb.flatMap((x) => {
+        const i = woItem.get(x.wo_item_id);
+        return i ? [[x.id, { nama: i.wo_nama, tgl: i.tgl_wo }] as const] : [];
+      }),
+    );
+    return { rows: [...a, ...t], km: new Map(s.map((x) => [x.segmen_id, Number(x.panjang_km ?? 0)])), wo };
   }, [ulp, bulan, tahun]);
 
   useEffect(() => {
@@ -145,6 +163,7 @@ export function useDaftarJtm(user: CurrentUser) {
         if (!hidup) return;
         setData(h.rows);
         setPanjang(h.km);
+        setWoPeta(h.wo);
         setGalat(null);
         setLoading(false);
       },
@@ -168,10 +187,12 @@ export function useDaftarJtm(user: CurrentUser) {
       .map((d) => ({
         ...d,
         panjang_km: d.segmen_id ? (panjang.get(d.segmen_id) ?? 0) : 0,
+        wo_nama: woPeta.get(d.id)?.nama ?? null,
+        tgl_wo: woPeta.get(d.id)?.tgl ?? null,
         kembar: d.status !== "Diverifikasi" && d.status !== "Dibatalkan" ? (terbuka.get(kunci(d)) ?? 1) - 1 : 0,
       }))
       .sort((x, y) => (y.tgl_selesai ?? y.tgl_mulai ?? "").localeCompare(x.tgl_selesai ?? x.tgl_mulai ?? ""));
-  }, [data, panjang]);
+  }, [data, panjang, woPeta]);
 
   const dasarChip = useMemo(() => {
     const k = cari.trim().toUpperCase();

@@ -27,6 +27,14 @@ import type { BarisImpor, HasilImpor } from "../_hooks/useMasterSegmen";
  *      Dihitung `impor_segmen(..., p_uji := true)`, bukan ditiru di layar:
  *      tiruan akan melenceng, dan pratinjau yang melenceng lebih buruk
  *      daripada tidak ada pratinjau.
+ *
+ * ── YANG DIBETULKAN 25 SEP ──────────────────────────────────────────────────
+ * Bapak: "tidak ada tombol simpan atau buat segmennya." Tombolnya ada, tapi
+ * hanya di kartu pratinjau — dan kartu itu tidak pernah muncul pada dua
+ * keadaan, tanpa pesan apa pun: tempelan TANPA baris judul (baris pertama
+ * dibuang sebagai judul, jadi tempelan satu baris kosong sama sekali), dan
+ * kolom yang tidak terbaca. Sekarang tempelan tanpa judul dibaca utuh, dan
+ * tombol "Buat segmen" SELALU terlihat — mati dengan alasan tertulis.
  */
 
 const KOLOM = [
@@ -68,6 +76,10 @@ export default function ImporSegmen({
   const [menghitung, setMenghitung] = useState(false);
   const [proses, setProses] = useState(false);
   const [hasil, setHasil] = useState<HasilImpor | null>(null);
+  /** Baris pertama tempelan BUKAN judul — ikut dibaca sebagai data. */
+  const [tanpaJudul, setTanpaJudul] = useState(false);
+  /** Pratinjau ditolak database (pesannya juga muncul sebagai toast). */
+  const [gagal, setGagal] = useState(false);
 
   const pilihan = useMemo(
     () =>
@@ -90,30 +102,35 @@ export default function ImporSegmen({
     // Tidak ada tajuk yang cocok? Pakai urutan kolom apa adanya. Orang yang
     // menempel tanpa baris judul justru yang paling sering — dan memaksanya
     // memasangkan tiga pilihan dengan tangan adalah pekerjaan yang tidak perlu.
-    if (baru.awal < 0 && baru.akhir < 0) {
+    // Baris pertamanya pun DATA, bukan judul: dulu dibuang, sehingga tempelan
+    // satu baris lenyap tanpa keterangan.
+    const polos = baru.awal < 0 && baru.akhir < 0;
+    if (polos) {
       baru.awal = 0;
       baru.akhir = 1;
       baru.km = t.headers.length > 2 ? 2 : -1;
     }
+    setTanpaJudul(polos);
     setPeta(baru);
   };
 
   const barisSiap = useMemo<BarisImpor[]>(() => {
     if (!tabel || peta.awal < 0 || peta.akhir < 0) return [];
-    return tabel.rows
+    return (tanpaJudul ? [tabel.headers, ...tabel.rows] : tabel.rows)
       .map((r) => ({
         awal: (r[peta.awal] ?? "").trim(),
         akhir: (r[peta.akhir] ?? "").trim(),
         km: peta.km >= 0 ? angka(r[peta.km] ?? "") : null,
       }))
       .filter((b) => b.awal !== "" && b.akhir !== "");
-  }, [tabel, peta]);
+  }, [tabel, peta, tanpaJudul]);
 
   // Pratinjau diminta ulang tiap pemetaan kolom atau tempelan berubah. Ditunda
   // sebentar supaya mengetik di dropdown tidak memanggil database tiap ketukan.
   useEffect(() => {
     if (!pilih || barisSiap.length === 0) {
       setLihat(null);
+      setGagal(false);
       return;
     }
     let batal = false;
@@ -122,6 +139,7 @@ export default function ImporSegmen({
       const h = await onPratinjau(pilih, barisSiap);
       if (!batal) {
         setLihat(h);
+        setGagal(h === null);
         setMenghitung(false);
       }
     }, 350);
@@ -270,7 +288,7 @@ export default function ImporSegmen({
       </div>
 
       {/* ── 4. Pratinjau dari database ── */}
-      {(menghitung || lihat) && (
+      {(pilih || teks.trim()) && (
         <div className={`${CARD} p-5`}>
           <div className="flex items-baseline gap-2">
             <p className={EYEBROW}>Yang akan terbentuk</p>
@@ -325,13 +343,29 @@ export default function ImporSegmen({
             </>
           )}
 
+          {/* Alasan tombol mati, ditulis — bukan tombol yang hilang. */}
+          {!menghitung && !lihat && (
+            <p className="text-xs text-amber-800 mt-2 flex items-start gap-1.5">
+              <TriangleAlert size={13} className="text-amber-600 mt-0.5 shrink-0" />
+              {!pilih
+                ? "Pilih penyulangnya dulu."
+                : !teks.trim()
+                  ? "Tempel baris segmennya dari Excel."
+                  : barisSiap.length === 0
+                    ? "Belum ada baris yang terbaca. Tempel dari Excel (kolom dipisah tab), minimal titik awal dan titik akhir — atau betulkan pilihan kolom di atas."
+                    : gagal
+                      ? "Pratinjau ditolak database — pesannya muncul di pojok layar. Betulkan tempelannya, lalu ubah sedikit supaya dihitung ulang."
+                      : "Menunggu pratinjau…"}
+            </p>
+          )}
+
           <button
             onClick={() => void kirim()}
             disabled={!lihat || lihat.dibuat === 0 || proses || menghitung}
             className={`${BTN_PRIMARY} mt-4`}
           >
             {proses ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
-            Impor {lihat ? `${lihat.dibuat} segmen` : "segmen"}
+            Buat {lihat ? `${lihat.dibuat} segmen` : "segmen"}
           </button>
         </div>
       )}

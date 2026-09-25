@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Merge } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import type { BarisJtm } from "../_hooks/useDaftarJtm";
-import { NADA_STATUS, km, rentangKerja, statusTampil } from "../_lib/tampilan";
+import { NADA_STATUS, km, rentangKerja, statusTampil, tgl } from "../_lib/tampilan";
 
 /**
  * Daftar inspeksi JTM — satu baris satu inspeksi segmen, klik → modal
@@ -83,8 +83,10 @@ export default function TabelJtm({ baris, loading, onDetail }: Props) {
                     </p>
                   </td>
                   <td className={`${TD} text-xs text-ink-soft`}>{d.penyulang}</td>
-                  <td className={`${TD} text-xs text-ink-soft`}>-</td>
-                  <td className={`${TD} text-xs text-ink-soft`}>-</td>
+                  <td className={`${TD} text-xs text-ink-soft max-w-40`}>
+                    <p className="line-clamp-2">{d.wo_nama ?? "-"}</p>
+                  </td>
+                  <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{d.tgl_wo ? tgl(d.tgl_wo) : "-"}</td>
                   <td className={`${TD} text-xs text-ink font-medium whitespace-nowrap`}>{rentangKerja(d.tgl_mulai, d.tgl_selesai)}</td>
                   <td className={`${TD} text-xs text-ink-soft`}>{d.petugas_nama ?? "—"}</td>
                   <td className={`${TD} text-xs text-right tabular-nums whitespace-nowrap`}>

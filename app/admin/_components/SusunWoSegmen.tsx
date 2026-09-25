@@ -4,10 +4,52 @@ import { useMemo, useState } from "react";
 import { FileWarning, Loader2, Send, TriangleAlert, Users } from "lucide-react";
 import { BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
-import type { Regu, SegmenPilihan, WoRingkas } from "../_hooks/useWoPerabasan";
+/** Segmen yang bisa dipilih — baris `master_segmen`. */
+export interface SegmenPilihan {
+  segmen_id: string;
+  nama: string;
+  penyulang: string;
+  ulp: string;
+  panjang_pakai_km: number | null;
+  panjang_dari: "hitungan" | "ketikan" | "kosong";
+  umur_inspeksi_bulan: number | null;
+}
+
+/** Regu/tim yang bisa ditugasi, beserta beban yang sedang dipikulnya. */
+export interface ReguPilihan {
+  regu: string;
+  ulp: string;
+  km_berjalan: number;
+}
+
+/** WO yang masih terbuka — tujuan "Tambah ke WO". */
+export interface WoTerbuka {
+  wo_id: string;
+  ulp: string;
+  nama: string;
+  tgl_wo: string;
+  target_km: number;
+  item: number;
+  rencana_km: number;
+}
+
+/** Kata-kata yang berbeda antar jenis WO (perabasan, inspeksi JTM, …). */
+export interface IstilahWo {
+  /** "Susun WO perabasan" */
+  judul: string;
+  /** "Perabasan Oktober 2026" */
+  contohNama: string;
+  /** true = segmen tanpa regu TIDAK muncul di HP siapa pun (perabasan).
+   *  false = regu cuma penanda; semua tim se-ULP bisa mengerjakan (inspeksi). */
+  reguWajib: boolean;
+  /** Pesan saat ULP belum punya regu/tim aktif. */
+  reguKosong: (ulp: string) => string;
+}
 
 /**
- * Menerbitkan WO perabasan.
+ * Menerbitkan WO bersatuan SEGMEN, diukur KILOMETER — dipakai WO Perabasan dan
+ * WO Inspeksi JTM (`rencana-mobile-jtm-jtr.md` J4). Yang berbeda hanya
+ * istilahnya dan apakah regu wajib (lihat `IstilahWo`).
  *
  * Yang harus terlihat SAAT MENCENTANG, bukan sesudah terbit:
  *
@@ -24,8 +66,9 @@ import type { Regu, SegmenPilihan, WoRingkas } from "../_hooks/useWoPerabasan";
  *      dikerjakan.
  */
 
-export default function TerbitkanWo({
+export default function SusunWoSegmen({
   user,
+  istilah,
   segmen,
   segmenTerikat,
   regu,
@@ -34,11 +77,12 @@ export default function TerbitkanWo({
   onTambah,
 }: {
   user: CurrentUser;
+  istilah: IstilahWo;
   segmen: SegmenPilihan[];
   segmenTerikat: Set<string>;
-  regu: Regu[];
+  regu: ReguPilihan[];
   /** WO yang masih berstatus Terbit — satu-satunya yang boleh ditambah. */
-  woTerbuka: WoRingkas[];
+  woTerbuka: WoTerbuka[];
   onTerbitkan: (v: {
     ulp: string;
     nama: string;
@@ -46,8 +90,9 @@ export default function TerbitkanWo({
     segmen: string[];
     regu: Record<string, string>;
     tglWo: string;
-  }) => Promise<{ item: number; tanpa_regu: number; dilewati: { segmen: string; sebab: string }[] } | null>;
-  onTambah: (v: {
+  }) => Promise<{ item: number; dilewati: { segmen: string; sebab: string }[] } | null>;
+  /** Tidak diisi = jenis WO ini belum bisa ditambah; pilihannya disembunyikan. */
+  onTambah?: (v: {
     woId: string;
     segmen: string[];
     regu: Record<string, string>;
@@ -146,7 +191,7 @@ export default function TerbitkanWo({
             regu: petaRegu(),
             tglWo: tgl,
           })
-        : await onTambah({
+        : await onTambah!({
             woId: woTujuan,
             segmen: dipilih.map((s) => s.segmen_id),
             regu: petaRegu(),
@@ -168,14 +213,14 @@ export default function TerbitkanWo({
   return (
     <div className="space-y-4">
       <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>Susun WO perabasan</p>
+        <p className={EYEBROW}>{istilah.judul}</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
           Satu WO boleh memuat segmen dari beberapa penyulang, dan boleh terbit beberapa kali
           sebulan. Ukurannya <b>total kilometer</b> — bukan jumlah segmen, karena ruas 7 km dan
           ruas 0,3 km bukan pekerjaan yang sebanding.
         </p>
 
-        <div className="mt-3 flex flex-wrap gap-2">
+        {onTambah && <div className="mt-3 flex flex-wrap gap-2">
           {(
             [
               ["baru", "Buat WO baru"],
@@ -196,7 +241,7 @@ export default function TerbitkanWo({
               {label}
             </button>
           ))}
-        </div>
+        </div>}
 
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <div>
@@ -225,7 +270,7 @@ export default function TerbitkanWo({
                 <input
                   value={nama}
                   onChange={(e) => setNama(e.target.value)}
-                  placeholder="Perabasan Oktober 2026"
+                  placeholder={istilah.contohNama}
                   className={`${FIELD} mt-1 block w-[250px]`}
                 />
               </div>
@@ -333,7 +378,7 @@ export default function TerbitkanWo({
               {tanpaPanjang} segmen belum punya panjang — menyumbang 0 km ke rencana
             </span>
           )}
-          {tanpaRegu > 0 && (
+          {tanpaRegu > 0 && istilah.reguWajib && (
             <span className="inline-flex items-center gap-1 text-xs text-red-700">
               <Users size={13} />
               {tanpaRegu} belum dibagi regu — tidak akan muncul di HP siapa pun
@@ -354,8 +399,9 @@ export default function TerbitkanWo({
         <div className={`${CARD} p-4`}>
           <p className={EYEBROW}>Bagi ke regu</p>
           <p className="text-[11px] text-ink-muted mt-1">
-            Tiap segmen hanya muncul di HP regu yang ditugasi — sepola temuan, tidak bercampur.
-            Yang tidak dibagi tidak muncul di mana pun.
+            {istilah.reguWajib
+              ? "Tiap segmen hanya muncul di HP regu yang ditugasi — sepola temuan, tidak bercampur. Yang tidak dibagi tidak muncul di mana pun."
+              : "Opsional. Semua tim se-ULP tetap bisa mengerjakannya; tim yang ditugasi melihatnya ditandai \"untuk tim ini\"."}
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
             <span className="text-xs text-ink-soft">Semua yang dipilih ke:</span>
@@ -418,10 +464,8 @@ export default function TerbitkanWo({
         </div>
 
         {ulp && reguUlp.length === 0 && (
-          <p className="text-xs text-red-700 mt-3">
-            ULP {ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN).
-            WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya
-            didaftarkan lalu ditugaskan dari tab WO Berjalan.
+          <p className={`text-xs mt-3 ${istilah.reguWajib ? "text-red-700" : "text-ink-muted"}`}>
+            {istilah.reguKosong(ulp)}
           </p>
         )}
 
@@ -481,10 +525,10 @@ export default function TerbitkanWo({
                       }
                       onClick={(e) => e.preventDefault()}
                       className={`${FIELD} w-[120px] h-8 text-xs ${
-                        bagi[s.segmen_id] ? "" : "border-red-300 text-red-700"
+                        bagi[s.segmen_id] || !istilah.reguWajib ? "" : "border-red-300 text-red-700"
                       }`}
                     >
-                      <option value="">— belum dibagi —</option>
+                      <option value="">{istilah.reguWajib ? "— belum dibagi —" : "— semua tim —"}</option>
                       {reguUlp.map((g) => (
                         <option key={g.regu} value={g.regu}>
                           {g.regu}

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import {
   CheckCheck, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search, SearchCheck,
-  SlidersHorizontal, TowerControl, TriangleAlert, Upload,
+  Send, SlidersHorizontal, TowerControl, TriangleAlert, Upload,
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
@@ -19,10 +19,11 @@ import ImporTiang from "./_components/ImporTiang";
 import PengaturanJtm from "./_components/PengaturanJtm";
 import TiangNormal from "./_components/TiangNormal";
 import DaftarTiang from "./_components/DaftarTiang";
+import WoInspeksiJtm from "./_components/WoInspeksiJtm";
 
 /**
  * Inspeksi JTM — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
- * Daftar Inspeksi → Dashboard → Temuan → Peta → Segmen → Tiang → Impor Tiang →
+ * Daftar Inspeksi → Dashboard → Temuan → Susun WO → Peta → Segmen → Tiang → Impor Tiang →
  * Tiang Normal → Pengaturan. Persetujuan bukan tab: jadi chip status di
  * daftar, keputusan diambil di modal.
  */
@@ -31,6 +32,7 @@ const TABS = [
   { key: "daftar", label: "Daftar Inspeksi", icon: ListChecks },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "temuan", label: "Temuan", icon: SearchCheck },
+  { key: "wo", label: "Susun WO", icon: Send },
   { key: "peta", label: "Peta", icon: Map },
   { key: "segmen", label: "Segmen", icon: Network },
   { key: "tiang", label: "Tiang", icon: TowerControl },
@@ -156,6 +158,7 @@ export default function JtmPage() {
 
       {tab === "dashboard" && <DashboardJtm key={`${o.ulp}-${o.tahun}`} ulp={o.ulp} tahun={o.tahun} />}
       {tab === "temuan" && <TemuanJtm key={o.ulp} ulp={o.ulp} oleh={user.name || user.email || ""} />}
+      {tab === "wo" && <WoInspeksiJtm user={user} />}
       {tab === "peta" && (
         <div className="flex-1 min-h-0">
           <PetaJtm user={user} />

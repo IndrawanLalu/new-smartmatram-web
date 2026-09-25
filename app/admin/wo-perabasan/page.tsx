@@ -10,7 +10,7 @@ import { useDaftarPerabasan, BULAN, STATUS_RABAS } from "./_hooks/useDaftarPerab
 import TabelRabas from "./_components/TabelRabas";
 import DetailRabasModal from "./_components/DetailRabasModal";
 import DashboardPerabasan from "./_components/DashboardPerabasan";
-import TerbitkanWo from "./_components/TerbitkanWo";
+import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import TabelLuarWo from "./_components/TabelLuarWo";
 import DetailLuarWoModal from "./_components/DetailLuarWoModal";
 import { useLuarWoPerabasan } from "./_hooks/useLuarWoPerabasan";
@@ -28,6 +28,14 @@ import { useLuarWoPerabasan } from "./_hooks/useLuarWoPerabasan";
  * Rabas DI LUAR WO (tanpa segmen, tanpa km — keputusan user 25 Sep 2026)
  * tampil lewat chip "Di luar WO" di daftar; diperiksa admin ULP lokasi.
  */
+
+const ISTILAH: IstilahWo = {
+  judul: "Susun WO perabasan",
+  contohNama: "Perabasan Oktober 2026",
+  reguWajib: true,
+  reguKosong: (ulp) =>
+    `ULP ${ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN). WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya didaftarkan lalu ditugaskan dari daftar segmen.`,
+};
 
 const TABS = [
   { key: "daftar", label: "Daftar Segmen", icon: ListChecks },
@@ -94,8 +102,9 @@ export default function WoPerabasanPage() {
       </div>
 
       {tab === "terbit" ? (
-        <TerbitkanWo
+        <SusunWoSegmen
           user={user}
+          istilah={ISTILAH}
           segmen={w.segmen}
           segmenTerikat={w.segmenTerikat}
           regu={w.regu}
