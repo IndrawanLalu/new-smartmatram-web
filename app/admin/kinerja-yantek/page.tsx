@@ -1,10 +1,12 @@
 "use client";
 
-import { RefreshCw, TriangleAlert } from "lucide-react";
+import { useState } from "react";
+import { RefreshCw, Target, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
+import AturSlaModal from "./_components/AturSlaModal";
 
 /**
  * Rekap Kinerja Pelayanan Teknik.
@@ -28,6 +30,9 @@ export default function KinerjaYantekPage() {
   } = useKinerjaYantek(user);
 
   const periode = bulan === 0 ? String(tahun) : `${BULAN[bulan - 1]} ${tahun}`;
+  // SLA diisi UP3 (semua ULP) atau admin ULP sendiri — dijaga database juga.
+  const bolehSla = user.role === "UP3" || user.role === "admin";
+  const [aturSla, setAturSla] = useState(false);
 
   return (
     <div className="text-ink flex flex-col gap-4">
@@ -73,6 +78,13 @@ export default function KinerjaYantekPage() {
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           Muat ulang
         </button>
+
+        {bolehSla && (
+          <button onClick={() => setAturSla(true)} className={`${BTN_GHOST} ml-auto`}>
+            <Target size={14} />
+            Atur SLA
+          </button>
+        )}
       </div>
 
       {adaGagal && !loading && (
@@ -90,6 +102,15 @@ export default function KinerjaYantekPage() {
       )}
 
       <TabelKinerja baris={baris} loading={loading} periode={periode} />
+
+      {aturSla && (
+        <AturSlaModal
+          user={user}
+          ulpAwal={ulp === "SEMUA" ? null : ulp}
+          onTutup={() => setAturSla(false)}
+          onTersimpan={muatUlang}
+        />
+      )}
     </div>
   );
 }

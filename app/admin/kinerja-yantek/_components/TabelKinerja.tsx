@@ -6,7 +6,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { CARD, DISPLAY } from "@/app/admin/_ui";
-import { kolomPersen, type BarisKinerja } from "../_hooks/useKinerjaYantek";
+import { capaianSla, capaianWo, type BarisKinerja } from "../_hooks/useKinerjaYantek";
 
 /**
  * Tabel rekap kinerja — bergaris tegas di tiap sel, ikon per jenis pekerjaan,
@@ -49,8 +49,7 @@ const nadaPersen = (p: number) =>
   p >= 50 ? { bilah: "bg-amber-500", teks: "text-amber-700" } :
             { bilah: "bg-red-500", teks: "text-red-700" };
 
-function Capaian({ b }: { b: BarisKinerja }) {
-  const p = kolomPersen(b);
+function Capaian({ p }: { p: number | null }) {
   if (p === null) return <span className="text-ink-muted text-xs">—</span>;
   const n = nadaPersen(p);
   return (
@@ -71,10 +70,12 @@ function Capaian({ b }: { b: BarisKinerja }) {
 function Angka({ v, satuan, nada, desimal }: { v: number | null; satuan: string; nada?: string; desimal?: boolean }) {
   if (v === null) return <span className="text-ink-muted">—</span>;
   const teks = desimal ? v.toFixed(2).replace(".", ",") : v.toLocaleString("id-ID");
+  // Satuan di KIRI angka dan angka rata kanan (permintaan user 25 Sep 2026):
+  // digit satuan, puluhan, dan desimal tiap baris jatuh di kolom yang sama.
   return (
-    <span className="whitespace-nowrap">
+    <span className="inline-flex items-baseline justify-end gap-1.5 whitespace-nowrap">
+      <span className="text-[10px] font-semibold uppercase text-ink-muted">{satuan}</span>
       <span className={`${DISPLAY} text-sm font-bold tabular-nums ${v === 0 ? "text-ink-muted" : (nada ?? "text-ink")}`}>{teks}</span>
-      <span className="text-[10px] text-ink-muted ml-1">{satuan}</span>
     </span>
   );
 }
@@ -114,14 +115,16 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse min-w-[880px] [&_tr>*:first-child]:border-l-0 [&_tr>*:last-child]:border-r-0">
+        <table className="w-full border-collapse min-w-[1180px] [&_tr>*:first-child]:border-l-0 [&_tr>*:last-child]:border-r-0">
           <thead className="bg-slate-100">
             <tr>
               <th className={`${TH} text-left min-w-[250px]`}>Jenis pekerjaan</th>
               <th className={`${TH} text-right`}>WO terbit</th>
+              <th className={`${TH} text-right`}>SLA</th>
               <th className={`${TH} text-right`}>Realisasi</th>
               <th className={`${TH} text-right`}>Belum disetujui</th>
-              <th className={`${TH} text-right min-w-[170px]`}>Capaian</th>
+              <th className={`${TH} text-right min-w-[170px]`}>Capaian WO</th>
+              <th className={`${TH} text-right min-w-[170px]`}>Capaian SLA</th>
               <th className={`${TH} text-left min-w-[280px]`}>Keterangan</th>
             </tr>
           </thead>
@@ -176,13 +179,19 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
                     <Angka v={b.woTerbit} satuan={b.satuan} desimal={b.desimal} />
                   </td>
                   <td className={`${TD} text-right`}>
+                    <Angka v={b.sla} satuan={b.satuan} desimal={b.desimal} />
+                  </td>
+                  <td className={`${TD} text-right`}>
                     <Angka v={b.realisasi} satuan={b.satuan} nada="text-emerald-700" desimal={b.desimal} />
                   </td>
                   <td className={`${TD} text-right`}>
                     <Angka v={b.belumApprove} satuan={b.satuan} nada="text-amber-700" desimal={b.desimal} />
                   </td>
                   <td className={`${TD} text-right`}>
-                    <Capaian b={b} />
+                    <Capaian p={capaianWo(b)} />
+                  </td>
+                  <td className={`${TD} text-right`}>
+                    <Capaian p={capaianSla(b)} />
                   </td>
                   <td className={`${TD} text-[11px] text-ink-soft leading-snug`}>{b.catatan}</td>
                 </tr>
@@ -194,10 +203,12 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
 
       <div className="px-5 py-3 bg-surface/60 border-t border-line">
         <p className="text-[11px] text-ink-soft leading-relaxed">
-          <b>Capaian hanya muncul kalau ada WO-nya.</b> Pekerjaan yang lahir dari lapangan —
-          inspeksi JTM/JTR, penyeimbangan — belum punya angka target, jadi
-          realisasinya tidak punya pembanding. Selama itu belum ada, persentasenya sengaja
-          dikosongkan daripada dihitung terhadap angka yang dikarang.
+          <b>Capaian WO</b> = realisasi ÷ WO terbit, hanya muncul kalau ada WO-nya.{" "}
+          <b>Capaian SLA</b> = seluruh realisasi (WO maupun di luar WO) ÷ SLA — pembanding
+          untuk pekerjaan yang belum ber-WO. SLA diisi per ULP lewat <b>Atur SLA</b>; seluruh
+          tahun = jumlah SLA bulanannya (tahun berjalan: sampai bulan ini), semua ULP = jumlah
+          SLA tiap ULP. Yang belum punya pembanding sengaja dikosongkan daripada dihitung
+          terhadap angka yang dikarang.
         </p>
       </div>
     </div>

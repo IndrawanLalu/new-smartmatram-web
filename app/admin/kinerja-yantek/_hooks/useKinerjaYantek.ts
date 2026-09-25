@@ -60,6 +60,10 @@ export interface BarisKinerja {
   /** Angka pecahan (km) atau cacah bulat. Menentukan cara menuliskannya. */
   desimal: boolean;
   woTerbit: number | null;
+  /** SLA periode ini — target bulanan per ULP yang diisi UP3/admin ULP
+   *  (`sla_kinerja`), dijumlah untuk seluruh tahun / semua ULP. null = belum
+   *  ada SLA. */
+  sla: number | null;
   realisasi: number | null;
   belumApprove: number | null;
   /** Sumbernya gagal dibaca. Angkanya dikosongkan, BUKAN ditulis nol —
@@ -72,8 +76,15 @@ export interface BarisKinerja {
 const persen = (r: number | null, w: number | null) =>
   r === null || w === null || w === 0 ? null : Math.round((r / w) * 100);
 
-export function kolomPersen(b: BarisKinerja) {
+/** Capaian WO = realisasi ÷ WO terbit. */
+export function capaianWo(b: BarisKinerja) {
   return persen(b.realisasi, b.woTerbit);
+}
+
+/** Capaian SLA = SEMUA realisasi (WO + di luar WO) ÷ SLA — keputusan user
+ *  25 Sep 2026. */
+export function capaianSla(b: BarisKinerja) {
+  return persen(b.realisasi, b.sla);
 }
 
 export const BULAN = [
@@ -82,15 +93,15 @@ export const BULAN = [
 ];
 
 /** Label & keterangan tiap baris — urutan di sini = urutan di layar. */
-const META: Omit<BarisKinerja, "woTerbit" | "realisasi" | "belumApprove">[] = [
+const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove">[] = [
   {
     kunci: "perabasan",
     jenis: "Perabasan Pohon",
     href: "/admin/wo-perabasan",
     keadaan: "lengkap",
-    satuan: "km",
+    satuan: "KMS",
     desimal: true,
-    catatan: "Target dan capaian km dari WO Perabasan. Belum punya tahap persetujuan.",
+    catatan: "Target dan capaian KMS dari WO Perabasan. Belum punya tahap persetujuan.",
   },
   {
     kunci: "harjtm",
@@ -144,7 +155,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "realisasi" | "belumApprove">[] = [
     jenis: "Inspeksi JTM",
     href: "/admin/jtm",
     keadaan: "tanpaWo",
-    satuan: "km",
+    satuan: "KMS",
     desimal: true,
     catatan:
       "Panjang segmen yang penyapuannya selesai. Penyapuan lahir saat regu membuka segmennya, belum diterbitkan lewat WO — jadi belum ada pembanding target.",
@@ -154,19 +165,23 @@ const META: Omit<BarisKinerja, "woTerbit" | "realisasi" | "belumApprove">[] = [
     jenis: "Inspeksi JTR",
     href: "/admin/jtr",
     keadaan: "tanpaWo",
-    satuan: "km",
+    satuan: "KMS",
     desimal: true,
     catatan:
       "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. Sama seperti JTM: belum diterbitkan lewat WO.",
   },
 ];
 
+/** Jenis pekerjaan untuk layar Atur SLA — urutan & satuan sama dengan tabel. */
+export const JENIS_KINERJA = META.map(({ kunci, jenis, satuan, desimal }) => ({ kunci, jenis, satuan, desimal }));
+
 interface BarisRpc {
   kunci: string;
   wo_terbit: number | string | null;
   realisasi: number | string | null;
   belum_disetujui: number | string | null;
-  luar_wo: number | null;
+  luar_wo: number | string | null;
+  sla?: number | string | null;
 }
 
 const angka = (v: number | string | null) => (v === null ? null : Number(v));
@@ -196,7 +211,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const tahunIni = new Date().getFullYear();
 
   const [tahun, gantiTahun] = useState(tahunIni);
-  const [bulan, gantiBulan] = useState(0);
+  // Bawaan bulan berjalan (permintaan user 25 Sep 2026), bukan seluruh tahun.
+  const [bulan, gantiBulan] = useState(new Date().getMonth() + 1);
   const [ulp, gantiUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [data, setData] = useState<BarisRpc[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -237,27 +253,32 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         return {
           ...m,
           woTerbit: null,
+          sla: null,
           realisasi: null,
           belumApprove: null,
           gagal: true,
           catatan: "Data gagal dibaca dari server, jadi angkanya dikosongkan — bukan berarti nol.",
         };
       }
-      const luar = r.luar_wo ?? 0;
+      const luar = Number(r.luar_wo ?? 0);
       return {
         ...m,
         woTerbit: angka(r.wo_terbit),
+        sla: angka(r.sla ?? null),
         realisasi: angka(r.realisasi),
         belumApprove: angka(r.belum_disetujui),
         catatan:
           luar <= 0
             ? m.catatan
             : m.kunci === "perabasan"
-              ? `${m.catatan} Di luar WO: ${luar} pohon dirabas (tidak dihitung km).`
+              ? `${m.catatan} Di luar WO: ${luar} pohon dirabas (tidak dihitung KMS).`
               : m.kunci === "harjtm"
                 // Baris ini: `luar_wo` = berapa dari realisasi yang berasal dari tugas temuan.
                 ? `${m.catatan} ${luar} di antaranya dari tugas temuan.`
-                : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
+                : m.kunci === "jtm" || m.kunci === "jtr"
+                  // Km inspeksi yang selesai tanpa WO (rencana-mobile-jtm-jtr.md keputusan e).
+                  ? `${m.catatan} Di luar WO: ${luar.toFixed(2).replace(".", ",")} KMS.`
+                  : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
       };
     });
   }, [data]);
