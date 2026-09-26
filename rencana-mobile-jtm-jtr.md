@@ -93,6 +93,44 @@ Pilihan yang menentukan isi tab WO dan angka Rekap:
 | c | **JTR dikerjakan bersamaan dengan JTM**, sekalian tab Temuan JTR → tugaskan ke HARJAR |
 | d | **Sudah dikerjakan = semua penyapuan terbuka se-ULP, milik tim login di atas** (bukan hanya tim login) |
 | e | **Pekerjaan di luar WO tetap penuh** (user: "JTM dan JTR baru mulai titik baru"): WO hanya TARGET, bukan pagar. Regu tetap bisa memulai inspeksi segmen/gardu mana pun, **merintis** penyulang yang belum punya tiang, dan **nitik tiang baru** — semuanya lewat tombol yang selalu terlihat di daftar (bukan tersembunyi di pencarian), dan semuanya ikut alur simpan-di-HP → kirim yang sama |
+| f | **Tiang JTM & JTR satu batang satu baris, lintas jaringan** (26 Sep 2026, user: "jangan sampai tiang itu di JTR terhitung, di JTM juga terhitung padahal tiang yang sama"). JTR mendapat penjaga radius + **"Tiang ini menumpang"** seperti JTM (peta tiang terdekat); sebelum tiang JTM ada, regu JTR menitik biasa + centang "memikul JTM" (`underbuild_tm`), dan penjaga JTM memaksa regu JTM menumpanginya nanti. **Keanggotaan JTR dipisah** ke tabel sendiri (gardu, jurusan, induk, nama JTR) supaya satu batang bisa ada di pohon JTM dan pohon JTR — bahkan dua gardu — tanpa saling menimpa. Hitungan: jumlah BATANG = baris unik (sekali); daftar tiang tiap jaringan memuatnya bertanda "dipikul bersama"; KMS per jaringan dari kabelnya sendiri |
+| g | **Radius penjaga JTR = radius tumpang JTM per ULP** (satu angka, satu aturan) |
+| h | **Penjaga radius = PERTANYAAN, bukan larangan** (26 Sep 2026, user: "ada tiang JTR yang memang ada di sebelahnya tiang JTM, bahkan jaraknya hanya 0.2 meter"). GPS tidak bisa membedakan dua batang berdampingan; regu memilih "menumpang di tiang X" atau "batang lain di sebelahnya". Yang kedua lahir sebagai batang baru dan tercatat `tiang.beda_dari_tiang_id` untuk diperiksa admin — tidak menghalangi kiriman |
+
+## 6b. Master tiang tunggal JTM + JTR (keputusan f, 26 Sep 2026)
+
+User: *"intinya, akan ada master tiang dan tidak akan ada tiang dobel, baik JTR
+maupun JTM."*
+
+**Keadaan:** `tiang` sudah satu baris per batang, tapi pohon JTR (gardu,
+jurusan, induk, nama) ditulis ke kolom yang SAMA dengan pohon JTM (`induk_id`,
+`kode`). Satu batang tidak bisa berada di dua pohon → JTR tidak bisa menumpang
+di tiang JTM, dan menitik JTR tanpa penjaga bisa melahirkan batang kembar.
+Data JTR baru 3 tiang uji — memindahkannya murah SEKARANG.
+
+**Susunan baru:**
+
+| Lapis | Isi | Tabel |
+|---|---|---|
+| **Master tiang** | batang fisik: titik, jenis, tinggi, kondisi, atribut & kabel (JTR), status hidup | `tiang` (tetap) |
+| Keanggotaan JTM | segmen + nama per penyulang + induk JTM | `segmen_tiang`, `tiang_kode_penyulang`, `tiang.induk_id` (tetap) |
+| **Keanggotaan JTR** | gardu, jurusan, **induk JTR**, **nama JTR** — boleh >1 gardu per batang | **`tiang_jtr` (baru)** |
+
+- **Penjaga radius lintas jaringan** (radius tumpang JTM per ULP): menitik JTM
+  maupun JTR di dekat batang yang SUDAH ADA (jaringan mana pun) memunculkan
+  PERTANYAAN — menumpang, atau batang lain di sebelahnya (keputusan h).
+- **JTR menumpang** = baris baru di `tiang_jtr` untuk batang yang sudah ada;
+  namanya lahir dari aturan penamaan JTR yang sama (dipindah dari pemicu
+  `tiang` ke `tiang_jtr`).
+- Semua tampilan JTR (panjang kabel, temuan, daftar inspeksi, peta, HP)
+  membaca pohon dari `tiang_jtr`, bukan dari kolom `tiang`.
+- **Hitungan:** jumlah batang = baris `tiang` (sekali); daftar tiang tiap
+  jaringan memuatnya bertanda "dipikul bersama"; KMS per jaringan dari
+  kabelnya sendiri.
+
+**Urutan J5 diubah:** J5t (SQL master tiang JTR: `tiang_jtr`, penamaan,
+tampilan, penjaga, menumpang, pindah 3 tiang uji) → J5a (WO JTR + kiriman HP,
+di atas `tiang_jtr`) → J5b HP → J5c web (Susun WO gardu, tab Temuan JTR).
 
 ## 7. Urutan pengerjaan (setelah keputusan)
 
