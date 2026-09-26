@@ -19,7 +19,7 @@ const KOLOM =
   // Aksesoris ikut KABEL: tiang ber-underbuild memikul dua kabel dengan dua set
   // klem masing-masing. Ditulis satu literal — sambungan `+` mematikan
   // inferensi tipe supabase-js.
-  "kode,gardu_kode,ulp,jurusan,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi,aks_suspension,aks_large_angle,aks_dead_end)";
+  "kode,gardu_kode,ulp,jurusan,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor";
 
 interface Konduktor {
   nomor: number;
@@ -57,11 +57,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Periode tidak lengkap" }, { status: 400 });
   }
 
+  // Milik + batang pinjaman, kabel milik gardu itu saja (`jtr_tiang_lengkap`).
   let q = supabaseAdmin
-    .from("tiang")
+    .from("jtr_tiang_lengkap")
     .select(KOLOM)
     .eq("status_hidup", "aktif")
-    .not("gardu_kode", "is", null)
     .order("dikonfirmasi_at", { ascending: false });
 
   if (user.role !== "UP3" && user.unit) q = q.eq("ulp", user.unit);

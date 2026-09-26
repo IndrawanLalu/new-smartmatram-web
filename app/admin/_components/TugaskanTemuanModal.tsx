@@ -1,29 +1,33 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Loader2, Send, TreePine } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import { Loader2, Send } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { useRoles } from "@/app/admin/_hooks/useRoles";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
-import type { Penugasan, TemuanJtm } from "../_hooks/useTemuanJtm";
-
 /**
- * Menugaskan temuan ke satu eksekutor — pilihannya BEBAS (keputusan user
- * 24 Sep 2026), termasuk temuan ROW. Tiap temuan jadi satu baris `inspeksi`
- * Ditugaskan: muncul di Monitoring Inspeksi dan tugas HP eksekutornya.
+ * Menugaskan temuan inspeksi (JTM / JTR) ke satu eksekutor — pilihannya BEBAS
+ * (keputusan user 24 Sep 2026), termasuk temuan ROW. Tiap temuan jadi satu
+ * baris `inspeksi` Ditugaskan: muncul di Monitoring Inspeksi dan tugas HP
+ * eksekutornya.
  */
+
+export interface Penugasan { eksekutor: string; prioritas: string; catatan: string }
 
 const PRIORITAS = ["Normal", "Scheduled", "Urgent", "Emergency"];
 
 interface Props {
-  pilih: TemuanJtm[];
+  /** Temuan terpilih, sudah dalam bentuk tampilan. */
+  daftar: { kunci: string; judul: string; keterangan: string }[];
+  /** Peringatan khusus jenis temuan (mis. segmen sedang WO Perabasan). */
+  peringatan?: ReactNode;
   onTutup: () => void;
-  tugaskan: (pilih: TemuanJtm[], p: Penugasan) => Promise<{ berhasil: number; gagal: string[] }>;
+  tugaskan: (p: Penugasan) => Promise<{ berhasil: number; gagal: string[] }>;
   onSelesai: () => void;
 }
 
-export default function TugaskanTemuanModal({ pilih, onTutup, tugaskan, onSelesai }: Props) {
+export default function TugaskanTemuanModal({ daftar, peringatan, onTutup, tugaskan, onSelesai }: Props) {
   const toast = useToast();
   const { roles } = useRoles();
   const eksekutorRoles = useMemo(() => roles.filter((r) => r.is_eksekutor), [roles]);
@@ -32,13 +36,11 @@ export default function TugaskanTemuanModal({ pilih, onTutup, tugaskan, onSelesa
   const [catatan, setCatatan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
-  const adaWoRabas = pilih.filter((t) => t.wo_perabasan_aktif);
-
   const kirim = async () => {
     if (!eksekutor) return;
     setSibuk(true);
     try {
-      const h = await tugaskan(pilih, { eksekutor, prioritas, catatan: catatan.trim() });
+      const h = await tugaskan({ eksekutor, prioritas, catatan: catatan.trim() });
       if (h.berhasil > 0) toast.success(`${h.berhasil} temuan ditugaskan ke ${eksekutor}.`);
       if (h.gagal.length > 0) {
         toast.error(`${h.gagal.length} gagal — ${h.gagal[0]}${h.gagal.length > 1 ? " …" : ""}. Daftar dimuat ulang.`);
@@ -53,7 +55,7 @@ export default function TugaskanTemuanModal({ pilih, onTutup, tugaskan, onSelesa
   return (
     <ModalShell
       title="Tugaskan temuan"
-      subtitle={`${pilih.length} temuan terpilih`}
+      subtitle={`${daftar.length} temuan terpilih`}
       maxWidth="max-w-2xl"
       onClose={onTutup}
       footer={
@@ -97,26 +99,14 @@ export default function TugaskanTemuanModal({ pilih, onTutup, tugaskan, onSelesa
         />
       </div>
 
-      {adaWoRabas.length > 0 && (
-        <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-          <TreePine size={15} className="shrink-0 mt-0.5" />
-          <p>
-            {adaWoRabas.length} temuan ROW berada di segmen yang sedang masuk WO Perabasan
-            (<b>{[...new Set(adaWoRabas.map((t) => t.wo_perabasan_aktif))].join(", ")}</b>). Pastikan pohonnya tidak
-            dirabas dua regu.
-          </p>
-        </div>
-      )}
+      {peringatan}
 
       <div className="rounded-xl border border-line overflow-hidden">
         <ul className="max-h-52 overflow-y-auto divide-y divide-line">
-          {pilih.map((t) => (
-            <li key={`${t.tiang_id}|${t.item_kode}|${t.bagian}|${t.sirkit_segmen_id}`} className="px-4 py-2 text-sm flex flex-wrap gap-x-2">
-              <span className="font-semibold text-ink">{t.tiang_kode}</span>
-              <span className="text-ink-soft">
-                {t.item_nama}: {t.nilai_label ?? t.nilai ?? "—"}
-                {t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}
-              </span>
+          {daftar.map((t) => (
+            <li key={t.kunci} className="px-4 py-2 text-sm flex flex-wrap gap-x-2">
+              <span className="font-semibold text-ink">{t.judul}</span>
+              <span className="text-ink-soft">{t.keterangan}</span>
             </li>
           ))}
         </ul>

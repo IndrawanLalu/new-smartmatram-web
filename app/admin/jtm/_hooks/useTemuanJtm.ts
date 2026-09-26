@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import type { Penugasan } from "@/app/admin/_components/TugaskanTemuanModal";
 
 /**
  * Temuan inspeksi JTM + status penugasannya (view `jtm_temuan`,
@@ -48,7 +49,6 @@ export interface TemuanJtm {
   wo_perabasan_aktif: string | null;
 }
 
-export interface Penugasan { eksekutor: string; prioritas: string; catatan: string }
 
 /** Alamat satu temuan — sama dengan kunci partisi `tiang_kondisi_terakhir`. */
 export const kunciTemuan = (t: Pick<TemuanJtm, "tiang_id" | "item_kode" | "bagian" | "sirkit_segmen_id">) =>

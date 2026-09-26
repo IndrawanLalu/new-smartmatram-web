@@ -44,6 +44,8 @@ export interface IstilahWo {
   reguWajib: boolean;
   /** Pesan saat ULP belum punya regu/tim aktif. */
   reguKosong: (ulp: string) => string;
+  /** Satuan objek WO — "segmen" (bawaan) atau "gardu" (inspeksi JTR). */
+  satuan?: string;
 }
 
 /** SLA bulan WO & KMS yang sudah terbit di bulan itu (permintaan user
@@ -58,6 +60,8 @@ const NAMA_BULAN = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 const kms = (v: number) => v.toFixed(2).replace(".", ",");
+/** Daftar pilihan dibuka bertahap — satu ULP bisa ratusan gardu. */
+const LANGKAH_TAMPIL = 100;
 
 /**
  * Menerbitkan WO bersatuan SEGMEN, diukur KILOMETER — dipakai WO Perabasan dan
@@ -127,7 +131,10 @@ export default function SusunWoSegmen({
   /** segmen_id → nama regu. Kosong berarti belum dibagi. */
   const [bagi, setBagi] = useState<Record<string, string>>({});
   const [saringPenyulang, setSaringPenyulang] = useState("");
+  const [cari, setCari] = useState("");
+  const [batasTampil, setBatasTampil] = useState(LANGKAH_TAMPIL);
   const [sibuk, setSibuk] = useState(false);
+  const satuan = istilah.satuan ?? "segmen";
 
   /**
    * "baru" = terbitkan WO sendiri · "tambah" = sisipkan ke WO yang sudah ada.
@@ -144,6 +151,7 @@ export default function SusunWoSegmen({
       segmen
         .filter((s) => (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id))
         .filter((s) => !saringPenyulang || s.penyulang === saringPenyulang)
+        .filter((s) => !cari.trim() || `${s.nama} ${s.penyulang}`.toUpperCase().includes(cari.trim().toUpperCase()))
         // Paling lama tidak diinspeksi di atas — sepola Master Segmen, supaya
         // yang paling perlu dirabas tidak harus dicari.
         .sort((a, b) => {
@@ -151,7 +159,7 @@ export default function SusunWoSegmen({
           const ub = b.umur_inspeksi_bulan ?? Number.MAX_SAFE_INTEGER;
           return ub - ua || a.penyulang.localeCompare(b.penyulang);
         }),
-    [segmen, ulp, segmenTerikat, saringPenyulang],
+    [segmen, ulp, segmenTerikat, saringPenyulang, cari],
   );
 
   const reguUlp = useMemo(() => regu.filter((g) => g.ulp === ulp), [regu, ulp]);
@@ -166,9 +174,11 @@ export default function SusunWoSegmen({
     [segmen, ulp],
   );
 
+  // Dari seluruh ULP, bukan dari daftar yang sedang tersaring: mencentang lalu
+  // mencari yang lain tidak boleh diam-diam mengeluarkan yang sudah dicentang.
   const dipilih = useMemo(
-    () => tersedia.filter((s) => pilih.has(s.segmen_id)),
-    [tersedia, pilih],
+    () => segmen.filter((s) => pilih.has(s.segmen_id) && (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id)),
+    [segmen, pilih, ulp, segmenTerikat],
   );
   const totalKm = dipilih.reduce((n, s) => n + (s.panjang_pakai_km ?? 0), 0);
   const kmKetikan = dipilih
@@ -239,9 +249,9 @@ export default function SusunWoSegmen({
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>{istilah.judul}</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
-          Satu WO boleh memuat segmen dari beberapa penyulang, dan boleh terbit beberapa kali
-          sebulan. Ukurannya <b>total kilometer</b> — bukan jumlah segmen, karena ruas 7 km dan
-          ruas 0,3 km bukan pekerjaan yang sebanding.
+          Satu WO boleh memuat {satuan} dari beberapa penyulang, dan boleh terbit beberapa kali
+          sebulan. Ukurannya <b>total kilometer</b> — bukan jumlah {satuan}, karena 7 km dan
+          0,3 km bukan pekerjaan yang sebanding.
         </p>
 
         {onTambah && <div className="mt-3 flex flex-wrap gap-2">
@@ -329,7 +339,7 @@ export default function SusunWoSegmen({
                   <option value="">— pilih WO —</option>
                   {woUlp.map((w) => (
                     <option key={w.wo_id} value={w.wo_id}>
-                      {w.nama} · {w.tgl_wo} · {w.item} segmen
+                      {w.nama} · {w.tgl_wo} · {w.item} {satuan}
                     </option>
                   ))}
                 </select>
@@ -377,7 +387,7 @@ export default function SusunWoSegmen({
             targetnya jadi angka yang tidak berarti apa-apa. */}
         {mode === "tambah" && woDipilih && (
           <p className="text-xs text-ink-soft mt-3">
-            <b className="text-ink">{woDipilih.nama}</b> sekarang berisi {woDipilih.item} segmen ·{" "}
+            <b className="text-ink">{woDipilih.nama}</b> sekarang berisi {woDipilih.item} {satuan} ·{" "}
             rencana <b className="text-ink tabular-nums">{woDipilih.rencana_km.toFixed(2)}</b> km
             dari target {woDipilih.target_km.toFixed(2)} km
             {totalKm > 0 && (
@@ -405,7 +415,7 @@ export default function SusunWoSegmen({
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           <span className="text-sm">
             <b className="text-ink tabular-nums text-lg">{dipilih.length}</b>{" "}
-            <span className="text-ink-soft">segmen dipilih</span>
+            <span className="text-ink-soft">{satuan} dipilih</span>
           </span>
           <span className="text-sm">
             <b className="text-ink tabular-nums text-lg">{totalKm.toFixed(2)}</b>{" "}
@@ -424,7 +434,7 @@ export default function SusunWoSegmen({
           {tanpaPanjang > 0 && (
             <span className="inline-flex items-center gap-1 text-xs text-red-700">
               <FileWarning size={13} />
-              {tanpaPanjang} segmen belum punya panjang — menyumbang 0 km ke rencana
+              {tanpaPanjang} {satuan} belum punya panjang — menyumbang 0 km ke rencana
             </span>
           )}
           {tanpaRegu > 0 && istilah.reguWajib && (
@@ -449,7 +459,7 @@ export default function SusunWoSegmen({
           <p className={EYEBROW}>Bagi ke regu</p>
           <p className="text-[11px] text-ink-muted mt-1">
             {istilah.reguWajib
-              ? "Tiap segmen hanya muncul di HP regu yang ditugasi — sepola temuan, tidak bercampur. Yang tidak dibagi tidak muncul di mana pun."
+              ? `Tiap ${satuan} hanya muncul di HP regu yang ditugasi — sepola temuan, tidak bercampur. Yang tidak dibagi tidak muncul di mana pun.`
               : "Opsional. Semua tim se-ULP tetap bisa mengerjakannya; tim yang ditugasi melihatnya ditandai \"untuk tim ini\"."}
           </p>
           <div className="mt-2.5 flex flex-wrap items-center gap-2">
@@ -494,6 +504,15 @@ export default function SusunWoSegmen({
       )}
 
       <div className={`${CARD} p-5`}>
+        <input
+          value={cari}
+          onChange={(e) => {
+            setCari(e.target.value);
+            setBatasTampil(LANGKAH_TAMPIL);
+          }}
+          placeholder={`Cari ${satuan} atau penyulang`}
+          className={`${FIELD} mb-3 w-[260px]`}
+        />
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => setSaringPenyulang("")}
@@ -522,12 +541,12 @@ export default function SusunWoSegmen({
           <p className="text-xs text-ink-muted py-10 text-center">Pilih ULP dulu.</p>
         ) : tersedia.length === 0 ? (
           <p className="text-xs text-ink-muted py-10 text-center">
-            Tidak ada segmen yang bisa dipilih. Yang sudah terikat WO lain tidak muncul di sini —
+            Tidak ada {satuan} yang bisa dipilih. Yang sudah terikat WO lain tidak muncul di sini —
             batalkan dulu di sana kalau memang mau dipindahkan.
           </p>
         ) : (
           <div className="mt-3 space-y-1">
-            {tersedia.map((s) => {
+            {tersedia.slice(0, batasTampil).map((s) => {
               const aktif = pilih.has(s.segmen_id);
               return (
                 <label
@@ -589,6 +608,15 @@ export default function SusunWoSegmen({
                 </label>
               );
             })}
+            {tersedia.length > batasTampil && (
+              <button
+                onClick={() => setBatasTampil((n) => n + LANGKAH_TAMPIL)}
+                className="w-full py-2.5 rounded-xl border border-dashed border-navy-200 text-xs font-semibold text-navy-600 hover:bg-navy-50/50"
+              >
+                Tampilkan {Math.min(LANGKAH_TAMPIL, tersedia.length - batasTampil)} lagi · sisa{" "}
+                {tersedia.length - batasTampil} {satuan}
+              </button>
+            )}
           </div>
         )}
       </div>

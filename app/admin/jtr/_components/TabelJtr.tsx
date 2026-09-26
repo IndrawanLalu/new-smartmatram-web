@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import { statusTampil, type InspeksiMenunggu } from "../_hooks/useApprovalJtr";
-import { NADA_STATUS, km, rentangKerja } from "../_lib/tampilan";
+import { NADA_STATUS, km, rentangKerja, tgl } from "../_lib/tampilan";
 
 /**
  * Daftar inspeksi JTR — satu baris satu gardu, klik → modal persetujuan
@@ -75,8 +75,10 @@ export default function TabelJtr({ baris, loading, onDetail }: Props) {
                     <p className="text-[11px] text-ink-muted truncate max-w-48">{d.gardu_nama ?? "—"} · {d.ulp}</p>
                   </td>
                   <td className={`${TD} text-xs text-ink-soft`}>{d.penyulang ?? "—"}</td>
-                  <td className={`${TD} text-xs text-ink-soft`}>-</td>
-                  <td className={`${TD} text-xs text-ink-soft`}>-</td>
+                  <td className={`${TD} text-xs text-ink-soft max-w-44`}>
+                    <p className="line-clamp-2">{d.wo_nama ?? "-"}</p>
+                  </td>
+                  <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{d.tgl_wo ? tgl(d.tgl_wo) : "-"}</td>
                   <td className={`${TD} text-xs text-ink font-medium whitespace-nowrap`}>{rentangKerja(d.tgl_mulai, d.tgl_selesai)}</td>
                   <td className={`${TD} text-xs text-ink-soft`}>
                     {d.inspektor_nama ?? "—"}

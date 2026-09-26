@@ -1,37 +1,39 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search, Send, TreePine, TriangleAlert } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Search, Send, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD, NADA_TUGAS } from "@/app/admin/_ui";
-import { STATUS_TUGAS, kunciTemuan, useTemuanJtm, type TemuanJtm as Temuan } from "../_hooks/useTemuanJtm";
-import { tgl } from "../_lib/tampilan";
-import DetailTemuanModal from "./DetailTemuanModal";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
+import { STATUS_TUGAS_JTR, kunciTemuanJtr, useTemuanJtr, type TemuanJtr as Temuan } from "../_hooks/useTemuanJtr";
+import { tgl } from "../_lib/tampilan";
 
 /**
- * Tab Temuan — temuan inspeksi JTM yang sudah disetujui, siap ditugaskan.
- * Kolom WO = eksekutor tugasnya, Tgl WO = saat ditugaskan ("-" kalau belum).
+ * Tab Temuan — temuan inspeksi JTR yang sudah disetujui, siap ditugaskan
+ * (biasanya ke HARJAR). Kolom WO = eksekutor tugasnya, Tgl WO = saat
+ * ditugaskan ("-" kalau belum).
  */
 
 const PAGE_SIZE = 20;
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
 const TD = "px-3 py-2.5 border-b border-line align-top";
+const NADA_URGENSI: Record<string, string> = {
+  Tinggi: "text-red-700",
+  Sedang: "text-amber-700",
+};
 
-export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) {
-  const o = useTemuanJtm(ulp, oleh);
+export default function TemuanJtr({ ulp, oleh }: { ulp: string; oleh: string }) {
+  const o = useTemuanJtr(ulp, oleh);
   const [halaman, setHalaman] = useState(1);
   const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
-  const [detail, setDetail] = useState<string | null>(null);
   const [tugaskan, setTugaskan] = useState<Temuan[] | null>(null);
 
   const total = Math.max(1, Math.ceil(o.baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
   const tampil = o.baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
   const bisaPilih = (t: Temuan) => t.status_tugas === "Belum ditugaskan";
-  const pilihan = o.semua.filter((t) => terpilih.has(kunciTemuan(t)) && bisaPilih(t));
-  const dtl = detail ? (o.semua.find((t) => kunciTemuan(t) === detail) ?? null) : null;
+  const pilihan = o.semua.filter((t) => terpilih.has(kunciTemuanJtr(t)) && bisaPilih(t));
   const halamanBisa = tampil.filter(bisaPilih);
-  const semuaHalamanTerpilih = halamanBisa.length > 0 && halamanBisa.every((t) => terpilih.has(kunciTemuan(t)));
+  const semuaHalamanTerpilih = halamanBisa.length > 0 && halamanBisa.every((t) => terpilih.has(kunciTemuanJtr(t)));
 
   const tukar = (k: string) =>
     setTerpilih((s) => {
@@ -44,8 +46,8 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
     setTerpilih((s) => {
       const n = new Set(s);
       for (const t of halamanBisa) {
-        if (semuaHalamanTerpilih) n.delete(kunciTemuan(t));
-        else n.add(kunciTemuan(t));
+        if (semuaHalamanTerpilih) n.delete(kunciTemuanJtr(t));
+        else n.add(kunciTemuanJtr(t));
       }
       return n;
     });
@@ -54,14 +56,7 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-2">
-        {(["SEMUA", "Jaringan", "ROW"] as const).map((j) => (
-          <button key={j} onClick={() => saring(() => o.setJenis(j))} className={`${CHIP} ${o.jenis === j ? CHIP_ON : CHIP_OFF}`}>
-            {j === "SEMUA" ? "Semua jenis" : j}
-            {j !== "SEMUA" && <span className="opacity-70">{o.loading ? "" : o.hitungJenis[j]}</span>}
-          </button>
-        ))}
-        <span className="w-px h-6 bg-line mx-1" />
-        {STATUS_TUGAS.map((s) => (
+        {STATUS_TUGAS_JTR.map((s) => (
           <button key={s} onClick={() => saring(() => o.setStatus(s))} className={`${CHIP} ${o.status === s ? CHIP_ON : CHIP_OFF}`}>
             {s} <span className="opacity-70">{o.loading ? "" : o.hitung[s]}</span>
           </button>
@@ -72,15 +67,15 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
           <input
             value={o.cari}
             onChange={(e) => saring(() => o.setCari(e.target.value))}
-            placeholder="Cari tiang / segmen / penyulang / item"
+            placeholder="Cari tiang / gardu / penyulang / temuan"
             className={`${FIELD} w-[260px] pl-8`}
           />
         </div>
       </div>
 
       <p className="text-[11px] text-ink-muted -mt-1">
-        Hanya temuan dari inspeksi yang sudah <b>disetujui</b>. Temuan hilang sendiri begitu inspeksi berikutnya mencatat
-        itemnya normal.
+        Temuan dari inspeksi terakhir yang sudah <b>disetujui</b> per gardu. Temuan hilang sendiri begitu inspeksi
+        berikutnya mencatatnya normal.
       </p>
 
       {pilihan.length > 0 && (
@@ -113,7 +108,7 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
         <div className={`${CARD} p-10 text-center`}>
           <p className="text-sm font-semibold text-ink">Tidak ada temuan</p>
           <p className="text-xs text-ink-soft mt-1.5 max-w-md mx-auto">
-            Temuan muncul di sini setelah inspeksi JTM yang mencatatnya disetujui di tab Daftar Inspeksi.
+            Temuan muncul di sini setelah inspeksi JTR yang mencatatnya disetujui di tab Daftar Inspeksi.
           </p>
         </div>
       ) : (
@@ -133,7 +128,7 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
                     />
                   </th>
                   <th className={TH}>Tiang</th>
-                  <th className={TH}>Penyulang · Segmen</th>
+                  <th className={TH}>Gardu · Penyulang</th>
                   <th className={TH}>Temuan</th>
                   <th className={TH}>Ditemukan</th>
                   <th className={TH}>WO</th>
@@ -143,10 +138,10 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
               </thead>
               <tbody>
                 {tampil.map((t) => {
-                  const k = kunciTemuan(t);
+                  const k = kunciTemuanJtr(t);
                   return (
-                    <tr key={k} onClick={() => setDetail(k)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
-                      <td className={TD} onClick={(e) => e.stopPropagation()}>
+                    <tr key={k} className="hover:bg-navy-50/60 transition-colors">
+                      <td className={TD}>
                         <input
                           type="checkbox"
                           checked={terpilih.has(k)}
@@ -158,15 +153,22 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
                       </td>
                       <td className={`${TD} font-semibold text-ink whitespace-nowrap`}>
                         {t.tiang_kode}
-                        <p className="text-[10px] font-semibold text-ink-muted">{t.jenis} · {t.ulp}</p>
+                        <p className="text-[10px] font-semibold text-ink-muted">Jurusan {t.jurusan ?? "—"} · {t.ulp}</p>
                       </td>
                       <td className={`${TD} text-xs text-ink-soft`}>
-                        {t.penyulang ?? "—"}
-                        <p className="text-[11px] text-ink-muted max-w-56 truncate">{t.segmen_nama ?? "—"}</p>
+                        {t.gardu_kode}
+                        <p className="text-[11px] text-ink-muted max-w-56 truncate">{t.gardu_nama ?? "—"} · {t.penyulang ?? "—"}</p>
                       </td>
                       <td className={`${TD} text-xs`}>
-                        <span className="text-ink">{t.item_nama}{t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}</span>
-                        <p className="text-amber-800 font-semibold">{t.nilai_label ?? t.nilai ?? "—"}</p>
+                        <span className="text-ink">{t.temuan}</span>
+                        <p className={`font-semibold ${NADA_URGENSI[t.urgensi ?? ""] ?? "text-ink-soft"}`}>
+                          urgensi {t.urgensi?.toLowerCase() ?? "—"}
+                          {t.foto_url && (
+                            <a href={t.foto_url} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-0.5 text-navy-600 font-medium hover:underline">
+                              foto <ExternalLink size={10} />
+                            </a>
+                          )}
+                        </p>
                       </td>
                       <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>
                         {tgl(t.ditemukan_pada)}
@@ -200,38 +202,14 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
         </div>
       )}
 
-      {dtl && !tugaskan && (
-        <DetailTemuanModal key={detail} t={dtl} onTutup={() => setDetail(null)} onTugaskan={() => setTugaskan([dtl])} />
-      )}
       {tugaskan && (
         <TugaskanTemuanModal
-          daftar={tugaskan.map((t) => ({
-            kunci: kunciTemuan(t),
-            judul: t.tiang_kode,
-            keterangan: `${t.item_nama}: ${t.nilai_label ?? t.nilai ?? "—"}${t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}`,
-          }))}
-          peringatan={<PeringatanRabas pilih={tugaskan} />}
+          daftar={tugaskan.map((t) => ({ kunci: kunciTemuanJtr(t), judul: t.tiang_kode, keterangan: t.temuan }))}
           tugaskan={(p) => o.tugaskan(tugaskan, p)}
           onTutup={() => setTugaskan(null)}
           onSelesai={() => setTerpilih(new Set())}
         />
       )}
-    </div>
-  );
-}
-
-/** Temuan ROW di segmen yang sedang WO Perabasan — pohonnya jangan dirabas dua regu. */
-function PeringatanRabas({ pilih }: { pilih: Temuan[] }) {
-  const ada = pilih.filter((t) => t.wo_perabasan_aktif);
-  if (ada.length === 0) return null;
-  return (
-    <div className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-      <TreePine size={15} className="shrink-0 mt-0.5" />
-      <p>
-        {ada.length} temuan ROW berada di segmen yang sedang masuk WO Perabasan
-        (<b>{[...new Set(ada.map((t) => t.wo_perabasan_aktif))].join(", ")}</b>). Pastikan pohonnya tidak
-        dirabas dua regu.
-      </p>
     </div>
   );
 }

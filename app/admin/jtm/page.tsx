@@ -19,7 +19,7 @@ import ImporTiang from "./_components/ImporTiang";
 import PengaturanJtm from "./_components/PengaturanJtm";
 import TiangNormal from "./_components/TiangNormal";
 import DaftarTiang from "./_components/DaftarTiang";
-import WoInspeksiJtm from "./_components/WoInspeksiJtm";
+import WoInspeksi from "@/app/admin/_components/WoInspeksi";
 
 /**
  * Inspeksi JTM — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
@@ -158,7 +158,7 @@ export default function JtmPage() {
 
       {tab === "dashboard" && <DashboardJtm key={`${o.ulp}-${o.tahun}`} ulp={o.ulp} tahun={o.tahun} />}
       {tab === "temuan" && <TemuanJtm key={o.ulp} ulp={o.ulp} oleh={user.name || user.email || ""} />}
-      {tab === "wo" && <WoInspeksiJtm user={user} />}
+      {tab === "wo" && <WoInspeksi user={user} jenis="JTM" />}
       {tab === "peta" && (
         <div className="flex-1 min-h-0">
           <PetaJtm user={user} />

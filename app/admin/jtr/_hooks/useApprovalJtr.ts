@@ -24,6 +24,9 @@ export interface InspeksiMenunggu {
   tiang_baru: number;
   jumlah_temuan: number;
   panjang_km: number;
+  /** WO inspeksi JTR tempat inspeksi ini tersambung (J5c); null = di luar WO. */
+  wo_nama?: string | null;
+  tgl_wo?: string | null;
   /**
    * Baris TURUNAN dari tiang, bukan catatan `jtr_inspeksi`: gardu yang sedang
    * dititik tapi belum ditekan "Selesai" di HP. Hanya untuk dilihat — belum ada
@@ -158,11 +161,11 @@ async function ambilBerjalan(ulp: string): Promise<InspeksiMenunggu[]> {
   const [tiang, inspeksi] = await Promise.all([
     fetchAllRows<TiangRingkas>(() => {
       let x = supabaseBrowser
-        .from("tiang")
+        .from("jtr_tiang_lengkap")
         .select("id,gardu_kode,ulp,created_at,dikonfirmasi_at")
         .eq("status_hidup", "aktif")
-        .not("gardu_kode", "is", null)
-        .order("id");
+        .order("id")
+        .order("gardu_kode");
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     }),
@@ -298,12 +301,26 @@ export function useDaftarJtr(user: CurrentUser) {
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     };
-    const [a, t, b] = await Promise.all([
+    // WO tidak ada di view `jtr_inspeksi` — dipasang dari sambungannya. Gagal
+    // (SQL WO belum dijalankan) tidak menggagalkan daftar.
+    const sambung = () =>
+      supabaseBrowser.from("inspeksi_jtr").select("id,wo_item_id").not("wo_item_id", "is", null).order("id");
+    const itemWo = () => supabaseBrowser.from("wo_inspeksi_item_status_jtr").select("id,wo_nama,tgl_wo").order("id");
+    const [a, t, b, s, w] = await Promise.all([
       fetchAllRows<InspeksiMenunggu>(aktif),
       fetchAllRows<InspeksiMenunggu>(tertutup),
       ambilBerjalan(ulp),
+      fetchAllRows<{ id: string; wo_item_id: string }>(sambung).catch(() => []),
+      fetchAllRows<{ id: string; wo_nama: string; tgl_wo: string }>(itemWo).catch(() => []),
     ]);
-    return [...b, ...a, ...t];
+    const item = new Map(w.map((x) => [x.id, x]));
+    const wo = new Map(s.map((x) => [x.id, item.get(x.wo_item_id)]));
+    const pasang = (d: InspeksiMenunggu): InspeksiMenunggu => ({
+      ...d,
+      wo_nama: wo.get(d.id)?.wo_nama ?? null,
+      tgl_wo: wo.get(d.id)?.tgl_wo ?? null,
+    });
+    return [...b, ...a.map(pasang), ...t.map(pasang)];
   }, [ulp, bulan, tahun]);
 
   useEffect(() => {
@@ -346,7 +363,7 @@ export function useDaftarJtr(user: CurrentUser) {
 
   const segarkanSatu = async (id: string) => {
     const { data } = await supabaseBrowser.from("jtr_inspeksi").select("*").eq("id", id).maybeSingle();
-    if (data) setSemua((p) => p.map((x) => (x.id === id ? (data as unknown as InspeksiMenunggu) : x)));
+    if (data) setSemua((p) => p.map((x) => (x.id === id ? { ...x, ...(data as unknown as InspeksiMenunggu) } : x)));
   };
 
   const oleh = user.name ?? user.email ?? null;
@@ -410,7 +427,7 @@ export async function ambilPerbandingan(
   const [tiangRes, auditRes, temuanRes, garduRes, penghantarRes, ruteRes, terputusRes] =
     await Promise.all([
     supabaseBrowser
-      .from("tiang")
+      .from("jtr_tiang_lengkap")
       .select("id,kode,lat,lng,induk_id,jurusan,kondisi,status_hidup,created_at,aktif_sampai")
       .eq("gardu_kode", inspeksi.gardu_kode)
       .eq("ulp", inspeksi.ulp),

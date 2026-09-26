@@ -120,17 +120,17 @@ export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
 
       const barisTiang = await fetchAllRows<TiangRingkas>(() => {
         let b = supabaseBrowser
-          .from("tiang")
+          // Milik + batang pinjaman, kabel milik gardu itu saja.
+          .from("jtr_tiang_lengkap")
           // Satu literal, bukan sambungan `+`: supabase-js membaca string ini
           // di tingkat tipe dan menyerah begitu disambung.
           .select(
-            "kode,ulp,gardu_kode,jurusan,kondisi,arde_kondisi,rawan_row,andongan,stay_kondisi,underbuild_tm,catatan_perbaikan,tiang_konduktor!tiang_konduktor_tiang_id_fkey(kondisi,aks_suspension,aks_large_angle,aks_dead_end)",
+            "kode,ulp,gardu_kode,jurusan,kondisi,arde_kondisi,rawan_row,andongan,stay_kondisi,underbuild_tm,catatan_perbaikan,tiang_konduktor",
           )
-          .eq("status_hidup", "aktif")
-          .not("gardu_kode", "is", null);
+          .eq("status_hidup", "aktif");
         if (unit) b = b.eq("ulp", unit);
         // Urut kolom unik supaya paginasi tidak lompat atau menggandakan baris.
-        return b.order("id");
+        return b.order("id").order("gardu_kode");
       });
       setTiang(barisTiang);
     } catch (e) {

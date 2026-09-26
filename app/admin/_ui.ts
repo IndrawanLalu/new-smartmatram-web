@@ -40,3 +40,10 @@ export const EYEBROW =
  *  ikon & teksnya, bukan dari warna latar yang berbeda-beda. */
 export const PANEL_HEAD =
   "bg-navy-600 px-4 py-2.5 flex items-center gap-2 shrink-0";
+
+/** Status penugasan temuan inspeksi (JTM, JTR). */
+export const NADA_TUGAS: Record<"Belum ditugaskan" | "Ditugaskan" | "Selesai", string> = {
+  "Belum ditugaskan": "bg-amber-50 text-amber-700 border-amber-200",
+  Ditugaskan: "bg-sky-50 text-sky-700 border-sky-200",
+  Selesai: "bg-emerald-50 text-emerald-700 border-emerald-200",
+};

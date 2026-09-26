@@ -2,9 +2,9 @@
 
 import { ExternalLink, MapPin, Send, TreePine } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
-import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
+import { BTN_GHOST, BTN_PRIMARY, EYEBROW, NADA_TUGAS } from "@/app/admin/_ui";
 import type { TemuanJtm } from "../_hooks/useTemuanJtm";
-import { NADA_TUGAS, tgl, tglJam } from "../_lib/tampilan";
+import { tgl, tglJam } from "../_lib/tampilan";
 
 interface Props {
   t: TemuanJtm;

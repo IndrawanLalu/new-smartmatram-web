@@ -6,21 +6,22 @@ import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSe
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { CurrentUser } from "@/lib/roles";
-import { useWoInspeksiJtm, type ItemWoJtm } from "../_hooks/useWoInspeksiJtm";
+import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi } from "@/app/admin/_hooks/useWoInspeksi";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 
 /**
- * Tab Susun WO inspeksi JTM (J4 `rencana-mobile-jtm-jtr.md`): terbitkan WO
- * bersatuan segmen & KMS, lalu daftar item yang masih terbuka — tim bisa
- * dipindah, item bisa dikeluarkan dari WO dengan alasan.
+ * Tab Susun WO inspeksi JTM / JTR (J4, J5c `rencana-mobile-jtm-jtr.md`):
+ * terbitkan WO bersatuan segmen (JTM) atau gardu (JTR), diukur KMS, lalu
+ * daftar item yang masih terbuka — tim bisa dipindah, item bisa dikeluarkan
+ * dari WO dengan alasan.
  */
 
-const ISTILAH: IstilahWo = {
-  judul: "Susun WO inspeksi JTM",
-  contohNama: "Inspeksi JTM Oktober 2026",
-  reguWajib: false,
-  reguKosong: (ulp) =>
-    `ULP ${ulp} belum punya tim inspeksi aktif di Manajemen Petugas (grup INSPEKTOR / INSPEKSI_JTM). WO tetap bisa terbit — semua tim se-ULP melihatnya di HP.`,
+const reguKosong = (ulp: string) =>
+  `ULP ${ulp} belum punya tim inspeksi aktif di Manajemen Petugas (grup INSPEKTOR / INSPEKSI_JTM). WO tetap bisa terbit — semua tim se-ULP melihatnya di HP.`;
+
+const ISTILAH: Record<JenisWoInspeksi, IstilahWo> = {
+  JTM: { judul: "Susun WO inspeksi JTM", contohNama: "Inspeksi JTM Oktober 2026", reguWajib: false, reguKosong },
+  JTR: { judul: "Susun WO inspeksi JTR", contohNama: "Inspeksi JTR Oktober 2026", reguWajib: false, reguKosong, satuan: "gardu" },
 };
 
 const PAGE = 20;
@@ -29,7 +30,7 @@ const TD = "px-3 py-2.5 border-b border-line align-top text-xs";
 const kms = (v: number | null) => (v === null ? "—" : v.toFixed(2).replace(".", ","));
 
 /** Tahap item DITURUNKAN dari inspeksi terakhirnya. */
-const tahap = (x: ItemWoJtm) => {
+const tahap = (x: ItemWoInspeksi) => {
   switch (x.inspeksi_status) {
     case "Dalam Proses":
     case "Dijadwalkan": return { teks: "Sedang diinspeksi", cls: "bg-sky-50 text-sky-700 border-sky-200" };
@@ -39,12 +40,14 @@ const tahap = (x: ItemWoJtm) => {
   }
 };
 
-export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
-  const w = useWoInspeksiJtm();
-  const slaBulan = useSlaBulanan("jtm");
+export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: JenisWoInspeksi }) {
+  const w = useWoInspeksi(jenis);
+  const slaBulan = useSlaBulanan(jenis === "JTM" ? "jtm" : "jtr");
+  const satuan = jenis === "JTM" ? "segmen" : "gardu";
+  const Satuan = jenis === "JTM" ? "Segmen" : "Gardu";
   const oleh = user.name ?? user.email;
   const [halaman, setHalaman] = useState(1);
-  const [batal, setBatal] = useState<ItemWoJtm | null>(null);
+  const [batal, setBatal] = useState<ItemWoInspeksi | null>(null);
 
   const total = Math.max(1, Math.ceil(w.item.length / PAGE));
   const hal = Math.min(halaman, total);
@@ -53,7 +56,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
   if (w.loading) {
     return (
       <div className={`${CARD} p-8 flex items-center justify-center gap-2 text-sm text-ink-soft`}>
-        <Loader2 size={16} className="animate-spin" /> Memuat segmen & WO…
+        <Loader2 size={16} className="animate-spin" /> Memuat {satuan} & WO…
       </div>
     );
   }
@@ -62,9 +65,9 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
     <div className="space-y-4">
       <SusunWoSegmen
         user={user}
-        istilah={ISTILAH}
-        segmen={w.segmen}
-        segmenTerikat={w.segmenTerikat}
+        istilah={ISTILAH[jenis]}
+        segmen={w.objek}
+        segmenTerikat={w.objekTerikat}
         regu={w.regu}
         woTerbuka={[]}
         infoSla={(u, tgl) => ({ sla: slaBulan(u, tgl), terbit: w.terbitBulan(u, tgl) })}
@@ -75,7 +78,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
         <div className="px-5 py-4">
           <p className={EYEBROW}>WO inspeksi berjalan</p>
           <p className="text-xs text-ink-soft mt-1">
-            Segmen WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
+            {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
             Inspeksi; yang dikeluarkan dari WO tetap sah sebagai inspeksi di luar WO.
           </p>
         </div>
@@ -87,7 +90,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-surface">
                   <tr>
-                    <th className={TH}>Segmen</th>
+                    <th className={TH}>{Satuan}</th>
                     <th className={TH}>WO</th>
                     <th className={`${TH} text-right`}>KMS</th>
                     <th className={TH}>Tim</th>
@@ -134,7 +137,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
                           <button
                             onClick={() => setBatal(x)}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:underline"
-                            title="Keluarkan segmen ini dari WO"
+                            title={`Keluarkan ${satuan} ini dari WO`}
                           >
                             <Ban size={12} /> Keluarkan
                           </button>
@@ -147,7 +150,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
             </div>
             <div className="flex items-center justify-between gap-2 px-4 py-2.5 text-xs text-ink-soft">
               <span>
-                {(hal - 1) * PAGE + 1}–{Math.min(hal * PAGE, w.item.length)} dari {w.item.length} segmen ·{" "}
+                {(hal - 1) * PAGE + 1}–{Math.min(hal * PAGE, w.item.length)} dari {w.item.length} {satuan} ·{" "}
                 {kms(w.item.reduce((n, x) => n + (x.panjang_km ?? 0), 0))} KMS
               </span>
               <div className="flex items-center gap-1">
@@ -167,9 +170,9 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
       {batal && (
         <BatalkanModal
           judul={`Keluarkan ${batal.objek_nama} dari WO?`}
-          keterangan="Segmen ini tidak lagi dihitung sebagai target WO. Inspeksinya — kalau sudah berjalan — tetap sah dan tercatat sebagai di luar WO."
+          keterangan={`${Satuan} ini tidak lagi dihitung sebagai target WO. Inspeksinya — kalau sudah berjalan — tetap sah dan tercatat sebagai di luar WO.`}
           labelTombol="Keluarkan dari WO"
-          placeholder="Alasan — mis. segmen salah pilih, dipindah ke WO bulan depan"
+          placeholder={`Alasan — mis. ${satuan} salah pilih, dipindah ke WO bulan depan`}
           onTutup={() => setBatal(null)}
           onBatalkan={(alasan) => w.batalkan(batal.id, alasan, oleh)}
         />

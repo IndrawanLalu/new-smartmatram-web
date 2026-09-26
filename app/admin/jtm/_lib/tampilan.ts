@@ -66,9 +66,3 @@ export function rentangKerja(mulai: string | null, selesai: string | null) {
 export const km = (v: number | null | undefined, digit = 2) =>
   `${Number(v ?? 0).toFixed(digit).replace(".", ",")} km`;
 
-/** Status penugasan temuan (view `jtm_temuan`). */
-export const NADA_TUGAS: Record<"Belum ditugaskan" | "Ditugaskan" | "Selesai", string> = {
-  "Belum ditugaskan": "bg-amber-50 text-amber-700 border-amber-200",
-  Ditugaskan: "bg-sky-50 text-sky-700 border-sky-200",
-  Selesai: "bg-emerald-50 text-emerald-700 border-emerald-200",
-};

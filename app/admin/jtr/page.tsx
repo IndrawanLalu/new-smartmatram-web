@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search,
-  SlidersHorizontal, TriangleAlert,
+  SearchCheck, Send, SlidersHorizontal, TriangleAlert,
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canManageSettings } from "@/lib/roles";
@@ -17,11 +17,14 @@ import HasilInspeksi from "./_components/HasilInspeksi";
 import JaringanPerGardu from "./_components/JaringanPerGardu";
 import TiangBaik from "./_components/TiangBaik";
 import PengaturanJtr from "./_components/PengaturanJtr";
+import TemuanJtr from "./_components/TemuanJtr";
+import WoInspeksi from "@/app/admin/_components/WoInspeksi";
 
 /**
  * Inspeksi JTR — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
- * Daftar Inspeksi → Dashboard → Peta → Hasil Inspeksi → Jaringan per Gardu →
- * Tiang Baik → Pengaturan.
+ * Daftar Inspeksi → Dashboard → Temuan → Susun WO → Peta → Hasil Inspeksi →
+ * Jaringan per Gardu → Tiang Baik → Pengaturan. Temuan & Susun WO sepola
+ * Inspeksi JTM (J5c `rencana-mobile-jtm-jtr.md`).
  *
  * Persetujuan Gardu bukan tab lagi: jadi chip status di daftar, dan keputusan
  * diambil di modal yang memuat peta jaringan + usulan koreksi dari inspeksi
@@ -33,6 +36,8 @@ import PengaturanJtr from "./_components/PengaturanJtr";
 const TABS = [
   { key: "daftar", label: "Daftar Inspeksi", icon: ListChecks, setelan: false },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, setelan: false },
+  { key: "temuan", label: "Temuan", icon: SearchCheck, setelan: false },
+  { key: "wo", label: "Susun WO", icon: Send, setelan: false },
   { key: "peta", label: "Peta", icon: Map, setelan: false },
   { key: "hasil", label: "Hasil Inspeksi", icon: ClipboardList, setelan: false },
   { key: "jaringan", label: "Jaringan per Gardu", icon: Network, setelan: false },
@@ -56,7 +61,7 @@ export default function JtrPage() {
   const tabTampil = useMemo(() => TABS.filter((t) => !t.setelan || bolehSetel), [bolehSetel]);
   const detail = idDetail ? (o.semua.find((d) => d.id === idDetail) ?? null) : null;
   const oleh = user.name ?? user.email ?? "";
-  const berpenyaring = tab === "daftar" || tab === "dashboard" || tab === "jaringan";
+  const berpenyaring = tab === "daftar" || tab === "dashboard" || tab === "jaringan" || tab === "temuan";
 
   const unduh = async () => {
     setMengunduh(true);
@@ -104,12 +109,12 @@ export default function JtrPage() {
               {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
             </select>
           )}
-          {tab !== "jaringan" && (
+          {(tab === "daftar" || tab === "dashboard") && (
             <select value={o.tahun} onChange={(e) => o.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
               {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           )}
-          {tab !== "dashboard" && (
+          {(tab === "daftar" || tab === "jaringan") && (
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
               {tab === "daftar" ? (
@@ -170,6 +175,8 @@ export default function JtrPage() {
         </>
       )}
 
+      {tab === "temuan" && <TemuanJtr key={o.ulp} ulp={o.ulp} oleh={oleh} />}
+      {tab === "wo" && <WoInspeksi user={user} jenis="JTR" />}
       {tab === "dashboard" && <DashboardJtr key={`${o.ulp}-${o.tahun}`} user={user} ulp={o.ulp} tahun={o.tahun} />}
       {tab === "peta" && (
         <div className="flex-1 min-h-0">

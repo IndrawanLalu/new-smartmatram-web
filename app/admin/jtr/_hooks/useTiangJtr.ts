@@ -15,7 +15,7 @@ const KOLOM =
   //
   // Aksesoris ikut KABEL, bukan tiang — tiang ber-underbuild memikul dua kabel,
   // dan tiap kabel punya klem suspension, large angle, dan dead end sendiri.
-  "id,kode,gardu_kode,ulp,jurusan,induk_id,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,foto_temuan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor!tiang_konduktor_tiang_id_fkey(nomor,jenis,ukuran,kondisi,aks_suspension,aks_large_angle,aks_dead_end,foto_temuan)";
+  "id,kode,gardu_kode,ulp,jurusan,induk_id,lat,lng,jenis,tinggi,kondisi,jamperan,andongan,tarikan_sr,arde_kondisi,arde_nilai_ohm,stay_jenis,stay_kondisi,rawan_row,underbuild_tm,catatan_perbaikan,foto_temuan,dikonfirmasi_at,dikonfirmasi_oleh,created_at,tiang_konduktor,menumpang";
 
 export interface KonduktorBaris {
   nomor: number;
@@ -57,6 +57,8 @@ export interface TiangBaris {
   dikonfirmasi_oleh: string | null;
   created_at: string;
   tiang_konduktor: KonduktorBaris[] | null;
+  /** Batang pinjaman (tiang JTM / gardu lain) — namanya nama JTR di gardu ini. */
+  menumpang: boolean;
 
   // Diisi di sini dari master gardu — `tiang` tidak menyimpan penyulang sendiri
   // supaya tidak ada dua tempat yang bisa berselisih.
@@ -86,13 +88,14 @@ export function useTiangJtr(user: CurrentUser) {
       const [tiang, gardu] = await Promise.all([
         fetchAllRows<Omit<TiangBaris, "penyulang" | "gardu_nama" | "gardu_lat" | "gardu_lng">>(
           () => {
+            // `jtr_tiang_lengkap`: milik + batang PINJAMAN, kabel milik gardu itu
+            // saja. Satu batang bisa muncul di dua gardu → urut (id, gardu).
             let b = supabaseBrowser
-              .from("tiang")
+              .from("jtr_tiang_lengkap")
               .select(KOLOM)
-              .eq("status_hidup", "aktif")
-              .not("gardu_kode", "is", null);
+              .eq("status_hidup", "aktif");
             if (unit) b = b.eq("ulp", unit);
-            return b.order("id");
+            return b.order("id").order("gardu_kode");
           },
         ),
         fetchAllRows<{ kode: string; ulp: string; nama: string | null; feeder: string | null; lat: unknown; lng: unknown }>(
