@@ -1,7 +1,7 @@
 # Rancangan — Pengukuran Tegangan Ujung dipisah dari Pengukuran Beban
 
 Disusun 27 September 2026. Berlaku `teknisaplikasi.md` butir 1, 2, 3, 5, 6,
-14–17. **Menunggu jawaban §6 dan "kerjakan T1".**
+14–17. **T1 dikerjakan 27 Sep 2026.**
 
 ---
 
@@ -42,7 +42,7 @@ Disusun 27 September 2026. Berlaku `teknisaplikasi.md` butir 1, 2, 3, 5, 6,
 | `id` | UUID dari HP (kirim ulang idempoten) |
 | `pengukuran_id` | beban yang dipasangkan (FK `pengukuran_gardu`) |
 | `gardu_kode`, `ulp`, `jurusan` | |
-| `v_rn, v_sn, v_tn, v_rs, v_rt, v_st` | lihat §6 no. 2 |
+| `v_rn, v_sn, v_tn` | fasa-netral (§6 no. 2) |
 | `lat, lng, akurasi_m` | titik petugas saat Simpan — WAJIB |
 | `foto_url` | WAJIB (NOT NULL) |
 | `tiang_rekomendasi_id`, `jarak_rekomendasi_m` | tiang terjauh saat itu & jarak titik ukur darinya — admin bisa melihat "diukur 12 m dari ujung" vs "diukur 400 m sebelum ujung" |
@@ -67,7 +67,7 @@ mana pun sah.
 
 ## 4. HP (T2–T3)
 
-- **Formulir beban**: bagian tegangan ujung per jurusan dihapus (u7).
+- **Formulir beban**: bagian tegangan ujung per jurusan disembunyikan untuk bulan sejak aturan ULP itu berlaku (u7, §6 no. 5); sebelum itu tetap seperti semula.
 - **Tab baru** di Pengukuran Gardu (nama: §6 no. 1) — gardu yang bebannya sudah
   terkirim bulan ini tapi belum punya tegangan ujung.
 - **Formulir tegangan ujung**:
@@ -91,16 +91,17 @@ mana pun sah.
   diubah: push → pull di sana → `pm2 restart smart-amg-agent`.
 - Unduhan Excel pengukuran: kolom tegangan ujung dari tabel baru + titik + jarak.
 
-## 6. Yang masih perlu dijawab
+## 6. Jawaban user (27 Sep 2026)
 
-1. **Nama di layar** (aturan: tanya dulu): nama tab baru dan judul formulir.
-   Usulan: tab **"Tegangan ujung"**, formulir **"Pengukuran Tegangan Ujung"**.
-2. **Isian tegangan**: enam angka seperti panel (R-N, S-N, T-N, R-S, R-T, S-T),
-   atau tiga fasa-netral saja? AMG hanya menerima R/S/T per jurusan (fasa-netral).
-3. **Jendela waktu**: tegangan ujung harus di bulan yang sama dengan bebannya
-   (usulan, sejalan dengan jendela WO), atau boleh menyusul kapan saja?
-4. **Gardu satu jurusan / tanpa JTR**: regu memilih jurusan sendiri dan
-   rekomendasi tidak tampil — cukup?
+1. Nama di layar: tab **"Tegangan ujung"**, formulir **"Pengukuran Tegangan Ujung"**.
+2. Isian: **tiga fasa-netral** (R-N, S-N, T-N) — sama dengan yang diterima AMG.
+3. Tegangan ujung **sebulan dengan bebannya**, dan tidak mendahului beban.
+4. Gardu satu jurusan / tanpa data JTR: regu memilih jurusan sendiri, tanpa rekomendasi.
+5. **Aturan u5–u7 berlaku mulai bulan depan**, bukan sekarang: bulan ini realisasi,
+   Kirim AMG, dan isian formulir beban tetap seperti semula. Diatur lewat
+   **"berlaku mulai bulan …" per ULP** (`aturan_tegangan_ujung`), bukan saklar —
+   saklar akan menghitung ulang realisasi bulan-bulan lalu. Selama kosong, formulir
+   tegangan ujung sudah bisa dipakai tapi belum wajib.
 
 ## 7. Urutan pengerjaan
 
@@ -112,6 +113,7 @@ mana pun sah.
 | T4 | Web: detail gardu, Kembalikan/Batalkan, gerbang tombol AMG, Excel |
 | T5 | Agen AMG membaca tegangan ujung dari tabel baru (pasang di PC LAN PLN) |
 
-⚠ **T2 dan T5 harus tiba bersamaan dengan T1**: begitu formulir beban tidak lagi
-mengisi tegangan ujung, agen lama akan mengirim tegujung kosong ke AMG.
-Gerbang tombol AMG (u6) mencegahnya selama agen belum diperbarui.
+⚠ **Agen AMG (T5) harus terpasang di PC LAN PLN SEBELUM "berlaku mulai" diisi**:
+sejak saat itu formulir beban tidak lagi mengisi tegangan ujung, dan agen lama
+akan mengirim tegujung kosong. Agen baru: tegangan ujung dari tabel baru bila
+ada, dari `perjurusan` bila tidak — jadi aman dipasang kapan saja.
