@@ -43,6 +43,8 @@ export function useWoInspeksiJtm() {
   const [segmen, setSegmen] = useState<SegmenPilihan[]>([]);
   const [item, setItem] = useState<ItemWoJtm[]>([]);
   const [tim, setTim] = useState<{ regu: string; ulp: string }[]>([]);
+  /** Semua item yang tidak dibatalkan — bahan "sudah terbit bulan ini" di info SLA. */
+  const [terbitan, setTerbitan] = useState<{ ulp: string; tgl_wo: string; panjang_km: number | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -59,11 +61,15 @@ export function useWoInspeksiJtm() {
           .order("tgl_wo", { ascending: false }).order("id"),
       ),
       supabaseBrowser.from("regu_inspeksi").select("regu,ulp").order("ulp").order("regu"),
+      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null }>(() =>
+        supabaseBrowser.from("wo_inspeksi_item_status").select("id,ulp,tgl_wo,panjang_km").neq("status", "Dibatalkan").order("id"),
+      ),
     ]).then(
-      ([s, i, g]) => {
+      ([s, i, g, t]) => {
         if (!hidup) return;
         setSegmen(s);
         setItem(i);
+        setTerbitan(t);
         setTim((g.data ?? []) as { regu: string; ulp: string }[]);
         setLoading(false);
       },
@@ -151,5 +157,11 @@ export function useWoInspeksiJtm() {
     return true;
   };
 
-  return { segmen, item, regu, segmenTerikat, loading, terbitkan, tugaskan, batalkan, muat };
+  /** KMS WO inspeksi JTM yang sudah terbit untuk ULP itu di bulan tanggal itu. */
+  const terbitBulan = (u: string, tgl: string) =>
+    terbitan
+      .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7))
+      .reduce((n, x) => n + Number(x.panjang_km ?? 0), 0);
+
+  return { segmen, item, regu, segmenTerikat, loading, terbitkan, tugaskan, batalkan, muat, terbitBulan };
 }

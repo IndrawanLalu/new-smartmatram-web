@@ -76,7 +76,7 @@ const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
 /** Status tampil — "Belum ditugaskan" bukan status database, tapi keadaan
  *  yang paling perlu terlihat: selama regu kosong, segmen ini tidak muncul di
  *  HP siapa pun. */
-const statusTampil = (status: string, regu: string | null): StatusRabas => {
+export const statusTampil = (status: string, regu: string | null): StatusRabas => {
   if (!regu && ["Dijadwalkan", "Ditolak"].includes(status)) return "Belum ditugaskan";
   switch (status) {
     case "Dijadwalkan": return "Dijadwalkan";
@@ -182,8 +182,16 @@ export function useDaftarPerabasan(user: CurrentUser) {
       setSemua(
         h.rows
           .map(petaBaris)
-          // Urut per penyulang (keputusan user), lalu urutan di WO.
-          .sort((x, y) => x.penyulang.localeCompare(y.penyulang) || x.urutan - y.urutan),
+          // Urut per REGU, lalu penyulang, lalu urutan di WO (permintaan user
+          // 25 Sep 2026). Yang belum dibagi ke regu di paling atas — dia yang
+          // perlu ditindak: selama tanpa regu, tidak muncul di HP siapa pun.
+          .sort(
+            (x, y) =>
+              Number(!!x.regu) - Number(!!y.regu) ||
+              (x.regu ?? "").localeCompare(y.regu ?? "") ||
+              x.penyulang.localeCompare(y.penyulang) ||
+              x.urutan - y.urutan,
+          ),
       );
       setLoading(false);
     });

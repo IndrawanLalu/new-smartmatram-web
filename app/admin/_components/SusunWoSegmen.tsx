@@ -46,6 +46,19 @@ export interface IstilahWo {
   reguKosong: (ulp: string) => string;
 }
 
+/** SLA bulan WO & KMS yang sudah terbit di bulan itu (permintaan user
+ *  25 Sep 2026: "saat buat WO, tampilkan SLA per bulannya"). */
+export interface InfoSla {
+  sla: number | null;
+  terbit: number;
+}
+
+const NAMA_BULAN = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember",
+];
+const kms = (v: number) => v.toFixed(2).replace(".", ",");
+
 /**
  * Menerbitkan WO bersatuan SEGMEN, diukur KILOMETER — dipakai WO Perabasan dan
  * WO Inspeksi JTM (`rencana-mobile-jtm-jtr.md` J4). Yang berbeda hanya
@@ -75,9 +88,15 @@ export default function SusunWoSegmen({
   woTerbuka,
   onTerbitkan,
   onTambah,
+  infoSla,
+  woAwal,
 }: {
   user: CurrentUser;
   istilah: IstilahWo;
+  /** SLA ULP di bulan WO + yang sudah terbit bulan itu. */
+  infoSla?: (ulp: string, tglWo: string) => InfoSla;
+  /** Dibuka dari Daftar WO: langsung ke "Tambah ke WO" untuk WO ini. */
+  woAwal?: { id: string; ulp: string } | null;
   segmen: SegmenPilihan[];
   segmenTerikat: Set<string>;
   regu: ReguPilihan[];
@@ -100,7 +119,7 @@ export default function SusunWoSegmen({
   }) => Promise<{ item: number } | null>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
-  const [ulp, setUlp] = useState(bolehSemua ? "" : (user.unit ?? ""));
+  const [ulp, setUlp] = useState(woAwal?.ulp ?? (bolehSemua ? "" : (user.unit ?? "")));
   const [nama, setNama] = useState("");
   const [target, setTarget] = useState("");
   const [tgl, setTgl] = useState(() => new Date().toISOString().slice(0, 10));
@@ -117,8 +136,8 @@ export default function SusunWoSegmen({
    * jadi dua angka yang harus dijumlah orang — dan yang harus dijumlah orang
    * cepat atau lambat salah dijumlah.
    */
-  const [mode, setMode] = useState<"baru" | "tambah">("baru");
-  const [woTujuan, setWoTujuan] = useState("");
+  const [mode, setMode] = useState<"baru" | "tambah">(woAwal ? "tambah" : "baru");
+  const [woTujuan, setWoTujuan] = useState(woAwal?.id ?? "");
 
   const tersedia = useMemo(
     () =>
@@ -169,6 +188,11 @@ export default function SusunWoSegmen({
   }, [dipilih, bagi]);
 
   const targetNum = Number(target.replace(",", ".")) || 0;
+
+  // Tanggal acuan SLA: tanggal WO baru, atau tanggal WO tujuan saat menambah.
+  const tglAcuan = mode === "baru" ? tgl : (woDipilih?.tgl_wo ?? tgl);
+  const sla = ulp && infoSla ? infoSla(ulp, tglAcuan) : null;
+  const bulanAcuan = `${NAMA_BULAN[Number(tglAcuan.slice(5, 7)) - 1]} ${tglAcuan.slice(0, 4)}`;
   const siap =
     !!ulp &&
     dipilih.length > 0 &&
@@ -322,6 +346,31 @@ export default function SusunWoSegmen({
             </>
           )}
         </div>
+
+        {/* SLA bulan ini — pembanding target WO, terlihat SAAT menyusun. */}
+        {sla && (
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 rounded-xl border border-navy-100 bg-navy-50/40 px-3 py-2 text-xs text-ink-soft">
+            <span>
+              <b className="text-ink">SLA {ulp} · {bulanAcuan}:</b>{" "}
+              {sla.sla === null ? (
+                <span className="text-amber-700">belum diisi (Rekap Kinerja → Atur SLA)</span>
+              ) : (
+                <b className="text-ink tabular-nums">{kms(sla.sla)} KMS</b>
+              )}
+            </span>
+            <span>
+              sudah terbit bulan ini <b className="text-ink tabular-nums">{kms(sla.terbit)}</b> KMS
+            </span>
+            {sla.sla !== null && totalKm > 0 && (
+              <span>
+                + pilihan ini {kms(totalKm)} → <b className="text-ink tabular-nums">{kms(sla.terbit + totalKm)}</b> KMS
+                <span className={sla.terbit + totalKm >= sla.sla ? " text-emerald-700" : " text-amber-700"}>
+                  {" "}({sla.sla > 0 ? Math.round(((sla.terbit + totalKm) / sla.sla) * 100) : 0}% SLA)
+                </span>
+              </span>
+            )}
+          </div>
+        )}
 
         {/* Isi WO tujuan diperlihatkan apa adanya. Menambah segmen ke WO yang
             sudah penuh tanpa melihat isinya adalah cara paling mudah membuat
@@ -493,7 +542,8 @@ export default function SusunWoSegmen({
                     onChange={() =>
                       setPilih((prev) => {
                         const n = new Set(prev);
-                        n.has(s.segmen_id) ? n.delete(s.segmen_id) : n.add(s.segmen_id);
+                        if (n.has(s.segmen_id)) n.delete(s.segmen_id);
+                        else n.add(s.segmen_id);
                         return n;
                       })
                     }

@@ -324,9 +324,45 @@ export function useWoPerabasan() {
     return (data ?? []) as unknown as Realisasi[];
   }, []);
 
+  /** Seluruh segmen SATU WO (semua status) — untuk modal Daftar WO. */
+  const ambilItemWo = useCallback(async (woId: string): Promise<WoItem[]> => {
+    const { data, error } = await supabaseBrowser
+      .from("wo_perabasan_item")
+      .select(KOLOM_ITEM)
+      .eq("wo_id", woId)
+      .order("urutan");
+    if (error) throw new Error(error.message);
+    return (data ?? []) as unknown as WoItem[];
+  }, []);
+
+  /** Ubah nama / target / tanggal WO yang masih Terbit (`wo-perabasan-ubah.sql`). */
+  const ubahWo = useCallback(
+    async (v: { woId: string; nama: string; targetKm: number; tglWo: string; oleh?: string }) => {
+      const { error } = await supabaseBrowser.rpc("ubah_wo_perabasan", {
+        p_wo_id: v.woId,
+        p_nama: v.nama,
+        p_target_km: v.targetKm,
+        p_tgl_wo: v.tglWo,
+        p_oleh: v.oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      toast.success("WO diperbarui.");
+      // Tambal di tempat: satu baris WO berubah, angka capaiannya tidak.
+      setWo((p) =>
+        p.map((w) => (w.wo_id === v.woId ? { ...w, nama: v.nama, target_km: v.targetKm, tgl_wo: v.tglWo } : w)),
+      );
+      return true;
+    },
+    [toast],
+  );
+
   return {
     wo, item, segmen, regu, loading, muat,
     terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu, ambilRealisasi,
+    ambilItemWo, ubahWo,
     segmenTerikat,
   };
 }

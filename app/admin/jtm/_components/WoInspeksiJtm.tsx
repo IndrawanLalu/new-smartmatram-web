@@ -7,6 +7,7 @@ import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { CurrentUser } from "@/lib/roles";
 import { useWoInspeksiJtm, type ItemWoJtm } from "../_hooks/useWoInspeksiJtm";
+import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 
 /**
  * Tab Susun WO inspeksi JTM (J4 `rencana-mobile-jtm-jtr.md`): terbitkan WO
@@ -40,6 +41,7 @@ const tahap = (x: ItemWoJtm) => {
 
 export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
   const w = useWoInspeksiJtm();
+  const slaBulan = useSlaBulanan("jtm");
   const oleh = user.name ?? user.email;
   const [halaman, setHalaman] = useState(1);
   const [batal, setBatal] = useState<ItemWoJtm | null>(null);
@@ -65,6 +67,7 @@ export default function WoInspeksiJtm({ user }: { user: CurrentUser }) {
         segmenTerikat={w.segmenTerikat}
         regu={w.regu}
         woTerbuka={[]}
+        infoSla={(u, tgl) => ({ sla: slaBulan(u, tgl), terbit: w.terbitBulan(u, tgl) })}
         onTerbitkan={(v) => w.terbitkan({ ...v, oleh })}
       />
 

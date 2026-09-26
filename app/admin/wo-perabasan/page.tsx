@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LayoutDashboard, ListChecks, Loader2, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Download, FileText, LayoutDashboard, ListChecks, Loader2, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits } from "@/lib/roles";
@@ -14,6 +14,9 @@ import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSe
 import TabelLuarWo from "./_components/TabelLuarWo";
 import DetailLuarWoModal from "./_components/DetailLuarWoModal";
 import { useLuarWoPerabasan } from "./_hooks/useLuarWoPerabasan";
+import DaftarWo from "./_components/DaftarWo";
+import DetailWoModal from "./_components/DetailWoModal";
+import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 
 /**
  * Perabasan Pohon — satuan SEGMEN, ukuran KILOMETER.
@@ -40,6 +43,8 @@ const ISTILAH: IstilahWo = {
 const TABS = [
   { key: "daftar", label: "Daftar Segmen", icon: ListChecks },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  // Daftar WO yang sudah terbit — lihat & ubah (permintaan user 25 Sep 2026).
+  { key: "wo", label: "Daftar WO", icon: FileText },
   { key: "terbit", label: "Susun WO", icon: Send },
 ] as const;
 
@@ -52,6 +57,10 @@ export default function WoPerabasanPage() {
   const [mengunduh, setMengunduh] = useState(false);
   const [lihatLuar, setLihatLuar] = useState(false);
   const [idLuar, setIdLuar] = useState<string | null>(null);
+  const [idWo, setIdWo] = useState<string | null>(null);
+  /** Dibuka dari Daftar WO → Susun WO langsung pada "Tambah ke WO" ini. */
+  const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
+  const slaBulan = useSlaBulanan("perabasan");
   const w = useWoPerabasan();
   const d = useDaftarPerabasan(user);
   const l = useLuarWoPerabasan(d.ulp, d.tahun, d.bulan, d.cari);
@@ -59,6 +68,17 @@ export default function WoPerabasanPage() {
 
   const detail = idDetail ? (d.semua.find((b) => b.id === idDetail) ?? null) : null;
   const detailLuar = idLuar ? (l.semua.find((b) => b.id === idLuar) ?? null) : null;
+  const detailWo = idWo ? (w.wo.find((x) => x.wo_id === idWo) ?? null) : null;
+  const bolehUlp = (u: string) =>
+    canSeeAllUnits(user.role) || (user.role === "admin" && (user.unit ?? "").toUpperCase() === u.toUpperCase());
+
+  /** SLA bulan WO + KMS WO yang SUDAH terbit di bulan itu untuk ULP tsb. */
+  const infoSla = (u: string, tglWo: string) => ({
+    sla: slaBulan(u, tglWo),
+    terbit: w.wo
+      .filter((x) => x.ulp === u && x.status !== "Dibatalkan" && x.tgl_wo.slice(0, 7) === tglWo.slice(0, 7))
+      .reduce((n, x) => n + Number(x.rencana_km ?? 0), 0),
+  });
   // Rabas di luar WO diputuskan admin ULP LOKASI atau UP3 (dijaga database juga).
   const bolehPutuskanLuar = (ulpLokasi: string) =>
     canSeeAllUnits(user.role) || (user.role === "admin" && (user.unit ?? "").toUpperCase() === ulpLokasi.toUpperCase());
@@ -81,12 +101,20 @@ export default function WoPerabasanPage() {
   };
 
   const dashboard = tab === "dashboard";
+  const daftarWo = tab === "wo";
 
   return (
     <div className="text-ink flex flex-col gap-4">
       <div className="flex flex-wrap gap-2">
         {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
+          <button
+            key={key}
+            onClick={() => {
+              setTab(key);
+              setWoAwal(null);
+            }}
+            className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}
+          >
             <Icon size={14} />
             {label}
             {key === "daftar" && !d.loading && d.hitung["Belum ditugaskan"] > 0 && (
@@ -103,8 +131,11 @@ export default function WoPerabasanPage() {
 
       {tab === "terbit" ? (
         <SusunWoSegmen
+          key={woAwal?.id ?? "baru"}
           user={user}
           istilah={ISTILAH}
+          infoSla={infoSla}
+          woAwal={woAwal}
           segmen={w.segmen}
           segmenTerikat={w.segmenTerikat}
           regu={w.regu}
@@ -132,16 +163,18 @@ export default function WoPerabasanPage() {
             >
               {d.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
             </select>
-            {!dashboard && (
+            {!dashboard && !daftarWo && (
               <select value={d.bulan} onChange={(e) => d.setBulan(Number(e.target.value))} className={`${FIELD} w-[160px]`} aria-label="Bulan">
                 <option value={0}>Sepanjang tahun</option>
                 {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
               </select>
             )}
-            <select value={d.tahun} onChange={(e) => d.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
-              {d.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-            {!dashboard && (
+            {!daftarWo && (
+              <select value={d.tahun} onChange={(e) => d.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
+                {d.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
+              </select>
+            )}
+            {!dashboard && !daftarWo && (
               <div className="relative">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
                 <input
@@ -154,7 +187,7 @@ export default function WoPerabasanPage() {
             )}
           </div>
 
-          {!dashboard && (
+          {!dashboard && !daftarWo && (
             <>
               <div className="flex flex-wrap items-center gap-2 -mt-1">
                 <button
@@ -204,6 +237,8 @@ export default function WoPerabasanPage() {
 
           {dashboard ? (
             <DashboardPerabasan key={`${d.ulp}-${d.tahun}`} ulp={d.ulp} tahun={d.tahun} />
+          ) : daftarWo ? (
+            <DaftarWo wo={w.wo} ulp={d.ulp} loading={w.loading} onDetail={(x) => setIdWo(x.wo_id)} />
           ) : d.galat && !d.loading ? (
             <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
               <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
@@ -251,6 +286,20 @@ export default function WoPerabasanPage() {
           onTutup={() => setIdLuar(null)}
           onPutuskan={(id, terima, catatan) => l.putuskan(id, terima, catatan, oleh)}
           onBatalkan={(id, alasan) => l.batalkan(id, alasan, oleh)}
+        />
+      )}
+      {detailWo && (
+        <DetailWoModal
+          w={detailWo}
+          bolehUbah={bolehUlp(detailWo.ulp)}
+          ambilItem={w.ambilItemWo}
+          onUbah={(v) => w.ubahWo({ ...v, oleh })}
+          onTambahSegmen={() => {
+            setWoAwal({ id: detailWo.wo_id, ulp: detailWo.ulp });
+            setIdWo(null);
+            setTab("terbit");
+          }}
+          onTutup={() => setIdWo(null)}
         />
       )}
     </div>
