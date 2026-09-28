@@ -302,7 +302,8 @@ BEGIN
     RAISE EXCEPTION 'Rentang paling lama 3 bulan — persempit tanggalnya.';
   END IF;
 
-  SELECT rl.is_eksekutor, rl.sees_all_units, COALESCE(rl.menus, '[]'::jsonb) AS menus
+  -- roles.menus = TEXT[] (roles-schema.sql), BUKAN jsonb — perbaikan 28 Sep 2026.
+  SELECT rl.is_eksekutor, rl.sees_all_units, COALESCE(rl.menus, '{}'::text[]) AS menus
     INTO r FROM public.roles rl WHERE rl.code = v_role;
 
   -- Jenis yang boleh: dari menu role.
@@ -318,7 +319,7 @@ BEGIN
       WHEN 'jtr'             THEN ARRAY['jtr']
       WHEN 'inspeksi'        THEN ARRAY['laporan']
     END) AS j
-    FROM jsonb_array_elements_text(COALESCE(r.menus, '[]'::jsonb)) m
+    FROM unnest(COALESCE(r.menus, '{}'::text[])) m
     UNION ALL
     SELECT 'tugas' WHERE COALESCE(r.is_eksekutor, false) OR v_role IN ('UP3', 'admin')
   ) x WHERE j IS NOT NULL;
