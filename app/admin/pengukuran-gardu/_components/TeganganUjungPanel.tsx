@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExternalLink, MapPin, TriangleAlert, Undo2, XCircle } from "lucide-react";
+import { BadgeCheck, ExternalLink, MapPin, TriangleAlert, Undo2, XCircle } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
@@ -11,6 +11,8 @@ import { useCurrentUser } from "@/app/admin/_context/UserContext";
  * Tegangan ujung satu pengukuran beban — diukur di ujung JTR, dengan titik &
  * foto (`rencana-tegangan-ujung.md`). Admin bisa Kembalikan (petugas
  * memperbaiki) atau Batalkan (salah objek), keduanya beralasan (butir 2, 8).
+ * Setujui = verifikasi admin (`tegangan-ujung-persetujuan.sql`); status tetap
+ * Terkirim, yang berubah verified_at.
  */
 
 interface Titik {
@@ -30,14 +32,21 @@ interface Titik {
   petugas_nama: string | null;
   status: "Terkirim" | "Dikembalikan" | "Dibatalkan";
   alasan: string | null;
+  verified_at: string | null;
+  verified_by: string | null;
   tiang: { kode: string } | null;
 }
 
 const KOLOM =
-  "id,jurusan,v_rn,v_sn,v_tn,lat,lng,akurasi_m,foto_url,jarak_rekomendasi_m,panjang_jaringan_m,tgl_ukur,jam_ukur,petugas_nama,status,alasan,tiang:tiang_rekomendasi_id(kode)";
+  "id,jurusan,v_rn,v_sn,v_tn,lat,lng,akurasi_m,foto_url,jarak_rekomendasi_m,panjang_jaringan_m,tgl_ukur,jam_ukur,petugas_nama,status,alasan,verified_at,verified_by,tiang:tiang_rekomendasi_id(kode)";
 
-const NADA: Record<Titik["status"], string> = {
-  Terkirim: "bg-emerald-50 text-emerald-700 border-emerald-200",
+type Tampil = "Disetujui" | "Menunggu verifikasi" | "Dikembalikan" | "Dibatalkan";
+const tampil = (t: Titik): Tampil =>
+  t.status === "Terkirim" ? (t.verified_at ? "Disetujui" : "Menunggu verifikasi") : t.status;
+
+const NADA: Record<Tampil, string> = {
+  Disetujui: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Menunggu verifikasi": "bg-amber-50 text-amber-700 border-amber-200",
   Dikembalikan: "bg-orange-50 text-orange-700 border-orange-200",
   Dibatalkan: "bg-gray-100 text-gray-500 border-gray-200",
 };
@@ -78,9 +87,19 @@ export default function TeganganUjungPanel({ pengukuranId, amgTerkunci }: { peng
     }
     const status = aksi.jenis === "kembali" ? "Dikembalikan" : "Dibatalkan";
     // Ditambal di tempat — satu baris berubah.
-    setTitik((p) => (p ?? []).map((x) => (x.id === aksi.t.id ? { ...x, status, alasan } : x)));
+    setTitik((p) => (p ?? []).map((x) => (x.id === aksi.t.id ? { ...x, status, alasan, verified_at: null, verified_by: null } : x)));
     toast.success(aksi.jenis === "kembali" ? "Dikembalikan ke petugas." : "Tegangan ujung dibatalkan.");
     return true;
+  };
+
+  const setujui = async (t: Titik) => {
+    const { error } = await supabaseBrowser.rpc("setujui_tegangan_ujung", { p_id: t.id, p_nama: oleh });
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setTitik((p) => (p ?? []).map((x) => (x.id === t.id ? { ...x, verified_at: new Date().toISOString(), verified_by: oleh } : x)));
+    toast.success(`Tegangan ujung jurusan ${t.jurusan} disetujui.`);
   };
 
   if (titik === null) return null;
@@ -102,7 +121,7 @@ export default function TeganganUjungPanel({ pengukuranId, amgTerkunci }: { peng
               <div className="flex-1 min-w-[200px] text-xs">
                 <p className="text-ink">
                   <b className="text-accent-deep">Jurusan {t.jurusan}</b> · R-N <b>{t.v_rn}</b> · S-N <b>{t.v_sn}</b> · T-N <b>{t.v_tn}</b>
-                  <span className={`ml-2 inline-block px-1.5 py-0.5 rounded-full border text-[10px] font-semibold ${NADA[t.status]}`}>{t.status}</span>
+                  <span className={`ml-2 inline-block px-1.5 py-0.5 rounded-full border text-[10px] font-semibold ${NADA[tampil(t)]}`}>{tampil(t)}</span>
                 </p>
                 <p className="text-ink-soft mt-0.5">
                   {t.tgl_ukur} {t.jam_ukur?.slice(0, 5) ?? ""} · {t.petugas_nama ?? "—"} · GPS ±{t.akurasi_m === null ? "?" : Math.round(t.akurasi_m)} m
@@ -122,15 +141,25 @@ export default function TeganganUjungPanel({ pengukuranId, amgTerkunci }: { peng
                   </a>
                 </p>
                 {t.alasan && <p className="text-orange-700 mt-0.5">Alasan: {t.alasan}</p>}
+                {t.verified_at && <p className="text-emerald-700 mt-0.5">Disetujui {t.verified_by ?? "—"} · {t.verified_at.slice(0, 10)}</p>}
               </div>
-              {t.status === "Terkirim" && !amgTerkunci && (
+              {t.status === "Terkirim" && (
                 <div className="flex flex-col gap-1 items-end">
-                  <button onClick={() => setAksi({ t, jenis: "kembali" })} className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-700 hover:underline">
-                    <Undo2 size={12} /> Kembalikan
-                  </button>
-                  <button onClick={() => setAksi({ t, jenis: "batal" })} className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:underline">
-                    <XCircle size={12} /> Batalkan
-                  </button>
+                  {!t.verified_at && (
+                    <button onClick={() => void setujui(t)} className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 hover:underline">
+                      <BadgeCheck size={12} /> Setujui
+                    </button>
+                  )}
+                  {!amgTerkunci && (
+                    <>
+                      <button onClick={() => setAksi({ t, jenis: "kembali" })} className="inline-flex items-center gap-1 text-[11px] font-semibold text-orange-700 hover:underline">
+                        <Undo2 size={12} /> Kembalikan
+                      </button>
+                      <button onClick={() => setAksi({ t, jenis: "batal" })} className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:underline">
+                        <XCircle size={12} /> Batalkan
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

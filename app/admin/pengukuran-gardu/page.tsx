@@ -48,6 +48,7 @@ import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PersetujuanUkurTab from "./_components/PersetujuanUkurTab";
+import TeganganUjungTab from "./_components/TeganganUjungTab";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
@@ -76,6 +77,7 @@ const TABS = [
   { key: "penyeimbangan",  label: "Tindak Lanjut Anomali", icon: Scale },
   { key: "wo-pengukuran",  label: "WO Pengukuran",        icon: ClipboardList },
   { key: "persetujuan",    label: "Persetujuan",          icon: BadgeCheck },
+  { key: "tegangan-ujung", label: "Tegangan Ujung",       icon: Zap },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -900,6 +902,10 @@ export default function PengukuranGarduPage() {
           pengukuran={latestData}
           settings={anomalySettings}
         />
+      )}
+
+      {activeTab === "tegangan-ujung" && (
+        <TeganganUjungTab ulp={activeUlp} oleh={user.name ?? user.email ?? ""} />
       )}
 
     </div>
