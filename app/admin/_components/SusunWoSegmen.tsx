@@ -180,6 +180,7 @@ export default function SusunWoSegmen({
     () => segmen.filter((s) => pilih.has(s.segmen_id) && (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id)),
     [segmen, pilih, ulp, segmenTerikat],
   );
+  const semuaTersaringDipilih = tersedia.length > 0 && tersedia.every((s) => pilih.has(s.segmen_id));
   const totalKm = dipilih.reduce((n, s) => n + (s.panjang_pakai_km ?? 0), 0);
   const kmKetikan = dipilih
     .filter((s) => s.panjang_dari === "ketikan")
@@ -546,6 +547,30 @@ export default function SusunWoSegmen({
           </p>
         ) : (
           <div className="mt-3 space-y-1">
+            {/* Berlaku untuk SELURUH hasil saringan (penyulang / pencarian),
+                bukan hanya yang sudah tampil — daftar dibuka bertahap. */}
+            <label className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface cursor-pointer">
+              <input
+                type="checkbox"
+                checked={semuaTersaringDipilih}
+                onChange={() =>
+                  setPilih((prev) => {
+                    const n = new Set(prev);
+                    for (const s of tersedia) {
+                      if (semuaTersaringDipilih) n.delete(s.segmen_id);
+                      else n.add(s.segmen_id);
+                    }
+                    return n;
+                  })
+                }
+                className="accent-navy-600"
+              />
+              <span className="text-xs font-semibold text-ink">
+                Pilih semua {tersedia.length} {satuan}
+                {saringPenyulang ? ` di penyulang ${saringPenyulang}` : ""}
+                {cari.trim() ? ` yang cocok dengan "${cari.trim()}"` : ""}
+              </span>
+            </label>
             {tersedia.slice(0, batasTampil).map((s) => {
               const aktif = pilih.has(s.segmen_id);
               return (
