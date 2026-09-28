@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
 /**
- * Pengukuran yang DITAHAN dari AMG oleh aturan tegangan ujung (`tahan_amg`,
- * `scripts/tegangan-ujung-persetujuan.sql`) → Map id → alasan. Server tetap
+ * Pengukuran yang DITAHAN dari AMG (`tahan_amg`: sedang dikembalikan ke
+ * petugas, atau tegangan ujung belum disetujui sejak aturannya berlaku —
+ * `scripts/amg-tahan-dikembalikan.sql`) → Map id → alasan. Server tetap
  * gerbang yang sebenarnya; ini supaya tombol & centang tidak tampak bisa
  * dipakai lalu baru ditolak setelah ditekan.
  *

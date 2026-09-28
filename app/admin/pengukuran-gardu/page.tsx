@@ -252,7 +252,7 @@ export default function PengukuranGarduPage() {
     return n;
   }, [latestPengukuran]);
 
-  // Yang ditahan aturan tegangan ujung — tidak bisa dicentang untuk AMG.
+  // Yang ditahan dari AMG (dikembalikan / tegangan ujung) — tidak bisa dicentang.
   // Dibaca ulang saat kembali ke tab ini (mis. setelah menyetujui ujung).
   const idBelumAmg = useMemo(
     () => latestPengukuran.filter((d) => statusAmg(d) === "belum" || statusAmg(d) === "gagal").map((d) => d.id),
@@ -795,7 +795,7 @@ export default function PengukuranGarduPage() {
                               AMG
                             </span>
                           )}
-                          {tahanAmg.has(row.id) && (
+                          {tahanAmg.has(row.id) && !row.dikembalikan_at && (
                             <span
                               title={tahanAmg.get(row.id)}
                               className="ml-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
