@@ -10,7 +10,10 @@
 --   1. Baris awal = 1.3.0 → tidak ada yang terhalang. Layar penghalang dikirim
 --      lewat OTA ke app 1.3.0 yang sekarang.
 --   2. Build 1.4.0 tayang di Play Store (produksi, bukan uji internal).
---   3. BARU naikkan:
+--   3. Anjurkan dulu (kartu, bisa "Nanti saja"):
+--        UPDATE versi_aplikasi SET versi_terbaru = '1.4.0', updated_at = now()
+--        WHERE platform = 'android';
+--   4. Setelah tenggat, BARU paksa:
 --        UPDATE versi_aplikasi SET versi_minimum = '1.4.0', updated_at = now()
 --        WHERE platform = 'android';
 --   Menaikkan sebelum langkah 2 = regu terkunci tanpa jalan keluar.
@@ -35,6 +38,12 @@ VALUES (
   'https://play.google.com/store/apps/details?id=com.pln.inspeksiulp'
 )
 ON CONFLICT (platform) DO NOTHING;
+
+-- Anjuran (bukan paksaan): versi app di bawah `versi_terbaru` → saat dibuka
+-- muncul kartu "Versi baru tersedia" · Perbarui sekarang / Nanti saja.
+-- Diisi begitu versi baru tayang; `versi_minimum` dinaikkan belakangan.
+ALTER TABLE public.versi_aplikasi ADD COLUMN IF NOT EXISTS versi_terbaru TEXT
+  CHECK (versi_terbaru IS NULL OR versi_terbaru ~ '^[0-9]+\.[0-9]+\.[0-9]+$');
 
 ALTER TABLE public.versi_aplikasi ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS versi_aplikasi_baca ON public.versi_aplikasi;
