@@ -7,6 +7,7 @@ import { CARD, FIELD } from "@/app/admin/_ui";
 import { useWoHargardu } from "../_hooks/useWoHargardu";
 import KartuWoUlp from "./KartuWoUlp";
 import TabelWoHar from "./TabelWoHar";
+import RencanaPemeliharaan from "./RencanaPemeliharaan";
 
 /**
  * Tab WO Pemeliharaan — langkah 7 `rencana-hargardu.md`, sepola WO Pengukuran.
@@ -32,6 +33,8 @@ export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: Current
 
   return (
     <div className="flex flex-col gap-4">
+      <RencanaPemeliharaan daftar={daftar} oleh={user.name ?? user.email ?? ""} bolehKelola={canManageSettings(user.role)} />
+
       <div className="flex flex-wrap items-center gap-2">
         <input
           type="month"
