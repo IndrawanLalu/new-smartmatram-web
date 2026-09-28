@@ -1,7 +1,7 @@
 # Rancangan — Pengukuran Tegangan Ujung dipisah dari Pengukuran Beban
 
 Disusun 27 September 2026. Berlaku `teknisaplikasi.md` butir 1, 2, 3, 5, 6,
-14–17. **T1 dikerjakan 27 Sep 2026.**
+14–17. **T1–T5 dikerjakan 27–28 Sep 2026** (SQL `scripts/tegangan-ujung.sql`, belum dijalankan saat ditulis).
 
 ---
 

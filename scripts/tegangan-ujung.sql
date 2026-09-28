@@ -15,7 +15,7 @@
 --   5. kembalikan_ / batalkan_tegangan_ujung — tombol web
 --   6. wo_pengukuran_realisasi      — beban + tegangan ujung, HANYA untuk bulan
 --                                     sejak aturan berlaku (u5)
---   7. alasan_tahan_amg(id)         — gerbang tombol "Kirim ke AMG" (u6)
+--   7. tahan_amg(ids)               — gerbang tombol "Kirim ke AMG" (u6)
 --
 -- Kenapa TANGGAL, bukan saklar: realisasi WO diturunkan dari view, tidak
 -- disimpan. Saklar yang dinyalakan bulan depan akan menghitung ulang bulan-bulan
@@ -409,22 +409,24 @@ SELECT i.id,
 
 
 -- ── 7. Gerbang AMG ───────────────────────────────────────────────────────────
--- NULL = boleh dikirim ke AMG; teks = sebabnya ditahan. Sejak aturan berlaku,
--- pengukuran tanpa tegangan ujung terkirim ditahan (u6).
-CREATE OR REPLACE FUNCTION public.alasan_tahan_amg(p_id TEXT)
-RETURNS TEXT
+-- Pengukuran yang DITAHAN dari antrean AMG berikut sebabnya (yang boleh tidak
+-- dipulangkan). Sejak aturan berlaku, pengukuran tanpa tegangan ujung terkirim
+-- ditahan (u6). Baris hasil penyeimbangan tidak pernah punya tegangan ujung
+-- sendiri — tidak ditahan. Menerima banyak id: kirim massal dari tabel.
+DROP FUNCTION IF EXISTS public.alasan_tahan_amg(TEXT);
+CREATE OR REPLACE FUNCTION public.tahan_amg(p_ids TEXT[])
+RETURNS TABLE (id TEXT, no_gardu TEXT, alasan TEXT)
 LANGUAGE sql STABLE SET search_path = public AS $$
-  SELECT CASE
-    WHEN m.id IS NULL THEN 'Pengukuran tidak ditemukan.'
-    WHEN public.tegangan_ujung_berlaku(m.petugas_unit, m.tanggal_pengukuran::date)
-         AND NOT EXISTS (SELECT 1 FROM public.pengukuran_tegangan_ujung x
-                         WHERE x.pengukuran_id = m.id AND x.status = 'Terkirim')
-      THEN 'Tegangan ujung gardu ini belum dikirim petugas — AMG menunggu tegangan ujung.'
-  END
-  FROM (SELECT 1) s
-  LEFT JOIN public.pengukuran_gardu m ON m.id = p_id;
+  SELECT m.id, m.no_gardu,
+         'Tegangan ujung gardu ini belum dikirim petugas — AMG menunggu tegangan ujung.'
+  FROM public.pengukuran_gardu m
+  WHERE m.id = ANY (p_ids)
+    AND m.hasil_penyeimbangan_id IS NULL
+    AND public.tegangan_ujung_berlaku(m.petugas_unit, m.tanggal_pengukuran::date)
+    AND NOT EXISTS (SELECT 1 FROM public.pengukuran_tegangan_ujung x
+                    WHERE x.pengukuran_id = m.id AND x.status = 'Terkirim');
 $$;
-GRANT EXECUTE ON FUNCTION public.alasan_tahan_amg(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.tahan_amg(TEXT[]) TO authenticated;
 
 
 -- ── Periksa ──────────────────────────────────────────────────────────────────

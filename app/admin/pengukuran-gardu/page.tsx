@@ -4,7 +4,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CARD, BTN_PRIMARY } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { canManageSettings, canSeeAllUnits, UNITS } from "@/lib/roles";
+import AturanUjungModal from "./_components/AturanUjungModal";
 import { antreKeAmg } from "./_lib/amgQueue";
 import { downloadXlsx } from "./_utils/downloadXlsx";
 import {
@@ -40,6 +41,7 @@ import {
   Database,
   ClipboardList,
   BadgeCheck,
+  Zap,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
@@ -141,6 +143,7 @@ function ArusCell({ r, s, t, kva }: { r: number; s: number; t: number; kva?: num
 
 export default function PengukuranGarduPage() {
   const user = useCurrentUser();
+  const [aturanUjung, setAturanUjung] = useState(false);
   const [activeTab, setActiveTab] = useState<TabKey>("realisasi");
   const [page, setPage]           = useState(1);
   const [searchInput, setSearchInput] = useState("");
@@ -365,8 +368,19 @@ export default function PengukuranGarduPage() {
             <RefreshCw size={14} />
             Refresh
           </button>
+          {canManageSettings(user.role) && (
+            <button
+              onClick={() => setAturanUjung(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-line text-sm text-ink-soft hover:text-ink hover:bg-surface transition-colors"
+              title="Sejak bulan berapa tegangan ujung diukur terpisah di ujung jaringan"
+            >
+              <Zap size={14} />
+              Aturan tegangan ujung
+            </button>
+          )}
         </div>
       </div>
+      {aturanUjung && <AturanUjungModal onTutup={() => setAturanUjung(false)} />}
 
       {/* ── Kriteria Anomali ────────────────────────────────────────────────── */}
       <AnomalySettingsPanel

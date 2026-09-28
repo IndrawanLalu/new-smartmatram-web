@@ -5,10 +5,42 @@ import {
   CLR_PINK, CLR_TEAL, CLR_GREEN, CLR_HEADER, CLR_WHITE,
   styleCell, mergeSet, downloadBuffer,
 } from "@/lib/xlsxGaya";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 // Warna, garis, dan cara mengunduh ada di `lib/xlsxGaya.ts` — dipakai bersama
 // unduhan Optimasi Trafo.
 
+
+// ── Tegangan ujung lapangan ────────────────────────────────────────────────────
+// Kolom "Tegangan Ujung" diisi dari ukuran LAPANGAN (`pengukuran_tegangan_ujung`,
+// titik & foto wajib) bila ada, dari formulir beban bila belum — aturan yang
+// sama dengan agen AMG (`rencana-tegangan-ujung.md`). Tabel belum ada = apa adanya.
+
+async function denganUjungLapangan(rows: PengukuranGardu[]): Promise<PengukuranGardu[]> {
+  const ids = rows.map((r) => r.id);
+  const ujung = new Map<string, Record<string, { R: number; S: number; T: number }>>();
+  for (let i = 0; i < ids.length; i += 150) {
+    const { data, error } = await supabaseBrowser
+      .from("pengukuran_tegangan_ujung")
+      .select("pengukuran_id,jurusan,v_rn,v_sn,v_tn")
+      .eq("status", "Terkirim")
+      .in("pengukuran_id", ids.slice(i, i + 150));
+    if (error) return rows;
+    for (const u of data ?? []) {
+      const m = ujung.get(u.pengukuran_id) ?? {};
+      m[u.jurusan] = { R: Number(u.v_rn), S: Number(u.v_sn), T: Number(u.v_tn) };
+      ujung.set(u.pengukuran_id, m);
+    }
+  }
+  if (ujung.size === 0) return rows;
+  return rows.map((r) => {
+    const u = ujung.get(r.id);
+    if (!u) return r;
+    const perjurusan = { ...(r.perjurusan ?? {}) };
+    for (const [k, v] of Object.entries(u)) perjurusan[k] = { ...(perjurusan[k] ?? {}), tegangan: v } as (typeof perjurusan)[string];
+    return { ...r, perjurusan };
+  });
+}
 
 // ── buildJurusanSection ────────────────────────────────────────────────────────
 // Shared builder: jurusan arus + beban total + teg gardu + % beban + suhu +
@@ -155,7 +187,8 @@ function buildJurusanSection(
 // Download Rekap Pengukuran Gardu (tab Realisasi)
 // ══════════════════════════════════════════════════════════════════════════════
 
-export async function downloadXlsx(rows: PengukuranGardu[], filename: string) {
+export async function downloadXlsx(semua: PengukuranGardu[], filename: string) {
+  const rows = await denganUjungLapangan(semua);
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
   const ws  = wb.addWorksheet("Pengukuran Gardu", {
@@ -218,7 +251,8 @@ export async function downloadXlsx(rows: PengukuranGardu[], filename: string) {
 // Download Gardu WO (tab Tindak Lanjut Anomali)
 // ══════════════════════════════════════════════════════════════════════════════
 
-export async function downloadWoGarduXlsx(rows: PengukuranGardu[], filename: string) {
+export async function downloadWoGarduXlsx(semua: PengukuranGardu[], filename: string) {
+  const rows = await denganUjungLapangan(semua);
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
   const ws  = wb.addWorksheet("Gardu WO", {

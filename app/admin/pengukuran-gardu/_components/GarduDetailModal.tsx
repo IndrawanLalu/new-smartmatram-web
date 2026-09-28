@@ -22,6 +22,7 @@ import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
 import { antreKeAmg } from "../_lib/amgQueue";
+import TeganganUjungPanel from "./TeganganUjungPanel";
 import { koordinat } from "../_lib/kandidatWo";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
@@ -769,6 +770,7 @@ export default function GarduDetailModal({
                   <div className="border-t border-line bg-white px-4 py-3">
                     <p className="text-xs font-semibold text-ink-soft mb-2">
                       Tegangan Ujung per Jurusan (V)
+                      <span className="ml-1.5 font-normal text-ink-muted">— dicatat di formulir beban, tanpa titik & foto</span>
                     </p>
                     <div className="grid grid-cols-5 gap-2">
                       {jurusanKeys.map((key) => {
@@ -796,6 +798,12 @@ export default function GarduDetailModal({
                     </div>
                   </div>
                 )}
+
+                <TeganganUjungPanel
+                  key={row.id}
+                  pengukuranId={row.id}
+                  amgTerkunci={!!row.amg_sent_at || !!row.amg_queued_at}
+                />
               </div>
             )}
           </section>
