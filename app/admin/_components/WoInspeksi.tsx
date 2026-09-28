@@ -17,7 +17,7 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
  */
 
 const reguKosong = (ulp: string) =>
-  `ULP ${ulp} belum punya tim inspeksi aktif di Manajemen Petugas (grup INSPEKTOR / INSPEKSI_JTM). WO tetap bisa terbit — semua tim se-ULP melihatnya di HP.`;
+  `ULP ${ulp} belum punya petugas aktif di Manajemen Petugas yang grupnya role inspeksi ini (role bermenu HP JTM/JTR di Kelola Role). WO tetap bisa terbit — semua tim se-ULP melihatnya di HP.`;
 
 const ISTILAH: Record<JenisWoInspeksi, IstilahWo> = {
   JTM: { judul: "Susun WO inspeksi JTM", contohNama: "Inspeksi JTM Oktober 2026", reguWajib: false, reguKosong },

@@ -115,7 +115,9 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
         supabaseBrowser.from(src.view).select(src.kolom).eq("status", "Terbuka")
           .order("tgl_wo", { ascending: false }).order("id"),
       ),
-      supabaseBrowser.from("regu_inspeksi").select("regu,ulp").order("ulp").order("regu"),
+      // Hanya petugas yang rolenya boleh jenis inspeksi ini (menu HP jtm / jtr,
+      // `scripts/regu-inspeksi-dari-roles.sql`).
+      supabaseBrowser.from("regu_inspeksi").select("regu,ulp").eq(jenis === "JTR" ? "jtr" : "jtm", true).order("ulp").order("regu"),
       fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null }>(() =>
         supabaseBrowser.from(src.view).select("id,ulp,tgl_wo,panjang_km").neq("status", "Dibatalkan").order("id"),
       ),
