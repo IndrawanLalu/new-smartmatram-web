@@ -98,6 +98,17 @@ baru ketahuan setelah papan ketik ditutup — kalau sempat diperiksa.
 
 **Contoh nyata.** Pemeliharaan Jaringan (Sep 2026). Dilaporkan user.
 
+**Pengecualian: layar yang isinya DI TENGAH** (`justifyContent: "center"` —
+login, layar satu kartu). Resep di atas TIDAK cukup: di Android,
+`KeyboardAvoidingView` tanpa behavior tidak menggeser apa pun, dan kartu yang
+duduk di tengah-bawah tertutup papan ketik. Di layar seperti ini:
+- dengarkan `Keyboard` `keyboardDidShow` / `keyboardDidHide`;
+- tambah `paddingBottom` isi gulir setinggi `e.endCoordinates.height`;
+- lalu `scrollTo` ke posisi kartu (dari `onLayout`) — bukan `scrollToEnd`.
+Bekerja baik jendela Android menyusut maupun tidak (edge-to-edge). Contoh:
+`src/screens/auth/LoginScreen.tsx` di proyek HP. Dilaporkan user 28 Sep 2026 —
+login baru sempat memakai resep umum dan kartunya tertutup.
+
 ---
 
 ## 4. Ukuran foto bukti: 1024 px / mutu 0,60, sekali kompres
