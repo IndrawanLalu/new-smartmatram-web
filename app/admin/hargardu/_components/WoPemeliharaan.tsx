@@ -44,8 +44,8 @@ export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: Current
           aria-label="Bulan WO"
         />
         <p className="text-[11px] text-ink-muted">
-          Satu WO per ULP per bulan. Gardu yang jatuh tempo = belum pernah dipelihara, atau pemeliharaan terakhirnya
-          sudah melewati interval frekuensi. Yang telat dikerjakan otomatis masuk kandidat bulan berikutnya.
+          Satu WO per ULP per bulan. Bulan yang ada Rencana Pemeliharaan: gardu rencana + sisa WO bulan lalu, terbit
+          otomatis tanggal 1. Tanpa rencana: gardu jatuh tempo menurut riwayat, diterbitkan manual.
         </p>
       </div>
 
@@ -92,6 +92,8 @@ function IsiWo({ user, daftar, periode }: { user: CurrentUser; daftar: string[];
                   header={info?.header ?? null}
                   kandidat={info?.kandidat ?? []}
                   aktif={info?.aktif ?? 0}
+                  rencana={info?.rencana ?? 0}
+                  sisa={info?.sisa ?? 0}
                   rows={w.rows.filter((r) => r.ulp === u)}
                   settings={s}
                   bolehKelola={canManageSettings(user.role)}

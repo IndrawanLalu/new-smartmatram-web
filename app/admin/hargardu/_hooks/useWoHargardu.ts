@@ -20,6 +20,7 @@ export interface WoHarHeader {
   tahun: number;
   tgl_wo: string;
   kuota: number;
+  kriteria: { sumber?: string; rencana?: number; sisa?: number; otomatis?: boolean } | null;
   created_at: string;
 }
 
@@ -63,6 +64,10 @@ const UKURAN_BATCH = 500;
 const tanggalWita = (ts: string) => new Date(ts).toLocaleDateString("sv-SE", { timeZone: "Asia/Makassar" });
 
 interface Muatan {
+  /** Gardu Rencana Pemeliharaan bulan ini per ULP (kunci gardu). */
+  rencana: Map<string, Set<string>>;
+  /** Gardu WO bulan lalu yang belum dikerjakan per ULP — ikut WO dari rencana. */
+  sisa: Map<string, Set<string>>;
   settings: Map<string, WoHarSettings>;
   headers: WoHarHeader[];
   rows: BarisWoHar[];
@@ -82,11 +87,12 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
 
   const tarik = useCallback(async (): Promise<Muatan> => {
     const ulp = kunciDaftar.split(",").filter(Boolean);
-    const [set, head, rows, master, kerja] = await Promise.all([
+    const lalu = bulan === 1 ? { t: tahun - 1, b: 12 } : { t: tahun, b: bulan - 1 };
+    const [set, head, rows, master, kerja, rencana, lewat] = await Promise.all([
       supabaseBrowser.from("wo_hargardu_settings").select("ulp,frekuensi_per_tahun,kuota_per_bulan,hanya_gardu_aktif"),
       supabaseBrowser
         .from("wo_hargardu")
-        .select("id,ulp,bulan,tahun,tgl_wo,kuota,created_at")
+        .select("id,ulp,bulan,tahun,tgl_wo,kuota,kriteria,created_at")
         .eq("tahun", tahun)
         .eq("bulan", bulan)
         .in("ulp", ulp)
@@ -119,6 +125,26 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
           .in("ulp", ulp)
           .order("id"),
       ),
+      // Tabel belum ada (SQL rencana belum dijalankan) = tanpa rencana.
+      fetchAllRows<{ ulp: string; gardu_kode: string }>(() =>
+        supabaseBrowser
+          .from("rencana_hargardu")
+          .select("ulp,gardu_kode")
+          .eq("tahun", tahun)
+          .eq("bulan", bulan)
+          .in("ulp", ulp)
+          .order("id"),
+      ).catch(() => []),
+      fetchAllRows<{ ulp: string; gardu_kode: string }>(() =>
+        supabaseBrowser
+          .from("wo_hargardu_realisasi")
+          .select("ulp,gardu_kode")
+          .eq("tahun", lalu.t)
+          .eq("bulan", lalu.b)
+          .eq("terealisasi", false)
+          .in("ulp", ulp)
+          .order("id"),
+      ),
     ]);
     if (set.error) throw new Error(set.error.message);
     if (head.error) throw new Error(head.error.message);
@@ -130,7 +156,17 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
       const tgl = tanggalWita(k.tgl_selesai);
       if (tgl > (terakhir.get(kunci) ?? "")) terakhir.set(kunci, tgl);
     }
+    const kelompok = (xs: { ulp: string; gardu_kode: string }[]) => {
+      const m = new Map<string, Set<string>>();
+      for (const x of xs) {
+        if (!m.has(x.ulp)) m.set(x.ulp, new Set());
+        m.get(x.ulp)!.add(x.gardu_kode.toUpperCase());
+      }
+      return m;
+    };
     return {
+      rencana: kelompok(rencana),
+      sisa: kelompok(lewat),
       settings: new Map((set.data ?? []).map((s) => [s.ulp as string, s as WoHarSettings])),
       headers: (head.data ?? []) as WoHarHeader[],
       rows,
@@ -155,7 +191,15 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
 
   /** Kandidat LENGKAP per ULP (belum dipotong kuota) + jumlah gardu aktif. */
   const perUlp = useMemo(() => {
-    const m = new Map<string, { kandidat: KandidatHar[]; aktif: number; header: WoHarHeader | null }>();
+    const m = new Map<string, {
+      kandidat: KandidatHar[];
+      aktif: number;
+      header: WoHarHeader | null;
+      /** Jumlah gardu dari Rencana Pemeliharaan; 0 = bulan ini disusun sistem. */
+      rencana: number;
+      /** Sisa WO bulan lalu yang ikut bila bulan ini dari rencana. */
+      sisa: number;
+    }>();
     if (!data) return m;
     const tglWo = tanggalWo(tahun, bulan);
     for (const ulp of kunciDaftar.split(",").filter(Boolean)) {
@@ -165,6 +209,8 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
         kandidat: susunKandidat(master, data.terakhir, s, tglWo),
         aktif: master.filter((g) => !s.hanya_gardu_aktif || garduAktif(g.status)).length,
         header: data.headers.find((h) => h.ulp === ulp) ?? null,
+        rencana: data.rencana.get(ulp)?.size ?? 0,
+        sisa: [...(data.sisa.get(ulp) ?? [])].filter((k) => !data.rencana.get(ulp)?.has(k)).length,
       });
     }
     return m;
@@ -190,6 +236,24 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
   const terbitkan = async (ulp: string) => {
     const info = perUlp.get(ulp);
     if (!info || info.header) throw new Error(`WO ${ulp} bulan ini sudah terbit.`);
+
+    // Bulan yang ada rencananya disusun server — fungsi yang sama dengan
+    // penerbitan otomatis tanggal 1, jadi hasilnya selalu sama.
+    if (info.rencana > 0) {
+      setMemproses(`wo-${ulp}`);
+      try {
+        const { data: r, error } = await supabaseBrowser.rpc("terbitkan_wo_hargardu_rencana", {
+          p_ulp: ulp, p_tahun: tahun, p_bulan: bulan,
+        });
+        if (error) throw new Error(error.message);
+        muat();
+        const h = r as { rencana: number; sisa: number };
+        return h.rencana + h.sisa;
+      } finally {
+        setMemproses(null);
+      }
+    }
+
     const s = settingsUntuk(ulp);
     const pilih = info.kandidat.slice(0, s.kuota_per_bulan);
     if (pilih.length === 0) throw new Error(`Tidak ada gardu ${ulp} yang jatuh tempo.`);

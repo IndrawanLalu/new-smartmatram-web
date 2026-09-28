@@ -21,6 +21,9 @@ interface Props {
   header: WoHarHeader | null;
   kandidat: KandidatHar[];
   aktif: number;
+  /** Gardu Rencana Pemeliharaan bulan ini; 0 = disusun sistem. */
+  rencana: number;
+  sisa: number;
   rows: BarisWoHar[];
   settings: WoHarSettings;
   bolehKelola: boolean;
@@ -45,7 +48,8 @@ export default function KartuWoUlp(p: Props) {
   const [draf, setDraf] = useState<WoHarSettings>(p.settings);
   const [dialog, setDialog] = useState<"terbit" | "hapus" | null>(null);
 
-  const jumlahTerbit = Math.min(p.settings.kuota_per_bulan, p.kandidat.length);
+  const dariRencana = p.rencana > 0;
+  const jumlahTerbit = dariRencana ? p.rencana + p.sisa : Math.min(p.settings.kuota_per_bulan, p.kandidat.length);
   const belumPernah = p.kandidat.filter((k) => k.alasan === "belum_pernah").length;
   const jadi = p.rows.filter((r) => r.terealisasi).length;
   const tunggu = p.rows.filter((r) => statusWo(r) === "Menunggu persetujuan").length;
@@ -89,7 +93,19 @@ export default function KartuWoUlp(p: Props) {
             </div>
             <span className="text-xs font-bold tabular-nums text-emerald-700 w-10 text-right">{pct}%</span>
           </div>
+          {p.header.kriteria?.sumber === "rencana" && (
+            <p className="text-[11px] text-ink-muted">
+              Disusun dari Rencana Pemeliharaan: {p.header.kriteria.rencana ?? 0} gardu rencana + {p.header.kriteria.sisa ?? 0} sisa bulan lalu
+              {p.header.kriteria.otomatis ? " · terbit otomatis" : ""}.
+            </p>
+          )}
         </>
+      ) : dariRencana ? (
+        <p className="text-xs text-ink-soft">
+          <b className="text-ink">Rencana Pemeliharaan</b> · {p.rencana.toLocaleString("id-ID")} gardu
+          {p.sisa > 0 && <> + {p.sisa.toLocaleString("id-ID")} sisa WO bulan lalu yang belum dikerjakan</>}. Terbit otomatis
+          tanggal 1 pukul 00.05 WITA — tombol di bawah untuk menerbitkan sekarang.
+        </p>
       ) : (
         <p className="text-xs text-ink-soft">
           <b className="text-ink">{p.kandidat.length.toLocaleString("id-ID")}</b> gardu jatuh tempo
@@ -174,7 +190,7 @@ export default function KartuWoUlp(p: Props) {
       {dialog === "terbit" && (
         <ConfirmDialog
           title={`Terbitkan WO Pemeliharaan ${p.ulp} — ${p.periode}?`}
-          message={`${jumlahTerbit} gardu masuk WO dan langsung muncul di HP regu HARGAR ${p.ulp}. WO yang sudah terbit tidak bisa disusun ulang tanpa dihapus lebih dulu.`}
+          message={`${jumlahTerbit} gardu${dariRencana ? ` (${p.rencana} dari Rencana Pemeliharaan${p.sisa > 0 ? `, ${p.sisa} sisa bulan lalu` : ""})` : ""} masuk WO dan langsung muncul di HP regu HARGAR ${p.ulp}. WO yang sudah terbit tidak bisa disusun ulang tanpa dihapus lebih dulu.`}
           confirmLabel="Terbitkan"
           tone="primary"
           onClose={() => setDialog(null)}

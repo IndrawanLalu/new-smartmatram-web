@@ -37,7 +37,8 @@ export interface MasterGardu {
   lng: number | string | null;
 }
 
-export type AlasanWoHar = "belum_pernah" | "jatuh_tempo";
+/** `rencana` & `sisa` hanya dari penyusun WO di server (`rencana-hargardu-terbit.sql`). */
+export type AlasanWoHar = "belum_pernah" | "jatuh_tempo" | "rencana" | "sisa";
 
 export interface KandidatHar {
   gardu_kode: string;
@@ -55,6 +56,8 @@ export interface KandidatHar {
 export const LABEL_ALASAN: Record<AlasanWoHar, string> = {
   belum_pernah: "Belum pernah dipelihara",
   jatuh_tempo: "Jatuh tempo",
+  rencana: "Sesuai rencana ULP",
+  sisa: "Sisa bulan lalu",
 };
 
 /** Gardu tanpa status dianggap Aktif — sama dengan WO Pengukuran. */
