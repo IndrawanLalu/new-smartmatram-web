@@ -271,5 +271,77 @@ kelak.
 | a | Role eksekutor mendapat **Tugas DAN Riwayat** di bilah bawah; **Profil pindah ke ikon avatar di kepala Beranda** supaya bilah tetap 5 tombol |
 | b | Cakupan: **regu = tim login saja**; admin/inspektor = se-ULP; **UP3 = semua ULP + pilihan ULP** di saringan |
 | c | Status seragam: **Belum dikirim · Menunggu verifikasi · Diterima · Dikembalikan · Dibatalkan**; **draf di HP ikut tampil** (Belum dikirim → ketuk membuka formulir modulnya) |
-| d | Batas rentang pilihan tanggal: usul maks. 3 bulan — belum ditanyakan |
+| d | Rentang tanggal pilihan **maks. 3 bulan** (28 Sep 2026) |
 | e | Dikerjakan **sesudah Harjar dan JTM/JTR** selesai berpola 4 tab, supaya view dibuat sekali jadi |
+| f | Status **ke-6: "Sedang dikerjakan"** — sudah ada di server tapi belum ditutup (penyapuan JTM/JTR berjalan, penyeimbangan diklaim, tugas temuan berjalan). Lima label lain tetap (28 Sep 2026) |
+| g | **Laporan Temuan** (penemu) dan **Tugas Temuan** (eksekutor) ikut; lencana memakai status seragam, baris kedua menyebut tindak lanjutnya ("Ditugaskan ke HARJAR", "Selesai ditindaklanjuti") (28 Sep 2026) |
+| h | Ketuk baris = **lembar rincian seragam** hanya-baca (objek, tanggal-jam, tim, status + alasan admin, foto, titik) + tombol **"Buka di modul"**; draf "Belum dikirim" langsung membuka formulir modulnya (28 Sep 2026) |
+
+### Sumber data nyata (diperiksa 28 Sep 2026)
+
+Satu baris Riwayat = satu catatan kerja. Kolom seragam view `riwayat_pekerjaan`:
+`jenis · sumber_id · ulp · tgl · waktu · objek · keterangan · status · status_asli ·
+alasan · petugas · km · foto_url · lat · lng`.
+
+| Jenis (label layar) | Tabel | Tanggal | Objek | Petugas | Menu role |
+|---|---|---|---|---|---|
+| Pemeliharaan Gardu | `pemeliharaan_gardu` | `tgl_selesai` / `tgl_padam` | gardu | `petugas_nama` | `hargardu` |
+| Pengukuran Gardu | `pengukuran_gardu` (tanpa `hasil_penyeimbangan_id`) | `tanggal_pengukuran` + jam | gardu · % beban | `petugas_nama` | `pengukuranGardu` |
+| Tegangan Ujung | `pengukuran_tegangan_ujung` | `tgl_ukur` + jam | gardu · jurusan | `petugas_nama` | `pengukuranGardu` |
+| Optimasi Trafo | `optimasi_trafo` | `tgl_operasi` | gardu · kVA lama → baru | `petugas_nama` | `optimasiTrafo` |
+| Perabasan | `perabasan_realisasi` (dikelompokkan per item WO + hari) | `dikerjakan_at` | segmen · N pohon · km item | `petugas_nama` | `perabasan` |
+| Perabasan (luar WO) | `perabasan_luar_wo` | `tgl` | penyulang / lokasi | `petugas_*` | `perabasan` |
+| Pemeliharaan Jaringan | `pemeliharaan_jaringan` | `tgl` | JTM/JTR · penyulang · kategori | `petugas_nama` | `harjar` |
+| Penyeimbangan Beban | `penyeimbangan_gardu` | `tgl_penyeimbangan` | gardu · % sebelum → sesudah | `petugas_penyeimbang` | `penyeimbangan` |
+| Inspeksi JTM | `inspeksi_jtm` | `tgl_selesai` / `tgl_mulai` | segmen · penyulang | `petugas_nama` | `jtm` |
+| Inspeksi JTR | `inspeksi_jtr` | `tgl_selesai` / `tgl_mulai` | gardu | `inspektor_nama`, `petugas_2` | `jtr` |
+| Laporan Temuan | `inspeksi`, `inspeksi_pohon` (sebagai penemu) | `tgl_inspeksi` | temuan · lokasi | `nama_inspektor` / `team_name` | `inspeksi` |
+| Tugas Temuan | `inspeksi` (sebagai eksekutor, selain Harjar) | `tgl_eksekusi` / `assigned_at` | temuan · lokasi | `team_name` | role eksekutor |
+
+⚠ Temuan sampingan: role **`INSPEKSI_JTM` tidak punya menu `jtm`** di Kelola Role —
+tanpa itu timnya tidak melihat jenis Inspeksi JTM di saringan. Dibetulkan lewat
+web Kelola Role, bukan di kode.
+
+### Pemetaan status → enam label
+
+| Label | Pemeliharaan Gardu | Pengukuran | Tegangan Ujung | Optimasi | Perabasan | Harjar | Penyeimbangan | JTM / JTR | Laporan / Tugas Temuan |
+|---|---|---|---|---|---|---|---|---|---|
+| Belum dikirim | draf HP | draf HP | draf HP | draf HP | draf HP | draf HP | — | draf HP | draf HP (laporan) |
+| Sedang dikerjakan | — | — | — | — | item WO belum selesai | `Dalam Proses` | `Dikerjakan` | `Dijadwalkan`, `Dalam Proses` | `Ditugaskan`, `Dalam Proses` |
+| Menunggu verifikasi | `Selesai` | tertahan usulan titik/kVA | — | `Selesai` | item selesai, belum diverifikasi; luar WO `Selesai` | `Selesai` | — | `Selesai` | `Temuan`, `Perlu Tindakan` |
+| Diterima | `Diverifikasi` | terkirim | `Terkirim` | `Diverifikasi` | item `Diverifikasi`; luar WO `Diverifikasi` | `Diverifikasi` | `Selesai` | `Diverifikasi` | `Selesai` |
+| Dikembalikan | `Ditolak` | `dikembalikan_at` | `Dikembalikan` | `dikembalikan_at` | — | `Dikembalikan` | — | `Ditolak` | — |
+| Dibatalkan | `Dibatalkan` | — | `Dibatalkan` | `Dibatalkan` | item `Dibatalkan` | `Dibatalkan` | — | `Dibatalkan` | `Batal` |
+
+Laporan & Tugas Temuan (g): baris kedua = tindak lanjut apa adanya ("Ditugaskan ke
+HARJAR · 12 Sep", "Selesai ditindaklanjuti YANGU"). `status_asli` ikut di view
+supaya lembar rincian bisa menyebutnya.
+
+### Cakupan (b) di server, bukan di HP
+Fungsi `riwayat_pekerjaan_saya(p_dari, p_sampai, p_jenis[], p_status[], p_ulp,
+p_setelah)` membaca peran dari sesi: regu → `petugas`/`team_name` = tim login;
+admin/inspektor → ULP akun; UP3 → semua / `p_ulp`. Menolak rentang > 3 bulan (d).
+Paginasi **keyset** (`tgl`, `waktu`, `sumber_id`) 20 baris — tidak bergeser saat
+ada kiriman baru di tengah menggulir. Jenis yang tidak ada di `roles.menus` akun
+itu tidak dipulangkan (sama dengan gerbang menu).
+
+### HP
+- Bilah bawah: Beranda · Menu · (+) · **Tugas** (eksekutor) / … · **Riwayat**;
+  Profil pindah ke avatar di kepala Beranda (a).
+- `RiwayatScreen` dirombak: kepala + tiga saringan (lembar layar penuh, tombol
+  **Terapkan**), kartu per tanggal ("Hari ini", "Kemarin", lalu tanggal lengkap),
+  lencana enam warna, "menampilkan N dari M", muat 20 per gulir.
+- Draf di HP (`@ukur_draf_v1`, `@ujung_draf_v1`, `@jtm_draf_v1`, `@jtr_draf_v1`,
+  Harjar, Hargardu, Optimasi, Perabasan) dibaca adaptor per modul → baris
+  "Belum dikirim" di tanggal simpannya.
+- Luring: halaman pertama saringan terakhir disimpan di HP + spanduk (butir 6).
+- Lembar rincian seragam (h) + "Buka di modul".
+
+### Urutan pengerjaan
+
+| Tahap | Isi |
+|---|---|
+| R1 | SQL: view `riwayat_pekerjaan` (12 cabang `UNION ALL`, `security_invoker`) + `riwayat_pekerjaan_saya` (cakupan, rentang, keyset) |
+| R2 | HP: bilah bawah (Tugas + Riwayat, Profil ke avatar) |
+| R3 | HP: `RiwayatScreen` baru — saringan layar penuh, kartu per tanggal, muat bertahap, luring |
+| R4 | HP: adaptor draf per modul + lembar rincian seragam |
