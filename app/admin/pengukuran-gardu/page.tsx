@@ -49,6 +49,7 @@ import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
 import PersetujuanUkurTab from "./_components/PersetujuanUkurTab";
 import TeganganUjungTab from "./_components/TeganganUjungTab";
+import { useTahanAmg, labelTahan } from "./_hooks/useTahanAmg";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
 import AlertDetailModal from "./_components/AlertDetailModal";
@@ -251,16 +252,26 @@ export default function PengukuranGarduPage() {
     return n;
   }, [latestPengukuran]);
 
+  // Yang ditahan aturan tegangan ujung — tidak bisa dicentang untuk AMG.
+  // Dibaca ulang saat kembali ke tab ini (mis. setelah menyetujui ujung).
+  const idBelumAmg = useMemo(
+    () => latestPengukuran.filter((d) => statusAmg(d) === "belum" || statusAmg(d) === "gagal").map((d) => d.id),
+    [latestPengukuran],
+  );
+  const tahanAmg = useTahanAmg(idBelumAmg, activeTab);
+
   const paginatedData = useMemo(
     () => filteredData.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [filteredData, page]
   );
   const totalPages   = Math.ceil(filteredData.length / PAGE_SIZE);
   const pageIds      = useMemo(() => paginatedData.map((r) => r.id), [paginatedData]);
-  const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.has(id));
+  const pageBisaDipilih = pageIds.filter((id) => !tahanAmg.has(id));
+  const allPageSelected = pageBisaDipilih.length > 0 && pageBisaDipilih.every((id) => selectedIds.has(id));
 
   function toggleSelect(e: React.MouseEvent, id: string) {
     e.stopPropagation();
+    if (tahanAmg.has(id)) return;
     setSelectedIds((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
@@ -268,7 +279,7 @@ export default function PengukuranGarduPage() {
     e.stopPropagation();
     setSelectedIds((prev) => {
       const n = new Set(prev);
-      allPageSelected ? pageIds.forEach((id) => n.delete(id)) : pageIds.forEach((id) => n.add(id));
+      allPageSelected ? pageBisaDipilih.forEach((id) => n.delete(id)) : pageBisaDipilih.forEach((id) => n.add(id));
       return n;
     });
   }
@@ -277,7 +288,8 @@ export default function PengukuranGarduPage() {
 
   async function handleBulkAmg() {
     if (isBulkSending) return;
-    const ids = Array.from(selectedIds);
+    const ids = Array.from(selectedIds).filter((id) => !tahanAmg.has(id));
+    if (ids.length === 0) return;
     setIsBulkSending(true);
     setAmgStatus(Object.fromEntries(ids.map((id) => [id, "sending"])));
     try {
@@ -760,6 +772,7 @@ export default function PengukuranGarduPage() {
                             {amgStatus[row.id] === "sending" ? <Loader2 size={14} className="animate-spin text-blue-700" /> :
                              amgStatus[row.id] === "ok"      ? <CheckCircle2 size={14} className="text-green-700" /> :
                              amgStatus[row.id] === "error"   ? <XCircle size={14} className="text-red-600" /> :
+                             tahanAmg.has(row.id)            ? <span title={tahanAmg.get(row.id)}><Square size={14} className="text-line opacity-40 cursor-not-allowed" /></span> :
                              selectedIds.has(row.id)         ? <CheckSquare2 size={14} /> : <Square size={14} className="text-line" />}
                           </div>
                         </td>
@@ -780,6 +793,14 @@ export default function PengukuranGarduPage() {
                           {statusAmg(row) === "terkirim" && (
                             <span className="ml-1 text-[10px] bg-sky-50 text-sky-700 border border-sky-200 px-1.5 py-0.5 rounded-full font-semibold align-middle">
                               AMG
+                            </span>
+                          )}
+                          {tahanAmg.has(row.id) && (
+                            <span
+                              title={tahanAmg.get(row.id)}
+                              className="ml-1 text-[10px] bg-amber-50 text-amber-800 border border-amber-200 px-1.5 py-0.5 rounded-full font-semibold align-middle"
+                            >
+                              {labelTahan(tahanAmg.get(row.id)!)}
                             </span>
                           )}
                           {statusAmg(row) === "antrian" && (

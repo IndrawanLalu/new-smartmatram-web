@@ -23,6 +23,7 @@ import KirimWAGarduModal from "./_KirimWAGarduModal";
 import LoadingOverlay from "@/app/admin/_components/LoadingOverlay";
 import { antreKeAmg } from "../_lib/amgQueue";
 import TeganganUjungPanel from "./TeganganUjungPanel";
+import { useTahanAmg } from "../_hooks/useTahanAmg";
 import { koordinat } from "../_lib/kandidatWo";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
@@ -158,6 +159,8 @@ export default function GarduDetailModal({
   const toast = useToast();
   const pengguna = useCurrentUser();
   const [amgLoading, setAmgLoading] = useState(false);
+  // Aturan tegangan ujung menahan pengukuran ini dari AMG? (null = tidak)
+  const alasanTahan = useTahanAmg(row ? [row.id] : []).get(row?.id ?? "") ?? null;
   const [amgMarked, setAmgMarked] = useState(false);
   const [amgReset, setAmgReset] = useState(false);
   const [amgSuccess, setAmgSuccess] = useState(false);
@@ -362,7 +365,8 @@ export default function GarduDetailModal({
               <div className="flex flex-col items-end gap-1">
                 <button
                   onClick={handleKirimAmg}
-                  disabled={amgLoading}
+                  disabled={amgLoading || !!alasanTahan}
+                  title={alasanTahan ?? undefined}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/15 text-white text-xs font-medium hover:bg-white/25 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {amgLoading ? (
@@ -372,6 +376,9 @@ export default function GarduDetailModal({
                   )}
                   {amgLoading ? "Memproses..." : "Kirim ke AMG"}
                 </button>
+                {alasanTahan && (
+                  <span className="text-amber-200 text-[10px] max-w-[220px] text-right leading-tight">{alasanTahan}</span>
+                )}
                 {amgError && (
                   <div className="flex flex-col items-end gap-0.5">
                     <span className="text-red-700 text-[10px] max-w-[200px] text-right leading-tight">{amgError}</span>
