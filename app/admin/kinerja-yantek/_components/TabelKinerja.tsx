@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import {
-  Activity, ArrowUpDown, ArrowUpRight, Gauge, HardHat, Loader2, Network, Scale, Trees, Waypoints, Wrench,
+  Activity, ArrowUpDown, ArrowUpRight, CheckSquare, Gauge, HardHat, Loader2, Network, Scale, ScanSearch, Trees, Waypoints, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { CARD, DISPLAY } from "@/app/admin/_ui";
 import { capaianSla, capaianWo, type BarisKinerja } from "../_hooks/useKinerjaYantek";
+import { KUNCI_CENTANG } from "../_lib/woSurat";
 
 /**
  * Tabel rekap kinerja — bergaris tegas di tiap sel, ikon per jenis pekerjaan,
@@ -35,7 +36,10 @@ const IKON: Record<string, LucideIcon> = {
   optimasi: ArrowUpDown,
   pengukuran: Gauge,
   jtm: Waypoints,
+  jtm2: Waypoints,
   jtr: Network,
+  igardu1: ScanSearch,
+  igardu2: ScanSearch,
 };
 
 const TANDA: Record<BarisKinerja["keadaan"], { teks: string; cls: string } | null> = {
@@ -86,13 +90,15 @@ interface Props {
   /** Sudah dirangkai jadi "September 2026" atau "2026" — periodenya ditulis
    *  di judul supaya tangkapan layar tabel ini tetap bisa dibaca sendiri. */
   periode: string;
+  /** Buka centang realisasi (JTM Tier 2, Inspeksi Gardu) — hanya untuk yang boleh. */
+  onCentang?: (kunci: string) => void;
 }
 
 // Garis sel tegas di semua sisi — diminta user: bentuk tabel, bukan daftar.
 const TH = "px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink whitespace-nowrap border border-slate-300";
 const TD = "px-4 py-3 align-middle border border-slate-300";
 
-export default function TabelKinerja({ baris, loading, periode }: Props) {
+export default function TabelKinerja({ baris, loading, periode, onCentang }: Props) {
   const belum = baris.filter((b) => b.keadaan !== "lengkap").length;
 
   return (
@@ -104,7 +110,7 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
             <h3 className={`${DISPLAY} text-base font-bold text-ink`}>Rekap Kinerja {periode}</h3>
           </div>
           <p className="text-xs text-ink-soft mt-0.5">
-            Delapan jenis pekerjaan Pelayanan Teknik · {belum} di antaranya belum lengkap
+            {baris.length} jenis pekerjaan Pelayanan Teknik · {belum} di antaranya belum ber-WO
           </p>
         </div>
         {loading && (
@@ -166,6 +172,14 @@ export default function TabelKinerja({ baris, loading, periode }: Props) {
                           {/* Baris yang sumbernya tidak terbaca harus mengaku
                               begitu. Sel kosong tanpa tanda terbaca sebagai
                               "memang belum ada pekerjaannya". */}
+                          {onCentang && KUNCI_CENTANG.includes(b.kunci) && (
+                            <button
+                              onClick={() => onCentang(b.kunci)}
+                              className="inline-flex items-center gap-1 px-1.5 py-px rounded-full border border-navy-200 bg-navy-50 text-[10px] font-semibold text-navy-700 hover:bg-navy-100"
+                            >
+                              <CheckSquare size={10} /> centang realisasi
+                            </button>
+                          )}
                           {b.gagal && (
                             <span className="px-1.5 py-px rounded-full border border-amber-300 bg-amber-50 text-[10px] font-semibold text-amber-700">
                               gagal dimuat

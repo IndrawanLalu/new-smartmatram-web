@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 
 /**
- * Rekap kinerja delapan jenis pekerjaan Pelayanan Teknik.
+ * Rekap kinerja sebelas jenis pekerjaan Pelayanan Teknik (sama dengan surat WO).
  *
  * ── KENAPA TIAP BARIS PUNYA SUMBERNYA SENDIRI ───────────────────────────────
  * Akan menggoda untuk menarik semuanya dari satu tabel WO. Tapi kenyataannya
@@ -92,7 +92,8 @@ export const BULAN = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 
-/** Label & keterangan tiap baris — urutan di sini = urutan di layar. */
+/** Label & keterangan tiap baris — urutan di sini = urutan di layar, SAMA
+ *  dengan urutan surat WO (`_lib/woSurat.ts`, ditetapkan user 29 Sep 2026). */
 const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove">[] = [
   {
     kunci: "perabasan",
@@ -111,7 +112,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     satuan: "pekerjaan",
     desimal: false,
     catatan:
-      "Dicatat regu dari lapangan berikut foto sebelum-sesudah. Belum diterbitkan lewat WO, jadi belum ada pembanding target.",
+      "WO dari tempelan Excel di Cetak / Kirim WO. Realisasi dicatat regu dari lapangan berikut foto sebelum-sesudah.",
   },
   {
     kunci: "hargardu",
@@ -129,7 +130,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     keadaan: "tanpaWo",
     satuan: "gardu",
     desimal: false,
-    catatan: "Tercatat sebagai tindak lanjut anomali pengukuran, belum sebagai pekerjaan ber-WO sendiri.",
+    catatan: "WO dari tempelan Excel di Cetak / Kirim WO. Realisasi = tindak lanjut anomali pengukuran.",
   },
   {
     kunci: "optimasi",
@@ -142,23 +143,23 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
       "WO = gardu yang ditandai OPTIMASI TRAFO di Tindak Lanjut Anomali pada periode ini, tanpa WO yang dibatalkan. Realisasi = catatan terkirim dari HP, termasuk yang di luar WO — jadi bisa melampaui WO-nya.",
   },
   {
-    kunci: "pengukuran",
-    jenis: "Pengukuran beban & tegangan ujung",
-    href: "/admin/pengukuran-gardu",
-    keadaan: "lengkap",
-    satuan: "gardu",
-    desimal: false,
-    catatan: "Angka ini BEBAN saja. Tegangan ujung belum punya tempat sendiri — belum diukur, belum tercatat.",
-  },
-  {
     kunci: "jtm",
-    jenis: "Inspeksi JTM",
+    jenis: "Inspeksi JTM Tier 1",
     href: "/admin/jtm",
     keadaan: "tanpaWo",
     satuan: "KMS",
     desimal: true,
     catatan:
-      "Panjang segmen yang penyapuannya selesai. Penyapuan lahir saat regu membuka segmennya, belum diterbitkan lewat WO — jadi belum ada pembanding target.",
+      "WO dari tempelan Excel selama penitikan awal (nanti dari WO Inspeksi JTM). Realisasi = panjang segmen yang inspeksi tier 1-nya selesai.",
+  },
+  {
+    kunci: "jtm2",
+    jenis: "Inspeksi JTM Tier 2",
+    href: null,
+    keadaan: "tanpaWo",
+    satuan: "KMS",
+    desimal: true,
+    catatan: "WO dari tempelan Excel. Modulnya belum berjalan — realisasi dicentang per segmen di web.",
   },
   {
     kunci: "jtr",
@@ -168,7 +169,34 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     satuan: "KMS",
     desimal: true,
     catatan:
-      "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. Sama seperti JTM: belum diterbitkan lewat WO.",
+      "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. WO dari WO Inspeksi JTR.",
+  },
+  {
+    kunci: "igardu1",
+    jenis: "Inspeksi Gardu Tier 1",
+    href: null,
+    keadaan: "tanpaWo",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "WO dari tempelan Excel. Modulnya belum ada — realisasi dicentang per gardu di web.",
+  },
+  {
+    kunci: "igardu2",
+    jenis: "Inspeksi Gardu Tier 2",
+    href: null,
+    keadaan: "tanpaWo",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "WO dari tempelan Excel. Modulnya belum ada — realisasi dicentang per gardu di web.",
+  },
+  {
+    kunci: "pengukuran",
+    jenis: "Pengukuran Beban Gardu dan Tegangan Ujung",
+    href: "/admin/pengukuran-gardu",
+    keadaan: "lengkap",
+    satuan: "gardu",
+    desimal: false,
+    catatan: "WO Pengukuran bulanan. Realisasi = gardu WO yang pengukurannya sudah masuk.",
   },
 ];
 
@@ -263,6 +291,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       const luar = Number(r.luar_wo ?? 0);
       return {
         ...m,
+        // Sudah ada WO (sistem atau tempelan) = baris lengkap, apa pun bawaannya.
+        keadaan: r.wo_terbit !== null ? "lengkap" : m.keadaan,
         woTerbit: angka(r.wo_terbit),
         sla: angka(r.sla ?? null),
         realisasi: angka(r.realisasi),
