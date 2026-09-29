@@ -13,6 +13,8 @@ export interface SegmenPilihan {
   panjang_pakai_km: number | null;
   panjang_dari: "hitungan" | "ketikan" | "kosong";
   umur_inspeksi_bulan: number | null;
+  /** 'tempelan' = dibuat dari tempelan WO Excel, belum dititik di lapangan. */
+  sumber?: string;
 }
 
 /** Regu/tim yang bisa ditugasi, beserta beban yang sedang dipikulnya. */
@@ -60,6 +62,17 @@ const NAMA_BULAN = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember",
 ];
 const kms = (v: number) => v.toFixed(2).replace(".", ",");
+const dua = (n: number) => String(n).padStart(2, "0");
+
+/** Bulan WO bawaan: WO bulan depan disusun di akhir bulan (mulai tgl 20),
+ *  selain itu bulan berjalan. */
+function bulanWoBawaan() {
+  const d = new Date();
+  if (d.getDate() >= 20) d.setMonth(d.getMonth() + 1, 1);
+  return `${d.getFullYear()}-${dua(d.getMonth() + 1)}`;
+}
+
+type SaringSumber = "" | "sistem" | "tempelan";
 /** Daftar pilihan dibuka bertahap — satu ULP bisa ratusan gardu. */
 const LANGKAH_TAMPIL = 100;
 
@@ -126,7 +139,11 @@ export default function SusunWoSegmen({
   const [ulp, setUlp] = useState(woAwal?.ulp ?? (bolehSemua ? "" : (user.unit ?? "")));
   const [nama, setNama] = useState("");
   const [target, setTarget] = useState("");
-  const [tgl, setTgl] = useState(() => new Date().toISOString().slice(0, 10));
+  // Bulan WO, bukan tanggal pembuatan: WO Oktober yang disusun 29 September
+  // harus terhitung Oktober di rekap dan surat. Disimpan sebagai tanggal 1.
+  const [bulanWo, setBulanWo] = useState(bulanWoBawaan);
+  const tgl = `${bulanWo}-01`;
+  const [saringSumber, setSaringSumber] = useState<SaringSumber>("");
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   /** segmen_id → nama regu. Kosong berarti belum dibagi. */
   const [bagi, setBagi] = useState<Record<string, string>>({});
@@ -151,6 +168,7 @@ export default function SusunWoSegmen({
       segmen
         .filter((s) => (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id))
         .filter((s) => !saringPenyulang || s.penyulang === saringPenyulang)
+        .filter((s) => !saringSumber || (s.sumber === "tempelan") === (saringSumber === "tempelan"))
         .filter((s) => !cari.trim() || `${s.nama} ${s.penyulang}`.toUpperCase().includes(cari.trim().toUpperCase()))
         // Paling lama tidak diinspeksi di atas — sepola Master Segmen, supaya
         // yang paling perlu dirabas tidak harus dicari.
@@ -159,7 +177,7 @@ export default function SusunWoSegmen({
           const ub = b.umur_inspeksi_bulan ?? Number.MAX_SAFE_INTEGER;
           return ub - ua || a.penyulang.localeCompare(b.penyulang);
         }),
-    [segmen, ulp, segmenTerikat, saringPenyulang, cari],
+    [segmen, ulp, segmenTerikat, saringPenyulang, saringSumber, cari],
   );
 
   const reguUlp = useMemo(() => regu.filter((g) => g.ulp === ulp), [regu, ulp]);
@@ -167,6 +185,12 @@ export default function SusunWoSegmen({
   const woDipilih = useMemo(
     () => woUlp.find((w) => w.wo_id === woTujuan) ?? null,
     [woUlp, woTujuan],
+  );
+
+  /** Saringan sumber hanya muncul kalau ULP ini memang punya segmen tempelan. */
+  const adaTempelan = useMemo(
+    () => segmen.some((s) => s.sumber === "tempelan" && (!ulp || s.ulp === ulp)),
+    [segmen, ulp],
   );
 
   const daftarPenyulang = useMemo(
@@ -319,12 +343,12 @@ export default function SusunWoSegmen({
                 />
               </div>
               <div>
-                <label className={EYEBROW}>Tanggal WO</label>
+                <label className={EYEBROW}>Bulan WO</label>
                 <input
-                  type="date"
-                  value={tgl}
-                  onChange={(e) => setTgl(e.target.value)}
-                  className={`${FIELD} mt-1 block w-[160px]`}
+                  type="month"
+                  value={bulanWo}
+                  onChange={(e) => e.target.value && setBulanWo(e.target.value)}
+                  className={`${FIELD} mt-1 block w-[170px]`}
                 />
               </div>
             </>
@@ -340,7 +364,7 @@ export default function SusunWoSegmen({
                   <option value="">— pilih WO —</option>
                   {woUlp.map((w) => (
                     <option key={w.wo_id} value={w.wo_id}>
-                      {w.nama} · {w.tgl_wo} · {w.item} {satuan}
+                      {w.nama} · {NAMA_BULAN[Number(w.tgl_wo.slice(5, 7)) - 1]} {w.tgl_wo.slice(0, 4)} · {w.item} {satuan}
                     </option>
                   ))}
                 </select>
@@ -532,6 +556,27 @@ export default function SusunWoSegmen({
           ))}
         </div>
 
+        {adaTempelan && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-ink-muted mr-1">Sumber segmen:</span>
+            {(
+              [
+                ["", "Semua"],
+                ["sistem", "Sistem"],
+                ["tempelan", "Tempelan"],
+              ] as const
+            ).map(([k, label]) => (
+              <button
+                key={k}
+                onClick={() => setSaringSumber(k)}
+                className={`${CHIP} ${saringSumber === k ? CHIP_ON : CHIP_OFF}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
+
         {ulp && reguUlp.length === 0 && (
           <p className={`text-xs mt-3 ${istilah.reguWajib ? "text-red-700" : "text-ink-muted"}`}>
             {istilah.reguKosong(ulp)}
@@ -594,7 +639,14 @@ export default function SusunWoSegmen({
                     className="accent-navy-600"
                   />
                   <span className="text-xs text-ink-soft w-[130px] truncate">{s.penyulang}</span>
-                  <span className="text-sm text-ink flex-1 min-w-[200px]">{s.nama}</span>
+                  <span className="text-sm text-ink flex-1 min-w-[200px]">
+                    {s.nama}
+                    {s.sumber === "tempelan" && (
+                      <span className="ml-1.5 px-1.5 py-px rounded-full border border-sky-200 bg-sky-50 text-[10px] font-semibold text-sky-700">
+                        tempelan
+                      </span>
+                    )}
+                  </span>
                   <span className="text-sm font-mono tabular-nums text-ink w-[80px] text-right">
                     {s.panjang_pakai_km !== null ? s.panjang_pakai_km.toFixed(2) : "—"}
                     {s.panjang_dari === "ketikan" && <span className="text-amber-600"> ✎</span>}

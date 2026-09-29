@@ -190,9 +190,10 @@ export default function CetakWoModal({ user, ulpAwal, onTutup, onBerubah }: Prop
           <DaftarJenisWo data={data} bolehUbah onTempel={setTempel} onHapus={setHapus} />
         )}
         <p className="text-[11px] text-ink-soft leading-relaxed">
-          Angka = kolom <b>WO terbit</b> Rekap Kinerja bulan itu. Pekerjaan yang belum punya WO di sistem diisi dengan
-          <b> Tempel dari Excel</b>; tempelan itu juga menjadi WO terbitnya di Rekap Kinerja. Kisi harian lampiran dibagi rata
-          ke hari efektif (tanpa Sabtu, Minggu, dan hari libur).
+          Angka = kolom <b>WO terbit</b> Rekap Kinerja bulan itu. ULP yang belum menyusun WO di aplikasi memakai
+          <b> Tempel dari Excel</b>: pekerjaan yang punya modul langsung menjadi WO modulnya dan tampil di HP regu, yang
+          belum punya modul tersimpan untuk surat dan rekap. Kisi harian lampiran dibagi rata ke hari efektif (tanpa Sabtu,
+          Minggu, dan hari libur).
         </p>
       </ModalShell>
 
@@ -205,7 +206,7 @@ export default function CetakWoModal({ user, ulpAwal, onTutup, onBerubah }: Prop
       {hapus && (
         <ConfirmDialog
           title="Hapus tempelan WO?"
-          message={`${JENIS_SURAT.find((j) => j.kunci === hapus)?.nama} ${labelBulan(tahun, bulan)} ULP ${ulp} dihapus beserta centang realisasinya, dan WO terbitnya di Rekap Kinerja kembali kosong.`}
+          message={`Tempelan ${JENIS_SURAT.find((j) => j.kunci === hapus)?.nama} ${labelBulan(tahun, bulan)} ULP ${ulp} yang tersimpan untuk surat & rekap dihapus beserta centang realisasinya. WO yang sudah masuk modul tidak ikut terhapus — batalkan di modulnya.`}
           confirmLabel="Hapus"
           tone="danger"
           onConfirm={() => { const k = hapus; setHapus(null); void hapusTempelan(k); }}

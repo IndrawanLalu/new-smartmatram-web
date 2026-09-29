@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, PlusCircle } from "lucide-react";
+import { Ban, Check, Loader2, PlusCircle } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { WoItem, WoRingkas } from "../_hooks/useWoPerabasan";
@@ -13,6 +14,9 @@ import { NADA_STATUS, tanggal } from "../_lib/tampilan";
  * tanggal WO (selama masih Terbit). Isi segmennya lewat jalan yang sudah ada:
  * "Tambah segmen" membuka Susun WO pada WO ini; mengeluarkan satu segmen dari
  * modal segmen di Daftar Segmen — keduanya menjaga aturannya sendiri.
+ *
+ * WO yang salah DIBATALKAN beserta alasannya, bukan dihapus (teknisaplikasi.md
+ * butir 12) — hanya selama belum ada satu segmen pun yang dikerjakan regu.
  */
 
 const kms = (v: number | null | undefined) => (v === null || v === undefined ? "—" : Number(v).toFixed(2).replace(".", ","));
@@ -23,16 +27,18 @@ interface Props {
   ambilItem: (woId: string) => Promise<WoItem[]>;
   onUbah: (v: { woId: string; nama: string; targetKm: number; tglWo: string }) => Promise<boolean>;
   onTambahSegmen: () => void;
+  onBatalkanWo: (alasan: string) => Promise<boolean>;
   onTutup: () => void;
 }
 
-export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTambahSegmen, onTutup }: Props) {
+export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTambahSegmen, onBatalkanWo, onTutup }: Props) {
   const [item, setItem] = useState<WoItem[] | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
   const [nama, setNama] = useState(w.nama);
   const [target, setTarget] = useState(String(w.target_km).replace(".", ","));
   const [tgl, setTgl] = useState(w.tgl_wo);
   const [sibuk, setSibuk] = useState(false);
+  const [batal, setBatal] = useState(false);
 
   useEffect(() => {
     let hidup = true;
@@ -48,6 +54,8 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
   const targetNum = Number(target.replace(",", "."));
   const berubah = nama.trim() !== w.nama || targetNum !== Number(w.target_km) || tgl !== w.tgl_wo;
   const sah = nama.trim().length > 2 && targetNum > 0 && !!tgl;
+  // Segmen yang sudah disentuh regu mengunci WO dari pembatalan.
+  const dikerjakan = (item ?? []).filter((x) => !["Dijadwalkan", "Dibatalkan"].includes(x.status)).length;
 
   const simpan = async () => {
     setSibuk(true);
@@ -58,9 +66,19 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
   const footer = (
     <>
       {bisa ? (
-        <button onClick={onTambahSegmen} className={BTN_GHOST}>
-          <PlusCircle size={14} /> Tambah segmen ke WO ini
-        </button>
+        <div className="flex gap-2">
+          <button onClick={onTambahSegmen} className={BTN_GHOST}>
+            <PlusCircle size={14} /> Tambah segmen ke WO ini
+          </button>
+          <button
+            onClick={() => setBatal(true)}
+            className={`${BTN_GHOST} text-red-700`}
+            disabled={item === null || dikerjakan > 0}
+            title={dikerjakan > 0 ? `${dikerjakan} segmen sudah dikerjakan regu — WO tidak bisa dibatalkan` : undefined}
+          >
+            <Ban size={14} /> Batalkan WO
+          </button>
+        </div>
       ) : <span />}
       {bisa ? (
         <button onClick={() => void simpan()} className={BTN_PRIMARY} disabled={!berubah || !sah || sibuk}>
@@ -100,14 +118,27 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
               <input value={target} onChange={(e) => setTarget(e.target.value)} inputMode="decimal" className={`${FIELD} mt-1 block w-[110px] text-right tabular-nums`} />
             </label>
             <label className="text-xs text-ink-soft">
-              Tanggal WO
-              <input type="date" value={tgl} onChange={(e) => setTgl(e.target.value)} className={`${FIELD} mt-1 block w-[160px]`} />
+              Bulan WO
+              {/* Bulan, bukan tanggal: tgl_wo = tanggal 1 bulan WO (wo-tempel-semua.sql). */}
+              <input
+                type="month"
+                value={tgl.slice(0, 7)}
+                onChange={(e) => e.target.value && setTgl(`${e.target.value}-01`)}
+                className={`${FIELD} mt-1 block w-[170px]`}
+              />
             </label>
           </div>
         </div>
       ) : (
         <p className="text-xs text-ink-muted">
           {terbit ? "Hanya UP3 atau admin ULP ini yang bisa mengubah WO." : `WO ini sudah ${w.status.toLowerCase()} — hanya bisa dilihat.`}
+        </p>
+      )}
+
+      {bisa && dikerjakan > 0 && (
+        <p className="text-[11px] text-ink-muted">
+          {dikerjakan} segmen sudah dikerjakan regu, jadi WO ini tidak bisa dibatalkan. Segmen yang belum dikerjakan
+          bisa dikeluarkan dari Daftar Segmen.
         </p>
       )}
 
@@ -151,6 +182,15 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
           </div>
         )}
       </div>
+      {batal && (
+        <BatalkanModal
+          judul={`Batalkan WO "${w.nama}"?`}
+          keterangan="Semua segmennya keluar dari WO dan dari HP regu. WO tetap tercatat berstatus Dibatalkan beserta alasannya dan tidak dihitung di rekap. Segmennya bebas disusun atau ditempel ulang."
+          labelTombol="Batalkan WO"
+          onTutup={() => setBatal(false)}
+          onBatalkan={onBatalkanWo}
+        />
+      )}
     </ModalShell>
   );
 }

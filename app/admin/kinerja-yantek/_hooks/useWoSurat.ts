@@ -62,7 +62,11 @@ async function muat(ulp: string, tahun: number, bulan: number): Promise<DataSura
     angka: Object.fromEntries(
       ((rekap.data ?? []) as RekapRpc[]).map((r) => [r.kunci, r.wo_terbit === null ? null : Number(r.wo_terbit)]),
     ),
-    objek: objek.map((o) => ({ ...o, km: o.km === null ? null : Number(o.km) })),
+    objek: objek.map((o) => ({
+      ...o,
+      km: o.km === null ? null : Number(o.km),
+      kva: o.kva === null ? null : Number(o.kva),
+    })),
     set: (set.data as PengaturanSurat | null) ?? PENGATURAN_KOSONG(ulp),
     libur: (libur.data ?? []) as DataSurat["libur"],
     terbit: (terbit.data as SuratTerbit | null) ?? null,

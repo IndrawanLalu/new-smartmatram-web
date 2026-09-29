@@ -97,7 +97,7 @@ const KOLOM_WO =
 const KOLOM_ITEM =
   "id,wo_id,segmen_id,urutan,ulp,penyulang,segmen_nama,panjang_km,panjang_dari,regu,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_note";
 const KOLOM_SEGMEN =
-  "segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan";
+  "segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan,sumber";
 
 export function useWoPerabasan() {
   const toast = useToast();
@@ -301,6 +301,51 @@ export function useWoPerabasan() {
     [toast, muat],
   );
 
+  /**
+   * Keluarkan beberapa segmen sekaligus (`wo-batal-perabasan.sql`). Yang sudah
+   * dikerjakan regu DILEWATI dengan sebabnya — tidak menggagalkan yang lain.
+   */
+  const keluarkanBanyak = useCallback(
+    async (itemId: string[], alasan: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("keluarkan_perabasan_banyak", {
+        p_item_id: itemId,
+        p_alasan: alasan,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      const h = data as { keluar: number; dilewati: { objek: string; sebab: string }[] };
+      if (h.keluar > 0) toast.success(`${h.keluar} segmen dikeluarkan dari WO.`);
+      if (h.dilewati.length > 0) {
+        toast.error(`${h.dilewati.length} dilewati — ${h.dilewati.map((d) => `${d.objek}: ${d.sebab}`).join(" · ")}`);
+      }
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
+  /** Batalkan WO keseluruhan — hanya kalau belum ada segmen yang dikerjakan. */
+  const batalkanWo = useCallback(
+    async (woId: string, alasan: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("batalkan_wo_perabasan", {
+        p_wo_id: woId,
+        p_alasan: alasan,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      toast.success(`WO dibatalkan — ${data as number} segmen keluar dari HP regu.`);
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
   /** Segmen yang sedang terikat WO berjalan — tidak boleh dipilih lagi. */
   const segmenTerikat = useMemo(
     () =>
@@ -361,7 +406,7 @@ export function useWoPerabasan() {
 
   return {
     wo, item, segmen, regu, loading, muat,
-    terbitkan, tambahKeWo, putuskan, batalkanItem, tugaskanRegu, ambilRealisasi,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu, ambilRealisasi,
     ambilItemWo, ubahWo,
     segmenTerikat,
   };

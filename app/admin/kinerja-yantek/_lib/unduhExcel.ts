@@ -1,7 +1,7 @@
 import ExcelJS from "exceljs";
 import { CLR_HEADER, CLR_WHITE, downloadBuffer, mergeSet, styleCell } from "@/lib/xlsxGaya";
 import {
-  fmtAngka, HARI_SINGKAT, jumlahHari, labelBulan, labelTanggal, namaBerkas,
+  fmtAngka, HARI_SINGKAT, jumlahHari, kolomLampiran, labelBulan, labelTanggal, namaBerkas, ringkasLampiran,
   type Lampiran, type PaketSurat,
 } from "./woSurat";
 
@@ -101,11 +101,11 @@ function sheetLampiran(wb: ExcelJS.Workbook, p: PaketSurat, l: Lampiran) {
     pageSetup: { paperSize: 9, orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
   const n = jumlahHari(p.tahun, p.bulan);
-  // Kolom: No | Objek | Alamat | (Kms) | Pelaksana | 1..n
-  const kol = km ? ["NO", l.jenis.kolomObjek.toUpperCase(), "ALAMAT", "KMS", "PELAKSANA"] : ["NO", l.jenis.kolomObjek.toUpperCase(), "ALAMAT", "PELAKSANA"];
-  const lebar = km ? [5, 14, 32, 9, 16] : [5, 14, 36, 16];
+  // Kolom: No | kolom format (gardu / KMS / harjar) | 1..n
+  const kolom = kolomLampiran(l.jenis);
+  const kol = ["NO", ...kolom.map((k) => k.label)];
   const c0 = kol.length + 1;
-  lebar.forEach((w, i) => (ws.getColumn(i + 1).width = w));
+  [5, ...kolom.map((k) => k.xls)].forEach((w, i) => (ws.getColumn(i + 1).width = w));
   for (let d = 1; d <= n; d++) ws.getColumn(c0 + d - 1).width = 4.2;
   const akhir = c0 + n - 1;
 
@@ -136,14 +136,15 @@ function sheetLampiran(wb: ExcelJS.Workbook, p: PaketSurat, l: Lampiran) {
   l.objek.forEach((o, i) => {
     const r = 8 + i;
     const bg = i % 2 ? SELANG : CLR_WHITE;
-    const nilai: (string | number)[] = km
-      ? [i + 1, o.objek, o.alamat ?? "", o.km ?? "", o.pelaksana ?? ""]
-      : [i + 1, o.objek, o.alamat ?? "", o.pelaksana ?? ""];
-    nilai.forEach((v, j) => {
-      const c = ws.getCell(r, j + 1);
-      c.value = v;
-      styleCell(c, { size: 9, bgColor: bg, align: j === 0 ? "center" : kol[j] === "KMS" ? "right" : "left", wrap: false });
-      if (kol[j] === "KMS") c.numFmt = "#,##0.000";
+    const no = ws.getCell(r, 1);
+    no.value = i + 1;
+    styleCell(no, { size: 9, bgColor: bg });
+    kolom.forEach((k, j) => {
+      const c = ws.getCell(r, j + 2);
+      // Angka tetap angka di Excel — bisa dijumlah ulang di sana.
+      c.value = k.isi === "km" ? (o.km ?? "") : k.isi === "kva" ? (o.kva ?? "") : (o[k.isi] ?? "");
+      styleCell(c, { size: 9, bgColor: bg, align: k.kanan ? "right" : "left", wrap: false });
+      if (k.isi === "km") c.numFmt = "#,##0.000";
     });
     for (let d = 1; d <= n; d++) {
       const c = ws.getCell(r, c0 + d - 1);
@@ -152,14 +153,11 @@ function sheetLampiran(wb: ExcelJS.Workbook, p: PaketSurat, l: Lampiran) {
   });
 
   let r = 8 + l.objek.length;
-  const tot = ws.getCell(r, km ? 4 : 3);
-  tot.value = `${fmtAngka(l.total, km)} ${l.jenis.satuan}`;
+  // Jumlah di bawah kolom KMS (atau kolom objek untuk yang bersatuan gardu).
+  const cJumlah = 2 + Math.max(0, kolom.findIndex((k) => k.isi === (km ? "km" : "objek")));
+  const tot = ws.getCell(r, cJumlah);
+  tot.value = `Jumlah: ${ringkasLampiran(l)}`;
   tot.font = { bold: true, size: 9 };
-  tot.alignment = { horizontal: "right" };
-  const ph = ws.getCell(r + 1, km ? 4 : 3);
-  ph.value = `${fmtAngka(l.perHari, true)} ${l.jenis.satuan.toLowerCase()}/hari`;
-  ph.font = { size: 9 };
-  ph.alignment = { horizontal: "right" };
 
   r += 3;
   const kanan = Math.max(c0 + 8, akhir - 8);

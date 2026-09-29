@@ -68,7 +68,7 @@ async function ambilObjek(jenis: JenisWoInspeksi): Promise<SegmenPilihan[]> {
   if (jenis === "JTM") {
     return fetchAllRows<SegmenPilihan>(() =>
       supabaseBrowser.from("master_segmen")
-        .select("segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan")
+        .select("segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan,sumber")
         .eq("status", "aktif").order("penyulang").order("nama").order("segmen_id"),
     );
   }
@@ -216,11 +216,41 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
     return true;
   };
 
+  /** Keluarkan beberapa item sekaligus; yang sudah diinspeksi dilewati (`wo-batal-semua.sql`). */
+  const keluarkanBanyak = async (itemId: string[], alasan: string, oleh: string) => {
+    const { data, error } = await supabaseBrowser.rpc("keluarkan_wo_inspeksi_banyak", {
+      p_item_id: itemId,
+      p_alasan: alasan,
+      p_oleh: oleh,
+    });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    const h = data as { keluar: number; dilewati: { objek: string; sebab: string }[] };
+    if (h.keluar > 0) toast.success(`${h.keluar} ${jenis === "JTM" ? "segmen" : "gardu"} dikeluarkan dari WO.`);
+    if (h.dilewati.length > 0) toast.error(`${h.dilewati.length} dilewati — ${h.dilewati.map((d) => `${d.objek}: ${d.sebab}`).join(" · ")}`);
+    muat();
+    return true;
+  };
+
+  /** Batalkan WO keseluruhan — hanya kalau belum ada yang diinspeksi. */
+  const batalkanWo = async (woId: string, alasan: string, oleh: string) => {
+    const { data, error } = await supabaseBrowser.rpc("batalkan_wo_inspeksi", { p_wo_id: woId, p_alasan: alasan, p_oleh: oleh });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success(`WO dibatalkan — ${data as number} ${jenis === "JTM" ? "segmen" : "gardu"} keluar dari HP.`);
+    muat();
+    return true;
+  };
+
   /** KMS WO inspeksi yang sudah terbit untuk ULP itu di bulan tanggal itu. */
   const terbitBulan = (u: string, tgl: string) =>
     terbitan
       .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7))
       .reduce((n, x) => n + Number(x.panjang_km ?? 0), 0);
 
-  return { objek, item, regu, objekTerikat, loading, terbitkan, tugaskan, batalkan, muat, terbitBulan };
+  return { objek, item, regu, objekTerikat, loading, terbitkan, tugaskan, batalkan, keluarkanBanyak, batalkanWo, muat, terbitBulan };
 }

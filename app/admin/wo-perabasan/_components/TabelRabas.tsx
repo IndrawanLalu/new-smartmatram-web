@@ -9,6 +9,10 @@ import { NADA_STATUS, km, rentangKerja, tanggal } from "../_lib/tampilan";
 /**
  * Daftar segmen perabasan — satu baris satu segmen, urut per penyulang
  * (teknisaplikasi.md butir 7). Klik baris → modal detail.
+ *
+ * Kolom centang: keluarkan beberapa segmen dari WO sekaligus tanpa membuka
+ * detailnya satu-satu. Hanya segmen yang BELUM dikerjakan (Dijadwalkan) yang
+ * bisa dicentang — yang sudah dikerjakan regu tidak boleh keluar dari WO.
  */
 
 const PAGE_SIZE = 20;
@@ -19,13 +23,18 @@ interface Props {
   baris: BarisRabas[];
   loading: boolean;
   onDetail: (b: BarisRabas) => void;
+  dipilih: Set<string>;
+  onPilih: (id: string[], aktif: boolean) => void;
+  bisaPilih: (b: BarisRabas) => boolean;
 }
 
-export default function TabelRabas({ baris, loading, onDetail }: Props) {
+export default function TabelRabas({ baris, loading, onDetail, dipilih, onPilih, bisaPilih }: Props) {
   const [halaman, setHalaman] = useState(1);
   const total = Math.max(1, Math.ceil(baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
   const tampil = baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
+  const bisaDiHal = tampil.filter(bisaPilih).map((b) => b.id);
+  const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => dipilih.has(id));
 
   if (loading) {
     return (
@@ -53,6 +62,16 @@ export default function TabelRabas({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="bg-surface">
             <tr>
+              <th className={`${TH} w-8`}>
+                <input
+                  type="checkbox"
+                  checked={semuaHal}
+                  disabled={bisaDiHal.length === 0}
+                  onChange={() => onPilih(bisaDiHal, !semuaHal)}
+                  className="accent-navy-600"
+                  aria-label="Pilih semua segmen di halaman ini yang belum dikerjakan"
+                />
+              </th>
               <th className={TH}>Penyulang</th>
               <th className={TH}>Segmen</th>
               <th className={TH}>Panjang</th>
@@ -66,7 +85,22 @@ export default function TabelRabas({ baris, loading, onDetail }: Props) {
           </thead>
           <tbody>
             {tampil.map((b) => (
-              <tr key={b.id} onClick={() => onDetail(b)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
+              <tr
+                key={b.id}
+                onClick={() => onDetail(b)}
+                className={`cursor-pointer transition-colors ${dipilih.has(b.id) ? "bg-navy-50/70" : "hover:bg-navy-50/60"}`}
+              >
+                <td className={TD} onClick={(e) => e.stopPropagation()}>
+                  {bisaPilih(b) && (
+                    <input
+                      type="checkbox"
+                      checked={dipilih.has(b.id)}
+                      onChange={(e) => onPilih([b.id], e.target.checked)}
+                      className="accent-navy-600"
+                      aria-label={`Pilih ${b.segmenNama}`}
+                    />
+                  )}
+                </td>
                 <td className={TD}>
                   <p className="font-semibold text-ink">{b.penyulang}</p>
                   <p className="text-[11px] text-ink-muted">{b.ulp}</p>

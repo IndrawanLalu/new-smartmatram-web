@@ -74,7 +74,8 @@ export default function DetailRabasModal({
   };
 
   const menunggu = b.statusDb === "Selesai";
-  const bisaKeluar = !["Diverifikasi", "Dibatalkan"].includes(b.statusDb);
+  // Yang sudah dikerjakan regu tidak boleh keluar dari WO (dijaga database juga).
+  const bisaKeluar = b.statusDb === "Dijadwalkan";
   // Yang sudah diselesaikan regu tidak dipindah: nama regu yang tercatat
   // mengerjakan akan berbeda dari yang tertulis di WO (dijaga database juga).
   const bisaPindahRegu = ["Dijadwalkan", "Dalam Proses", "Ditolak"].includes(b.statusDb);

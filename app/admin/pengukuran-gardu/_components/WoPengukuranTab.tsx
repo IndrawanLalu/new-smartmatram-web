@@ -2,12 +2,13 @@
 
 import { useState, useMemo } from "react";
 import {
-  ClipboardList, Download, Loader2, Search, Trash2, FilePlus2, RefreshCw, CheckCircle2,
+  Ban, ClipboardList, Download, Loader2, Search, FilePlus2, RefreshCw, CheckCircle2,
   ListPlus, ChevronDown,
 } from "lucide-react";
 import { canManageSettings, type CurrentUser } from "@/lib/roles";
 import StatTile from "@/app/admin/_components/StatTile";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useWoPengukuran, useMasterUntukWo, type BarisWo, type RencanaTerbit } from "../_hooks/useWoPengukuran";
 import { useWoPengukuranSettings } from "../_hooks/useWoPengukuranSettings";
 import {
@@ -60,6 +61,8 @@ const dariWo = (r: BarisWo): BarisTampil => ({
   tgl_wo: r.tgl_wo,
   tgl_realisasi: r.tgl_realisasi,
   petugas_nama: r.petugas_nama,
+  id: r.id,
+  dikerjakan: !!r.pengukuran_id,
 });
 
 /** Kandidat belum punya tanggal WO maupun realisasi — itu yang membedakannya
@@ -105,13 +108,27 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
   const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null);
   const [pesan, setPesan] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [pilih, setPilih] = useState<Set<string>>(new Set());
+  const [keluarkan, setKeluarkan] = useState(false);
+  const [batalWo, setBatalWo] = useState<{ id: string; ulp: string; jumlah: number } | null>(null);
+  const oleh = user.name ?? user.email ?? "";
+  const bolehKelola = canManageSettings(user.role);
+  const ubahPilih = (id: string[], aktif: boolean) =>
+    setPilih((p) => {
+      const n = new Set(p);
+      for (const x of id) {
+        if (aktif) n.add(x);
+        else n.delete(x);
+      }
+      return n;
+    });
 
   const {
     settings, settingsUntuk, ulpKey, loading: loadingSettings, saving, savedAt, simpan, reset,
   } = useWoPengukuranSettings(ulp);
 
   const {
-    headers, rows, luarWo, loading, error, ulpSudahTerbit, terbitkan, hapus, refresh,
+    headers, rows, luarWo, loading, error, ulpSudahTerbit, terbitkan, batalkan, keluarkan: keluarkanWo, refresh,
   } = useWoPengukuran(user, ulp, tahun, bulan);
 
   const { master, loading: loadingMaster, error: errorMaster } = useMasterUntukWo(user, ulp);
@@ -232,32 +249,37 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
     });
   };
 
-  const mintaHapus = (woId: string, ulpWo: string, jumlah: number) => {
-    setKonfirmasi({
-      title: `Hapus WO ${ulpWo} ${namaPeriode}?`,
-      tone: "danger",
-      confirmLabel: "Hapus WO",
-      message: (
-        <>
-          WO <b>{ulpWo} {namaPeriode}</b> beserta {jumlah} barisnya akan dihapus permanen.
-          <p className="mt-2">
-            Hasil pengukuran tidak ikut terhapus — angkanya tersimpan di data pengukuran, bukan
-            di WO ini. Yang hilang hanya penugasannya.
-          </p>
-        </>
-      ),
-      onConfirm: async () => {
-        setSibuk(true);
-        setPesan(null);
-        const gagal = await hapus(woId);
-        setSibuk(false);
-        setPesan(
-          gagal
-            ? { ok: false, teks: `Gagal menghapus WO: ${gagal}` }
-            : { ok: true, teks: `WO ${ulpWo} ${namaPeriode} dihapus.` },
-        );
-      },
-    });
+  /** Batalkan WO (bukan hapus — teknisaplikasi.md butir 12). Hanya selama belum ada yang diukur. */
+  const jalankanBatalWo = async (alasan: string) => {
+    if (!batalWo) return false;
+    setSibuk(true);
+    setPesan(null);
+    const gagal = await batalkan(batalWo.id, alasan, oleh);
+    setSibuk(false);
+    setPesan(
+      gagal
+        ? { ok: false, teks: `Gagal membatalkan WO: ${gagal}` }
+        : { ok: true, teks: `WO ${batalWo.ulp} ${namaPeriode} dibatalkan — bulan ini bisa diterbitkan ulang.` },
+    );
+    return !gagal;
+  };
+
+  const dipilih = rows.filter((r) => pilih.has(r.id) && !r.pengukuran_id);
+  const jalankanKeluarkan = async (alasan: string) => {
+    try {
+      const h = await keluarkanWo(dipilih.map((r) => r.id), alasan, oleh);
+      setPesan({
+        ok: h.dilewati.length === 0,
+        teks:
+          `${h.keluar} gardu dikeluarkan dari WO.` +
+          (h.dilewati.length ? ` Dilewati: ${h.dilewati.map((d) => `${d.objek} (${d.sebab})`).join(", ")}.` : ""),
+      });
+      setPilih(new Set());
+      return true;
+    } catch (e) {
+      setPesan({ ok: false, teks: e instanceof Error ? e.message : "Gagal mengeluarkan gardu." });
+      return false;
+    }
   };
 
   const unduh = () => {
@@ -454,6 +476,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
           <span className="text-xs text-ink-muted">WO terbit:</span>
           {headers.map((h) => {
             const jumlah = rows.filter((r) => r.wo_id === h.id).length;
+            const diukur = rows.filter((r) => r.wo_id === h.id && r.pengukuran_id).length;
             return (
               <span
                 key={h.id}
@@ -461,14 +484,16 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
               >
                 <b className="text-ink">{h.ulp}</b>
                 <span>{jumlah} gardu</span>
-                <button
-                  onClick={() => mintaHapus(h.id, h.ulp, jumlah)}
-                  disabled={sibuk}
-                  className="h-6 w-6 grid place-items-center rounded-full text-ink-muted hover:text-red-600 hover:bg-red-50 transition-colors disabled:opacity-40"
-                  aria-label={`Hapus WO ${h.ulp}`}
-                >
-                  <Trash2 size={13} />
-                </button>
+                {bolehKelola && (
+                  <button
+                    onClick={() => setBatalWo({ id: h.id, ulp: h.ulp, jumlah })}
+                    disabled={sibuk || diukur > 0}
+                    title={diukur > 0 ? `${diukur} gardu sudah diukur — WO tidak bisa dibatalkan` : `Batalkan WO ${h.ulp}`}
+                    className="h-6 px-2 rounded-full text-[11px] font-semibold text-red-700 hover:bg-red-50 transition-colors disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Batalkan WO
+                  </button>
+                )}
               </span>
             );
           })}
@@ -503,7 +528,45 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
           <p className="text-sm text-ink-soft">Memuat data WO…</p>
         </div>
       ) : (
-        <TabelWoPengukuran rows={barisTampil} tampilkanUlp={!ulp} />
+        <>
+          {dipilih.length > 0 && (
+            <div className="flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
+              <span className="text-ink"><b className="tabular-nums">{dipilih.length}</b> gardu dipilih</span>
+              <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
+              <button
+                onClick={() => setKeluarkan(true)}
+                className="ml-auto inline-flex items-center gap-1.5 h-9 px-3 rounded-xl border border-line bg-white text-sm font-medium text-red-700 hover:bg-surface"
+              >
+                <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
+              </button>
+            </div>
+          )}
+          <TabelWoPengukuran
+            rows={barisTampil}
+            tampilkanUlp={!ulp}
+            pilih={bolehKelola ? pilih : undefined}
+            onPilih={bolehKelola ? ubahPilih : undefined}
+          />
+        </>
+      )}
+
+      {keluarkan && (
+        <BatalkanModal
+          judul={`Keluarkan ${dipilih.length} gardu dari WO?`}
+          keterangan="Gardu keluar dari WO dan dari HP petugas ukur, dan tidak dihitung di rekap. Barisnya tersimpan di arsip pembatalan beserta alasannya. Yang ternyata sudah diukur dilewati."
+          labelTombol="Keluarkan"
+          onTutup={() => setKeluarkan(false)}
+          onBatalkan={jalankanKeluarkan}
+        />
+      )}
+      {batalWo && (
+        <BatalkanModal
+          judul={`Batalkan WO ${batalWo.ulp} ${namaPeriode}?`}
+          keterangan={`${batalWo.jumlah} gardu hilang dari WO di HP petugas dan tidak dihitung di rekap. WO beserta alasannya tersimpan di arsip pembatalan, dan bulan ini bisa diterbitkan ulang.`}
+          labelTombol="Batalkan WO"
+          onTutup={() => setBatalWo(null)}
+          onBatalkan={jalankanBatalWo}
+        />
       )}
 
       {konfirmasi && (

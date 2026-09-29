@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Search } from "lucide-react";
-import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { Ban, ChevronLeft, ChevronRight, MapPin, Search } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import { useToast } from "@/app/admin/_components/Toast";
+import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { LABEL_ALASAN } from "../_lib/kandidatWo";
 import { STATUS_WO_HAR, statusWo, type BarisWoHar, type StatusWoHar } from "../_hooks/useWoHargardu";
 
@@ -24,9 +26,23 @@ const tgl = (iso: string | null) => {
   return `${t.getDate()} ${BLN[t.getMonth()]} ${t.getFullYear()}`;
 };
 
-/** Baris WO Pemeliharaan bulan terpilih — status diturunkan dari pemeliharaannya. */
-export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
+interface Props {
+  rows: BarisWoHar[];
+  bolehKelola: boolean;
+  onKeluarkan: (itemId: string[], alasan: string) => Promise<{ keluar: number; dilewati: { objek: string; sebab: string }[] }>;
+}
+
+/**
+ * Baris WO Pemeliharaan bulan terpilih — status diturunkan dari pemeliharaannya.
+ * Centang = keluarkan beberapa gardu dari WO sekaligus; hanya yang BELUM
+ * dikerjakan (`wo-batal-semua.sql`).
+ */
+export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
+  const toast = useToast();
   const [status, setStatus] = useState<"SEMUA" | StatusWoHar>("SEMUA");
+  const [pilih, setPilih] = useState<Set<string>>(new Set());
+  const [keluarkan, setKeluarkan] = useState(false);
+  const bisaPilih = (r: BarisWoHar) => bolehKelola && statusWo(r) === "Belum dikerjakan";
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
 
@@ -46,6 +62,18 @@ export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
   const total = Math.max(1, Math.ceil(baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
   const tampil = baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
+  const dipilih = rows.filter((r) => pilih.has(r.id) && bisaPilih(r));
+  const bisaDiHal = tampil.filter(bisaPilih).map((r) => r.id);
+  const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
+  const ubahPilih = (id: string[], aktif: boolean) =>
+    setPilih((p) => {
+      const n = new Set(p);
+      for (const x of id) {
+        if (aktif) n.add(x);
+        else n.delete(x);
+      }
+      return n;
+    });
 
   return (
     <div className="flex flex-col gap-3">
@@ -67,6 +95,16 @@ export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
         </div>
       </div>
 
+      {dipilih.length > 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
+          <span className="text-ink"><b className="tabular-nums">{dipilih.length}</b> gardu dipilih</span>
+          <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
+          <button onClick={() => setKeluarkan(true)} className={`${BTN_GHOST} ml-auto text-red-700`}>
+            <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
+          </button>
+        </div>
+      )}
+
       {baris.length === 0 ? (
         <div className={`${CARD} p-8 text-center text-sm text-ink-soft`}>
           {rows.length === 0 ? "Belum ada WO terbit untuk bulan ini." : "Tidak ada baris yang cocok."}
@@ -77,6 +115,18 @@ export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
             <table className="w-full border-collapse text-sm">
               <thead className="bg-surface">
                 <tr>
+                  {bolehKelola && (
+                    <th className={`${TH} w-8`}>
+                      <input
+                        type="checkbox"
+                        checked={semuaHal}
+                        disabled={bisaDiHal.length === 0}
+                        onChange={() => ubahPilih(bisaDiHal, !semuaHal)}
+                        className="accent-navy-600"
+                        aria-label="Pilih semua gardu di halaman ini yang belum dikerjakan"
+                      />
+                    </th>
+                  )}
                   <th className={`${TH} text-right`}>No</th>
                   <th className={TH}>Gardu</th>
                   <th className={TH}>Penyulang</th>
@@ -90,7 +140,20 @@ export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
                 {tampil.map((r) => {
                   const s = statusWo(r);
                   return (
-                    <tr key={r.id} className="hover:bg-navy-50/40">
+                    <tr key={r.id} className={pilih.has(r.id) ? "bg-navy-50/70" : "hover:bg-navy-50/40"}>
+                      {bolehKelola && (
+                        <td className={TD}>
+                          {bisaPilih(r) && (
+                            <input
+                              type="checkbox"
+                              checked={pilih.has(r.id)}
+                              onChange={(e) => ubahPilih([r.id], e.target.checked)}
+                              className="accent-navy-600"
+                              aria-label={`Pilih ${r.gardu_kode}`}
+                            />
+                          )}
+                        </td>
+                      )}
                       <td className={`${TD} text-xs text-right tabular-nums text-ink-muted`}>{r.urutan}</td>
                       <td className={TD}>
                         <p className="font-semibold text-ink flex items-center gap-1.5">
@@ -140,6 +203,27 @@ export default function TabelWoHar({ rows }: { rows: BarisWoHar[] }) {
             </div>
           </div>
         </div>
+      )}
+
+      {keluarkan && (
+        <BatalkanModal
+          judul={`Keluarkan ${dipilih.length} gardu dari WO?`}
+          keterangan="Gardu keluar dari WO dan dari HP regu HARGAR, dan tidak dihitung di rekap. Barisnya tersimpan di arsip pembatalan beserta alasannya. Yang ternyata sudah dikerjakan dilewati."
+          labelTombol="Keluarkan"
+          onTutup={() => setKeluarkan(false)}
+          onBatalkan={async (alasan) => {
+            try {
+              const h = await onKeluarkan(dipilih.map((r) => r.id), alasan);
+              if (h.keluar > 0) toast.success(`${h.keluar} gardu dikeluarkan dari WO.`);
+              if (h.dilewati.length > 0) toast.error(`${h.dilewati.length} dilewati — ${h.dilewati.map((d) => `${d.objek}: ${d.sebab}`).join(" · ")}`);
+              setPilih(new Set());
+              return true;
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Gagal.");
+              return false;
+            }
+          }}
+        />
       )}
     </div>
   );

@@ -11,7 +11,10 @@ import { isoTgl } from "./woSurat";
 export interface BarisTempel {
   objek: string;
   alamat: string | null;
+  penyulang: string | null;
   km: number | null;
+  kva: number | null;
+  uraian: string | null;
   keterangan: string | null;
   pelaksana: string | null;
   tgl_rencana: string | null;
@@ -21,11 +24,14 @@ type Kolom = keyof BarisTempel;
 
 /** Urutan penting: yang lebih khusus diperiksa lebih dulu. */
 const POLA: [Kolom, RegExp][] = [
+  ["uraian", /uraian|pekerjaan/i],
+  ["kva", /kva|daya/i],
   ["km", /\bkms?\b|panjang/i],
   ["tgl_rencana", /tanggal|tgl|rencana/i],
-  ["pelaksana", /pelaksana|regu|petugas|tim/i],
+  ["pelaksana", /pelaksana|regu|petugas/i],
   ["keterangan", /ket|tier/i],
-  ["objek", /gardu|segmen|segment|section|kode|objek|penyulang/i],
+  ["penyulang", /penyulang|feeder/i],
+  ["objek", /gardu|segmen|segment|section|kode|objek/i],
   ["alamat", /alamat|nama|lokasi/i],
 ];
 
@@ -69,7 +75,7 @@ export function bacaTempelan(raw: string, tahun: number, bulan: number): HasilTe
     return {
       baris: [],
       dikenali,
-      galat: "Kolom objek tidak ditemukan. Baris pertama harus judul kolom, misalnya “No Gardu” atau “Segment/Section”.",
+      galat: "Kolom objek tidak ditemukan. Baris pertama harus judul kolom, misalnya “Gardu” atau “Segment”.",
     };
   }
 
@@ -78,7 +84,10 @@ export function bacaTempelan(raw: string, tahun: number, bulan: number): HasilTe
     .map((r) => ({
       objek: sel(r, "objek"),
       alamat: sel(r, "alamat") || null,
+      penyulang: sel(r, "penyulang") || null,
       km: indeks.km === undefined ? null : parseLocaleNumber(sel(r, "km")),
+      kva: indeks.kva === undefined ? null : parseLocaleNumber(sel(r, "kva")),
+      uraian: sel(r, "uraian") || null,
       keterangan: sel(r, "keterangan") || null,
       pelaksana: sel(r, "pelaksana") || null,
       tgl_rencana: bacaTanggal(sel(r, "tgl_rencana"), tahun, bulan),

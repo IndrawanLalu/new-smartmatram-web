@@ -291,16 +291,32 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     }
   };
 
-  /** Hapus satu WO beserta barisnya. Pemeliharaan yang sudah dikerjakan tidak tersentuh. */
-  const hapus = async (woId: string) => {
+  /**
+   * Batalkan satu WO beserta alasannya (`wo-batal-semua.sql`): barisnya
+   * diarsipkan, bukan dihapus begitu saja — dan hanya selama belum ada gardu
+   * yang dikerjakan regu. Sesudahnya bulan itu bisa diterbitkan ulang.
+   */
+  const batalkan = async (woId: string, alasan: string, oleh: string) => {
     setMemproses(`hapus-${woId}`);
     try {
-      const { error } = await supabaseBrowser.from("wo_hargardu").delete().eq("id", woId);
+      const { error } = await supabaseBrowser.rpc("batalkan_wo_gardu", {
+        p_modul: "hargardu", p_wo_id: woId, p_alasan: alasan, p_oleh: oleh,
+      });
       if (error) throw new Error(error.message);
       muat();
     } finally {
       setMemproses(null);
     }
+  };
+
+  /** Keluarkan beberapa gardu dari WO; yang sudah dikerjakan dilewati dengan sebabnya. */
+  const keluarkan = async (itemId: string[], alasan: string, oleh: string) => {
+    const { data, error } = await supabaseBrowser.rpc("keluarkan_wo_gardu_banyak", {
+      p_modul: "hargardu", p_item_id: itemId, p_alasan: alasan, p_oleh: oleh,
+    });
+    if (error) throw new Error(error.message);
+    muat();
+    return data as { keluar: number; dilewati: { objek: string; sebab: string }[] };
   };
 
   return {
@@ -313,6 +329,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     muat,
     simpanSetting,
     terbitkan,
-    hapus,
+    batalkan,
+    keluarkan,
   };
 }

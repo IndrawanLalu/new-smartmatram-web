@@ -99,13 +99,17 @@ function IsiWo({ user, daftar, periode }: { user: CurrentUser; daftar: string[];
                   bolehKelola={canManageSettings(user.role)}
                   memproses={w.memproses}
                   terbitkan={w.terbitkan}
-                  hapus={w.hapus}
+                  batalkan={(woId, alasan) => w.batalkan(woId, alasan, user.name ?? user.email ?? "")}
                   simpanSetting={w.simpanSetting}
                 />
               );
             })}
           </div>
-          <TabelWoHar rows={w.rows} />
+          <TabelWoHar
+            rows={w.rows}
+            bolehKelola={canManageSettings(user.role)}
+            onKeluarkan={(id, alasan) => w.keluarkan(id, alasan, user.name ?? user.email ?? "")}
+          />
         </>
       )}
     </>

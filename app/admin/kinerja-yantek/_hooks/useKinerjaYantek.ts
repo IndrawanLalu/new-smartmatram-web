@@ -150,7 +150,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     satuan: "KMS",
     desimal: true,
     catatan:
-      "WO dari tempelan Excel selama penitikan awal (nanti dari WO Inspeksi JTM). Realisasi = panjang segmen yang inspeksi tier 1-nya selesai.",
+      "WO = WO Inspeksi JTM (disusun di aplikasi atau ditempel) + tempelan yang segmennya belum ada di master. Realisasi = panjang segmen yang inspeksi tier 1-nya selesai.",
   },
   {
     kunci: "jtm2",

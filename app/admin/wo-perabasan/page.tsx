@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Download, FileText, LayoutDashboard, ListChecks, Loader2, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits } from "@/lib/roles";
 import { useWoPerabasan } from "./_hooks/useWoPerabasan";
 import { useDaftarPerabasan, BULAN, STATUS_RABAS } from "./_hooks/useDaftarPerabasan";
@@ -58,6 +59,9 @@ export default function WoPerabasanPage() {
   const [lihatLuar, setLihatLuar] = useState(false);
   const [idLuar, setIdLuar] = useState<string | null>(null);
   const [idWo, setIdWo] = useState<string | null>(null);
+  /** Segmen yang dicentang untuk dikeluarkan dari WO sekaligus. */
+  const [pilih, setPilih] = useState<Set<string>>(new Set());
+  const [keluarkan, setKeluarkan] = useState(false);
   /** Dibuka dari Daftar WO → Susun WO langsung pada "Tambah ke WO" ini. */
   const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
   const slaBulan = useSlaBulanan("perabasan");
@@ -82,6 +86,19 @@ export default function WoPerabasanPage() {
   // Rabas di luar WO diputuskan admin ULP LOKASI atau UP3 (dijaga database juga).
   const bolehPutuskanLuar = (ulpLokasi: string) =>
     canSeeAllUnits(user.role) || (user.role === "admin" && (user.unit ?? "").toUpperCase() === ulpLokasi.toUpperCase());
+
+  // Hanya yang BELUM dikerjakan regu boleh dikeluarkan (dijaga database juga).
+  const bisaPilih = (b: { statusDb: string; ulp: string }) => b.statusDb === "Dijadwalkan" && bolehUlp(b.ulp);
+  const dipilih = d.baris.filter((b) => pilih.has(b.id) && bisaPilih(b));
+  const ubahPilih = (id: string[], aktif: boolean) =>
+    setPilih((p) => {
+      const n = new Set(p);
+      for (const x of id) {
+        if (aktif) n.add(x);
+        else n.delete(x);
+      }
+      return n;
+    });
 
   /** Aksi dari modal: jalankan, lalu tambal baris itu saja di daftar. */
   const lalu = (id: string) => async (ok: boolean) => {
@@ -262,7 +279,30 @@ export default function WoPerabasanPage() {
               <TabelLuarWo baris={l.baris} loading={l.loading} onDetail={(b) => setIdLuar(b.id)} />
             )
           ) : (
-            <TabelRabas baris={d.baris} loading={d.loading} onDetail={(b) => setIdDetail(b.id)} />
+            <>
+              {dipilih.length > 0 && (
+                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
+                  <span className="text-ink">
+                    <b className="tabular-nums">{dipilih.length}</b> segmen dipilih ·{" "}
+                    {dipilih.reduce((a, b) => a + (b.panjangKm ?? 0), 0).toFixed(2).replace(".", ",")} km
+                  </span>
+                  <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">
+                    Batal pilih
+                  </button>
+                  <button onClick={() => setKeluarkan(true)} className={`${BTN_GHOST} ml-auto text-red-700`}>
+                    <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
+                  </button>
+                </div>
+              )}
+              <TabelRabas
+                baris={d.baris}
+                loading={d.loading}
+                onDetail={(b) => setIdDetail(b.id)}
+                dipilih={pilih}
+                onPilih={ubahPilih}
+                bisaPilih={bisaPilih}
+              />
+            </>
           )}
         </>
       )}
@@ -276,6 +316,23 @@ export default function WoPerabasanPage() {
           onPutuskan={(id, terima, catatan) => w.putuskan(id, terima, catatan, oleh).then(lalu(id))}
           onBatalkan={(id, alasan) => w.batalkanItem(id, alasan, oleh).then(lalu(id))}
           ambilRealisasi={w.ambilRealisasi}
+        />
+      )}
+
+      {keluarkan && (
+        <BatalkanModal
+          judul={`Keluarkan ${dipilih.length} segmen dari WO?`}
+          keterangan="Segmen keluar dari WO dan dari HP regu, tetap tercatat berstatus Dibatalkan beserta alasannya. Segmen yang ternyata sudah dikerjakan regu dilewati."
+          labelTombol="Keluarkan"
+          onTutup={() => setKeluarkan(false)}
+          onBatalkan={async (alasan) => {
+            const ok = await w.keluarkanBanyak(dipilih.map((b) => b.id), alasan, oleh);
+            if (ok) {
+              setPilih(new Set());
+              d.muat();
+            }
+            return ok;
+          }}
         />
       )}
 
@@ -294,6 +351,14 @@ export default function WoPerabasanPage() {
           bolehUbah={bolehUlp(detailWo.ulp)}
           ambilItem={w.ambilItemWo}
           onUbah={(v) => w.ubahWo({ ...v, oleh })}
+          onBatalkanWo={async (alasan) => {
+            const ok = await w.batalkanWo(detailWo.wo_id, alasan, oleh);
+            if (ok) {
+              setIdWo(null);
+              d.muat();
+            }
+            return ok;
+          }}
           onTambahSegmen={() => {
             setWoAwal({ id: detailWo.wo_id, ulp: detailWo.ulp });
             setIdWo(null);

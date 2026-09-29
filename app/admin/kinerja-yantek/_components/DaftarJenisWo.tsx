@@ -6,8 +6,9 @@ import { fmtAngka, JENIS_SURAT } from "../_lib/woSurat";
 
 /**
  * Sebelas baris surat, persis urutan surat. Tiap baris menyebut dari mana
- * angkanya — "sistem" (WO modulnya) atau "tempelan" (Excel yang ditempel) —
- * supaya yang mencetak tahu mana yang masih bisa dan perlu ia isi sendiri.
+ * angkanya — "sistem" (WO modulnya, termasuk yang masuk lewat tempelan) atau
+ * "tempelan" (`wo_manual`: modulnya belum ada / segmen belum di master).
+ * Semua bisa ditempel kecuali Optimasi Trafo (WO-nya dari hasil pengukuran).
  */
 
 interface Props {
@@ -67,7 +68,7 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
                         onClick={() => onTempel(j.kunci)}
                         className="inline-flex items-center gap-1 h-7 px-2 rounded-lg border border-line text-xs text-ink-soft hover:bg-surface"
                       >
-                        <ClipboardPaste size={12} /> {ditempel ? "Tempel ulang" : "Tempel dari Excel"}
+                        <ClipboardPaste size={12} /> {ditempel && !j.modul ? "Tempel ulang" : "Tempel dari Excel"}
                       </button>
                       {ditempel && (
                         <button

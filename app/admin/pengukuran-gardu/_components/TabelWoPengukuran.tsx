@@ -28,6 +28,10 @@ export interface BarisTampil {
   tgl_wo: string | null;
   tgl_realisasi: string | null;
   petugas_nama: string | null;
+  /** Id baris WO — hanya ada untuk yang sudah terbit. */
+  id?: string;
+  /** Sudah diukur = tidak boleh keluar dari WO. */
+  dikerjakan?: boolean;
 }
 
 const PAGE_SIZE = 20;
@@ -49,9 +53,15 @@ interface TabelWoPengukuranProps {
   rows: BarisTampil[];
   /** Kolom ULP hanya berguna kalau yang tampil lebih dari satu ULP. */
   tampilkanUlp: boolean;
+  /** Diisi = ada kolom centang untuk mengeluarkan gardu dari WO. */
+  pilih?: Set<string>;
+  onPilih?: (id: string[], aktif: boolean) => void;
 }
 
-export default function TabelWoPengukuran({ rows, tampilkanUlp }: TabelWoPengukuranProps) {
+/** Yang bisa dicentang: sudah terbit dan belum diukur. */
+const bisaPilih = (r: BarisTampil) => !!r.id && !r.dikerjakan;
+
+export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }: TabelWoPengukuranProps) {
   const [page, setPage] = useState(1);
   const [rowsTerakhir, setRowsTerakhir] = useState(rows);
 
@@ -70,6 +80,9 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp }: TabelWoPenguku
     [rows, page],
   );
 
+  const bisaDiHal = halaman.filter(bisaPilih).map((r) => r.id!);
+  const semuaHal = !!pilih && bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
+
   if (rows.length === 0) {
     return (
       <div className="bg-white rounded-2xl border border-line shadow-card p-10 text-center">
@@ -85,6 +98,18 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp }: TabelWoPenguku
         <table className="w-full min-w-[1100px]">
           <thead className="bg-accent-tint">
             <tr>
+              {onPilih && (
+                <th className={`${TH} w-8`}>
+                  <input
+                    type="checkbox"
+                    checked={semuaHal}
+                    disabled={bisaDiHal.length === 0}
+                    onChange={() => onPilih(bisaDiHal, !semuaHal)}
+                    className="accent-navy-600"
+                    aria-label="Pilih semua gardu di halaman ini yang belum diukur"
+                  />
+                </th>
+              )}
               <th className={`${TH} text-center w-12`}>No</th>
               <th className={`${TH} text-left`}>Kode</th>
               <th className={`${TH} text-left`}>Nama / Alamat</th>
@@ -102,7 +127,23 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp }: TabelWoPenguku
           </thead>
           <tbody className="divide-y divide-line">
             {halaman.map((r, i) => (
-              <tr key={`${r.ulp}|${r.kode_gardu}`} className="hover:bg-surface transition-colors">
+              <tr
+                key={`${r.ulp}|${r.kode_gardu}`}
+                className={r.id && pilih?.has(r.id) ? "bg-navy-50/70" : "hover:bg-surface transition-colors"}
+              >
+                {onPilih && (
+                  <td className={TD}>
+                    {bisaPilih(r) && (
+                      <input
+                        type="checkbox"
+                        checked={pilih?.has(r.id!) ?? false}
+                        onChange={(e) => onPilih([r.id!], e.target.checked)}
+                        className="accent-navy-600"
+                        aria-label={`Pilih ${r.kode_gardu}`}
+                      />
+                    )}
+                  </td>
+                )}
                 <td className={`${TD} text-center text-ink-muted`}>{(page - 1) * PAGE_SIZE + i + 1}</td>
                 <td className={`${TD} font-semibold whitespace-nowrap`}>{r.kode_gardu}</td>
                 <td className={`${TD} max-w-[260px]`}>

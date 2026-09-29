@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarCheck, ChevronDown, Loader2, Save, Send, Trash2 } from "lucide-react";
+import { Ban, CalendarCheck, ChevronDown, Loader2, Save, Send } from "lucide-react";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, CARD, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -29,7 +30,7 @@ interface Props {
   bolehKelola: boolean;
   memproses: string | null;
   terbitkan: (ulp: string) => Promise<number>;
-  hapus: (woId: string) => Promise<void>;
+  batalkan: (woId: string, alasan: string) => Promise<void>;
   simpanSetting: (ulp: string, s: WoHarSettings) => Promise<void>;
 }
 
@@ -54,6 +55,8 @@ export default function KartuWoUlp(p: Props) {
   const jadi = p.rows.filter((r) => r.terealisasi).length;
   const tunggu = p.rows.filter((r) => statusWo(r) === "Menunggu persetujuan").length;
   const jalan = p.rows.filter((r) => statusWo(r) === "Sedang dikerjakan").length;
+  // Gardu yang sudah disentuh regu mengunci WO dari pembatalan (dijaga database juga).
+  const belum = p.rows.filter((r) => statusWo(r) === "Belum dikerjakan").length;
   const pct = p.rows.length > 0 ? Math.round((jadi / p.rows.length) * 100) : 0;
   const berubah = JSON.stringify(draf) !== JSON.stringify(p.settings);
 
@@ -117,8 +120,13 @@ export default function KartuWoUlp(p: Props) {
       {p.bolehKelola && (
         <div className="flex flex-wrap items-center gap-2">
           {p.header ? (
-            <button onClick={() => setDialog("hapus")} className={`${BTN_GHOST} text-ink-muted hover:text-red-600`} disabled={!!p.memproses}>
-              <Trash2 size={14} /> Hapus WO
+            <button
+              onClick={() => setDialog("hapus")}
+              className={`${BTN_GHOST} text-ink-muted hover:text-red-600`}
+              disabled={!!p.memproses || p.rows.length - belum > 0}
+              title={p.rows.length - belum > 0 ? `${p.rows.length - belum} gardu sudah dikerjakan regu — WO tidak bisa dibatalkan` : undefined}
+            >
+              <Ban size={14} /> Batalkan WO
             </button>
           ) : (
             <button onClick={() => setDialog("terbit")} className={BTN_PRIMARY} disabled={jumlahTerbit === 0 || !!p.memproses}>
@@ -201,15 +209,20 @@ export default function KartuWoUlp(p: Props) {
         />
       )}
       {dialog === "hapus" && p.header && (
-        <ConfirmDialog
-          title={`Hapus WO Pemeliharaan ${p.ulp} — ${p.periode}?`}
-          message={`${p.rows.length} gardu hilang dari daftar WO di HP regu. Pemeliharaan yang sudah dikerjakan (${jadi}) tetap tersimpan, hanya tidak lagi terhitung sebagai realisasi WO.`}
-          confirmLabel="Hapus WO"
-          tone="danger"
-          onClose={() => setDialog(null)}
-          onConfirm={() => {
-            setDialog(null);
-            void jalankan(() => p.hapus(p.header!.id), `WO ${p.ulp} dihapus.`);
+        <BatalkanModal
+          judul={`Batalkan WO Pemeliharaan ${p.ulp} — ${p.periode}?`}
+          keterangan={`${p.rows.length} gardu hilang dari daftar WO di HP regu dan tidak dihitung di rekap. WO beserta alasannya tersimpan di arsip pembatalan, dan bulan ini bisa diterbitkan ulang.`}
+          labelTombol="Batalkan WO"
+          onTutup={() => setDialog(null)}
+          onBatalkan={async (alasan) => {
+            try {
+              await p.batalkan(p.header!.id, alasan);
+              toast.success(`WO ${p.ulp} dibatalkan.`);
+              return true;
+            } catch (e) {
+              toast.error(e instanceof Error ? e.message : "Gagal membatalkan WO.");
+              return false;
+            }
           }}
         />
       )}

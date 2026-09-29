@@ -4,13 +4,15 @@
 
 import { Document, Image, Page, StyleSheet, Text, View, type Styles } from "@react-pdf/renderer";
 import {
-  fmtAngka, HARI_SINGKAT, jumlahHari, labelBulan, labelTanggal,
+  fmtAngka, HARI_SINGKAT, isiSel, jumlahHari, kolomLampiran, labelBulan, labelTanggal, ringkasLampiran,
   type Lampiran, type PaketSurat,
 } from "./woSurat";
 
 const MERAH = "#E53935";
 const HIJAU = "#43A047";
 const GARIS = "#9E9E9E";
+/** Lebar kolom nomor (pt). */
+const NO = 16;
 
 const S = StyleSheet.create({
   surat: { fontFamily: "Times-Roman", fontSize: 11, paddingHorizontal: 50, paddingVertical: 36, color: "#000" },
@@ -138,10 +140,9 @@ function Sel({ w, children, gaya }: { w: number; children?: React.ReactNode; gay
 function HalamanLampiran({ p, l }: { p: PaketSurat; l: Lampiran }) {
   const n = jumlahHari(p.tahun, p.bulan);
   const hari = Array.from({ length: n }, (_, i) => i + 1);
-  const km = l.jenis.km;
+  const kolom = kolomLampiran(l.jenis);
   // Lebar tetap untuk kolom identitas; sisanya dibagi rata ke kolom tanggal.
-  const W = { no: 16, objek: 58, alamat: km ? 120 : 154, km: 34, pelaksana: 64 };
-  const lebarTetap = W.no + W.objek + W.alamat + (km ? W.km : 0) + W.pelaksana;
+  const lebarTetap = NO + kolom.reduce((a, k) => a + k.pdf, 0);
   const wHari = (842 - 36 - lebarTetap) / n;
   const judul = l.jenis.nama.replace(/^WO /, "").toUpperCase();
 
@@ -159,11 +160,8 @@ function HalamanLampiran({ p, l }: { p: PaketSurat; l: Lampiran }) {
 
       <View fixed>
         <View style={[S.tr, { borderTopWidth: 0.5 }]}>
-          <Sel w={W.no} gaya={S.th}>NO</Sel>
-          <Sel w={W.objek} gaya={S.th}>{l.jenis.kolomObjek.toUpperCase()}</Sel>
-          <Sel w={W.alamat} gaya={S.th}>ALAMAT</Sel>
-          {km && <Sel w={W.km} gaya={S.th}>KMS</Sel>}
-          <Sel w={W.pelaksana} gaya={S.th}>PELAKSANA</Sel>
+          <Sel w={NO} gaya={S.th}>NO</Sel>
+          {kolom.map((k) => <Sel key={k.isi} w={k.pdf} gaya={S.th}>{k.label}</Sel>)}
           {hari.map((d) => {
             const libur = p.libur.has(d);
             return (
@@ -180,11 +178,10 @@ function HalamanLampiran({ p, l }: { p: PaketSurat; l: Lampiran }) {
 
       {l.objek.map((o, i) => (
         <View key={i} style={S.tr} wrap={false}>
-          <Sel w={W.no} gaya={{ alignItems: "center" }}>{i + 1}</Sel>
-          <Sel w={W.objek}>{o.objek}</Sel>
-          <Sel w={W.alamat}>{o.alamat ?? ""}</Sel>
-          {km && <Sel w={W.km} gaya={{ alignItems: "flex-end" }}>{fmtAngka(o.km, true)}</Sel>}
-          <Sel w={W.pelaksana}>{o.pelaksana ?? ""}</Sel>
+          <Sel w={NO} gaya={{ alignItems: "center" }}>{i + 1}</Sel>
+          {kolom.map((k) => (
+            <Sel key={k.isi} w={k.pdf} gaya={k.kanan ? { alignItems: "flex-end" } : undefined}>{isiSel(o, k.isi)}</Sel>
+          ))}
           {hari.map((d) => (
             <View
               key={d}
@@ -196,11 +193,11 @@ function HalamanLampiran({ p, l }: { p: PaketSurat; l: Lampiran }) {
 
       <View wrap={false}>
         <View style={{ flexDirection: "row", marginTop: 3 }}>
-          <Text style={{ width: W.no + W.objek + W.alamat, textAlign: "right", paddingRight: 4, fontFamily: "Helvetica-Bold" }}>
+          <Text style={{ width: lebarTetap - 120, textAlign: "right", paddingRight: 4, fontFamily: "Helvetica-Bold" }}>
             Jumlah
           </Text>
           <Text style={{ fontFamily: "Helvetica-Bold" }}>
-            {fmtAngka(l.total, km)} {l.jenis.satuan} · {fmtAngka(l.perHari, true)} {l.jenis.satuan.toLowerCase()}/hari efektif
+            {ringkasLampiran(l)}
           </Text>
         </View>
         <View style={{ flexDirection: "row", justifyContent: "space-around", marginTop: 14, fontFamily: "Times-Roman", fontSize: 9 }}>

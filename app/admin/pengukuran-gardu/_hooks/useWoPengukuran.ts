@@ -287,10 +287,16 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     [tahun, bulan, ulpSudahTerbit, muat],
   );
 
-  /** Hapus satu WO beserta seluruh barisnya (cascade di database). */
-  const hapus = useCallback(
-    async (woId: string): Promise<string | null> => {
-      const { error: e } = await supabaseBrowser.from("wo_pengukuran").delete().eq("id", woId);
+  /**
+   * Batalkan satu WO beserta alasannya (`wo-batal-semua.sql`): barisnya
+   * diarsipkan — hanya selama belum ada gardu yang sudah diukur. Sesudahnya
+   * bulan itu bisa diterbitkan ulang.
+   */
+  const batalkan = useCallback(
+    async (woId: string, alasan: string, oleh: string): Promise<string | null> => {
+      const { error: e } = await supabaseBrowser.rpc("batalkan_wo_gardu", {
+        p_modul: "pengukuran", p_wo_id: woId, p_alasan: alasan, p_oleh: oleh,
+      });
       if (e) return e.message;
       await muat();
       return null;
@@ -298,7 +304,20 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     [muat],
   );
 
-  return { headers, rows, luarWo, loading, error, unit, ulpSudahTerbit, terbitkan, hapus, refresh: muat };
+  /** Keluarkan beberapa gardu dari WO; yang sudah diukur dilewati dengan sebabnya. */
+  const keluarkan = useCallback(
+    async (itemId: string[], alasan: string, oleh: string) => {
+      const { data, error: e } = await supabaseBrowser.rpc("keluarkan_wo_gardu_banyak", {
+        p_modul: "pengukuran", p_item_id: itemId, p_alasan: alasan, p_oleh: oleh,
+      });
+      if (e) throw new Error(e.message);
+      await muat();
+      return data as { keluar: number; dilewati: { objek: string; sebab: string }[] };
+    },
+    [muat],
+  );
+
+  return { headers, rows, luarWo, loading, error, unit, ulpSudahTerbit, terbitkan, batalkan, keluarkan, refresh: muat };
 }
 
 // ── Hook: master gardu untuk penyusunan kandidat ──────────────────────────────

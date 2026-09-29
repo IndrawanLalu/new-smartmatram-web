@@ -1,21 +1,24 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Check, Loader2 } from "lucide-react";
+import { Check, FileDown, Loader2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { bacaTempelan, tierDari, type BarisTempel } from "../_lib/tempelWo";
-import { fmtAngka, JENIS_SURAT, labelBulan } from "../_lib/woSurat";
+import { fmtAngka, JENIS_SURAT, kolomLampiran, labelBulan } from "../_lib/woSurat";
+import HasilTempel, { type HasilRpc } from "./HasilTempel";
 
 /**
- * Tempel WO manual dari Excel rencana kerja. Tempelan MENGGANTI daftar jenis
- * itu seluruhnya (centang realisasi objek yang sama dibawa oleh server).
+ * Tempel WO dari Excel (keputusan user 29 Sep 2026). Kolom mengikuti format
+ * jenisnya — gardu, KMS, atau Pemeliharaan Jaringan — sama dengan kolom
+ * lampiran surat. Yang punya modul langsung menjadi WO modulnya (tampil di
+ * HP); yang belum, ke `wo_manual`. Hasilnya DIBERITAHUKAN: berapa masuk,
+ * mana yang dilewati (sudah ada di WO), mana yang ditolak (tidak ada di master).
  *
- * Inspeksi JTM: satu tempelan boleh berisi Tier 1 dan Tier 2 sekaligus —
- * dipisah dari kolom keterangan. Tanpa keterangan, ikut tier baris yang
- * tombolnya ditekan.
+ * Inspeksi JTM: satu tempelan boleh berisi Tier 1 dan Tier 2 — dipisah dari
+ * kolom keterangan; tanpa keterangan ikut tier baris yang tombolnya ditekan.
  */
 
 interface Props {
@@ -34,7 +37,9 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
   const toast = useToast();
   const [teks, setTeks] = useState("");
   const [sibuk, setSibuk] = useState(false);
+  const [hasilRpc, setHasilRpc] = useState<{ jenis: string; h: HasilRpc }[] | null>(null);
   const jenis = JENIS_SURAT.find((j) => j.kunci === kunci)!;
+  const kolom = kolomLampiran(jenis);
   const jtm = kunci === "jtm" || kunci === "jtm2";
   const hasil = useMemo(() => (teks.trim() ? bacaTempelan(teks, tahun, bulan) : null), [teks, tahun, bulan]);
 
@@ -48,23 +53,61 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
     return g;
   }, [hasil, jtm, kunci]);
 
+  const template = async () => {
+    const { unduhTemplate } = await import("../_lib/unduhTemplate");
+    await unduhTemplate(jenis, jtm);
+  };
+
   const simpan = async () => {
     setSibuk(true);
+    // Penyulang salah satu saja → SELURUH tempelan ditahan (keputusan user).
+    // Diperiksa sekali untuk semua baris, sebelum apa pun disimpan — JTM
+    // Tier 1 dan Tier 2 disimpan terpisah, dan tidak boleh masuk setengah.
+    if (jenis.penyulang) {
+      const { data, error } = await supabaseBrowser.rpc("cek_tempel_penyulang", { p_ulp: ulp, p_item: hasil?.baris ?? [] });
+      if (error) {
+        setSibuk(false);
+        toast.error(error.message);
+        return;
+      }
+      const salah = (data ?? []) as HasilRpc["ditolak"];
+      if (salah.length > 0) {
+        setSibuk(false);
+        setHasilRpc([{ jenis: kunci, h: { ditahan: true, masuk: 0, manual: 0, segmen_baru: 0, tanpa_regu: 0, dilewati: [], ditolak: salah } }]);
+        return;
+      }
+    }
+    const semua: { jenis: string; h: HasilRpc }[] = [];
     for (const [k, baris] of kelompok) {
-      const { error } = await supabaseBrowser.rpc("simpan_wo_manual", {
+      const { data, error } = await supabaseBrowser.rpc("tempel_wo", {
         p_ulp: ulp, p_tahun: tahun, p_bulan: bulan, p_jenis: k, p_item: baris, p_oleh: oleh,
       });
       if (error) {
         setSibuk(false);
         toast.error(`${JENIS_SURAT.find((j) => j.kunci === k)?.nama}: ${error.message}`);
+        if (semua.length > 0) onTersimpan();
         return;
       }
+      semua.push({ jenis: k, h: data as HasilRpc });
     }
     setSibuk(false);
-    toast.success(`${hasil?.baris.length ?? 0} baris WO tersimpan untuk ${labelBulan(tahun, bulan)}.`);
     onTersimpan();
-    onTutup();
+    setHasilRpc(semua);
   };
+
+  if (hasilRpc) {
+    return (
+      <ModalShell
+        title="Hasil tempel WO"
+        subtitle={`ULP ${ulp} · ${labelBulan(tahun, bulan)}`}
+        maxWidth="max-w-3xl"
+        onClose={onTutup}
+        footer={<button onClick={onTutup} className={`${BTN_PRIMARY} ml-auto`}>Selesai</button>}
+      >
+        {hasilRpc.map((r) => <HasilTempel key={r.jenis} jenis={r.jenis} h={r.h} />)}
+      </ModalShell>
+    );
+  }
 
   const footer = (
     <>
@@ -79,15 +122,26 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
   return (
     <ModalShell
       title={`Tempel ${jtm ? "WO Inspeksi JTM (Tier 1 & 2)" : jenis.nama}`}
-      subtitle={`ULP ${ulp} · ${labelBulan(tahun, bulan)} — menggantikan tempelan sebelumnya`}
+      subtitle={`ULP ${ulp} · ${labelBulan(tahun, bulan)}`}
       maxWidth="max-w-4xl"
       onClose={onTutup}
       footer={footer}
     >
-      <p className="text-xs text-ink-soft leading-relaxed">
-        Blok tabel di Excel <b>termasuk baris judul kolomnya</b>, salin (Ctrl+C), lalu tempel di bawah.
-        Kolom dikenali dari judulnya: {jtm ? "Segment/Section, Kms, Keterangan (Tier 1/2), Pelaksana, Rencana Tanggal" : `${jenis.kolomObjek}, Alamat, ${jenis.km ? "Kms, " : ""}Pelaksana`}.
-      </p>
+      <div className="rounded-xl border border-line bg-surface/60 px-3 py-2 text-xs text-ink-soft leading-relaxed">
+        <button onClick={() => void template()} className={`${BTN_GHOST} float-right ml-3 mb-1`}>
+          <FileDown size={14} /> Unduh template
+        </button>
+        <p>
+          Salin blok tabel di Excel <b>termasuk baris judul kolomnya</b>, lalu tempel di bawah. Kolom:{" "}
+          <b className="text-ink">{kolom.map((k) => k.label.toLowerCase()).join(" · ")}</b>
+          {jtm && " (keterangan: Tier 1 / Tier 2)"}. Tanggal kerja dibagi rata otomatis.
+        </p>
+        <p className="mt-1">
+          {jenis.modul
+            ? "Masuk sebagai WO modulnya dan tampil di HP regu. Yang sudah ada di WO bulan ini dilewati; baris lama tidak dihapus — pembatalan lewat modulnya."
+            : "Modulnya belum ada: tempelan ini MENGGANTIKAN tempelan sebelumnya untuk bulan ini (centang realisasi objek yang sama tetap)."}
+        </p>
+      </div>
       <textarea
         value={teks}
         onChange={(e) => setTeks(e.target.value)}
@@ -120,20 +174,19 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
             <table className="w-full text-xs">
               <thead className="bg-slate-100 sticky top-0">
                 <tr className="text-left">
-                  {["Objek", "Alamat", "Kms", "Keterangan", "Pelaksana", "Rencana"].map((h) => (
-                    <th key={h} className="px-2 py-1.5 font-semibold">{h}</th>
-                  ))}
+                  {kolom.map((k) => <th key={k.isi} className="px-2 py-1.5 font-semibold">{k.label}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {hasil.baris.slice(0, PRATINJAU).map((b, i) => (
                   <tr key={i} className="border-t border-line">
-                    <td className="px-2 py-1">{b.objek}</td>
-                    <td className="px-2 py-1">{b.alamat ?? ""}</td>
-                    <td className="px-2 py-1 text-right tabular-nums">{b.km === null ? "" : fmtAngka(b.km, true)}</td>
-                    <td className="px-2 py-1">{b.keterangan ?? ""}</td>
-                    <td className="px-2 py-1">{b.pelaksana ?? ""}</td>
-                    <td className="px-2 py-1">{b.tgl_rencana ?? ""}</td>
+                    {kolom.map((k) => (
+                      <td key={k.isi} className={`px-2 py-1 ${k.kanan ? "text-right tabular-nums" : ""}`}>
+                        {k.isi === "km" || k.isi === "kva"
+                          ? (b[k.isi] === null ? "" : fmtAngka(b[k.isi], k.isi === "km"))
+                          : (b[k.isi] ?? "")}
+                      </td>
+                    ))}
                   </tr>
                 ))}
               </tbody>

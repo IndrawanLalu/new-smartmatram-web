@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Ban, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
-import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { CurrentUser } from "@/lib/roles";
 import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi } from "@/app/admin/_hooks/useWoInspeksi";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
@@ -14,6 +14,11 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
  * terbitkan WO bersatuan segmen (JTM) atau gardu (JTR), diukur KMS, lalu
  * daftar item yang masih terbuka — tim bisa dipindah, item bisa dikeluarkan
  * dari WO dengan alasan.
+ *
+ * Pola pembatalan sama dengan WO Perabasan (`wo-batal-semua.sql`): item yang
+ * SUDAH DIINSPEKSI tidak bisa dikeluarkan; beberapa item bisa dikeluarkan
+ * sekaligus lewat centang; WO yang salah dibatalkan beserta alasannya — hanya
+ * selama belum ada satu item pun yang diinspeksi.
  */
 
 const reguKosong = (ulp: string) =>
@@ -28,6 +33,9 @@ const PAGE = 20;
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
 const TD = "px-3 py-2.5 border-b border-line align-top text-xs";
 const kms = (v: number | null) => (v === null ? "—" : v.toFixed(2).replace(".", ","));
+
+/** Belum ada inspeksi yang berjalan = masih boleh keluar dari WO. */
+const belumDiinspeksi = (x: ItemWoInspeksi) => !x.inspeksi_status;
 
 /** Tahap item DITURUNKAN dari inspeksi terakhirnya. */
 const tahap = (x: ItemWoInspeksi) => {
@@ -48,10 +56,31 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const oleh = user.name ?? user.email;
   const [halaman, setHalaman] = useState(1);
   const [batal, setBatal] = useState<ItemWoInspeksi | null>(null);
+  const [pilih, setPilih] = useState<Set<string>>(new Set());
+  const [keluarkan, setKeluarkan] = useState(false);
+  const [batalWo, setBatalWo] = useState<{ id: string; nama: string } | null>(null);
 
   const total = Math.max(1, Math.ceil(w.item.length / PAGE));
   const hal = Math.min(halaman, total);
   const tampil = w.item.slice((hal - 1) * PAGE, hal * PAGE);
+  const dipilih = w.item.filter((x) => pilih.has(x.id) && belumDiinspeksi(x));
+  const bisaDiHal = tampil.filter(belumDiinspeksi).map((x) => x.id);
+  const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
+  const ubahPilih = (id: string[], aktif: boolean) =>
+    setPilih((p) => {
+      const n = new Set(p);
+      for (const x of id) {
+        if (aktif) n.add(x);
+        else n.delete(x);
+      }
+      return n;
+    });
+
+  /** WO yang masih berjalan, dari item terbukanya — bahan tombol Batalkan WO. */
+  const woBerjalan = [...new Map(w.item.map((x) => [x.wo_id, x.wo_nama])).entries()].map(([id, nama]) => {
+    const isi = w.item.filter((x) => x.wo_id === id);
+    return { id, nama, n: isi.length, jalan: isi.filter((x) => !belumDiinspeksi(x)).length };
+  });
 
   if (w.loading) {
     return (
@@ -79,8 +108,37 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           <p className={EYEBROW}>WO inspeksi berjalan</p>
           <p className="text-xs text-ink-soft mt-1">
             {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
-            Inspeksi; yang dikeluarkan dari WO tetap sah sebagai inspeksi di luar WO.
+            Inspeksi. Yang sudah diinspeksi regu tidak bisa dikeluarkan dari WO.
           </p>
+          {woBerjalan.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              {woBerjalan.map((b) => (
+                <span key={b.id} className="inline-flex items-center gap-2 h-8 pl-3 pr-1.5 rounded-full border border-line bg-white text-xs text-ink-soft">
+                  <b className="text-ink">{b.nama}</b> {b.n} {satuan}
+                  <button
+                    onClick={() => setBatalWo({ id: b.id, nama: b.nama })}
+                    disabled={b.jalan > 0}
+                    title={b.jalan > 0 ? `${b.jalan} ${satuan} sudah diinspeksi — WO tidak bisa dibatalkan` : "Batalkan WO ini"}
+                    className="h-6 px-2 rounded-full text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:hover:bg-transparent"
+                  >
+                    Batalkan WO
+                  </button>
+                </span>
+              ))}
+            </div>
+          )}
+          {dipilih.length > 0 && (
+            <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
+              <span className="text-ink">
+                <b className="tabular-nums">{dipilih.length}</b> {satuan} dipilih ·{" "}
+                {kms(dipilih.reduce((n, x) => n + (x.panjang_km ?? 0), 0))} KMS
+              </span>
+              <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
+              <button onClick={() => setKeluarkan(true)} className={`${BTN_GHOST} ml-auto text-red-700`}>
+                <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
+              </button>
+            </div>
+          )}
         </div>
         {w.item.length === 0 ? (
           <p className="text-xs text-ink-muted px-5 pb-6">Belum ada WO inspeksi yang berjalan.</p>
@@ -90,6 +148,16 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-surface">
                   <tr>
+                    <th className={`${TH} w-8`}>
+                      <input
+                        type="checkbox"
+                        checked={semuaHal}
+                        disabled={bisaDiHal.length === 0}
+                        onChange={() => ubahPilih(bisaDiHal, !semuaHal)}
+                        className="accent-navy-600"
+                        aria-label={`Pilih semua ${satuan} di halaman ini yang belum diinspeksi`}
+                      />
+                    </th>
                     <th className={TH}>{Satuan}</th>
                     <th className={TH}>WO</th>
                     <th className={`${TH} text-right`}>KMS</th>
@@ -103,7 +171,18 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                     const t = tahap(x);
                     const timUlp = w.regu.filter((g) => g.ulp === x.ulp);
                     return (
-                      <tr key={x.id} className="hover:bg-navy-50/40">
+                      <tr key={x.id} className={pilih.has(x.id) ? "bg-navy-50/70" : "hover:bg-navy-50/40"}>
+                        <td className={TD}>
+                          {belumDiinspeksi(x) && (
+                            <input
+                              type="checkbox"
+                              checked={pilih.has(x.id)}
+                              onChange={(e) => ubahPilih([x.id], e.target.checked)}
+                              className="accent-navy-600"
+                              aria-label={`Pilih ${x.objek_nama}`}
+                            />
+                          )}
+                        </td>
                         <td className={TD}>
                           <p className="font-semibold text-ink text-sm">{x.objek_nama}</p>
                           <p className="text-[11px] text-ink-muted">{x.penyulang ?? "—"} · {x.ulp}</p>
@@ -134,13 +213,13 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                           {x.inspeksi_petugas && <p className="text-[11px] text-ink-muted mt-0.5">{x.inspeksi_petugas}</p>}
                         </td>
                         <td className={`${TD} text-right`}>
-                          <button
+                          {belumDiinspeksi(x) && <button
                             onClick={() => setBatal(x)}
                             className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:underline"
                             title={`Keluarkan ${satuan} ini dari WO`}
                           >
                             <Ban size={12} /> Keluarkan
-                          </button>
+                          </button>}
                         </td>
                       </tr>
                     );
@@ -170,11 +249,33 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
       {batal && (
         <BatalkanModal
           judul={`Keluarkan ${batal.objek_nama} dari WO?`}
-          keterangan={`${Satuan} ini tidak lagi dihitung sebagai target WO. Inspeksinya — kalau sudah berjalan — tetap sah dan tercatat sebagai di luar WO.`}
+          keterangan={`${Satuan} ini tidak lagi dihitung sebagai target WO dan hilang dari HP tim. Tetap tercatat berstatus Dibatalkan beserta alasannya.`}
           labelTombol="Keluarkan dari WO"
           placeholder={`Alasan — mis. ${satuan} salah pilih, dipindah ke WO bulan depan`}
           onTutup={() => setBatal(null)}
           onBatalkan={(alasan) => w.batalkan(batal.id, alasan, oleh)}
+        />
+      )}
+      {keluarkan && (
+        <BatalkanModal
+          judul={`Keluarkan ${dipilih.length} ${satuan} dari WO?`}
+          keterangan={`${Satuan} keluar dari WO dan dari HP tim, tetap tercatat berstatus Dibatalkan beserta alasannya. Yang ternyata sudah diinspeksi dilewati.`}
+          labelTombol="Keluarkan"
+          onTutup={() => setKeluarkan(false)}
+          onBatalkan={async (alasan) => {
+            const ok = await w.keluarkanBanyak(dipilih.map((x) => x.id), alasan, oleh);
+            if (ok) setPilih(new Set());
+            return ok;
+          }}
+        />
+      )}
+      {batalWo && (
+        <BatalkanModal
+          judul={`Batalkan WO "${batalWo.nama}"?`}
+          keterangan={`Semua ${satuan}nya keluar dari WO dan dari HP tim. WO tetap tercatat berstatus Dibatalkan beserta alasannya dan tidak dihitung di rekap; ${satuan}nya bebas disusun atau ditempel ulang.`}
+          labelTombol="Batalkan WO"
+          onTutup={() => setBatalWo(null)}
+          onBatalkan={(alasan) => w.batalkanWo(batalWo.id, alasan, oleh)}
         />
       )}
     </div>
