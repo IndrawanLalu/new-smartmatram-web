@@ -21,18 +21,23 @@ const LABEL_SUMBER: Record<string, { teks: string; kelas: string }> = {
   manual: { teks: "manual", kelas: "bg-slate-100 text-ink-soft border-line" },
 };
 
+/** Sumber segmen yang namanya ditulis orang (lihat `ubah_nama_segmen`). */
+const NAMA_BISA_DIUBAH = new Set(["impor", "tempelan"]);
+
 export default function DaftarSegmen({
   baris,
   daftarUlp,
   loading,
   user,
   onUbahPanjang,
+  onUbahNama,
 }: {
   baris: SegmenBaris[];
   daftarUlp: string[];
   loading: boolean;
   user: CurrentUser;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
+  onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -137,7 +142,7 @@ export default function DaftarSegmen({
             </thead>
             <tbody>
               {tampil.map((b) => (
-                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} />
+                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} />
               ))}
               {tampil.length === 0 && (
                 <tr>
@@ -163,9 +168,11 @@ export default function DaftarSegmen({
 function Baris({
   b,
   onUbahPanjang,
+  onUbahNama,
 }: {
   b: SegmenBaris;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
+  onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
 }) {
   const [sunting, setSunting] = useState(false);
   const [nilai, setNilai] = useState(b.panjang_manual_km?.toString() ?? "");
@@ -186,7 +193,13 @@ function Baris({
     <tr className="border-b border-line last:border-0 hover:bg-surface/60">
       <td className="px-3 py-2 text-ink-soft whitespace-nowrap">{b.penyulang}</td>
       <td className="px-3 py-2 font-medium text-ink">
-        {b.nama}
+        {/* Hanya segmen impor: namanya ditulis orang, jadi boleh dibetulkan
+            orang. Segmen manual/lapangan namanya disusun dari titik ujungnya. */}
+        {NAMA_BISA_DIUBAH.has(b.sumber) ? (
+          <NamaSegmen nama={b.nama} onSimpan={(nama) => onUbahNama(b.segmen_id, nama)} />
+        ) : (
+          b.nama
+        )}
         {b.tiang_bersama > 0 && (
           <span
             className="ml-1.5 text-[10px] text-violet-700"
@@ -275,5 +288,60 @@ function Baris({
         )}
       </td>
     </tr>
+  );
+}
+
+function NamaSegmen({ nama, onSimpan }: { nama: string; onSimpan: (nama: string) => Promise<boolean> }) {
+  const [sunting, setSunting] = useState(false);
+  const [nilai, setNilai] = useState(nama);
+  const [sibuk, setSibuk] = useState(false);
+
+  const simpan = async () => {
+    if (!nilai.trim()) return;
+    setSibuk(true);
+    const ok = await onSimpan(nilai);
+    setSibuk(false);
+    if (ok) setSunting(false);
+  };
+
+  if (!sunting) {
+    return (
+      <button
+        onClick={() => {
+          setNilai(nama);
+          setSunting(true);
+        }}
+        className="inline-flex items-center gap-1 group text-left"
+        title="Klik untuk mengubah nama segmen"
+      >
+        <span>{nama}</span>
+        <Pencil size={11} className="text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+      </button>
+    );
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1">
+      <input
+        value={nilai}
+        onChange={(e) => setNilai(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void simpan();
+          if (e.key === "Escape") setSunting(false);
+        }}
+        autoFocus
+        className={`${FIELD} w-[320px] h-8 font-mono uppercase`}
+      />
+      <button
+        onClick={() => void simpan()}
+        disabled={sibuk || !nilai.trim()}
+        className="text-xs font-semibold text-navy-600 disabled:opacity-40"
+      >
+        {sibuk ? <Loader2 size={12} className="animate-spin" /> : "OK"}
+      </button>
+      <button onClick={() => setSunting(false)} className="text-xs text-ink-muted">
+        Batal
+      </button>
+    </span>
   );
 }

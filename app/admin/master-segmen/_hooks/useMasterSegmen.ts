@@ -171,10 +171,34 @@ export function useMasterSegmen() {
     [toast, muat],
   );
 
+  /** Nama segmen impor ditulis orang, jadi boleh dibetulkan orang — lewat
+   *  fungsi yang memeriksa hak ULP, nama kembar, dan mencatat jejaknya. */
+  const ubahNama = useCallback(
+    async (segmenId: string, nama: string, oleh?: string) => {
+      const { error } = await supabaseBrowser.rpc("ubah_nama_segmen", {
+        p_segmen_id: segmenId,
+        p_nama: nama,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(
+          error.message.includes("Could not find the function")
+            ? "Fungsi ubah_nama_segmen belum ada — jalankan scripts/segmen-nama-tempel.sql di Supabase."
+            : error.message,
+        );
+        return false;
+      }
+      toast.success("Nama segmen diubah.");
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
   const daftarUlp = useMemo(
     () => [...new Set(baris.map((b) => b.ulp))].filter(Boolean).sort(),
     [baris],
   );
 
-  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang };
+  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama };
 }

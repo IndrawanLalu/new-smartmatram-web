@@ -28,7 +28,7 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function MasterSegmenPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
-  const { baris, penyulang, daftarUlp, loading, pratinjauImpor, impor, ubahPanjang } =
+  const { baris, penyulang, daftarUlp, loading, pratinjauImpor, impor, ubahPanjang, ubahNama } =
     useMasterSegmen();
 
   const oleh = user.name ?? user.email;
@@ -59,6 +59,7 @@ export default function MasterSegmenPage() {
           loading={loading}
           user={user}
           onUbahPanjang={(id, km) => ubahPanjang(id, km, oleh)}
+          onUbahNama={(id, nama) => ubahNama(id, nama, oleh)}
         />
       )}
       {tab === "impor" && (

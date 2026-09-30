@@ -195,8 +195,8 @@ export default function ImporSegmen({
             <tbody className="font-mono">
               {[
                 ["GI AMPENAN", "REC. BRIMOB", "2,03", "GI AMPENAN - REC. BRIMOB"],
-                ["REC. BRIMOB", "LBS PASAR", "3,4", "REC. BRIMOB - LBS. PASAR"],
-                ["LBS PASAR", "UJUNG", "7", "LBS. PASAR - UJUNG"],
+                ["REC. BRIMOB", "LBS PASAR", "3,4", "REC. BRIMOB - LBS PASAR"],
+                ["LBS PASAR", "MR DIY", "7", "LBS PASAR - MR DIY"],
               ].map((r) => (
                 <tr key={r[0] + r[1]} className="border-b border-line last:border-0">
                   {r.slice(0, 3).map((c, i) => (
@@ -212,16 +212,12 @@ export default function ImporSegmen({
         </div>
 
         <p className="text-[11px] text-ink-muted mt-3 max-w-3xl">
-          <b>Nama segmen disusun sistem</b> dari kedua ujungnya — jangan diketik sendiri. Tulis
-          ujungnya sebagaimana diucapkan orang lapangan; awalan yang dikenali:{" "}
-          <span className="font-mono text-ink">GI</span>,{" "}
-          <span className="font-mono text-ink">PLTD</span>,{" "}
+          <b>Nama segmen = titik awal - titik akhir, persis seperti ditempel</b> — hanya dijadikan
+          huruf besar. Tidak ada awalan yang ditambahkan: tulis{" "}
+          <span className="font-mono text-ink">PENG.</span>,{" "}
           <span className="font-mono text-ink">REC.</span>,{" "}
-          <span className="font-mono text-ink">LBS</span>,{" "}
-          <span className="font-mono text-ink">PMT</span>,{" "}
-          <span className="font-mono text-ink">PENG.</span>, dan{" "}
-          <span className="font-mono text-ink">UJUNG</span> untuk ujung jaringan. Yang tidak
-          berawalan dianggap percabangan biasa.
+          <span className="font-mono text-ink">LBS</span>, dan seterusnya hanya kalau memang
+          begitu namanya. Nama segmen hasil impor bisa diubah kemudian di tab Daftar Segmen.
         </p>
       </div>
 
