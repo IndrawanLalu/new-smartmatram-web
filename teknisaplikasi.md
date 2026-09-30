@@ -577,7 +577,39 @@ setengah jadi di server saat sinyal putus di panggilan ketiga — tampil
 
 ---
 
+## 18. Tombol bawah tidak boleh tertindih bilah navigasi HP
+
+**Aturan.** Di HP, tidak ada tombol atau isian yang duduk di balik bilah tombol
+navigasi Android (kembali · beranda · terbaru). Tombol yang bukan tindakan
+utama layar juga jangan ditumpuk di dasar layar — letakkan di tempat keputusan
+itu diambil.
+
+**Kenapa.** Expo 54 memaksa Android *edge-to-edge*: layar DAN setiap `Modal`
+digambar sampai ke balik bilah itu. Tombol paling bawah tertindih dan tidak bisa
+diketuk — dan ini tidak kelihatan di HP yang memakai navigasi gestur, jadi
+lolos uji sampai dipakai regu dengan HP tiga tombol.
+
+**Cara menerapkan.**
+- **Layar yang dibuka di atas tab** — sudah ditangani sekali di
+  `RootNavigator` (`screenLayout` → `RuangNavigasiHp`). Jangan tambahkan
+  `insets.bottom` lagi di layar itu, nanti ruangnya dobel.
+- **Layar di dalam tab** — tab bar sudah menyisakan ruangnya.
+- **Modal layar penuh** — bungkus isinya dengan `<IsiModal>`
+  (`src/components/IsiModal.tsx`).
+- **Modal lembar dari bawah** (latar redup + kotak di dasar) — ruang diberikan
+  di kotaknya: `style={[s.kotak, { paddingBottom: X + insets.bottom }]}`,
+  supaya latar redupnya tetap sampai dasar layar.
+- Modal juga digambar di balik bilah status: kepala Modal layar penuh pakai
+  `paddingTop: insets.top + …`.
+
+**Contoh nyata.** Inspeksi JTR (30 Sep 2026): "Tiang ini menumpang" tertumpuk di
+bawah "Tambah tiang" dan tertindih bilah navigasi. Dipindah ke pojok kanan atas
+peta, sama dengan JTM. Dilaporkan user.
+
+---
+
 *Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
-diubah dan butir 15–17 ditambahkan 25 September 2026.
+diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18 ditambahkan
+30 September 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*
