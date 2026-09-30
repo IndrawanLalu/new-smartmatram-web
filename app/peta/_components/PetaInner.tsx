@@ -11,6 +11,9 @@ import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIs
 import { WARNA } from "../_ui";
 import { htmlPenandaJtm } from "@/lib/penandaJtm";
 import type { Penanda } from "../_hooks/usePenandaJtm";
+import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
+import LapisanUjung from "./LapisanUjung";
+import PenggeserTitik from "./PenggeserTitik";
 
 /**
  * Peta jaringan.
@@ -36,6 +39,18 @@ interface Props {
   onKotak: (k: Kotak) => void;
   /** Kode penanda → bentuk & warnanya, dari tab Pengaturan JTM. */
   penanda: Map<string, Penanda>;
+  /** Klik benda → panel rincian (Tahap 2). Harus stabil (useCallback) supaya
+   *  `Isi` yang di-memo tidak menggambar ulang ribuan objek. */
+  onPilihTiang: (t: TiangPeta) => void;
+  onPilihGardu: (g: GarduPeta) => void;
+  /** Benda terpilih disorot; `geser` = posisi baru saat "Geser titik" aktif. */
+  sorot: { lat: number; lng: number } | null;
+  geser: { lat: number; lng: number } | null;
+  onGeser: (lat: number, lng: number) => void;
+  ujung: TitikUjungPeta[];
+  bolehSetujuiUjung: boolean;
+  oleh: string;
+  onUjungDisetujui: (id: string) => void;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -66,7 +81,10 @@ const IKON_GARDU = L.divIcon({
   </svg>`,
 });
 
-export default function PetaInner({ rute, tiang, gardu, fokus, onKotak, penanda }: Props) {
+export default function PetaInner({
+  rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
+  sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui,
+}: Props) {
   return (
     <MapContainer
       center={[-8.58, 116.1]}
@@ -97,7 +115,12 @@ export default function PetaInner({ rute, tiang, gardu, fokus, onKotak, penanda 
       <Pemantau onKotak={onKotak} />
       <Fokus batas={fokus} />
 
-      <Isi rute={rute} tiang={tiang} gardu={gardu} penanda={penanda} />
+      <Isi
+        rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
+        onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
+      />
+      <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
+      <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
     </MapContainer>
   );
 }
@@ -143,12 +166,14 @@ function Fokus({ batas }: { batas: [[number, number], [number, number]] | null }
 /** Dipisah dan di-`memo` supaya menggeser peta tanpa perubahan data tidak
  *  menggambar ulang ribuan objek. */
 const Isi = memo(function Isi({
-  rute, tiang, gardu, penanda,
+  rute, tiang, gardu, penanda, onPilihTiang, onPilihGardu,
 }: {
   rute: RuteBaris[];
   tiang: TiangPeta[];
   gardu: GarduPeta[];
   penanda: Map<string, Penanda>;
+  onPilihTiang: (t: TiangPeta) => void;
+  onPilihGardu: (g: GarduPeta) => void;
 }) {
   const garisRute = useMemo(
     () =>
@@ -241,6 +266,7 @@ const Isi = memo(function Isi({
             key={`${t.kelompok}-${t.id}`}
             center={[t.lat, t.lng]}
             radius={t.percabangan ? 6 : 5}
+            eventHandlers={{ click: () => onPilihTiang(t) }}
             pathOptions={
               t.menumpang
                 ? { color: warna, weight: 2, fillColor: "#fff", fillOpacity: 0.35 }
@@ -259,7 +285,12 @@ const Isi = memo(function Isi({
       })}
 
       {bertanda.map(({ t, ikon, label }) => (
-        <Marker key={`${t.kelompok}-${t.id}`} position={[t.lat, t.lng]} icon={ikon}>
+        <Marker
+          key={`${t.kelompok}-${t.id}`}
+          position={[t.lat, t.lng]}
+          icon={ikon}
+          eventHandlers={{ click: () => onPilihTiang(t) }}
+        >
           <Tooltip direction="top" offset={[0, -10]} sticky>
             <span className="text-[11px] font-semibold">{t.kode}</span>
             <span className="block text-[10px]">
@@ -271,7 +302,12 @@ const Isi = memo(function Isi({
       ))}
 
       {gardu.map((g) => (
-        <Marker key={g.kode} position={[g.lat, g.lng]} icon={IKON_GARDU}>
+        <Marker
+          key={`${g.ulp}-${g.kode}`}
+          position={[g.lat, g.lng]}
+          icon={IKON_GARDU}
+          eventHandlers={{ click: () => onPilihGardu(g) }}
+        >
           <Tooltip direction="top" offset={[0, -UKURAN_GARDU]}>
             <span className="text-[11px] font-semibold">{g.kode}</span>
             <span className="block text-[10px]">

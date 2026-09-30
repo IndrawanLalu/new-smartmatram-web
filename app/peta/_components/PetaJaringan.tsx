@@ -3,13 +3,19 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
+import { ArrowLeft, Gauge, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
+import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { usePetaDaftar, type Jaringan } from "../_hooks/usePetaDaftar";
-import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type Kotak } from "../_hooks/usePetaIsi";
+import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type GarduPeta, type Kotak, type TiangPeta } from "../_hooks/usePetaIsi";
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
+import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
+import { useSuntingPeta } from "../_hooks/useSuntingPeta";
+import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
+import PanelObjek from "./PanelObjek";
+import PanelUjung from "./PanelUjung";
 
 const PetaInner = dynamic(() => import("./PetaInner"), {
   ssr: false,
@@ -22,6 +28,21 @@ const PetaInner = dynamic(() => import("./PetaInner"), {
 });
 
 /** Kotak batas apa pun yang bisa dilompati — penyulang, gardu, atau satu grup. */
+/** Bulan berjalan menurut WITA (UTC+8). */
+const bulanIni = () => {
+  const w = new Date(Date.now() + 8 * 3600 * 1000);
+  return { tahun: w.getUTCFullYear(), bulan: w.getUTCMonth() + 1 };
+};
+
+const SARING_AWAL: SaringUjung = {
+  nada: new Set<NadaUjung>(["merah", "kuning", "hijau"]),
+  status: new Set(STATUS_UJUNG_PETA),
+  jauhDariUjung: null,
+};
+
+const TOMBOL_ATAS =
+  "h-9 px-3 rounded-xl text-[#e2e8f0] text-sm font-medium backdrop-blur-sm flex items-center gap-2 border hover:bg-white/5";
+
 interface Batas {
   latMin: number | null;
   latMaks: number | null;
@@ -54,7 +75,69 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
     [nyala],
   );
 
-  const { rute, tiang, gardu, sibuk, terpotong } = usePetaIsi(kotak, pilihan, tampilGardu);
+  const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } = usePetaIsi(kotak, pilihan, tampilGardu);
+
+  // ── Tahap 2: pilih, sunting, tegangan ujung ────────────────────────────────
+  const oleh = user.name ?? user.email ?? "";
+  // Penjaga hak ULP ada di database; ini hanya menyembunyikan tombol.
+  const boleh = user.role === "UP3" || user.role === "admin";
+  const [terpilih, setTerpilih] = useState<Terpilih | null>(null);
+  const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
+  const [modeInduk, setModeInduk] = useState(false);
+  const [calonInduk, setCalonInduk] = useState<TiangPeta | null>(null);
+  const objek = useObjekPeta(terpilih);
+  const sunting = useSuntingPeta(oleh);
+
+  const [ujungAktif, setUjungAktif] = useState(false);
+  const [bulanUjung, setBulanUjung] = useState(bulanIni);
+  const [saringUjung, setSaringUjung] = useState<SaringUjung>(SARING_AWAL);
+  const ujung = useUjungPeta(ujungAktif, ulp, bulanUjung.tahun, bulanUjung.bulan, saringUjung);
+
+  const segarkan = () => {
+    objek.muatUlang();
+    void muatUlangPeta();
+  };
+
+  // Stabil — `Isi` di peta di-memo, dan ribuan objeknya tidak boleh digambar
+  // ulang hanya karena panel berubah.
+  const pilihTiang = useCallback(
+    (t: TiangPeta) => {
+      if (geser) return;
+      if (modeInduk) {
+        if (terpilih?.jenis === "tiang" && t.id !== terpilih.id) setCalonInduk(t);
+        return;
+      }
+      setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode });
+    },
+    [geser, modeInduk, terpilih],
+  );
+  const pilihGardu = useCallback(
+    (g: GarduPeta) => {
+      if (geser || modeInduk) return;
+      setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
+    },
+    [geser, modeInduk],
+  );
+  const aturGeser = useCallback((lat: number, lng: number) => setGeser({ lat, lng }), []);
+  const tutupObjek = () => {
+    setTerpilih(null);
+    setGeser(null);
+    setModeInduk(false);
+  };
+
+  const simpanGeser = async (alasan: string) => {
+    if (!terpilih || !geser) return false;
+    const ok =
+      terpilih.jenis === "tiang"
+        ? await sunting.geserTiang(terpilih.id, geser.lat, geser.lng, alasan)
+        : await sunting.geserGardu(terpilih.kode, terpilih.ulp, geser.lat, geser.lng, alasan);
+    if (ok) {
+      setTerpilih({ ...terpilih, lat: geser.lat, lng: geser.lng });
+      setGeser(null);
+      segarkan();
+    }
+    return ok;
+  };
 
   const alih = useCallback((jaringan: Jaringan, kode: string) => {
     setNyala((s) => {
@@ -91,7 +174,8 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   }, []);
 
   const zoom = kotak?.zoom ?? 0;
-  const objek = rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length;
+  const jumlahObjek =
+    rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2;
   const adaGarduPilihan = pilihan.some((p) => p.jaringan === "gardu");
   const adaJaringan = pilihan.some((p) => p.jaringan !== "gardu");
 
@@ -129,7 +213,87 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
         <PetaInner
           rute={rute} tiang={tiang} gardu={gardu}
           fokus={fokus} onKotak={setKotak} penanda={penanda}
+          onPilihTiang={pilihTiang} onPilihGardu={pilihGardu}
+          sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
+          geser={geser} onGeser={aturGeser}
+          ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
+          onUjungDisetujui={ujung.tandaiDisetujui}
         />
+
+        {terpilih && (
+          <PanelObjek
+            key={terpilih.jenis === "tiang" ? terpilih.id : `${terpilih.ulp}-${terpilih.kode}`}
+            terpilih={terpilih}
+            tiang={objek.tiang}
+            gardu={objek.gardu}
+            galat={objek.galat}
+            pilihan={objek.pilihan}
+            penanda={penanda}
+            boleh={boleh}
+            geser={geser}
+            onMulaiGeser={() => setGeser({ lat: terpilih.lat, lng: terpilih.lng })}
+            onBatalGeser={() => setGeser(null)}
+            onSimpanGeser={simpanGeser}
+            modeInduk={modeInduk}
+            onGantiInduk={() => setModeInduk(true)}
+            onBatalInduk={() => setModeInduk(false)}
+            onUbahAtribut={async (isi) => {
+              if (terpilih.jenis !== "tiang") return false;
+              const ok = await sunting.ubahAtribut(terpilih.id, isi);
+              if (ok) segarkan();
+              return ok;
+            }}
+            onPercabangan={async (nyala) => {
+              if (terpilih.jenis !== "tiang") return false;
+              const ok = await sunting.tandaiPercabangan(terpilih.id, nyala);
+              if (ok) segarkan();
+              return ok;
+            }}
+            onBatalkan={async (alasan) => {
+              if (terpilih.jenis !== "tiang") return false;
+              const ok = await sunting.batalkan(terpilih.id, alasan);
+              if (ok) {
+                tutupObjek();
+                void muatUlangPeta();
+              }
+              return ok;
+            }}
+            onTutup={tutupObjek}
+          />
+        )}
+
+        {ujungAktif && !terpilih && (
+          <PanelUjung
+            tahun={bulanUjung.tahun}
+            bulan={bulanUjung.bulan}
+            onBulan={(tahun, bulan) => setBulanUjung({ tahun, bulan })}
+            saring={saringUjung}
+            onSaring={setSaringUjung}
+            jumlah={ujung.titik.length}
+            total={ujung.total}
+            sibuk={ujung.sibuk}
+            galat={ujung.galat}
+            onTutup={() => setUjungAktif(false)}
+          />
+        )}
+
+        {calonInduk && terpilih?.jenis === "tiang" && (
+          <ConfirmDialog
+            title={`Jadikan ${calonInduk.kode} induk ${terpilih.kode}?`}
+            message="Jalur jaringan tiang ini akan menyambung dari tiang yang Anda klik. Nama tiang tidak berubah otomatis — kalau urutannya jadi janggal, nomori ulang penyulangnya dari tab Tiang di Inspeksi JTM."
+            confirmLabel="Ganti induk"
+            onConfirm={async () => {
+              const t = calonInduk;
+              setCalonInduk(null);
+              const ok = await sunting.ubahInduk(terpilih.id, t.id);
+              if (ok) {
+                setModeInduk(false);
+                segarkan();
+              }
+            }}
+            onClose={() => setCalonInduk(null)}
+          />
+        )}
 
         {/* ── Bilah keadaan ──────────────────────────────────────────────────
             Penghitung objek berdiri di sini SEJAK AWAL, bukan ditambahkan
@@ -144,7 +308,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
             {sibuk && <Loader2 size={11} className="animate-spin text-[#5eead4]" />}
             <span>zoom {zoom}</span>
             <span className="text-gray-600">|</span>
-            <span>{objek.toLocaleString("id-ID")} objek</span>
+            <span>{jumlahObjek.toLocaleString("id-ID")} objek</span>
             {tiang.length > 0 && <span className="text-gray-500">{tiang.length} tiang</span>}
             {gardu.length > 0 && <span className="text-gray-500">{gardu.length} gardu</span>}
           </div>
@@ -175,13 +339,19 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           )}
         </div>
 
-        <Link
-          href="/admin/dashboard"
-          className="absolute z-[1000] top-3 right-3 h-9 px-3 rounded-xl text-[#e2e8f0] text-sm font-medium backdrop-blur-sm flex items-center gap-2 border hover:bg-white/5"
-          style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}
-        >
-          <ArrowLeft size={15} /> Kembali
-        </Link>
+        <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={() => setUjungAktif((v) => !v)}
+            className={`${TOMBOL_ATAS} ${ujungAktif ? "ring-1 ring-[#00897B]" : ""}`}
+            style={{ background: ujungAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Tampilkan titik ukur tegangan ujung"
+          >
+            <Gauge size={15} /> Tegangan ujung
+          </button>
+          <Link href="/admin/dashboard" className={TOMBOL_ATAS} style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}>
+            <ArrowLeft size={15} /> Kembali
+          </Link>
+        </div>
 
         {nyala.size === 0 && !loading && (
           <div className="absolute z-[1000] inset-x-0 top-1/2 -translate-y-1/2 grid place-items-center pointer-events-none px-4">

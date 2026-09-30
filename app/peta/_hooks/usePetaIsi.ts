@@ -233,5 +233,6 @@ export function usePetaIsi(
     return () => clearTimeout(jeda);
   }, [ambil]);
 
-  return { rute, tiang, gardu, sibuk, terpotong };
+  /** Dipanggil sesudah suntingan dari peta — titik yang digeser langsung terlihat. */
+  return { rute, tiang, gardu, sibuk, terpotong, muatUlang: ambil };
 }
