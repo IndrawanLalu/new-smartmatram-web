@@ -60,6 +60,10 @@ export interface BarisKinerja {
   /** Angka pecahan (km) atau cacah bulat. Menentukan cara menuliskannya. */
   desimal: boolean;
   woTerbit: number | null;
+  /** Inspeksi JTR saja: jumlah gardu di WO. WO dari sistem belum tentu membawa
+   *  KMS (panjang penghantar gardu belum terukur), sehingga WO yang ada tampil
+   *  "0 KMS" — jumlah gardunya yang menunjukkan WO itu ada. */
+  woGardu?: number | null;
   /** SLA periode ini — target bulanan per ULP yang diisi UP3/admin ULP
    *  (`sla_kinerja`), dijumlah untuk seluruh tahun / semua ULP. null = belum
    *  ada SLA. */
@@ -243,6 +247,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [bulan, gantiBulan] = useState(new Date().getMonth() + 1);
   const [ulp, gantiUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [data, setData] = useState<BarisRpc[] | null>(null);
+  const [woGarduJtr, setWoGarduJtr] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -260,6 +265,24 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
 
   useEffect(() => {
     let hidup = true;
+    // Jumlah gardu di WO Inspeksi JTR periode ini — aturan sama dengan baris
+    // jtr di `_rekap_kinerja_inti`: bulan dari `tgl_wo`, item batal tidak dihitung.
+    const awal = `${tahun}-${String(bulan === 0 ? 1 : bulan).padStart(2, "0")}-01`;
+    const akhir = bulan === 0 || bulan === 12
+      ? `${tahun + 1}-01-01`
+      : `${tahun}-${String(bulan + 1).padStart(2, "0")}-01`;
+    let qJtr = supabaseBrowser
+      .from("wo_inspeksi_item")
+      .select("id, wo_inspeksi!inner(tgl_wo)", { count: "exact", head: true })
+      .eq("jenis", "JTR")
+      .neq("status", "Dibatalkan")
+      .gte("wo_inspeksi.tgl_wo", awal)
+      .lt("wo_inspeksi.tgl_wo", akhir);
+    if (ulp !== "SEMUA") qJtr = qJtr.ilike("ulp", ulp);
+    qJtr.then(({ count, error }) => {
+      if (hidup) setWoGarduJtr(error ? null : (count ?? 0));
+    });
+
     supabaseBrowser
       .rpc("rekap_kinerja", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
@@ -291,6 +314,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       const luar = Number(r.luar_wo ?? 0);
       return {
         ...m,
+        woGardu: m.kunci === "jtr" ? woGarduJtr : null,
         // Sudah ada WO (sistem atau tempelan) = baris lengkap, apa pun bawaannya.
         keadaan: r.wo_terbit !== null ? "lengkap" : m.keadaan,
         woTerbit: angka(r.wo_terbit),
@@ -311,7 +335,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
                   : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
       };
     });
-  }, [data]);
+  }, [data, woGarduJtr]);
 
   return {
     baris,
