@@ -608,8 +608,37 @@ peta, sama dengan JTM. Dilaporkan user.
 
 ---
 
+## 19. Draf di HP wajib bercap pemilik
+
+**Aturan.** Setiap draf yang disimpan di HP membawa `pemilik` (email akun + tim
+yang dipilih saat login). Layar, Riwayat, Beranda, dan kiriman hanya melihat
+draf milik akun yang login. Draf lama tanpa pemilik tampil ke semua akun,
+bertanda "pemilik tidak tercatat".
+
+**Kenapa.** Simpanan HP itu per HP, bukan per akun. HP yang dipakai bergantian
+menampilkan draf tim lain seolah milik tim yang login, dan kalau dikirim,
+tercatat atas nama pengirimnya, bukan yang mengerjakan.
+
+**Cara menerapkan** (`src/utils/pemilikDraf.ts` di proyek HP):
+- Pisahkan **baca mentah** (semua pemilik, HANYA untuk menulis ulang simpanan)
+  dari **baca untuk layar** (disaring `milikAktif` / `saringRekaman`).
+  Menulis ulang dari daftar yang sudah disaring = draf tim lain ikut terhapus.
+- Saat menyimpan: `tolakBilaMilikLain(drafLamaDiKunciYangSama, "Gardu X")`, lalu
+  `capPemilik(draf)`. Pemilik tidak pernah ditimpa.
+- Hapus hanya yang `milikAktif`.
+- Menarik yang "dikembalikan admin": lewati id/kunci yang dipegang tim lain,
+  dan draf baru dari tarikan itu juga di-`capPemilik`.
+- Pemilik aktif dipasang `AuthContext` (`aturPemilikAktif`) SEBELUM
+  `setUserState` — efek layar anak jalan lebih dulu daripada efek induknya.
+
+**Contoh nyata.** 9 simpanan draf (Pengukuran, Tegangan Ujung, Hargardu,
+Optimasi, Harjar, Perabasan segmen & luar WO, JTM, JTR), 30 Sep 2026.
+Ditemukan saat merancang peringatan draf di Beranda.
+
+---
+
 *Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
-diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18 ditambahkan
+diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18–19 ditambahkan
 30 September 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*
