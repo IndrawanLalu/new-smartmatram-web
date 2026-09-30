@@ -76,6 +76,10 @@ export function usePetaDaftar(ulp: string | null) {
     setLoading(true);
     setError(null);
     try {
+      // Rute & daftar penyulang dihitung ulang dulu untuk penyulang yang tiangnya
+      // berubah sejak terakhir (`scripts/peta-jaringan-hidup.sql`). Gagal = daftar
+      // lama tetap dibaca; peta tidak boleh gagal dibuka karena ini.
+      await supabaseBrowser.rpc("segarkan_rute_kotor");
       const baris = await fetchAllRows<Record<string, unknown>>(() => {
         const q = supabaseBrowser
           .from("peta_daftar")

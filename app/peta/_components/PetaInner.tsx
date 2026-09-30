@@ -208,7 +208,7 @@ const Isi = memo(function Isi({
       {tiang.map((t) =>
         t.indukLat !== null && t.indukLng !== null ? (
           <Polyline
-            key={`b-${t.id}`}
+            key={`b-${t.kelompok}-${t.id}`}
             positions={[
               [t.indukLat, t.indukLng],
               [t.lat, t.lng],
@@ -231,31 +231,40 @@ const Isi = memo(function Isi({
           sehingga gardu dan FCO tak terbedakan padahal bentuknya sudah diatur.
           Hanya yang bertanda yang jadi elemen DOM; jumlahnya sedikit, dan
           selebihnya tetap lingkaran di kanvas. */}
-      {biasa.map((t) => (
-        <CircleMarker
-          key={t.id}
-          center={[t.lat, t.lng]}
-          radius={t.percabangan ? 6 : 5}
-          pathOptions={{
-            color: "#fff",
-            weight: 1,
-            fillColor: t.jaringan === "jtr" ? WARNA_JTR : WARNA_JTM,
-            fillOpacity: 1,
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -6]} sticky>
-            <span className="text-[11px] font-semibold">{t.kode}</span>
-            <span className="block text-[10px]">{t.kelompok}</span>
-          </Tooltip>
-        </CircleMarker>
-      ))}
+      {/* Satu batang bisa tampil di dua penyulang (underbuild) — kuncinya per
+          kelompok. Yang menumpang digambar berongga: batangnya milik orang
+          lain, kabelnya milik kelompok ini. */}
+      {biasa.map((t) => {
+        const warna = t.jaringan === "jtr" ? WARNA_JTR : WARNA_JTM;
+        return (
+          <CircleMarker
+            key={`${t.kelompok}-${t.id}`}
+            center={[t.lat, t.lng]}
+            radius={t.percabangan ? 6 : 5}
+            pathOptions={
+              t.menumpang
+                ? { color: warna, weight: 2, fillColor: "#fff", fillOpacity: 0.35 }
+                : { color: "#fff", weight: 1, fillColor: warna, fillOpacity: 1 }
+            }
+          >
+            <Tooltip direction="top" offset={[0, -6]} sticky>
+              <span className="text-[11px] font-semibold">{t.kode}</span>
+              <span className="block text-[10px]">
+                {t.kelompok}
+                {t.menumpang ? " · menumpang" : ""}
+              </span>
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
 
       {bertanda.map(({ t, ikon, label }) => (
-        <Marker key={t.id} position={[t.lat, t.lng]} icon={ikon}>
+        <Marker key={`${t.kelompok}-${t.id}`} position={[t.lat, t.lng]} icon={ikon}>
           <Tooltip direction="top" offset={[0, -10]} sticky>
             <span className="text-[11px] font-semibold">{t.kode}</span>
             <span className="block text-[10px]">
               {label} · {t.kelompok}
+              {t.menumpang ? " · menumpang" : ""}
             </span>
           </Tooltip>
         </Marker>

@@ -66,6 +66,9 @@ export interface TiangPeta {
   kelompok: string;
   indukLat: number | null;
   indukLng: number | null;
+  /** Tiang ini bukan milik penyulang/gardu yang sedang dinyalakan — kabelnya
+   *  menumpang di batang orang lain. */
+  menumpang: boolean;
 }
 
 export interface GarduPeta {
@@ -189,7 +192,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -205,6 +208,7 @@ export function usePetaIsi(
           kelompok: (x.induk_kelompok as string) ?? "",
           indukLat: x.induk_lat !== null ? Number(x.induk_lat) : null,
           indukLng: x.induk_lng !== null ? Number(x.induk_lng) : null,
+          menumpang: !!x.menumpang,
         }));
       }
 
