@@ -46,7 +46,7 @@ export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, ju
   };
 
   return (
-    <div className="absolute z-[1050] top-14 right-3 w-[300px] rounded-xl border shadow-2xl p-3 space-y-3" style={{ background: PANEL, borderColor: GARIS }}>
+    <div className="w-[300px] rounded-xl border shadow-2xl p-3 space-y-3" style={{ background: PANEL, borderColor: GARIS }}>
       <div className="flex items-center justify-between">
         <p className="text-sm font-semibold text-[#e2e8f0]">Tegangan ujung</p>
         <button onClick={onTutup} className="p-1 rounded text-gray-400 hover:text-white" aria-label="Tutup lapisan tegangan ujung">

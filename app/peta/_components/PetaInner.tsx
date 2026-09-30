@@ -15,6 +15,8 @@ import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
 import LapisanUjung from "./LapisanUjung";
 import PenggeserTitik from "./PenggeserTitik";
 import LapisanSimulasi from "./LapisanSimulasi";
+import LapisanKesehatan from "./LapisanKesehatan";
+import type { KesehatanGardu } from "../_hooks/useKesehatanPeta";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
@@ -54,6 +56,8 @@ interface Props {
   oleh: string;
   onUjungDisetujui: (id: string) => void;
   simulasi: HasilSimulasi | null;
+  kesehatan: KesehatanGardu[];
+  onPilihKesehatan: (g: KesehatanGardu) => void;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -87,6 +91,7 @@ const IKON_GARDU = L.divIcon({
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
+  kesehatan, onPilihKesehatan,
 }: Props) {
   return (
     <MapContainer
@@ -122,6 +127,7 @@ export default function PetaInner({
         rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
       />
+      <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />

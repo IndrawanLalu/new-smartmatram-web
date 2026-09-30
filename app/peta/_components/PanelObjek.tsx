@@ -9,6 +9,7 @@ import type { Penanda } from "../_hooks/usePenandaJtm";
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 import InfoTiang, { Baris, TOMBOL_PANEL } from "./InfoTiang";
 import RingkasSimulasi from "./RingkasSimulasi";
+import RincianKesehatan from "./RincianKesehatan";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
@@ -150,6 +151,7 @@ export default function PanelObjek(p: Props) {
               <Baris label="ULP" nilai={gardu.ulp} />
               <Baris label="Daya" nilai={gardu.daya === null ? null : `${gardu.daya} kVA`} />
             </div>
+            {gardu.kesehatan && <RincianKesehatan k={gardu.kesehatan} />}
             {gardu.usulanTitikMenunggu && (
               <p className="text-xs text-amber-300 flex gap-2">
                 <TriangleAlert size={14} className="shrink-0 mt-0.5" />

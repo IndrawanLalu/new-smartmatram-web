@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowLeft, Gauge, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
+import { Activity, ArrowLeft, Gauge, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { usePetaDaftar, type Jaringan } from "../_hooks/usePetaDaftar";
@@ -12,6 +12,8 @@ import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
 import { useSuntingPeta } from "../_hooks/useSuntingPeta";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
+import { useKesehatanPeta, type KesehatanGardu, type SaringKesehatan, type StatusKesehatan } from "../_hooks/useKesehatanPeta";
+import PanelKesehatan from "./PanelKesehatan";
 import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
@@ -39,6 +41,12 @@ const SARING_AWAL: SaringUjung = {
   nada: new Set<NadaUjung>(["merah", "kuning", "hijau"]),
   status: new Set(STATUS_UJUNG_PETA),
   jauhDariUjung: null,
+};
+
+const SARING_KESEHATAN_AWAL: SaringKesehatan = {
+  status: new Set<StatusKesehatan>(["merah", "kuning", "hijau"]),
+  hanyaSisip: false,
+  hanyaJurusan160: false,
 };
 
 const TOMBOL_ATAS =
@@ -106,6 +114,17 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [bulanUjung, setBulanUjung] = useState(bulanIni);
   const [saringUjung, setSaringUjung] = useState<SaringUjung>(SARING_AWAL);
   const ujung = useUjungPeta(ujungAktif, ulp, bulanUjung.tahun, bulanUjung.bulan, saringUjung);
+
+  const [kesehatanAktif, setKesehatanAktif] = useState(false);
+  const [saringKesehatan, setSaringKesehatan] = useState<SaringKesehatan>(SARING_KESEHATAN_AWAL);
+  const kesehatan = useKesehatanPeta(kesehatanAktif, ulp, saringKesehatan);
+  const pilihKesehatan = useCallback(
+    (g: KesehatanGardu) => {
+      if (geser || modeInduk) return;
+      setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
+    },
+    [geser, modeInduk],
+  );
 
   const segarkan = () => {
     objek.muatUlang();
@@ -190,7 +209,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
 
   const zoom = kotak?.zoom ?? 0;
   const jumlahObjek =
-    rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2;
+    rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2 + kesehatan.gardu.length;
   const adaGarduPilihan = pilihan.some((p) => p.jaringan === "gardu");
   const adaJaringan = pilihan.some((p) => p.jaringan !== "gardu");
 
@@ -234,6 +253,8 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
           simulasi={simulasi.hasil}
+          kesehatan={kesehatan.gardu}
+          onPilihKesehatan={pilihKesehatan}
         />
 
         {terpilih && (
@@ -282,7 +303,20 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           />
         )}
 
-        {ujungAktif && !terpilih && (
+        {!terpilih && (ujungAktif || kesehatanAktif) && (
+          <div className="absolute z-[1050] top-14 right-3 bottom-3 flex flex-col gap-2 overflow-y-auto pointer-events-none [&>*]:pointer-events-auto">
+            {kesehatanAktif && (
+              <PanelKesehatan
+                saring={saringKesehatan}
+                onSaring={setSaringKesehatan}
+                hitung={kesehatan.hitung}
+                jumlah={kesehatan.gardu.length}
+                sibuk={kesehatan.sibuk}
+                galat={kesehatan.galat}
+                onTutup={() => setKesehatanAktif(false)}
+              />
+            )}
+            {ujungAktif && (
           <PanelUjung
             tahun={bulanUjung.tahun}
             bulan={bulanUjung.bulan}
@@ -295,6 +329,8 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
             galat={ujung.galat}
             onTutup={() => setUjungAktif(false)}
           />
+            )}
+          </div>
         )}
 
         {calonInduk && terpilih?.jenis === "tiang" && (
@@ -360,6 +396,14 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
         </div>
 
         <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={() => setKesehatanAktif((v) => !v)}
+            className={`${TOMBOL_ATAS} ${kesehatanAktif ? "ring-1 ring-[#00897B]" : ""}`}
+            style={{ background: kesehatanAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Warnai gardu menurut beban, jatuh tegangan, dan tegangan ujung"
+          >
+            <Activity size={15} /> Kesehatan gardu
+          </button>
           <button
             onClick={() => setUjungAktif((v) => !v)}
             className={`${TOMBOL_ATAS} ${ujungAktif ? "ring-1 ring-[#00897B]" : ""}`}

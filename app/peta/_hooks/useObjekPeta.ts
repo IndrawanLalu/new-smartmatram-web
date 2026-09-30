@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import type { KesehatanGardu } from "./useKesehatanPeta";
 
 /**
  * Rincian benda yang diklik di peta — tiang atau gardu — beserta daftar
@@ -50,6 +51,9 @@ export interface RincianGardu {
   lat: number | null;
   lng: number | null;
   usulanTitikMenunggu: boolean;
+  /** Dari pengukuran terakhir (`kesehatan_gardu`); null = belum pernah diukur
+   *  atau view belum dipasang. */
+  kesehatan: KesehatanGardu | null;
 }
 
 /** Daftar pilihan atribut — JTM dari isian inspeksi JTM, JTR dari Pengaturan JTR. */
@@ -96,13 +100,14 @@ async function muatTiang(id: string): Promise<RincianTiang> {
 }
 
 async function muatGardu(kode: string, ulp: string): Promise<RincianGardu> {
-  const [g, u] = await Promise.all([
+  const [g, u, k] = await Promise.all([
     supabaseBrowser.from("gardu").select("kode,nama,ulp,feeder,alamat,daya,lat,lng").eq("kode", kode).eq("ulp", ulp).maybeSingle(),
     supabaseBrowser
       .from("master_usulan")
       .select("id")
       .eq("entitas", "gardu").eq("entitas_kode", kode.toUpperCase()).eq("field", "koordinat").eq("status", "menunggu")
       .limit(1),
+    supabaseBrowser.from("kesehatan_gardu").select("*").eq("kode", kode).eq("ulp", ulp).maybeSingle(),
   ]);
   if (g.error) throw new Error(g.error.message);
   if (!g.data) throw new Error(`Gardu ${kode} tidak ditemukan`);
@@ -117,6 +122,7 @@ async function muatGardu(kode: string, ulp: string): Promise<RincianGardu> {
     lat: d.lat === null ? null : Number(d.lat),
     lng: d.lng === null ? null : Number(d.lng),
     usulanTitikMenunggu: (u.data ?? []).length > 0,
+    kesehatan: k.error ? null : ((k.data as KesehatanGardu | null) ?? null),
   };
 }
 
