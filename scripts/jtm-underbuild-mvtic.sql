@@ -217,7 +217,9 @@ END $$;
 
 
 -- ── 5. Pohon untuk WO Perabasan: vegetasi kabel segmen itu sendiri ───────────
--- Disalin dari `perabasan-pohon-belum-verifikasi.sql`; perubahan ditandai ★.
+-- Disalin dari `perabasan-peta.sql` (definisi terakhir, berkolom foto_url &
+-- catatan); perubahan ditandai ★. Kolom & urutannya HARUS sama persis —
+-- CREATE OR REPLACE VIEW menolak kolom yang hilang.
 -- Dulu jawaban vegetasi satu penyulang berlaku untuk SEMUA segmen yang lewat
 -- tiang itu. Sekarang tiap kabel punya jawabannya sendiri; segmen yang belum
 -- pernah menjawab untuk tiang itu masih memakai jawaban penyulang lain —
@@ -232,6 +234,8 @@ WITH per_titik AS (
     COALESCE(m.tgl_selesai, m.tgl_mulai)                     AS tgl,
     max(p.nilai) FILTER (WHERE p.item_kode = 'vegetasi')     AS vegetasi,
     max(p.nilai) FILTER (WHERE p.item_kode = 'jenis_pohon')  AS jenis_pohon,
+    max(p.foto_url) FILTER (WHERE p.item_kode = 'vegetasi')  AS foto_url,
+    max(p.catatan)  FILTER (WHERE p.item_kode = 'vegetasi')  AS catatan,
     row_number() OVER (
       PARTITION BY tk.tiang_id, m.segmen_id                              -- ★
       ORDER BY COALESCE(m.tgl_selesai, m.tgl_mulai) DESC NULLS LAST, tk.id DESC
@@ -265,13 +269,15 @@ SELECT
   x.jenis_pohon,
   x.tgl   AS tgl_inspeksi,
   x.status_inspeksi,
-  (x.status_inspeksi = 'Diverifikasi') AS terverifikasi
+  (x.status_inspeksi = 'Diverifikasi') AS terverifikasi,
+  x.foto_url,
+  x.catatan
 FROM pilih x
 JOIN public.tiang t ON t.id = x.tiang_id
 WHERE x.vegetasi IN ('berpotensi', 'menyentuh');
 
 COMMENT ON VIEW public.perabasan_pohon IS
-  'Pohon yang menunggu dirabas per segmen, dari jawaban vegetasi inspeksi JTM KABEL SEGMEN ITU (jatuh ke penyulang lain bila kabelnya belum pernah menjawab). Inspeksi yang belum diverifikasi ikut tampil, ditandai `terverifikasi`. Yang Dibatalkan tidak ikut.';
+  'Pohon yang menunggu dirabas per segmen, dari jawaban vegetasi inspeksi JTM KABEL SEGMEN ITU (jatuh ke penyulang lain bila kabelnya belum pernah menjawab), lengkap dengan foto dan koordinat tiangnya. Inspeksi yang belum diverifikasi ikut tampil, ditandai `terverifikasi`. Yang Dibatalkan tidak ikut.';
 
 GRANT SELECT ON public.perabasan_pohon TO authenticated;
 
