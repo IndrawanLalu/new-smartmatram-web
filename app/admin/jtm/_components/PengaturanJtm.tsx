@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { useJtmRef, BENTUK, type Bentuk, type Kategori, type RefBaris } from "../_hooks/useJtmRef";
+import IsianJtm from "./IsianJtm";
 
 const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boolean }[] = [
   {
@@ -67,11 +68,13 @@ export default function PengaturanJtm() {
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>Pengaturan JTM</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
-          Tiga daftar di bawah ini <b>data, bukan kode</b>. Penghantar baru muncul tiap kali ada
+          Isian formulir dan tiga daftar di bawah ini <b>data, bukan kode</b>. Penghantar baru muncul tiap kali ada
           pembangunan, dan penanda menyusul tiap kali ada jenis peralatan baru — kalau daftarnya
           ditulis di kode, tiap tambahan berarti menunggu rilis.
         </p>
       </div>
+
+      <IsianJtm />
 
       {DAFTAR.map((d) => (
         <Bagian

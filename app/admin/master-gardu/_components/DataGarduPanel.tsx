@@ -19,6 +19,8 @@ interface MasterRow {
   feeder: string | null;
   daya: number | null;
   merk: string | null;
+  no_seri: string | null;
+  tahun_pembuatan: number | null;
   status: string | null;
   lat: number | null;
   lng: number | null;
@@ -50,9 +52,11 @@ const UMUM: Field[] = [
   { key: "TGL LOG", label: "Tanggal Log" },
 ];
 
+// No seri & tahun pembuatan TIDAK dibaca dari `data_amg`: keduanya punya kolom
+// master sendiri yang dikoreksi Optimasi Trafo dan HARGARDU. `data_amg` adalah
+// salinan ekspor lama yang tidak pernah ikut berubah — membacanya membuat
+// trafo yang sudah diganti tampil dengan nomor seri trafo lamanya.
 const SPEK_TRAFO: Field[] = [
-  { key: "NO SERI", label: "No Seri" },
-  { key: "TAHUN PEMBUATAN", label: "Tahun Pembuatan" },
   { key: "KONS TRAFO", label: "Konstruksi" },
   { key: "HUB BELITAN", label: "Hubungan Belitan" },
   { key: "ARUS PRIMER", label: "Arus Primer", satuan: "A" },
@@ -70,6 +74,7 @@ const SPEK_KABEL: Field[] = [
 const SUDAH_TAMPIL = new Set([
   ...UMUM.map((f) => f.key),
   ...SPEK_TRAFO.map((f) => f.key),
+  "NO SERI", "TAHUN PEMBUATAN",
   ...SPEK_KABEL.map((f) => f.key),
   "NO GARDU", "DAYA", "MERK", "ALAMAT", "NAMA RAYON", "NAMA PENYULANG",
   "KOORDINAT X", "KOORDINAT Y",
@@ -164,7 +169,7 @@ export default function DataGarduPanel({ kode, ulp, kvaPengukuran }: Props) {
     void (async () => {
       let q = supabaseBrowser
         .from("gardu")
-        .select("kode,ulp,kode_amg,nama,alamat,feeder,daya,merk,status,lat,lng,data_amg")
+        .select("kode,ulp,kode_amg,nama,alamat,feeder,daya,merk,no_seri,tahun_pembuatan,status,lat,lng,data_amg")
         .eq("kode", kode);
       // Kode gardu tidak unik lintas ULP — tanpa penyaring ULP, gardu Cakra bisa
       // tampil di detail gardu Gerung pada kode yang kebetulan sama.
@@ -258,6 +263,8 @@ export default function DataGarduPanel({ kode, ulp, kvaPengukuran }: Props) {
             tebal
           />
           <Baris label="Merk" nilai={row.merk ?? "—"} />
+          <Baris label="No Seri" nilai={row.no_seri ?? "—"} />
+          <Baris label="Tahun Pembuatan" nilai={row.tahun_pembuatan ?? "—"} />
           {isiField(amg, SPEK_TRAFO)}
         </Kartu>
 
