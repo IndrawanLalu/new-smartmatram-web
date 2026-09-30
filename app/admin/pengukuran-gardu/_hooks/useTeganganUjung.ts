@@ -136,6 +136,26 @@ export function useTeganganUjung(ulp: string, oleh: string) {
     return true;
   };
 
+  /** Setujui banyak sekaligus — fungsi yang SAMA dengan setujui satuan, satu per
+   *  satu, supaya hak ULP & penjaga server tetap berlaku per baris. Yang gagal
+   *  disebut; yang berhasil ditambal di tempat. */
+  const setujuiBanyak = async (daftar: TitikUjung[]) => {
+    let ok = 0;
+    const gagal: string[] = [];
+    for (const t of daftar) {
+      const { error } = await supabaseBrowser.rpc("setujui_tegangan_ujung", { p_id: t.id, p_nama: oleh });
+      if (error) {
+        gagal.push(`${t.gardu_kode} ${t.jurusan}: ${error.message}`);
+        continue;
+      }
+      ok += 1;
+      tambal(t.id, { verified_at: new Date().toISOString(), verified_by: oleh, status_tampil: "Disetujui" });
+    }
+    if (ok) toast.success(`${ok} tegangan ujung disetujui.`);
+    if (gagal.length) toast.error(`${gagal.length} gagal disetujui — ${gagal.slice(0, 3).join(" · ")}${gagal.length > 3 ? " …" : ""}`);
+    return gagal.length === 0;
+  };
+
   const kembalikan = async (t: TitikUjung, alasan: string) => {
     const { error } = await supabaseBrowser.rpc("kembalikan_tegangan_ujung", { p_id: t.id, p_alasan: alasan, p_nama: oleh });
     if (error) {
@@ -158,5 +178,5 @@ export function useTeganganUjung(ulp: string, oleh: string) {
     return true;
   };
 
-  return { titik, tanpa, hitung, loading, galat, muat, tahun, setTahun, bulan, setBulan, setujui, kembalikan, batalkan };
+  return { titik, tanpa, hitung, loading, galat, muat, tahun, setTahun, bulan, setBulan, setujui, setujuiBanyak, kembalikan, batalkan };
 }

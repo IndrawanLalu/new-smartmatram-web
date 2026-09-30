@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search, TriangleAlert } from "lucide-react";
-import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { BadgeCheck, ChevronLeft, ChevronRight, Loader2, Search, TriangleAlert } from "lucide-react";
+import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { STATUS_UJUNG, useTeganganUjung, type StatusUjung, type TitikUjung } from "../_hooks/useTeganganUjung";
 import DetailUjungModal, { NADA_UJUNG, meter } from "./DetailUjungModal";
 
@@ -27,6 +28,9 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
   const [detail, setDetail] = useState<string | null>(null);
+  const [centang, setCentang] = useState<Set<string>>(new Set());
+  const [tanya, setTanya] = useState(false);
+  const [menyetujui, setMenyetujui] = useState(false);
 
   const k = cari.trim().toUpperCase();
 
@@ -44,6 +48,26 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
     () => o.tanpa.filter((b) => cocok(k, [b.no_gardu, b.gardu_nama, b.penyulang, b.petugas_nama])),
     [o.tanpa, k],
   );
+
+  // Yang bisa disetujui: masih menunggu, di saringan yang sedang tampil (lintas
+  // halaman). Pilihan yang keluar dari saringan tidak ikut tanpa terlihat.
+  const bisaSetuju = useMemo(() => baris.filter((t) => t.status_tampil === "Menunggu verifikasi"), [baris]);
+  const terpilih = bisaSetuju.filter((t) => centang.has(t.id));
+  const semuaTercentang = bisaSetuju.length > 0 && terpilih.length === bisaSetuju.length;
+  const ubahCentang = (id: string) =>
+    setCentang((c) => {
+      const b = new Set(c);
+      if (b.has(id)) b.delete(id);
+      else b.add(id);
+      return b;
+    });
+  const setujuiTerpilih = async () => {
+    setTanya(false);
+    setMenyetujui(true);
+    await o.setujuiBanyak(terpilih);
+    setCentang(new Set());
+    setMenyetujui(false);
+  };
 
   const jumlah = saring === "tanpa" ? tanpa.length : baris.length;
   const total = Math.max(1, Math.ceil(jumlah / PAGE));
@@ -86,6 +110,18 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
         {chip("tanpa", "Gardu belum diukur ujung", o.tanpa.length, true)}
         {chip("bawah", "Di bawah standar (< 198 V)", o.hitung.bawah, true)}
       </div>
+
+      {terpilih.length > 0 && (
+        <div className={`${CARD} px-4 py-2.5 flex flex-wrap items-center gap-3`}>
+          <span className="text-sm text-ink"><b>{terpilih.length}</b> dipilih</span>
+          <button onClick={() => setTanya(true)} disabled={menyetujui} className={`${BTN_GHOST} text-emerald-700 disabled:opacity-40`}>
+            {menyetujui ? <Loader2 size={14} className="animate-spin" /> : <BadgeCheck size={15} />} Setujui terpilih
+          </button>
+          <button onClick={() => setCentang(new Set())} disabled={menyetujui} className="text-xs text-ink-muted hover:text-ink">
+            Batal pilih
+          </button>
+        </div>
+      )}
 
       {o.galat && !o.loading ? (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
@@ -135,6 +171,17 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
               <table className="w-full border-collapse text-sm">
                 <thead className="bg-surface">
                   <tr>
+                    <th className={`${TH} w-8`}>
+                      {bisaSetuju.length > 0 && (
+                        <input
+                          type="checkbox"
+                          checked={semuaTercentang}
+                          onChange={() => setCentang(semuaTercentang ? new Set() : new Set(bisaSetuju.map((t) => t.id)))}
+                          aria-label="Pilih semua yang menunggu verifikasi"
+                          title={`Pilih semua ${bisaSetuju.length} yang menunggu verifikasi di saringan ini`}
+                        />
+                      )}
+                    </th>
                     <th className={TH}>Gardu · Jurusan</th>
                     <th className={`${TH} text-right`}>R-N / S-N / T-N (V)</th>
                     <th className={`${TH} text-right`}>Dari gardu</th>
@@ -147,6 +194,16 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
                 <tbody>
                   {tampil.map((t) => (
                     <tr key={t.id} onClick={() => setDetail(t.id)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
+                      <td className={TD} onClick={(e) => e.stopPropagation()}>
+                        {t.status_tampil === "Menunggu verifikasi" && (
+                          <input
+                            type="checkbox"
+                            checked={centang.has(t.id)}
+                            onChange={() => ubahCentang(t.id)}
+                            aria-label={`Pilih ${t.gardu_kode} jurusan ${t.jurusan}`}
+                          />
+                        )}
+                      </td>
                       <td className={TD}>
                         <p className="font-semibold text-ink text-sm">{t.gardu_kode} <span className="text-accent-deep">· {t.jurusan}</span></p>
                         <p className="text-[11px] text-ink-muted">{t.penyulang ?? "—"} · {t.ulp}</p>
@@ -189,6 +246,16 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
             </div>
           </div>
         </div>
+      )}
+
+      {tanya && (
+        <ConfirmDialog
+          title={`Setujui ${terpilih.length} tegangan ujung?`}
+          message={`Semua titik yang dipilih ditandai disetujui atas nama ${oleh || "Anda"}. Pengukuran bebannya jadi terhitung realisasi WO dan boleh dikirim ke AMG. Pastikan foto dan nilainya sudah diperiksa — yang perlu diperbaiki, kembalikan satu per satu dari rinciannya.`}
+          confirmLabel="Setujui"
+          onConfirm={() => void setujuiTerpilih()}
+          onClose={() => setTanya(false)}
+        />
       )}
 
       {dtl && (
