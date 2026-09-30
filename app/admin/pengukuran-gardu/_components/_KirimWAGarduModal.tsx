@@ -6,11 +6,12 @@ import type { DocumentProps } from "@react-pdf/renderer";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
+import { bulanWoIni, pilihanBulanWo } from "../_utils/bulanWo";
 
 interface Props {
   data: PengukuranGardu;
   onClose: () => void;
-  onWoMarked?: (sentAt: string, jenis: string) => void;
+  onWoMarked?: (sentAt: string, jenis: string, woBulan: string) => void;
 }
 
 const canShare = typeof navigator !== "undefined" && !!navigator.share;
@@ -23,6 +24,7 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
   const [done, setDone] = useState(false);
   const [jenisPemeliharaan, setJenisPemeliharaan] = useState<string>(JENIS_OPTIONS[0]);
   const [keterangan, setKeterangan] = useState("");
+  const [woBulan, setWoBulan] = useState(data.wo_bulan ?? bulanWoIni());
   const [marking, setMarking] = useState(false);
   const [marked, setMarked] = useState(false);
 
@@ -34,11 +36,11 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
     const sentAt = new Date().toISOString();
     const { error } = await supabaseBrowser
       .from("pengukuran_gardu")
-      .update({ wo_sent_at: sentAt, jenis_pemeliharaan: jenisPemeliharaan })
+      .update({ wo_sent_at: sentAt, wo_bulan: woBulan, jenis_pemeliharaan: jenisPemeliharaan })
       .eq("id", data.id);
     if (!error) {
       setMarked(true);
-      onWoMarked?.(sentAt, jenisPemeliharaan);
+      onWoMarked?.(sentAt, jenisPemeliharaan, woBulan);
     }
     setMarking(false);
   };
@@ -135,6 +137,20 @@ export default function KirimWAGarduModal({ data, onClose, onWoMarked }: Props) 
                 >
                   {JENIS_OPTIONS.map(o => (
                     <option key={o} value={o}>{o}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-ink-muted uppercase tracking-wider block mb-1">
+                  Bulan WO
+                </label>
+                <select
+                  value={woBulan}
+                  onChange={e => setWoBulan(e.target.value)}
+                  className="w-full bg-white border border-line rounded-lg px-3 py-2 text-xs text-ink focus:outline-none focus:border-navy-500"
+                >
+                  {pilihanBulanWo(data.wo_bulan).map(p => (
+                    <option key={p.nilai} value={p.nilai}>{p.label}</option>
                   ))}
                 </select>
               </div>

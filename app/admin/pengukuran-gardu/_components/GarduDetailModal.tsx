@@ -1195,7 +1195,7 @@ export default function GarduDetailModal({
         <KirimWAGarduModal
           data={row}
           onClose={() => setShowKirimWA(false)}
-          onWoMarked={(sentAt, jenis) => onPatchRow?.(row.id, { wo_sent_at: sentAt, jenis_pemeliharaan: jenis })}
+          onWoMarked={(sentAt, jenis, woBulan) => onPatchRow?.(row.id, { wo_sent_at: sentAt, wo_bulan: woBulan, jenis_pemeliharaan: jenis })}
         />
       )}
     </>

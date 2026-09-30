@@ -55,7 +55,7 @@ export function useYearlyStats(
           fetchAllRows(() => {
             let q = supabaseBrowser
               .from("pengukuran_gardu")
-              .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,amg_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t,hasil_penyeimbangan_id")
+              .select("tanggal_pengukuran,persen_beban,suhu_trafo,kva_trafo,jenis_pemeliharaan,wo_sent_at,wo_bulan,amg_sent_at,perjurusan,total_arus_r,total_arus_s,total_arus_t,hasil_penyeimbangan_id")
               .gte("tanggal_pengukuran", startDate)
               .lt("tanggal_pengukuran", endDate);
             if (unitFilter) q = q.eq("petugas_unit", unitFilter);
@@ -108,9 +108,10 @@ export function useYearlyStats(
             : ((row.persen_beban ?? 0) >= OVERLOAD_PCT || (row.suhu_trafo ?? 0) > HIGH_TEMP_C);
           if (isAnom) acc.anomali++;
 
-          // WO: grouped by wo_sent_at (kapan jenis di-set), fallback ke tanggal_pengukuran jika null
+          // WO dikelompokkan per Bulan WO (sama dengan Rekap Kinerja); WO lama
+          // tanpa penanda jatuh ke tanggal ukurnya.
           if (row.jenis_pemeliharaan && row.jenis_pemeliharaan in acc.woByJenis) {
-            const woDateStr = row.wo_sent_at ?? row.tanggal_pengukuran;
+            const woDateStr = row.wo_bulan ?? row.wo_sent_at ?? row.tanggal_pengukuran;
             const woYear = new Date(woDateStr).getFullYear();
             const wm     = new Date(woDateStr).getMonth() + 1;
             if (woYear === year) {

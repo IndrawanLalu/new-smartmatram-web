@@ -22,6 +22,8 @@ import GarduDetailModal from "./GarduDetailModal";
 import EditPengukuranModal from "./EditPengukuranModal";
 import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downloadXlsx";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
+import { bulanWoIni, labelBulanWo, pilihanBulanWo } from "../_utils/bulanWo";
+import PindahBulanWo from "./PindahBulanWo";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -126,10 +128,14 @@ export default function PenyeimbanganTab({
   }
   const [editingJenisId, setEditingJenisId]     = useState<string | null>(null);
   const [editingJenisValue, setEditingJenisValue] = useState("");
+  const [editingBulanValue, setEditingBulanValue] = useState("");
   const [savingJenis, setSavingJenis]     = useState(false);
   const [page, setPage]                   = useState(1);
   const [filterWoJenis, setFilterWoJenis] = useState("");
   const [filterWoStatus, setFilterWoStatus] = useState<"" | "selesai" | "proses">("");
+  const [filterWoBulan, setFilterWoBulan] = useState("");
+  /** WO yang dicentang untuk dipindah bulannya. */
+  const [dipilih, setDipilih] = useState<Set<string>>(new Set());
 
   const years = useMemo(
     () => Array.from({ length: 4 }, (_, i) => now.getFullYear() - 1 + i),
@@ -148,14 +154,35 @@ export default function PenyeimbanganTab({
     () => latestData.filter((d) => {
       if (!d.jenis_pemeliharaan) return false;
       if (filterWoJenis && d.jenis_pemeliharaan !== filterWoJenis) return false;
+      if (filterWoBulan && d.wo_bulan !== filterWoBulan) return false;
       if (!filterWoStatus) return true;
       // Sumbernya sama dengan kolom Status di baris — lintas bulan, bukan
       // rekap yang sedang ditampilkan.
       const selesai = pengukuranSeimbang.has(d.id);
       return filterWoStatus === "selesai" ? selesai : !selesai;
     }),
-    [latestData, filterWoJenis, filterWoStatus, pengukuranSeimbang]
+    [latestData, filterWoJenis, filterWoStatus, filterWoBulan, pengukuranSeimbang]
   );
+
+  /** Bulan WO yang ada di daftar — untuk saringan. */
+  const daftarBulanWo = useMemo(
+    () => [...new Set(latestData.map((d) => d.jenis_pemeliharaan ? d.wo_bulan : null).filter((x): x is string => !!x))].sort().reverse(),
+    [latestData]
+  );
+
+  /** Hanya WO sungguhan yang belum dikerjakan & tidak dibatalkan yang bisa
+   *  dipindah bulannya (penjaga sebenarnya di RPC). */
+  const bisaPindah = (row: PengukuranGardu) =>
+    !!row.wo_sent_at && !row.dari_penyeimbangan && !pengukuranSeimbang.has(row.id) && !woBatal.has(row.id);
+  const bisaDipilih = anomaliSudahWo.filter(bisaPindah);
+  const semuaDipilih = bisaDipilih.length > 0 && bisaDipilih.every((r) => dipilih.has(r.id));
+  const alihPilih = (id: string) =>
+    setDipilih((s) => {
+      const b = new Set(s);
+      if (b.has(id)) b.delete(id);
+      else b.add(id);
+      return b;
+    });
 
   // Penandaan OPTIMASI TRAFO dulu cuma label; sejak modulnya ada, penandaan
   // itu WO yang dikerjakan regu dari HP. Angkanya ditampilkan supaya admin yang
@@ -202,10 +229,10 @@ export default function PenyeimbanganTab({
     const woSentAt = new Date().toISOString();
     const { error } = await supabaseBrowser
       .from("pengukuran_gardu")
-      .update({ jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt })
+      .update({ jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt, wo_bulan: editingBulanValue })
       .eq("id", id);
     if (!error) {
-      onPatchRow(id, { jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt });
+      onPatchRow(id, { jenis_pemeliharaan: editingJenisValue, wo_sent_at: woSentAt, wo_bulan: editingBulanValue });
       setEditingJenisId(null);
     }
     setSavingJenis(false);
@@ -290,6 +317,17 @@ export default function PenyeimbanganTab({
               <option key={o} value={o}>{o}</option>
             ))}
           </select>
+          <select
+            value={editingBulanValue}
+            onChange={(e) => setEditingBulanValue(e.target.value)}
+            className="text-xs bg-white border border-navy-500 rounded px-2 py-1 text-ink focus:outline-none"
+            aria-label="Bulan WO"
+            title="Bulan WO — yang dibaca Rekap Kinerja"
+          >
+            {pilihanBulanWo(row.wo_bulan).map((p) => (
+              <option key={p.nilai} value={p.nilai}>{p.label}</option>
+            ))}
+          </select>
           <button
             onClick={() => handleSaveJenis(row.id)}
             disabled={savingJenis}
@@ -319,6 +357,7 @@ export default function PenyeimbanganTab({
           onClick={() => {
             setEditingJenisId(row.id);
             setEditingJenisValue(row.jenis_pemeliharaan ?? JENIS_PEMELIHARAAN_OPTIONS[0]);
+            setEditingBulanValue(row.wo_bulan ?? bulanWoIni());
           }}
           className="opacity-0 group-hover:opacity-100 w-5 h-5 flex items-center justify-center rounded text-ink-soft hover:text-accent-deep hover:bg-surface transition-all"
           title="Set jenis WO"
@@ -430,7 +469,7 @@ export default function PenyeimbanganTab({
       )}
 
       {/* ── Section: Anomali Sudah di-WO ────────────────────────────────────── */}
-      {anomaliSudahWo.length > 0 || filterWoJenis || filterWoStatus ? (
+      {anomaliSudahWo.length > 0 || filterWoJenis || filterWoStatus || filterWoBulan ? (
         <div className="bg-white rounded-xl border border-navy-200 overflow-hidden">
           <div className="px-5 py-3 bg-navy-50 border-b border-navy-200 flex flex-wrap items-center gap-2">
             <FileCheck size={16} className="text-emerald-600 shrink-0" />
@@ -462,6 +501,15 @@ export default function PenyeimbanganTab({
               <option value="proses">Proses</option>
               <option value="selesai">Selesai</option>
             </select>
+            <select
+              value={filterWoBulan}
+              onChange={(e) => setFilterWoBulan(e.target.value)}
+              className="border border-line rounded-lg px-2 py-1 text-xs text-ink bg-white focus:outline-none focus:border-navy-500"
+              aria-label="Saring Bulan WO"
+            >
+              <option value="">Semua Bulan WO</option>
+              {daftarBulanWo.map((b) => <option key={b} value={b}>{labelBulanWo(b)}</option>)}
+            </select>
             <button
               onClick={() => downloadWoGarduXlsx(anomaliSudahWo, `Gardu_WO_${new Date().toISOString().split("T")[0]}.xlsx`)}
               disabled={anomaliSudahWo.length === 0}
@@ -471,6 +519,16 @@ export default function PenyeimbanganTab({
               Download XLSX
             </button>
           </div>
+          {dipilih.size > 0 && (
+            <PindahBulanWo
+              ids={[...dipilih]}
+              onBatal={() => setDipilih(new Set())}
+              onDipindah={(ids, bulan) => {
+                ids.forEach((id) => onPatchRow(id, { wo_bulan: bulan }));
+                setDipilih(new Set());
+              }}
+            />
+          )}
           {anomaliSudahWo.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-ink-muted">
               <ClipboardX size={24} className="text-ink-muted/50" />
@@ -478,6 +536,7 @@ export default function PenyeimbanganTab({
                 Tidak ada gardu
                 {filterWoJenis && ` dengan jenis ${filterWoJenis}`}
                 {filterWoStatus && ` berstatus ${filterWoStatus === "selesai" ? "Selesai" : "Proses"}`}
+                {filterWoBulan && ` untuk WO ${labelBulanWo(filterWoBulan)}`}
               </p>
             </div>
           ) : (
@@ -485,12 +544,23 @@ export default function PenyeimbanganTab({
             <table className="w-full text-sm whitespace-nowrap">
               <thead>
                 <tr className="bg-navy-50">
+                  <th className="pl-4 py-2.5 w-6">
+                    <input
+                      type="checkbox"
+                      checked={semuaDipilih}
+                      disabled={bisaDipilih.length === 0}
+                      onChange={() => setDipilih(semuaDipilih ? new Set() : new Set(bisaDipilih.map((r) => r.id)))}
+                      aria-label="Pilih semua WO yang belum dikerjakan"
+                      title="Pilih semua WO yang belum dikerjakan"
+                    />
+                  </th>
                   <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">No. Gardu</th>
                   <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Penyulang</th>
                   <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Alamat</th>
                   <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">KVA</th>
                   <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">% Beban</th>
                   <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Tgl Ukur</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Bulan WO</th>
                   <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Jenis WO</th>
                   {hasActiveCriteria && (
                     <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">Kriteria</th>
@@ -508,6 +578,16 @@ export default function PenyeimbanganTab({
                   const anomResult = anomaliSudahWoMap.get(row.id) ?? null;
                   return (
                     <tr key={row.id} onClick={() => setDetailPengukuran(row)} className={`cursor-pointer hover:bg-navy-50/60 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-white"}`}>
+                      <td className="pl-4 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        {bisaPindah(row) && (
+                          <input
+                            type="checkbox"
+                            checked={dipilih.has(row.id)}
+                            onChange={() => alihPilih(row.id)}
+                            aria-label={`Pilih WO ${row.no_gardu}`}
+                          />
+                        )}
+                      </td>
                       <td className="px-4 py-2.5 font-semibold text-ink">{row.no_gardu}</td>
                       <td className="px-4 py-2.5 text-ink-soft text-xs">{row.penyulang ?? "—"}</td>
                       <td className="px-4 py-2.5 text-ink-soft text-xs max-w-40 truncate">{row.alamat ?? "—"}</td>
@@ -518,6 +598,7 @@ export default function PenyeimbanganTab({
                         </span>
                       </td>
                       <td className="px-4 py-2.5 text-ink-soft text-xs">{fmtTanggal(row.tanggal_pengukuran)}</td>
+                      <td className="px-4 py-2.5 text-ink text-xs">{labelBulanWo(row.wo_bulan)}</td>
                       <td className="px-4 py-2">
                         <JenisCell row={row} />
                       </td>
