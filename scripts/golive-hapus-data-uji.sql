@@ -18,8 +18,9 @@
 --           • Laporan temuan lama (`inspeksi`), `inspeksi_pohon`, `laporan`,
 --             penyeimbangan gardu — data asli sejak Maret/April
 --           • Master: gardu (termasuk koreksi titik gardu dari lapangan dan
---             AM053 hasil optimasi — "biarkan"), penyulang, 251 tiang impor
---             GUNUNG SARI, segmen impor BUWUN MAS & SEKOTONG, roles, pengaturan
+--             AM053 hasil optimasi — "biarkan"), penyulang, segmen impor
+--             BUWUN MAS & SEKOTONG, roles, pengaturan
+--   (251 tiang impor GUNUNG SARI 13 Sep = uji, ikut dihapus — keputusan user)
 --           • master_usulan & master_audit (sejarah; 9 usulan titik gardu dari
 --             petugas masih menunggu persetujuan)
 --
@@ -35,6 +36,8 @@ CREATE TEMP TABLE _jaga ON COMMIT DROP AS
 SELECT
   (SELECT count(*) FROM public.pengukuran_gardu)          AS pengukuran,
   (SELECT count(*) FROM public.pengukuran_tegangan_ujung) AS ujung,
+  -- Rujukan tiang rekomendasi juga tidak boleh berubah (FK-nya bisa SET NULL).
+  (SELECT count(*) FROM public.pengukuran_tegangan_ujung WHERE tiang_rekomendasi_id IS NOT NULL) AS ujung_bertiang,
   (SELECT count(*) FROM public.penyeimbangan_gardu)       AS penyeimbangan,
   (SELECT count(*) FROM public.inspeksi_pohon)            AS pohon,
   (SELECT count(*) FROM public.laporan)                   AS laporan,
@@ -47,8 +50,11 @@ SELECT
 
 -- ── 1. Sasaran master uji ────────────────────────────────────────────────────
 
+-- Termasuk 251 tiang impor GUNUNG SARI (13 Sep) — dipastikan user: data uji.
 CREATE TEMP TABLE _tiang ON COMMIT DROP AS
-SELECT id FROM public.tiang WHERE sumber = 'lapangan';
+SELECT id FROM public.tiang
+WHERE sumber = 'lapangan'
+   OR (sumber = 'impor' AND upper(COALESCE(penyulang, '')) = 'GUNUNG SARI');
 
 CREATE TEMP TABLE _segmen ON COMMIT DROP AS
 SELECT id FROM public.segmen
@@ -172,8 +178,9 @@ BEGIN
   IF (SELECT count(*) FROM public.pengukuran_gardu) <> j.pengukuran THEN
     RAISE EXCEPTION 'BATAL: jumlah pengukuran gardu berubah';
   END IF;
-  IF (SELECT count(*) FROM public.pengukuran_tegangan_ujung) <> j.ujung THEN
-    RAISE EXCEPTION 'BATAL: jumlah tegangan ujung berubah';
+  IF (SELECT count(*) FROM public.pengukuran_tegangan_ujung) <> j.ujung
+     OR (SELECT count(*) FROM public.pengukuran_tegangan_ujung WHERE tiang_rekomendasi_id IS NOT NULL) <> j.ujung_bertiang THEN
+    RAISE EXCEPTION 'BATAL: tegangan ujung berubah (jumlah atau tiang rekomendasinya)';
   END IF;
   IF (SELECT count(*) FROM public.penyeimbangan_gardu) <> j.penyeimbangan THEN
     RAISE EXCEPTION 'BATAL: jumlah penyeimbangan berubah';
@@ -198,6 +205,7 @@ BEGIN
     UNION ALL SELECT 1 FROM public.wo_hargardu UNION ALL SELECT 1 FROM public.wo_pengukuran
     UNION ALL SELECT 1 FROM public.wo_manual UNION ALL SELECT 1 FROM public.wo_batch
     UNION ALL SELECT 1 FROM public.tiang WHERE sumber = 'lapangan'
+    UNION ALL SELECT 1 FROM public.tiang WHERE sumber = 'impor' AND upper(COALESCE(penyulang, '')) = 'GUNUNG SARI'
     UNION ALL SELECT 1 FROM public.segmen WHERE sumber IN ('lapangan', 'tempelan')) x;
   IF sisa > 0 THEN
     RAISE EXCEPTION 'BATAL: masih ada % baris uji tersisa', sisa;
@@ -212,7 +220,7 @@ COMMIT;
 -- =============================================================================
 -- Sesudah COMMIT — periksa (harus sesuai angka di laporan Claude):
 --   SELECT
---     (SELECT count(*) FROM tiang)            AS tiang,        -- 251 (impor GUNUNG SARI)
+--     (SELECT count(*) FROM tiang)            AS tiang,        -- 0 (semua tiang uji)
 --     (SELECT count(*) FROM segmen)           AS segmen,       -- 49  (BUWUN MAS 48 + SEKOTONG 1)
 --     (SELECT count(*) FROM pengukuran_gardu) AS pengukuran,   -- tidak berubah
 --     (SELECT count(*) FROM pengukuran_tegangan_ujung) AS ujung;
