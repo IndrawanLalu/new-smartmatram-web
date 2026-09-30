@@ -8,6 +8,8 @@ import type { PilihanAtribut, RincianGardu, RincianTiang, Terpilih } from "../_h
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 import InfoTiang, { Baris, TOMBOL_PANEL } from "./InfoTiang";
+import RingkasSimulasi from "./RingkasSimulasi";
+import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
  * Panel kanan: rincian benda yang diklik di peta, dan — untuk admin ULP-nya
@@ -34,6 +36,10 @@ interface Props {
   onPercabangan: (nyala: boolean) => Promise<boolean>;
   onBatalkan: (alasan: string) => Promise<boolean>;
   onTutup: () => void;
+  simulasi: HasilSimulasi | null;
+  simulasiSibuk: boolean;
+  onSimulasi: () => void;
+  onTutupSimulasi: () => void;
 }
 
 export default function PanelObjek(p: Props) {
@@ -82,6 +88,10 @@ export default function PanelObjek(p: Props) {
           <p className="text-xs text-gray-400 flex items-center gap-2"><Loader2 size={13} className="animate-spin" /> Memuat…</p>
         )}
 
+        {p.simulasi && terpilih.jenis === "tiang" && p.simulasi.alat.id === terpilih.id && (
+          <RingkasSimulasi h={p.simulasi} onTutup={p.onTutupSimulasi} />
+        )}
+
         {/* ── Menggeser ── */}
         {geser && (
           <div className="rounded-lg border border-[#00897B] p-3 space-y-2">
@@ -126,6 +136,8 @@ export default function PanelObjek(p: Props) {
             onGantiInduk={p.onGantiInduk}
             onPercabangan={p.onPercabangan}
             onBatalkan={() => setTanyaBatal(true)}
+            onSimulasi={p.onSimulasi}
+            simulasiSibuk={p.simulasiSibuk}
           />
         )}
 

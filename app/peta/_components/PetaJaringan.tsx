@@ -11,6 +11,7 @@ import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type GarduPeta, type Kotak, type Ti
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
 import { useSuntingPeta } from "../_hooks/useSuntingPeta";
+import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
@@ -87,6 +88,19 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [calonInduk, setCalonInduk] = useState<TiangPeta | null>(null);
   const objek = useObjekPeta(terpilih);
   const sunting = useSuntingPeta(oleh);
+  const simulasi = useSimulasiBuka();
+
+  const jalankanSimulasi = async () => {
+    if (terpilih?.jenis !== "tiang") return;
+    const h = await simulasi.jalankan(terpilih.id);
+    // Peta dibawa ke seluruh wilayah padam — hasilnya harus terlihat utuh.
+    if (h?.batas && h.jumlah_tiang > 0) {
+      setFokus([
+        [h.batas[0], h.batas[1]],
+        [h.batas[2], h.batas[3]],
+      ]);
+    }
+  };
 
   const [ujungAktif, setUjungAktif] = useState(false);
   const [bulanUjung, setBulanUjung] = useState(bulanIni);
@@ -120,6 +134,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   );
   const aturGeser = useCallback((lat: number, lng: number) => setGeser({ lat, lng }), []);
   const tutupObjek = () => {
+    simulasi.tutup();
     setTerpilih(null);
     setGeser(null);
     setModeInduk(false);
@@ -218,6 +233,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           geser={geser} onGeser={aturGeser}
           ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
+          simulasi={simulasi.hasil}
         />
 
         {terpilih && (
@@ -259,6 +275,10 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
               return ok;
             }}
             onTutup={tutupObjek}
+            simulasi={simulasi.hasil}
+            simulasiSibuk={simulasi.sibuk}
+            onSimulasi={() => void jalankanSimulasi()}
+            onTutupSimulasi={simulasi.tutup}
           />
         )}
 

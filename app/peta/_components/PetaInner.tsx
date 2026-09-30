@@ -14,6 +14,8 @@ import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
 import LapisanUjung from "./LapisanUjung";
 import PenggeserTitik from "./PenggeserTitik";
+import LapisanSimulasi from "./LapisanSimulasi";
+import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
  * Peta jaringan.
@@ -51,6 +53,7 @@ interface Props {
   bolehSetujuiUjung: boolean;
   oleh: string;
   onUjungDisetujui: (id: string) => void;
+  simulasi: HasilSimulasi | null;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -83,7 +86,7 @@ const IKON_GARDU = L.divIcon({
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
-  sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui,
+  sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
 }: Props) {
   return (
     <MapContainer
@@ -119,6 +122,7 @@ export default function PetaInner({
         rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
       />
+      <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
     </MapContainer>
