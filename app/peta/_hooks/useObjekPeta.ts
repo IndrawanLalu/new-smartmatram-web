@@ -58,8 +58,13 @@ export interface RincianJtr {
   kode: string;
   jurusan: string | null;
   menumpang: boolean;
+  /** Baris pinjaman (`tiang_jtr_tumpang`) — untuk "Lepas dari batang". */
+  tumpangId: string | null;
   indukKode: string | null;
   kabel: KabelJtr[];
+  /** Gardu JTR lain di batang ini (tercatat), dan yang dinyatakan regu. */
+  garduLain: string[];
+  dinyatakanLain: { ada: boolean; kode: string | null };
 }
 
 export interface RincianGardu {
@@ -88,7 +93,7 @@ export interface PilihanAtribut {
 
 async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
   const [j, k, p] = await Promise.all([
-    supabaseBrowser.from("jtr_tiang").select("kode,jurusan,induk_id,menumpang")
+    supabaseBrowser.from("jtr_tiang").select("kode,jurusan,induk_id,menumpang,tumpang_id")
       .eq("id", id).ilike("gardu_kode", gardu).eq("status_hidup", "aktif").maybeSingle(),
     supabaseBrowser.from("jtr_kabel").select("nomor,jenis,ukuran,kondisi").eq("tiang_id", id).eq("gardu", gardu.toUpperCase()).order("nomor"),
     supabaseBrowser.from("jtr_gawang_terputus").select("nomor_kabel").eq("tiang_id", id).ilike("gardu_kode", gardu),
@@ -101,12 +106,24 @@ async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
     indukKode = (i.data?.kode as string) ?? null;
   }
   const putus = new Set((p.data ?? []).map((x) => Number(x.nomor_kabel)));
+  const [lain, nyata] = await Promise.all([
+    supabaseBrowser.from("jtr_tiang").select("gardu_kode").eq("id", id).eq("status_hidup", "aktif"),
+    supabaseBrowser.from("tiang").select("jtr_gardu_lain,jtr_gardu_lain_kode").eq("id", id).maybeSingle(),
+  ]);
   return {
     gardu: gardu.toUpperCase(),
     kode: j.data.kode as string,
     jurusan: (j.data.jurusan as string) ?? null,
     menumpang: !!j.data.menumpang,
+    tumpangId: (j.data.tumpang_id as string) ?? null,
     indukKode,
+    garduLain: [...new Set((lain.data ?? []).map((x) => String(x.gardu_kode).toUpperCase()))].filter(
+      (x) => x !== gardu.toUpperCase(),
+    ),
+    dinyatakanLain: {
+      ada: !!nyata.data?.jtr_gardu_lain,
+      kode: (nyata.data?.jtr_gardu_lain_kode as string) ?? null,
+    },
     kabel: (k.data ?? []).map((x) => ({
       nomor: Number(x.nomor),
       jenis: (x.jenis as string) ?? null,

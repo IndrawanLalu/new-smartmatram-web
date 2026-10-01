@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Cable, Loader2, Pencil, TriangleAlert, Waypoints } from "lucide-react";
+import { Cable, Loader2, Merge, Pencil, TriangleAlert, Unlink, Waypoints } from "lucide-react";
 import type { KabelJtr, PilihanAtribut, RincianJtr } from "../_hooks/useObjekPeta";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
 import { Baris, TOMBOL_PANEL } from "./InfoTiang";
@@ -25,9 +25,13 @@ interface Props {
   onNama: (kode: string) => Promise<boolean>;
   onKabel: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
   onJurusan: (jurusan: string, hilir: boolean) => Promise<boolean>;
+  /** Tiang milik sendiri: jadikan pinjaman batang lain (tiang kembar). */
+  onGabung: () => void;
+  /** Tiang pinjaman: lepas dari batang. */
+  onLepas: () => void;
 }
 
-export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onJurusan }: Props) {
+export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onJurusan, onGabung, onLepas }: Props) {
   const [mode, setMode] = useState<"nama" | "jurusan" | number | null>(null);
   const [nama, setNama] = useState(j.kode);
   const [jurusan, setJurusan] = useState(j.jurusan ?? "A");
@@ -74,6 +78,17 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
         <Baris label="Nama di gardu ini" nilai={j.kode} />
         <Baris label="Jurusan" nilai={j.jurusan} />
         <Baris label="Induk JTR" nilai={j.indukKode ?? "pangkal — dari gardu"} />
+        {(j.garduLain.length > 0 || j.dinyatakanLain.ada) && (
+          <Baris
+            label="Batang bersama"
+            nilai={[
+              ...j.garduLain.map((g) => `JTR ${g}`),
+              ...(j.dinyatakanLain.ada && !j.garduLain.includes(j.dinyatakanLain.kode ?? "")
+                ? [`dinyatakan regu: ada JTR gardu lain${j.dinyatakanLain.kode ? ` (${j.dinyatakanLain.kode})` : ""}`]
+                : []),
+            ].join(" · ")}
+          />
+        )}
       </div>
 
       <div>
@@ -160,6 +175,15 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
           <button onClick={() => { setJurusan(j.jurusan ?? "A"); setHilir(true); setMode("jurusan"); }} className={TOMBOL_PANEL}>
             <Cable size={13} /> Pindah jurusan
           </button>
+          {j.menumpang ? (
+            <button onClick={onLepas} className={`${TOMBOL_PANEL} text-red-300`}>
+              <Unlink size={13} /> Lepas dari batang
+            </button>
+          ) : (
+            <button onClick={onGabung} className={TOMBOL_PANEL} title="Gardu kedua terlanjur membuat batang baru di batang yang sama">
+              <Merge size={13} /> Gabungkan ke batang lain (tiang kembar)
+            </button>
+          )}
         </div>
       )}
     </div>

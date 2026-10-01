@@ -57,6 +57,10 @@ interface Props {
   oleh: string;
   onDiputuskan: () => void;
   onSorot: (b: Banding | null) => void;
+  modeGabung: boolean;
+  onMulaiGabung: () => void;
+  onBatalGabung: () => void;
+  onLepasTumpang: (alasan: string) => Promise<boolean>;
 }
 
 export default function PanelObjek(p: Props) {
@@ -64,6 +68,7 @@ export default function PanelObjek(p: Props) {
   const [alasan, setAlasan] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [tanyaBatal, setTanyaBatal] = useState(false);
+  const [tanyaLepas, setTanyaLepas] = useState(false);
 
   const jarak = geser ? jarakMeter(terpilih.lat, terpilih.lng, geser.lat, geser.lng) : 0;
   const memuat = !galat && !tiang && !gardu;
@@ -164,7 +169,17 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
-        {tiang?.jtr && !geser && !p.modeInduk && (
+        {p.modeGabung && (
+          <div className="rounded-lg border border-pink-400/60 p-3 text-xs text-pink-100 space-y-2">
+            <p>
+              Klik <b>batang aslinya</b> di peta — tiang JTM atau tiang JTR gardu lain di tempat yang sama. Tiang ini lalu
+              menjadi pinjaman batang itu: nama, induk, kabel, dan tiang sesudahnya ikut; batang kembarnya dibatalkan.
+            </p>
+            <button onClick={p.onBatalGabung} className={TOMBOL_PANEL}>Batal</button>
+          </div>
+        )}
+
+        {tiang?.jtr && !geser && !p.modeInduk && !p.modeGabung && (
           <KoreksiJtr
             key={`${tiang.jtr.gardu}-${tiang.jtr.kode}-${tiang.jtr.kabel.map((k) => k.nomor).join("")}`}
             j={tiang.jtr}
@@ -174,10 +189,12 @@ export default function PanelObjek(p: Props) {
             onNama={p.onNamaJtr}
             onKabel={p.onKabelJtr}
             onJurusan={p.onJurusanJtr}
+            onGabung={p.onMulaiGabung}
+            onLepas={() => setTanyaLepas(true)}
           />
         )}
 
-        {tiang && !geser && !p.modeInduk && (
+        {tiang && !geser && !p.modeInduk && !p.modeGabung && (
           <InfoTiang
             t={tiang}
             pilihan={p.pilihan}
@@ -233,6 +250,22 @@ export default function PanelObjek(p: Props) {
           <p className="text-[11px] text-gray-500">Menyunting dari peta hanya untuk admin ULP ini dan UP3.</p>
         )}
       </div>
+
+      {tanyaLepas && tiang?.jtr && (
+        <BatalkanModal
+          judul={`Lepas ${tiang.jtr.kode} dari batang ini?`}
+          keterangan={`Untuk JTR gardu ${tiang.jtr.gardu} yang ternyata TIDAK lewat batang ini. Batangnya sendiri tidak berubah.`}
+          peringatan="Ditolak kalau masih ada tiang JTR gardu ini yang menyambung dari sini — pindahkan induknya dulu."
+          labelTombol="Lepas dari batang"
+          placeholder="Alasan — mis. salah pilih batang saat menumpang"
+          onTutup={() => setTanyaLepas(false)}
+          onBatalkan={async (a) => {
+            const ok = await p.onLepasTumpang(a);
+            if (ok) setTanyaLepas(false);
+            return ok;
+          }}
+        />
+      )}
 
       {tanyaBatal && tiang && (
         <BatalkanModal

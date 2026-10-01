@@ -9,6 +9,7 @@ import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
+import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { usePetaDaftar, type Jaringan } from "../_hooks/usePetaDaftar";
 import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type GarduPeta, type Kotak, type TiangPeta } from "../_hooks/usePetaIsi";
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
@@ -107,6 +108,9 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [terpilih, setTerpilih] = useState<Terpilih | null>(null);
   const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
   const [modeInduk, setModeInduk] = useState(false);
+  /** Gabungkan tiang kembar: menunggu klik batang aslinya. */
+  const [modeGabung, setModeGabung] = useState(false);
+  const [calonGabung, setCalonGabung] = useState<TiangPeta | null>(null);
   const [calonInduk, setCalonInduk] = useState<TiangPeta | null>(null);
   /** Ganti induk JTR wajib beralasan — diisi di panel, dipakai saat tiang diklik. */
   const [alasanInduk, setAlasanInduk] = useState("");
@@ -219,6 +223,13 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const pilihTiang = useCallback(
     (t: TiangPeta) => {
       if (geser) return;
+      if (modeGabung) {
+        // Batang asli = batang LAIN, di jaringan lain (JTM, atau JTR gardu lain).
+        if (terpilih?.jenis !== "tiang" || t.id === terpilih.id) return;
+        if (t.jaringan === "jtr" && t.kelompok === terpilih.kelompok) return;
+        setCalonGabung(t);
+        return;
+      }
       if (modeInduk) {
         if (terpilih?.jenis !== "tiang" || t.id === terpilih.id) return;
         // Induk JTR harus tiang JTR gardu yang sama.
@@ -228,7 +239,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
-    [geser, modeInduk, terpilih],
+    [geser, modeInduk, modeGabung, terpilih],
   );
   const pilihGardu = useCallback(
     (g: GarduPeta) => {
@@ -243,6 +254,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     setTerpilih(null);
     setGeser(null);
     setModeInduk(false);
+    setModeGabung(false);
     setAlasanInduk("");
   };
 
@@ -426,6 +438,19 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               segarkan();
             }}
             onSorot={setSorotBanding}
+            modeGabung={modeGabung}
+            onMulaiGabung={() => setModeGabung(true)}
+            onBatalGabung={() => setModeGabung(false)}
+            onLepasTumpang={async (alasan) => {
+              const tid = objek.tiang?.jtr?.tumpangId;
+              if (!tid) return false;
+              const ok = await sunting.lepasTumpangJtr(tid, alasan);
+              if (ok) {
+                tutupObjek();
+                void muatUlangPeta();
+              }
+              return ok;
+            }}
           />
         )}
 
@@ -457,6 +482,28 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
             )}
           </div>
+        )}
+
+        {calonGabung && terpilih?.jenis === "tiang" && terpilih.jaringan === "jtr" && (
+          <BatalkanModal
+            judul={`Gabungkan ${terpilih.kode} ke batang ${calonGabung.kode}?`}
+            keterangan={`Untuk tiang KEMBAR: ${terpilih.kode} dan ${calonGabung.kode} ternyata batang yang sama. Gardu ${terpilih.kelompok} lalu menumpang di ${calonGabung.kode} — nama ${terpilih.kode}, induk, kabel, dan tiang sesudahnya ikut.`}
+            peringatan={`Batang ${terpilih.kode} dibatalkan (titiknya tidak dipakai lagi).`}
+            labelTombol="Gabungkan"
+            placeholder="Alasan — mis. GPS meleset, batangnya sama dengan tiang JTM"
+            onTutup={() => setCalonGabung(null)}
+            onBatalkan={async (alasan) => {
+              const t = calonGabung;
+              const ok = await sunting.gabungJtr(terpilih.id, terpilih.kelompok, t.id, alasan);
+              if (ok) {
+                setCalonGabung(null);
+                setModeGabung(false);
+                setTerpilih({ ...terpilih, id: t.id, lat: t.lat, lng: t.lng });
+                segarkan();
+              }
+              return ok;
+            }}
+          />
         )}
 
         {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan === "jtr" && (

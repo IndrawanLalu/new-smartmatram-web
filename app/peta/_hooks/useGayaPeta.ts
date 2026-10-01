@@ -19,6 +19,8 @@ export interface GayaPeta {
   menumpang: string;
   /** Tiang JTR yang berdiri di tiang JTM. */
   jtrDiJtm: string;
+  /** Cincin kedua: batang dipakai juga JTR gardu lain. */
+  bersama: string;
   /** Gawang JTR berkabel ≥2. */
   jtrUb: string;
   /** Kabel JTR yang belum jelas datang dari tiang mana. */
@@ -32,6 +34,7 @@ export const GAYA_BAWAAN: GayaPeta = {
   jtr: WARNA.jtr,
   menumpang: "#FFFFFF",
   jtrDiJtm: "#000000",
+  bersama: "#EC4899",
   jtrUb: WARNA.jtrUb,
   putus: WARNA.putus,
   tandaPutus: true,

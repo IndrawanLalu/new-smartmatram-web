@@ -11,11 +11,12 @@ import { aturGaya, GAYA_BAWAAN, useGayaPeta, type GayaPeta } from "../_hooks/use
 
 type KunciWarna = Exclude<keyof GayaPeta, "tandaPutus">;
 
-const BARIS: { k: KunciWarna; label: string; contoh: "tiang" | "menumpang" | "diJtm" | "garis" | "ub" | "putus" }[] = [
+const BARIS: { k: KunciWarna; label: string; contoh: "tiang" | "menumpang" | "diJtm" | "bersama" | "garis" | "ub" | "putus" }[] = [
   { k: "jtm", label: "Tiang & jaringan JTM", contoh: "tiang" },
   { k: "jtr", label: "Tiang & jaringan JTR", contoh: "tiang" },
   { k: "jtrDiJtm", label: "JTR di tiang JTM (ada JTM di atasnya)", contoh: "diJtm" },
   { k: "menumpang", label: "Tiang menumpang lainnya (batang penyulang/gardu lain)", contoh: "menumpang" },
+  { k: "bersama", label: "Tiang bersama dua gardu JTR (cincin luar)", contoh: "bersama" },
   { k: "jtrUb", label: "Underbuild JTR — gawang berkabel 2 atau lebih", contoh: "ub" },
   { k: "putus", label: "Kabel JTR belum jelas datang dari tiang mana", contoh: "putus" },
 ];
@@ -30,6 +31,12 @@ function Contoh({ jenis, warna, gaya }: { jenis: (typeof BARIS)[number]["contoh"
         </>
       )}
       {jenis === "menumpang" && <circle cx="14" cy="7" r="4.5" fill={warna} stroke={gaya.jtm} strokeWidth="2.5" />}
+      {jenis === "bersama" && (
+        <>
+          <circle cx="14" cy="7" r="6.2" fill="none" stroke={warna} strokeWidth="1.8" />
+          <circle cx="14" cy="7" r="3.8" fill={gaya.jtr} stroke="#fff" strokeWidth="1" />
+        </>
+      )}
       {jenis === "diJtm" && (
         <>
           <line x1="2" y1="7" x2="26" y2="7" stroke={gaya.jtr} strokeWidth="2" />

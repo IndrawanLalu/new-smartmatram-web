@@ -326,6 +326,20 @@ const Isi = memo(function Isi({
       {/* Satu batang bisa tampil di dua penyulang (underbuild) — kuncinya per
           kelompok. Yang menumpang digambar berongga: batangnya milik orang
           lain, kabelnya milik kelompok ini. */}
+      {/* Cincin luar: batang yang dipakai juga JTR gardu lain. Digambar
+          sebelum tiangnya, tidak bisa diklik — tiangnya yang diklik. */}
+      {tiang.map((t) =>
+        t.garduBersama ? (
+          <CircleMarker
+            key={`bersama-${t.kelompok}-${t.id}`}
+            center={[t.lat, t.lng]}
+            radius={9}
+            interactive={false}
+            pathOptions={{ color: gaya.bersama, weight: 2, fill: false }}
+          />
+        ) : null,
+      )}
+
       {biasa.map((t) => {
         const warna = t.jaringan === "jtr" ? gaya.jtr : gaya.jtm;
         return (
@@ -348,6 +362,11 @@ const Isi = memo(function Isi({
                 {t.kelompok}
                 {t.diJtm ? " · di tiang JTM" : t.menumpang ? " · menumpang" : ""}
               </span>
+              {t.garduBersama && (
+                <span className="block text-[10px]">
+                  {t.garduBersama === "?" ? "ada JTR gardu lain (belum diketahui)" : `dipakai juga JTR ${t.garduBersama}`}
+                </span>
+              )}
             </Tooltip>
           </CircleMarker>
         );

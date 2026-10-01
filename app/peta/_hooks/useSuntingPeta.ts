@@ -89,5 +89,18 @@ export function useSuntingPeta(oleh: string) {
       (n) => `${n} tiang pindah ke jurusan ${jurusan}.`,
     );
 
-  return { geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan, indukJtr, namaJtr, kabelJtr, jurusanJtr };
+  const gabungJtr = (kembar: string, gardu: string, batang: string, alasan: string) =>
+    jalankan<string>("gabung_tiang_jtr", { p_kembar: kembar, p_gardu: gardu, p_batang: batang, p_alasan: alasan, p_nama: oleh },
+      (b) => `Digabung — gardu ${gardu} kini menumpang di batang ${b}.`,
+    );
+
+  const lepasTumpangJtr = (tumpangId: string, alasan: string) =>
+    jalankan<unknown>("lepas_tumpang_jtr", { p_tumpang_id: tumpangId, p_alasan: alasan, p_nama: oleh },
+      () => "Dilepas dari batang.",
+    );
+
+  return {
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan,
+    indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr,
+  };
 }
