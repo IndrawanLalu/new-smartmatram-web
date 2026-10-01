@@ -278,7 +278,10 @@ const Isi = memo(function Isi({
           [t.lat, t.lng],
         ];
         return (
-          <Fragment key={`b-${t.kelompok}-${t.id}`}>
+          // Jenis garis ikut di kunci: berubah jenis = garis digambar ulang.
+          // Leaflet `setStyle` hanya menimpa opsi yang DISEBUT, jadi garis
+          // yang sudah dibetulkan tetap putus-putus kalau cuma gayanya diganti.
+          <Fragment key={`b-${t.kelompok}-${t.id}-${j}`}>
             {j === "ub" && (
               <Polyline positions={posisi} interactive={false} pathOptions={{ color: "#ffffff", weight: 8, opacity: 0.85 }} />
             )}
