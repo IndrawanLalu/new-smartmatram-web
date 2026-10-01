@@ -64,8 +64,10 @@ UNION ALL
 SELECT j.id, j.kode, j.ulp, j.lat, j.lng, j.penanda, j.percabangan,
        'jtr'::text, j.gardu_kode, j.induk_id,
        -- ★ Tiang pertama (tanpa induk) bergaris ke gardunya.
-       CASE WHEN j.induk_id IS NULL THEN g.lat ELSE p.lat END,
-       CASE WHEN j.induk_id IS NULL THEN g.lng ELSE p.lng END,
+       -- Koordinat gardu double precision, tiang numeric(12,8): disamakan ke
+       -- tipe kolom lama view ini (CREATE OR REPLACE tidak boleh mengubahnya).
+       (CASE WHEN j.induk_id IS NULL THEN g.lat::numeric ELSE p.lat END)::numeric(12,8),
+       (CASE WHEN j.induk_id IS NULL THEN g.lng::numeric ELSE p.lng END)::numeric(12,8),
        j.menumpang,
        -- ★ Kabel JTR gardu ini di tiang ini; ≥2 = underbuild JTR.
        (SELECT count(*)::int FROM public.jtr_kabel kb
