@@ -129,14 +129,16 @@ export default function PetaInner({
       style={{ background: "#0b1220" }}
     >
       <LayersControl position="bottomright">
-        <LayersControl.BaseLayer checked name="Citra satelit">
+        {/* Bawaan peta jalan: petaknya jauh lebih ringan dari citra satelit,
+            jadi halaman terbuka cepat. Citra tinggal dipilih di pojok kanan bawah. */}
+        <LayersControl.BaseLayer name="Citra satelit">
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution="Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
             maxZoom={19}
           />
         </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer name="Peta jalan">
+        <LayersControl.BaseLayer checked name="Peta jalan">
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap"
