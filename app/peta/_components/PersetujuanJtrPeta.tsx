@@ -64,13 +64,15 @@ export default function PersetujuanJtrPeta({ d, oleh, onDiputuskan, onSorot }: P
 
   const periksa = banding
     ? [
-        { label: "Temuan", n: banding.temuan.length },
-        { label: "Kabel belum jelas asalnya", n: banding.terputus.length },
-        { label: "Tiang tanpa kabel", n: banding.rute.reduce((s, r) => s + Number(r.tiang_tanpa_kabel ?? 0), 0) },
-        { label: "Usulan titik gardu menunggu", n: usulan ?? 0 },
+        // Temuan hanya dilaporkan — tidak menghalangi (keputusan user 1 Okt
+        // 2026): temuan ditindaklanjuti lewat tab Temuan, bukan ditinjau di sini.
+        { label: "Temuan (tidak menghalangi)", n: banding.temuan.length, kunci: false },
+        { label: "Kabel belum jelas asalnya", n: banding.terputus.length, kunci: true },
+        { label: "Tiang tanpa kabel", n: banding.rute.reduce((s, r) => s + Number(r.tiang_tanpa_kabel ?? 0), 0), kunci: true },
+        { label: "Usulan titik gardu menunggu", n: usulan ?? 0, kunci: true },
       ]
     : [];
-  const bersih = !!banding && usulan !== null && periksa.every((p) => p.n === 0);
+  const bersih = !!banding && usulan !== null && periksa.every((p) => !p.kunci || p.n === 0);
   const perubahan = banding
     ? {
         baru: banding.tiang.filter((t) => t.perubahan === "baru").length,
@@ -117,8 +119,11 @@ export default function PersetujuanJtrPeta({ d, oleh, onDiputuskan, onSorot }: P
         ) : (
           <ul className="mt-1 space-y-0.5">
             {periksa.map((p) => (
-              <li key={p.label} className={`flex items-center gap-2 text-xs ${p.n > 0 ? "text-amber-300" : "text-[#5eead4]"}`}>
-                {p.n > 0 ? <TriangleAlert size={12} /> : <CheckCircle2 size={12} />}
+              <li
+                key={p.label}
+                className={`flex items-center gap-2 text-xs ${p.n > 0 && p.kunci ? "text-amber-300" : p.n > 0 ? "text-gray-400" : "text-[#5eead4]"}`}
+              >
+                {p.n > 0 && p.kunci ? <TriangleAlert size={12} /> : <CheckCircle2 size={12} />}
                 <span className="flex-1">{p.label}</span>
                 <span className="tabular-nums font-semibold">{p.n}</span>
               </li>

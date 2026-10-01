@@ -63,8 +63,9 @@ interface Props {
   simulasi: HasilSimulasi | null;
   kesehatan: KesehatanGardu[];
   onPilihKesehatan: (g: KesehatanGardu) => void;
-  /** Nama tiang tertulis tetap di peta. */
+  /** Nama tiang / nomor kabel JTR tertulis tetap di peta. */
   namaTiang: boolean;
+  nomorKabel: boolean;
   /** Antrean persetujuan JTR (null = lapisannya padam) & tiang yang berubah
    *  dalam inspeksi yang sedang dibuka. */
   antrean: AntreanJtr[] | null;
@@ -124,7 +125,7 @@ const IKON_GARDU = L.divIcon({
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, antrean, onPilihAntrean, sorotPerubahan,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan,
 }: Props) {
   return (
     <MapContainer
@@ -162,7 +163,7 @@ export default function PetaInner({
         rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
       />
-      <LapisanNama tiang={tiang} aktif={namaTiang} />
+      <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       <LapisanPersetujuan antrean={antrean} onPilih={onPilihAntrean} sorot={sorotPerubahan} />
       <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
       <LapisanSimulasi hasil={simulasi} />

@@ -38,6 +38,8 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
   const [hilir, setHilir] = useState(true);
   const [kabel, setKabel] = useState<{ nomor: number; jenis: string; ukuran: string }>({ nomor: 1, jenis: "", ukuran: "" });
   const [sibuk, setSibuk] = useState(false);
+  /** Koreksi cepat nomor kabel: ikut tiang sesudahnya (bawaan) atau tiang ini saja. */
+  const [hilirCepat, setHilirCepat] = useState(true);
 
   const jalankan = async (fn: () => Promise<boolean>) => {
     setSibuk(true);
@@ -107,13 +109,39 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
                   </span>
                 )}
                 {boleh && mode === null && (
-                  <button onClick={() => bukaKabel(k)} className="text-gray-400 hover:text-white" aria-label={`Ubah ${namaKabel(k.nomor)}`}>
-                    <Pencil size={12} />
-                  </button>
+                  <>
+                    {/* Sekali ketuk: ganti nomor. Jenis/ukuran lewat pensil. */}
+                    <span className="flex gap-0.5" aria-label="Ganti nomor kabel">
+                      {[1, 2, 3].map((n) => (
+                        <button
+                          key={n}
+                          onClick={() => n !== k.nomor && void jalankan(() => onKabel(k.nomor, n, "", "", hilirCepat))}
+                          disabled={sibuk || n === k.nomor}
+                          className={`w-5 h-5 rounded text-[10px] font-bold border ${
+                            n === k.nomor
+                              ? "border-[#00897B] bg-[#00897B]/30 text-[#5eead4]"
+                              : "border-[#1e3552] text-gray-400 hover:text-white hover:border-gray-400"
+                          }`}
+                          title={n === k.nomor ? "Nomor sekarang" : `Jadikan kabel ke-${n}`}
+                        >
+                          {n}
+                        </button>
+                      ))}
+                    </span>
+                    <button onClick={() => bukaKabel(k)} className="text-gray-400 hover:text-white" aria-label={`Ubah ${namaKabel(k.nomor)}`}>
+                      <Pencil size={12} />
+                    </button>
+                  </>
                 )}
               </li>
             ))}
           </ul>
+        )}
+        {boleh && mode === null && j.kabel.length > 0 && (
+          <label className="flex items-center gap-2 text-[11px] text-gray-400 mt-1.5">
+            <input type="checkbox" checked={hilirCepat} onChange={(e) => setHilirCepat(e.target.checked)} />
+            Ganti nomor juga di tiang sesudahnya
+          </label>
         )}
         {j.kabel.some((k) => k.putus) && (
           <p className="text-[11px] text-[#FB7185] mt-1.5 leading-relaxed">

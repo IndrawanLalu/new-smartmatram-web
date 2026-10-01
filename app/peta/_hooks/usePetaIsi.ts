@@ -78,6 +78,8 @@ export interface TiangPeta {
   diJtm: boolean;
   /** JTR: gardu lain di batang ini ("AM071", "?" = dinyatakan regu, kode belum diketahui). */
   garduBersama: string | null;
+  /** JTR: nomor kabel gardu ini di tiang ini — "1", "1,2", "3". */
+  nomorKabel: string | null;
 }
 
 export interface GarduPeta {
@@ -206,7 +208,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -227,6 +229,7 @@ export function usePetaIsi(
           kabelPutus: !!x.kabel_putus,
           diJtm: !!x.di_jtm,
           garduBersama: (x.gardu_bersama as string) ?? null,
+          nomorKabel: (x.nomor_kabel as string) ?? null,
         }));
       }
 

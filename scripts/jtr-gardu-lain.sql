@@ -13,7 +13,8 @@
 --   2. koreksi_tiang                   — menyimpan keduanya, tercatat di audit.
 --   3. kirim_tiang_jtr                 — meneruskannya dari isian HP.
 --   4. peta_tiang.gardu_bersama        — gardu lain di batang ini (tercatat
---                                        maupun dinyatakan) untuk penanda peta.
+--                                        maupun dinyatakan) untuk penanda peta;
+--      peta_tiang.nomor_kabel          — "1", "1,2", "3": label Nomor kabel.
 --   5. gabung_tiang_jtr                — tiang kembar (gardu kedua melahirkan
 --                                        batang baru di batang yang sama) dijadikan
 --                                        pinjaman batang aslinya.
@@ -366,7 +367,8 @@ SELECT t.id,
        NULL::int            AS jumlah_kabel,
        false                AS kabel_putus,
        false                AS di_jtm,
-       NULL::text           AS gardu_bersama
+       NULL::text           AS gardu_bersama,
+       NULL::text           AS nomor_kabel
 FROM public.tiang t
 JOIN public.tiang_kode_penyulang k ON k.tiang_id = t.id
 LEFT JOIN public.tiang p ON p.id = t.induk_id AND p.status_hidup = 'aktif'
@@ -377,7 +379,7 @@ UNION ALL
 
 SELECT t.id, t.kode, t.ulp, t.lat, t.lng, t.penanda, t.percabangan,
        'jtm'::text, t.penyulang, t.induk_id, p.lat, p.lng, false,
-       NULL::int, false, false, NULL::text
+       NULL::int, false, false, NULL::text, NULL::text
 FROM public.tiang t
 LEFT JOIN public.tiang p ON p.id = t.induk_id AND p.status_hidup = 'aktif'
 WHERE t.gardu_kode IS NULL
@@ -422,7 +424,12 @@ SELECT j.id, j.kode, j.ulp, j.lat, j.lng, j.penanda, j.percabangan,
                 AND NOT EXISTS (SELECT 1 FROM public.jtr_tiang o2
                                  WHERE o2.id = j.id AND upper(o2.gardu_kode) = upper(bt.jtr_gardu_lain_kode) AND o2.status_hidup = 'aktif')
              THEN upper(bt.jtr_gardu_lain_kode)
-         END), '')
+         END), ''),
+       -- ★ Nomor kabel gardu ini di tiang ini, mis. "1", "1,2", "3" — untuk
+       -- label "Nomor kabel" di peta. Satu kabel bernomor selain 1 hampir
+       -- selalu salah catat (nomor dihitung per gardu, JTM tidak dihitung).
+       (SELECT string_agg(kb.nomor::text, ',' ORDER BY kb.nomor) FROM public.jtr_kabel kb
+         WHERE kb.tiang_id = j.id AND kb.gardu = upper(j.gardu_kode))
 FROM public.jtr_tiang j
 LEFT JOIN public.tiang p ON p.id = j.induk_id AND p.status_hidup = 'aktif'
 LEFT JOIN public.gardu g ON upper(g.kode) = upper(j.gardu_kode) AND upper(g.ulp) = upper(j.ulp)

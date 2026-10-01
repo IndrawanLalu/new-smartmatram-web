@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Gauge, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Gauge, Hash, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
 import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
@@ -131,6 +131,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   };
 
   const [namaTiang, setNamaTiang] = useState(false);
+  // Nomor kabel JTR di tiap tiang — yang paling sering dicek admin (1/2/3).
+  const [nomorKabel, setNomorKabel] = useState(false);
 
   // ── Persetujuan inspeksi JTR dari peta ─────────────────────────────────────
   const antreanJtr = useAntreanJtr(ulp);
@@ -371,6 +373,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           kesehatan={kesehatan.gardu}
           onPilihKesehatan={pilihKesehatan}
           namaTiang={namaTiang}
+          nomorKabel={nomorKabel}
           antrean={antreanAktif ? antreanJtr.antrean : null}
           onPilihAntrean={pilihAntrean}
           sorotPerubahan={sorotBanding?.tiang ?? null}
@@ -584,9 +587,9 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               Terlalu banyak tiang di layar — sebagian tidak digambar
             </div>
           )}
-          {namaTiang && tiang.length > BATAS_NAMA && (
+          {(namaTiang || nomorKabel) && tiang.length > BATAS_NAMA && (
             <div className="rounded-lg bg-[#0b1220]/85 text-[#e2e8f0] px-2.5 py-1.5 border" style={{ borderColor: GARIS }}>
-              Nama tiang tampil setelah diperbesar ({tiang.length} tiang di layar, maks {BATAS_NAMA})
+              Label tiang tampil setelah diperbesar ({tiang.length} tiang di layar, maks {BATAS_NAMA})
             </div>
           )}
         </div>
@@ -650,6 +653,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             title="Tulis nama tiap tiang di peta"
           >
             <Tags size={15} /> Nama tiang
+          </button>
+          <button
+            onClick={() => setNomorKabel((v) => !v)}
+            className={`${TOMBOL_ATAS} ${nomorKabel ? "ring-1 ring-[#00897B]" : ""}`}
+            style={{ background: nomorKabel ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Tulis nomor kabel JTR tiap tiang — merah = satu kabel bernomor selain 1 (hampir pasti salah catat)"
+          >
+            <Hash size={15} /> Nomor kabel
           </button>
           <button
             onClick={() => setKesehatanAktif((v) => !v)}
