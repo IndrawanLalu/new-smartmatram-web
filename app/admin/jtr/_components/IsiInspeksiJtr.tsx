@@ -7,6 +7,7 @@ import { EYEBROW } from "@/app/admin/_ui";
 import type { Banding, InspeksiMenunggu } from "../_hooks/useApprovalJtr";
 import type { TitikTiang } from "./PetaUsulan";
 import UsulanTitikJtr from "./UsulanTitikJtr";
+import DaftarTemuanJtr from "./DaftarTemuanJtr";
 import { km, rentangKerja } from "../_lib/tampilan";
 
 const PetaPerbandingan = dynamic(() => import("./PetaPerbandingan"), {
@@ -174,20 +175,7 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh }: P
         {aktif.petugas_2 ? ` · ${aktif.petugas_2}` : ""}
       </div>
 
-      {banding && banding.temuan.length > 0 && (
-        <div>
-          <p className={EYEBROW}>Temuan pada inspeksi ini</p>
-          <ul className="mt-2 grid sm:grid-cols-2 gap-1.5">
-            {banding.temuan.map((t, i) => (
-              <li key={`${t.tiang_kode}-${t.temuan}-${i}`} className="flex items-center gap-2 text-sm rounded-lg border border-line px-3 py-1.5">
-                <TriangleAlert size={14} className={t.urgensi === "Tinggi" ? "text-red-600" : "text-attention"} />
-                <span className="font-semibold text-ink">{t.tiang_kode}</span>
-                <span className="text-ink-soft truncate">{t.temuan}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {banding && <DaftarTemuanJtr temuan={banding.temuan} />}
 
       {aktif.catatan && (
         <p className="text-sm text-ink-soft">

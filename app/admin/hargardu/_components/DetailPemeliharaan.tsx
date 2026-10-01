@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { BTN_PRIMARY, BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
 import { useToast } from "@/app/admin/_components/Toast";
+import { fotoKecil } from "@/lib/fotoKecil";
 import {
   ambilRincian,
   ketidakseimbangan,
@@ -22,21 +23,10 @@ const tgl = (iso: string | null) =>
       })
     : "—";
 
-/**
- * Minta Supabase memperkecil gambarnya SEBELUM dikirim ke browser.
- *
- * Foto lapangan 3072x4096 — 12,6 megapiksel. Kompresi menekan ukuran BERKAS;
- * yang membuat browser berat adalah jumlah PIKSEL yang harus dibongkar. Empat
- * belas foto berarti 176 megapiksel dan sekitar 700 MB bitmap di memori, hanya
- * untuk digambar setinggi 80 piksel.
- *
- * Tautan "buka" tetap menunjuk berkas aslinya — admin yang membaca nomor seri
- * di nama plat butuh ketelitian penuh.
- */
-const kecilkan = (url: string, lebar: number) =>
-  url.includes("/object/public/")
-    ? `${url.replace("/object/public/", "/render/image/public/")}?width=${lebar}&quality=65`
-    : url;
+/** Gambar mini diperkecil Supabase (`lib/fotoKecil`). Tautan "buka" tetap
+ *  menunjuk berkas aslinya — admin yang membaca nomor seri di nama plat butuh
+ *  ketelitian penuh. */
+const kecilkan = fotoKecil;
 
 const NAMA_FIELD: Record<string, string> = {
   daya: "Daya (kVA)", merk: "Merk", no_seri: "Nomor seri",
