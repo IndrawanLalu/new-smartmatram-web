@@ -129,7 +129,12 @@ export function usePetaIsi(
     const urut = ++urutRef.current;
     const jtm = pilihan.filter((p) => p.jaringan === "jtm").map((p) => p.kode);
     const jtr = pilihan.filter((p) => p.jaringan === "jtr").map((p) => p.kode);
-    const gPilih = pilihan.filter((p) => p.jaringan === "gardu").map((p) => p.kode);
+    // Gardu yang lapisan JTR-nya dinyalakan ikut tampil — jaringan JTR tanpa
+    // gardunya adalah garis yang berpangkal di udara.
+    const gPilih = [...new Set([
+      ...pilihan.filter((p) => p.jaringan === "gardu").map((p) => p.kode),
+      ...jtr,
+    ])];
 
     if (jtm.length === 0 && jtr.length === 0 && gPilih.length === 0 && !tampilGardu) {
       setRute([]); setTiang([]); setGardu([]); setTerpotong(false);

@@ -3,7 +3,8 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, Gauge, Loader2, PanelLeftOpen, TriangleAlert } from "lucide-react";
+import { Activity, ArrowLeft, Gauge, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert } from "lucide-react";
+import { BATAS_NAMA } from "./LapisanNama";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { usePetaDaftar, type Jaringan } from "../_hooks/usePetaDaftar";
@@ -72,7 +73,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [fokus, setFokus] = useState<[[number, number], [number, number]] | null>(null);
   const [panel, setPanel] = useState(true);
 
-  const { perFolder, semuaLapisan, loading, error } = usePetaDaftar(ulp || null);
+  const { perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
   const penanda = usePenandaJtm();
 
   const pilihan = useMemo(
@@ -109,6 +110,21 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
         [h.batas[0], h.batas[1]],
         [h.batas[2], h.batas[3]],
       ]);
+    }
+  };
+
+  const [namaTiang, setNamaTiang] = useState(false);
+  const [memuatUlang, setMemuatUlang] = useState(false);
+
+  /** Muat ulang isi peta yang terlihat + daftar lapisan + rincian yang
+   *  terbuka — tanpa memuat ulang halaman (pilihan lapisan & posisi tetap). */
+  const muatUlangSemua = async () => {
+    setMemuatUlang(true);
+    objek.muatUlang();
+    try {
+      await Promise.all([muatDaftar(), muatUlangPeta()]);
+    } finally {
+      setMemuatUlang(false);
     }
   };
 
@@ -277,6 +293,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           simulasi={simulasi.hasil}
           kesehatan={kesehatan.gardu}
           onPilihKesehatan={pilihKesehatan}
+          namaTiang={namaTiang}
         />
 
         {terpilih && (
@@ -444,9 +461,31 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
               Terlalu banyak tiang di layar — sebagian tidak digambar
             </div>
           )}
+          {namaTiang && tiang.length > BATAS_NAMA && (
+            <div className="rounded-lg bg-[#0b1220]/85 text-[#e2e8f0] px-2.5 py-1.5 border" style={{ borderColor: GARIS }}>
+              Nama tiang tampil setelah diperbesar ({tiang.length} tiang di layar, maks {BATAS_NAMA})
+            </div>
+          )}
         </div>
 
         <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+          <button
+            onClick={() => void muatUlangSemua()}
+            disabled={memuatUlang}
+            className={TOMBOL_ATAS}
+            style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Muat ulang isi peta sesudah menyunting — pilihan lapisan & posisi tetap"
+          >
+            <RefreshCw size={15} className={memuatUlang ? "animate-spin" : ""} /> Muat ulang
+          </button>
+          <button
+            onClick={() => setNamaTiang((v) => !v)}
+            className={`${TOMBOL_ATAS} ${namaTiang ? "ring-1 ring-[#00897B]" : ""}`}
+            style={{ background: namaTiang ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Tulis nama tiap tiang di peta"
+          >
+            <Tags size={15} /> Nama tiang
+          </button>
           <button
             onClick={() => setKesehatanAktif((v) => !v)}
             className={`${TOMBOL_ATAS} ${kesehatanAktif ? "ring-1 ring-[#00897B]" : ""}`}
