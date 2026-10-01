@@ -335,16 +335,18 @@ const Isi = memo(function Isi({
             radius={t.percabangan ? 6 : 5}
             eventHandlers={{ click: () => onPilihTiang(t) }}
             pathOptions={
-              t.menumpang
-                ? { color: warna, weight: 2.5, fillColor: gaya.menumpang, fillOpacity: 1 }
-                : { color: "#fff", weight: 1, fillColor: warna, fillOpacity: 1 }
+              t.diJtm
+                ? { color: warna, weight: 2.5, fillColor: gaya.jtrDiJtm, fillOpacity: 1 }
+                : t.menumpang
+                  ? { color: warna, weight: 2.5, fillColor: gaya.menumpang, fillOpacity: 1 }
+                  : { color: "#fff", weight: 1, fillColor: warna, fillOpacity: 1 }
             }
           >
             <Tooltip direction="top" offset={[0, -6]} sticky>
               <span className="text-[11px] font-semibold">{t.kode}</span>
               <span className="block text-[10px]">
                 {t.kelompok}
-                {t.menumpang ? " · menumpang" : ""}
+                {t.diJtm ? " · di tiang JTM" : t.menumpang ? " · menumpang" : ""}
               </span>
             </Tooltip>
           </CircleMarker>

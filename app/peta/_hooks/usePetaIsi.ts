@@ -73,6 +73,9 @@ export interface TiangPeta {
   jumlahKabel: number | null;
   /** JTR: ada kabel yang belum jelas datang dari tiang mana. */
   kabelPutus: boolean;
+  /** JTR yang berdiri di tiang JTM (dicatat "ada JTM di atasnya", atau batang
+   *  pinjamannya tiang JTM). */
+  diJtm: boolean;
 }
 
 export interface GarduPeta {
@@ -201,7 +204,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -220,6 +223,7 @@ export function usePetaIsi(
           menumpang: !!x.menumpang,
           jumlahKabel: x.jumlah_kabel === null || x.jumlah_kabel === undefined ? null : Number(x.jumlah_kabel),
           kabelPutus: !!x.kabel_putus,
+          diJtm: !!x.di_jtm,
         }));
       }
 

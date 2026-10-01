@@ -17,6 +17,8 @@ export interface GayaPeta {
   jtr: string;
   /** Tiang yang menumpang — batangnya milik penyulang/gardu lain. */
   menumpang: string;
+  /** Tiang JTR yang berdiri di tiang JTM. */
+  jtrDiJtm: string;
   /** Gawang JTR berkabel ≥2. */
   jtrUb: string;
   /** Kabel JTR yang belum jelas datang dari tiang mana. */
@@ -28,7 +30,8 @@ export interface GayaPeta {
 export const GAYA_BAWAAN: GayaPeta = {
   jtm: WARNA.jtm,
   jtr: WARNA.jtr,
-  menumpang: "#000000",
+  menumpang: "#FFFFFF",
+  jtrDiJtm: "#000000",
   jtrUb: WARNA.jtrUb,
   putus: WARNA.putus,
   tandaPutus: true,
