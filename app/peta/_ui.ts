@@ -28,6 +28,10 @@ export const WARNA = {
   // KONDISI, bukan jenisnya, jadi tidak ada warna gardu baku yang dilanggar.
   gardu: "#EF4444",
   rute: "#F59E0B",
+  /** Gawang JTR berkabel ≥2 (underbuild JTR) — ungu, rona yang belum terpakai. */
+  jtrUb: "#A855F7",
+  /** Kabel JTR yang belum jelas datang dari tiang mana — putus-putus. */
+  putus: "#FB7185",
 } as const;
 
 export const INPUT =

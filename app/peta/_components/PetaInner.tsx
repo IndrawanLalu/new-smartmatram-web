@@ -63,7 +63,16 @@ interface Props {
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
 // yang digambar di sini TIDAK BISA berbeda — di situlah panel berhenti jadi
 // daftar dan mulai jadi legenda.
-const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU } = WARNA;
+const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU, jtrUb: WARNA_JTR_UB, putus: WARNA_PUTUS } = WARNA;
+
+/** Gaya garis tiang → induknya. JTR: underbuild (≥2 kabel) ungu tebal; kabel
+ *  yang belum jelas asalnya merah muda putus-putus — gawang itu yang dibetulkan. */
+const gayaGaris = (t: TiangPeta) => {
+  if (t.jaringan !== "jtr") return { color: WARNA_JTM, weight: 2, opacity: 0.9 };
+  if (t.kabelPutus) return { color: WARNA_PUTUS, weight: 3, opacity: 1, dashArray: "6 5" };
+  if ((t.jumlahKabel ?? 0) >= 2) return { color: WARNA_JTR_UB, weight: 4, opacity: 0.95 };
+  return { color: WARNA_JTR, weight: 2, opacity: 0.9 };
+};
 
 /**
  * Ikon rumah untuk gardu — bentuk yang sama dengan `/admin/peta-gardu`, supaya
@@ -248,14 +257,16 @@ const Isi = memo(function Isi({
               [t.indukLat, t.indukLng],
               [t.lat, t.lng],
             ]}
-            pathOptions={{
-              color: t.jaringan === "jtr" ? WARNA_JTR : WARNA_JTM,
-              weight: 2,
-              opacity: 0.9,
-            }}
+            pathOptions={gayaGaris(t)}
           >
             <Tooltip sticky>
               <span className="text-[11px]">{t.kelompok}</span>
+              {t.jaringan === "jtr" && (t.jumlahKabel ?? 0) >= 2 && (
+                <span className="block text-[10px]">underbuild JTR · {t.jumlahKabel} kabel</span>
+              )}
+              {t.kabelPutus && (
+                <span className="block text-[10px]">{t.kode}: kabel belum jelas datang dari tiang mana</span>
+              )}
             </Tooltip>
           </Polyline>
         ) : null,

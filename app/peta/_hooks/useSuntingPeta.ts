@@ -62,5 +62,32 @@ export function useSuntingPeta(oleh: string) {
       "Tiang dibatalkan (salah input).",
     );
 
-  return { geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan };
+  // ── JTR, per gardu (`scripts/peta-koreksi-jtr.sql`) ──
+  const indukJtr = (id: string, gardu: string, indukId: string | null, alasan: string) =>
+    jalankan<string>("koreksi_induk_jtr", { p_id: id, p_gardu: gardu, p_induk_id: indukId, p_alasan: alasan, p_nama: oleh },
+      (k) => (k === "(gardu)" ? "Tiang kini berpangkal langsung di gardu." : `Induk diganti ke ${k}.`),
+    );
+
+  const namaJtr = (id: string, gardu: string, kode: string) =>
+    jalankan<string>("ubah_nama_tiang_jtr", { p_id: id, p_gardu: gardu, p_kode: kode, p_nama: oleh },
+      (k) => `Nama tiang kini ${k}.`,
+    );
+
+  const kabelJtr = (
+    id: string, gardu: string, lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean,
+  ) =>
+    jalankan<{ diubah: number; dilewati: string[] }>(
+      "ubah_kabel_jtr",
+      { p_id: id, p_gardu: gardu, p_nomor_lama: lama, p_nomor_baru: baru, p_jenis: jenis || null, p_ukuran: ukuran || null, p_hilir: hilir, p_nama: oleh },
+      (d) =>
+        `Kabel diperbarui di ${d.diubah} tiang.` +
+        (d.dilewati.length ? ` Dilewati (sudah punya kabel ke-${baru}): ${d.dilewati.join(", ")}.` : ""),
+    );
+
+  const jurusanJtr = (id: string, gardu: string, jurusan: string, hilir: boolean) =>
+    jalankan<number>("ubah_jurusan_tiang_jtr", { p_id: id, p_gardu: gardu, p_jurusan: jurusan, p_hilir: hilir, p_nama: oleh },
+      (n) => `${n} tiang pindah ke jurusan ${jurusan}.`,
+    );
+
+  return { geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan, indukJtr, namaJtr, kabelJtr, jurusanJtr };
 }

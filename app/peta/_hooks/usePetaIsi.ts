@@ -69,6 +69,10 @@ export interface TiangPeta {
   /** Tiang ini bukan milik penyulang/gardu yang sedang dinyalakan — kabelnya
    *  menumpang di batang orang lain. */
   menumpang: boolean;
+  /** JTR: jumlah kabel gardu ini di tiang ini — ≥2 = underbuild JTR. */
+  jumlahKabel: number | null;
+  /** JTR: ada kabel yang belum jelas datang dari tiang mana. */
+  kabelPutus: boolean;
 }
 
 export interface GarduPeta {
@@ -192,7 +196,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -209,6 +213,8 @@ export function usePetaIsi(
           indukLat: x.induk_lat !== null ? Number(x.induk_lat) : null,
           indukLng: x.induk_lng !== null ? Number(x.induk_lng) : null,
           menumpang: !!x.menumpang,
+          jumlahKabel: x.jumlah_kabel === null || x.jumlah_kabel === undefined ? null : Number(x.jumlah_kabel),
+          kabelPutus: !!x.kabel_putus,
         }));
       }
 

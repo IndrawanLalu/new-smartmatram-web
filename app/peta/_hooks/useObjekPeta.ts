@@ -11,7 +11,7 @@ import type { KesehatanGardu } from "./useKesehatanPeta";
  */
 
 export type Terpilih =
-  | { jenis: "tiang"; id: string; kelompok: string; lat: number; lng: number; kode: string }
+  | { jenis: "tiang"; id: string; kelompok: string; lat: number; lng: number; kode: string; jaringan?: "jtm" | "jtr" }
   | { jenis: "gardu"; kode: string; ulp: string; lat: number; lng: number };
 
 export interface RincianTiang {
@@ -39,6 +39,27 @@ export interface RincianTiang {
   induk: string | null;
   /** Keadaan terakhir yang BUKAN normal — temuan terbuka. */
   temuan: { item: string; bagian: string; nilai: string }[];
+  /** Diisi bila tiang dipilih dari lapisan JTR: data tiang ini DI GARDU ITU
+   *  (nama, jurusan, induk, kabel) — bisa berbeda dari batangnya bila menumpang. */
+  jtr: RincianJtr | null;
+}
+
+export interface KabelJtr {
+  nomor: number;
+  jenis: string | null;
+  ukuran: string | null;
+  kondisi: string | null;
+  /** Kabel ini belum jelas datang dari tiang mana (`jtr_gawang_terputus`). */
+  putus: boolean;
+}
+
+export interface RincianJtr {
+  gardu: string;
+  kode: string;
+  jurusan: string | null;
+  menumpang: boolean;
+  indukKode: string | null;
+  kabel: KabelJtr[];
 }
 
 export interface RincianGardu {
@@ -61,12 +82,45 @@ export interface PilihanAtribut {
   jenis: string[];
   konstruksi: string[];
   tinggi: string[];
+  kabelJenis: string[];
+  kabelUkuran: string[];
+}
+
+async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
+  const [j, k, p] = await Promise.all([
+    supabaseBrowser.from("jtr_tiang").select("kode,jurusan,induk_id,menumpang")
+      .eq("id", id).ilike("gardu_kode", gardu).eq("status_hidup", "aktif").maybeSingle(),
+    supabaseBrowser.from("jtr_kabel").select("nomor,jenis,ukuran,kondisi").eq("tiang_id", id).eq("gardu", gardu.toUpperCase()).order("nomor"),
+    supabaseBrowser.from("jtr_gawang_terputus").select("nomor_kabel").eq("tiang_id", id).ilike("gardu_kode", gardu),
+  ]);
+  if (j.error) throw new Error(j.error.message);
+  if (!j.data) return null;
+  let indukKode: string | null = null;
+  if (j.data.induk_id) {
+    const i = await supabaseBrowser.from("jtr_tiang").select("kode").eq("id", j.data.induk_id).ilike("gardu_kode", gardu).maybeSingle();
+    indukKode = (i.data?.kode as string) ?? null;
+  }
+  const putus = new Set((p.data ?? []).map((x) => Number(x.nomor_kabel)));
+  return {
+    gardu: gardu.toUpperCase(),
+    kode: j.data.kode as string,
+    jurusan: (j.data.jurusan as string) ?? null,
+    menumpang: !!j.data.menumpang,
+    indukKode,
+    kabel: (k.data ?? []).map((x) => ({
+      nomor: Number(x.nomor),
+      jenis: (x.jenis as string) ?? null,
+      ukuran: (x.ukuran as string) ?? null,
+      kondisi: (x.kondisi as string) ?? null,
+      putus: putus.has(Number(x.nomor)),
+    })),
+  };
 }
 
 const KOLOM_TIANG =
   "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng";
 
-async function muatTiang(id: string): Promise<RincianTiang> {
+async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTiang> {
   const [t, n, k] = await Promise.all([
     supabaseBrowser.from("tiang").select(KOLOM_TIANG).eq("id", id).single(),
     supabaseBrowser.from("tiang_kode_penyulang").select("penyulang,kode,utama").eq("tiang_id", id),
@@ -78,6 +132,7 @@ async function muatTiang(id: string): Promise<RincianTiang> {
   ]);
   if (t.error) throw new Error(t.error.message);
   const r = t.data as Record<string, unknown>;
+  const jtr = garduJtr ? await muatJtr(id, garduJtr) : null;
   let induk: string | null = null;
   if (r.induk_id) {
     const i = await supabaseBrowser.from("tiang").select("kode").eq("id", r.induk_id as string).maybeSingle();
@@ -91,6 +146,7 @@ async function muatTiang(id: string): Promise<RincianTiang> {
     lng: Number(r.lng),
     nama: (n.data ?? []) as RincianTiang["nama"],
     induk,
+    jtr,
     temuan: (k.data ?? []).map((x) => ({
       item: x.item_nama as string,
       bagian: x.bagian as string,
@@ -129,25 +185,31 @@ async function muatGardu(kode: string, ulp: string): Promise<RincianGardu> {
 async function muatPilihan(jtr: boolean): Promise<PilihanAtribut> {
   if (jtr) {
     const { data } = await supabaseBrowser
-      .from("jtr_ref").select("kategori,kode").in("kategori", ["jenis_tiang", "ukuran_tiang"]).eq("aktif", true).order("urutan");
+      .from("jtr_ref").select("kategori,kode")
+      .in("kategori", ["jenis_tiang", "ukuran_tiang", "jenis_kabel", "ukuran_kabel"]).eq("aktif", true).order("urutan");
     const per = (k: string) => (data ?? []).filter((x) => x.kategori === k).map((x) => x.kode as string);
-    return { jenis: per("jenis_tiang"), konstruksi: [], tinggi: per("ukuran_tiang") };
+    return {
+      jenis: per("jenis_tiang"), konstruksi: [], tinggi: per("ukuran_tiang"),
+      kabelJenis: per("jenis_kabel"), kabelUkuran: per("ukuran_kabel"),
+    };
   }
   // tiang.jenis & tiang.konstruksi menyimpan LABEL pilihan (jtm_koreksi_master).
   const { data } = await supabaseBrowser
     .from("jtm_opsi_ref").select("item_kode,label").in("item_kode", ["jenis_tiang", "konstruksi", "konstruksi_mvtic"]).eq("aktif", true).order("urutan");
   const per = (k: string[]) => (data ?? []).filter((x) => k.includes(x.item_kode as string)).map((x) => x.label as string);
-  return { jenis: per(["jenis_tiang"]), konstruksi: per(["konstruksi", "konstruksi_mvtic"]), tinggi: [] };
+  return { jenis: per(["jenis_tiang"]), konstruksi: per(["konstruksi", "konstruksi_mvtic"]), tinggi: [], kabelJenis: [], kabelUkuran: [] };
 }
 
 export function useObjekPeta(terpilih: Terpilih | null) {
   const [tiang, setTiang] = useState<RincianTiang | null>(null);
   const [gardu, setGardu] = useState<RincianGardu | null>(null);
-  const [pilihan, setPilihan] = useState<PilihanAtribut>({ jenis: [], konstruksi: [], tinggi: [] });
+  const [pilihan, setPilihan] = useState<PilihanAtribut>({ jenis: [], konstruksi: [], tinggi: [], kabelJenis: [], kabelUkuran: [] });
   const [galat, setGalat] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
 
-  const kunci = terpilih ? (terpilih.jenis === "tiang" ? `t:${terpilih.id}` : `g:${terpilih.kode}:${terpilih.ulp}`) : "";
+  const kunci = terpilih
+    ? terpilih.jenis === "tiang" ? `t:${terpilih.id}:${terpilih.kelompok}` : `g:${terpilih.kode}:${terpilih.ulp}`
+    : "";
 
   useEffect(() => {
     let hidup = true;
@@ -155,8 +217,9 @@ export function useObjekPeta(terpilih: Terpilih | null) {
     const kerja = async () => {
       try {
         if (terpilih.jenis === "tiang") {
-          const t = await muatTiang(terpilih.id);
-          const p = await muatPilihan(!!t.gardu_kode);
+          const garduJtr = terpilih.jaringan === "jtr" ? terpilih.kelompok : null;
+          const t = await muatTiang(terpilih.id, garduJtr);
+          const p = await muatPilihan(!!garduJtr || !!t.gardu_kode);
           if (hidup) { setTiang(t); setGardu(null); setPilihan(p); setGalat(null); }
         } else {
           const g = await muatGardu(terpilih.kode, terpilih.ulp);

@@ -94,6 +94,8 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
   const [modeInduk, setModeInduk] = useState(false);
   const [calonInduk, setCalonInduk] = useState<TiangPeta | null>(null);
+  /** Ganti induk JTR wajib beralasan — diisi di panel, dipakai saat tiang diklik. */
+  const [alasanInduk, setAlasanInduk] = useState("");
   const objek = useObjekPeta(terpilih);
   const sunting = useSuntingPeta(oleh);
   const simulasi = useSimulasiBuka();
@@ -137,10 +139,13 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
     (t: TiangPeta) => {
       if (geser) return;
       if (modeInduk) {
-        if (terpilih?.jenis === "tiang" && t.id !== terpilih.id) setCalonInduk(t);
+        if (terpilih?.jenis !== "tiang" || t.id === terpilih.id) return;
+        // Induk JTR harus tiang JTR gardu yang sama.
+        if (terpilih.jaringan === "jtr" && (t.jaringan !== "jtr" || t.kelompok !== terpilih.kelompok)) return;
+        setCalonInduk(t);
         return;
       }
-      setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode });
+      setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
     [geser, modeInduk, terpilih],
   );
@@ -157,6 +162,23 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
     setTerpilih(null);
     setGeser(null);
     setModeInduk(false);
+    setAlasanInduk("");
+  };
+
+  /** Koreksi JTR: semua per gardu yang sedang dipilih (`terpilih.kelompok`). */
+  const koreksiJtr = async (fn: (id: string, gardu: string) => Promise<boolean>) => {
+    if (terpilih?.jenis !== "tiang" || terpilih.jaringan !== "jtr") return false;
+    const ok = await fn(terpilih.id, terpilih.kelompok);
+    if (ok) segarkan();
+    return ok;
+  };
+  const gantiIndukJtr = async (indukId: string | null) => {
+    const ok = await koreksiJtr((id, g) => sunting.indukJtr(id, g, indukId, alasanInduk));
+    if (ok) {
+      setModeInduk(false);
+      setAlasanInduk("");
+    }
+    return ok;
   };
 
   const simpanGeser = async (alasan: string) => {
@@ -300,6 +322,17 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
             simulasiSibuk={simulasi.sibuk}
             onSimulasi={() => void jalankanSimulasi()}
             onTutupSimulasi={simulasi.tutup}
+            alasanInduk={alasanInduk}
+            onAlasanInduk={setAlasanInduk}
+            onPangkalGardu={() => gantiIndukJtr(null)}
+            onNamaJtr={async (kode) => {
+              const ok = await koreksiJtr((id, g) => sunting.namaJtr(id, g, kode));
+              if (ok && terpilih.jenis === "tiang") setTerpilih({ ...terpilih, kode: kode.trim().toUpperCase() });
+              return ok;
+            }}
+            onKabelJtr={(lama, baru, jenis, ukuran, hilir) =>
+              koreksiJtr((id, g) => sunting.kabelJtr(id, g, lama, baru, jenis, ukuran, hilir))}
+            onJurusanJtr={(jurusan, hilir) => koreksiJtr((id, g) => sunting.jurusanJtr(id, g, jurusan, hilir))}
           />
         )}
 
@@ -333,7 +366,25 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           </div>
         )}
 
-        {calonInduk && terpilih?.jenis === "tiang" && (
+        {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan === "jtr" && (
+          <ConfirmDialog
+            title={`Jadikan ${calonInduk.kode} induk ${terpilih.kode}?`}
+            message={
+              alasanInduk.trim()
+                ? `Kabel JTR gardu ${terpilih.kelompok} di tiang ini akan menyambung dari ${calonInduk.kode}. Nama tiang tidak berubah otomatis — ganti namanya bila perlu.`
+                : "Isi dulu alasannya di panel kanan."
+            }
+            confirmLabel="Ganti induk"
+            onConfirm={async () => {
+              const t = calonInduk;
+              setCalonInduk(null);
+              if (alasanInduk.trim()) await gantiIndukJtr(t.id);
+            }}
+            onClose={() => setCalonInduk(null)}
+          />
+        )}
+
+        {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan !== "jtr" && (
           <ConfirmDialog
             title={`Jadikan ${calonInduk.kode} induk ${terpilih.kode}?`}
             message="Jalur jaringan tiang ini akan menyambung dari tiang yang Anda klik. Nama tiang tidak berubah otomatis — kalau urutannya jadi janggal, nomori ulang penyulangnya dari tab Tiang di Inspeksi JTM."

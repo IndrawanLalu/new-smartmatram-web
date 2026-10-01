@@ -476,10 +476,16 @@ export async function ambilPerbandingan(
 
   const audit = auditRes.data ?? [];
   const perKode = new Map<string, string[]>();
+  /** Untuk tiang BARU: isian pertamanya, bukan "kosong → X" yang terbaca
+   *  seperti koreksi. */
+  const isianBaru = new Map<string, string[]>();
   for (const a of audit) {
     const list = perKode.get(a.entitas_kode) ?? [];
     list.push(`${a.field}: ${ringkasNilai(a.nilai_lama)} → ${ringkasNilai(a.nilai_baru)}`);
     perKode.set(a.entitas_kode, list);
+    const isi = isianBaru.get(a.entitas_kode) ?? [];
+    isi.push(...isianPertama(a.field, a.nilai_baru));
+    isianBaru.set(a.entitas_kode, isi);
   }
 
   const tiang: TiangBanding[] = (tiangRes.data ?? []).map((t) => {
@@ -490,6 +496,7 @@ export async function ambilPerbandingan(
     if (t.status_hidup !== "aktif") perubahan = "hilang";
     else if (dibuat >= mulai && dibuat <= selesai) perubahan = "baru";
     else if (rincian.length > 0) perubahan = "berubah";
+    const isi = isianBaru.get(t.kode) ?? [];
 
     return {
       id: t.id,
@@ -500,7 +507,7 @@ export async function ambilPerbandingan(
       jurusan: t.jurusan ?? null,
       kondisi: t.kondisi ?? null,
       perubahan,
-      rincian,
+      rincian: perubahan === "baru" ? (isi.length > 0 ? [`Dicatat: ${isi.join(" · ")}`] : []) : rincian,
     };
   });
 
@@ -518,6 +525,34 @@ export async function ambilPerbandingan(
     rute: (ruteRes.data ?? []) as unknown as RutePerJurusan[],
     terputus: (terputusRes.data ?? []) as unknown as GawangTerputus[],
   };
+}
+
+const NAMA_ATRIBUT: Record<string, string> = {
+  andongan: "andongan",
+  arde_kondisi: "arde",
+  arde_nilai_ohm: "arde (Ω)",
+  tarikan_sr: "tarikan SR",
+  stay_jenis: "stay",
+  stay_kondisi: "kondisi stay",
+};
+
+/** Isian pertama tiang baru, dibaca manusia: "Beton", "13 m", "andongan Baik",
+ *  "di bawah JTM". Koordinat dilewati — tiang baru memang baru dititik. */
+function isianPertama(field: string, v: unknown): string[] {
+  if (v === null || v === undefined || v === "") return [];
+  if (field === "tinggi") return [`${v} m`];
+  if (typeof v !== "object") return [String(v)];
+  const o = v as Record<string, unknown>;
+  if ("lat" in o) return [];
+  const hasil: string[] = [];
+  for (const [k, val] of Object.entries(o)) {
+    const baru = Array.isArray(val) ? val[val.length - 1] : val;
+    if (baru === null || baru === undefined || baru === "" || baru === false) continue;
+    if (Array.isArray(baru) && baru.length === 0) continue;
+    if (k === "underbuild_tm") hasil.push("di bawah JTM");
+    else hasil.push(`${NAMA_ATRIBUT[k] ?? k.replace(/_/g, " ")} ${Array.isArray(baru) ? baru.join(", ") : String(baru)}`);
+  }
+  return hasil;
 }
 
 function ringkasNilai(v: unknown): string {

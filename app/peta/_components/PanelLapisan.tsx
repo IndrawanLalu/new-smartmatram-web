@@ -233,6 +233,16 @@ export default function PanelLapisan({
                   />
                 ))
               )}
+              <div className="px-3 py-2 space-y-1 text-[10px] text-gray-400">
+                <p className="flex items-center gap-2">
+                  <span className="inline-block w-5 h-[4px] rounded" style={{ background: WARNA.jtrUb }} />
+                  underbuild JTR — gawang berkabel 2 atau lebih
+                </p>
+                <p className="flex items-center gap-2">
+                  <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: WARNA.putus }} />
+                  kabel belum jelas datang dari tiang mana — klik tiangnya untuk membetulkan
+                </p>
+              </div>
             </Folder>
 
             <Folder

@@ -10,6 +10,7 @@ import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 import InfoTiang, { Baris, TOMBOL_PANEL } from "./InfoTiang";
 import RingkasSimulasi from "./RingkasSimulasi";
 import RincianKesehatan from "./RincianKesehatan";
+import KoreksiJtr from "./KoreksiJtr";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
@@ -41,6 +42,13 @@ interface Props {
   simulasiSibuk: boolean;
   onSimulasi: () => void;
   onTutupSimulasi: () => void;
+  /** Koreksi JTR (tiang dipilih dari lapisan JTR). */
+  alasanInduk: string;
+  onAlasanInduk: (v: string) => void;
+  onPangkalGardu: () => Promise<boolean>;
+  onNamaJtr: (kode: string) => Promise<boolean>;
+  onKabelJtr: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
+  onJurusanJtr: (jurusan: string, hilir: boolean) => Promise<boolean>;
 }
 
 export default function PanelObjek(p: Props) {
@@ -121,9 +129,44 @@ export default function PanelObjek(p: Props) {
 
         {p.modeInduk && (
           <div className="rounded-lg border border-amber-500/60 p-3 text-xs text-amber-200 space-y-2">
-            <p>Klik tiang di peta yang menjadi <b>induk</b> baru tiang ini.</p>
+            {tiang?.jtr ? (
+              <>
+                <p>
+                  Klik tiang JTR gardu <b>{tiang.jtr.gardu}</b> yang menjadi <b>induk</b> baru tiang ini — atau
+                  jadikan pangkal langsung dari gardu.
+                </p>
+                <input
+                  value={p.alasanInduk}
+                  onChange={(e) => p.onAlasanInduk(e.target.value)}
+                  placeholder="Alasan — wajib, mis. salah sambung di lapangan"
+                  className={INPUT}
+                />
+                <button
+                  onClick={() => void p.onPangkalGardu()}
+                  disabled={!p.alasanInduk.trim() || !tiang.jtr.indukKode}
+                  className={TOMBOL_PANEL}
+                >
+                  Jadikan pangkal (langsung dari gardu)
+                </button>
+              </>
+            ) : (
+              <p>Klik tiang di peta yang menjadi <b>induk</b> baru tiang ini.</p>
+            )}
             <button onClick={p.onBatalInduk} className={TOMBOL_PANEL}>Batal</button>
           </div>
+        )}
+
+        {tiang?.jtr && !geser && !p.modeInduk && (
+          <KoreksiJtr
+            key={`${tiang.jtr.gardu}-${tiang.jtr.kode}-${tiang.jtr.kabel.map((k) => k.nomor).join("")}`}
+            j={tiang.jtr}
+            pilihan={p.pilihan}
+            boleh={boleh}
+            onGantiInduk={p.onGantiInduk}
+            onNama={p.onNamaJtr}
+            onKabel={p.onKabelJtr}
+            onJurusan={p.onJurusanJtr}
+          />
         )}
 
         {tiang && !geser && !p.modeInduk && (
@@ -139,6 +182,7 @@ export default function PanelObjek(p: Props) {
             onBatalkan={() => setTanyaBatal(true)}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}
+            tanpaGantiInduk={!!tiang.jtr}
           />
         )}
 

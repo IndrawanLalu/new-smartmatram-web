@@ -38,10 +38,13 @@ interface Props {
   /** Simulasi "kalau alat ini dibuka" — hanya membaca, untuk semua pengguna. */
   onSimulasi: () => void;
   simulasiSibuk: boolean;
+  /** Dipilih dari lapisan JTR: induk JTR diganti di bagian JTR, bukan di sini. */
+  tanpaGantiInduk?: boolean;
 }
 
 export default function InfoTiang({
   t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
+  tanpaGantiInduk = false,
 }: Props) {
   const jtr = !!t.gardu_kode;
   const [sunting, setSunting] = useState(false);
@@ -148,7 +151,7 @@ export default function InfoTiang({
         <div className="flex flex-wrap gap-2">
           <button onClick={mulai} className={TOMBOL_PANEL}><Pencil size={13} /> Ubah atribut</button>
           <button onClick={onGeser} className={TOMBOL_PANEL}><Move size={13} /> Geser titik</button>
-          {!jtr && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
+          {!jtr && !tanpaGantiInduk && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
           {!jtr && (
             <button onClick={() => void onPercabangan(!t.percabangan)} className={TOMBOL_PANEL}>
               <GitBranch size={13} /> {t.percabangan ? "Lepas percabangan" : "Tandai percabangan"}
