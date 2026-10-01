@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, CheckCircle2, Loader2, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Ban, CheckCircle2, Loader2, Map as IkonPeta, XCircle } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useToast } from "@/app/admin/_components/Toast";
@@ -97,9 +98,19 @@ export default function DetailInspeksiJtrModal({ d, memproses, oleh, onTutup, pu
         onClose={onTutup}
         footer={footer}
       >
-        <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${NADA_STATUS[status]}`}>
-          {status}
-        </span>
+        <div className="flex items-center gap-3">
+          <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${NADA_STATUS[status]}`}>
+            {status}
+          </span>
+          {/* Ke Peta Jaringan: lapisan JTR gardu ini menyala, panel gardunya
+              terbuka — kabel & induk bisa dibetulkan di sana, lalu disetujui. */}
+          <Link
+            href={`/peta?jtr=${encodeURIComponent(d.gardu_kode)}&ulp=${encodeURIComponent(d.ulp)}`}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:underline"
+          >
+            <IkonPeta size={13} /> Lihat di Peta Jaringan
+          </Link>
+        </div>
         {d.sementara && (
           <p className="text-xs rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sky-800">
             Petugas masih menitik jaringan gardu ini dan belum menekan <b>Selesai</b> di aplikasi. Yang tampil adalah

@@ -3,7 +3,9 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, Gauge, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Gauge, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
+import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
+import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
@@ -60,9 +62,20 @@ interface Batas {
   lngMaks: number | null;
 }
 
-export default function PetaJaringan({ user }: { user: CurrentUser }) {
-  const [ulp, setUlp] = useState(canSeeAllUnits(user.role) ? "" : (user.unit ?? ""));
-  const [nyala, setNyala] = useState<Set<string>>(new Set());
+/** Dibuka dari tabel (/peta?jtr=AM263&ulp=AMPENAN): lapisan JTR gardu itu
+ *  langsung menyala, peta menuju gardunya, panelnya terbuka. */
+export interface AwalPeta {
+  jtr?: string;
+  ulp?: string;
+}
+
+export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?: AwalPeta }) {
+  const [ulp, setUlp] = useState(
+    canSeeAllUnits(user.role) ? (awal?.ulp?.toUpperCase() ?? "") : (user.unit ?? ""),
+  );
+  const [nyala, setNyala] = useState<Set<string>>(
+    () => new Set(awal?.jtr ? [`jtr:${awal.jtr.toUpperCase()}`] : []),
+  );
   // Padam saat halaman dibuka, sama seperti lapisan lain. Peta ini berangkat
   // kosong dengan sengaja — yang muncul di layar adalah yang DIMINTA, bukan
   // yang kebetulan tersedia. Saklar yang menyala sendiri membuat 2.092 gardu
@@ -114,6 +127,57 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
   };
 
   const [namaTiang, setNamaTiang] = useState(false);
+
+  // ── Persetujuan inspeksi JTR dari peta ─────────────────────────────────────
+  const antreanJtr = useAntreanJtr(ulp);
+  const [antreanAktif, setAntreanAktif] = useState(false);
+  const [posAntrean, setPosAntrean] = useState(0);
+  const [sorotBanding, setSorotBanding] = useState<Banding | null>(null);
+  const bukaAntrean = useCallback((d: AntreanJtr) => {
+    setNyala((s) => new Set(s).add(`jtr:${d.gardu_kode.toUpperCase()}`));
+    if (d.lat !== null && d.lng !== null) {
+      setFokus([[d.lat - 0.0025, d.lng - 0.0035], [d.lat + 0.0025, d.lng + 0.0035]]);
+      setTerpilih({ jenis: "gardu", kode: d.gardu_kode, ulp: d.ulp, lat: d.lat, lng: d.lng });
+    }
+  }, []);
+  const pilihAntrean = useCallback(
+    (d: AntreanJtr) => {
+      setPosAntrean(Math.max(0, antreanJtr.antrean.findIndex((x) => x.id === d.id)));
+      bukaAntrean(d);
+    },
+    [antreanJtr.antrean, bukaAntrean],
+  );
+  const geserAntrean = (arah: 1 | -1) => {
+    const n = antreanJtr.antrean.length;
+    if (n === 0) return;
+    const i = (posAntrean + arah + n) % n;
+    setPosAntrean(i);
+    bukaAntrean(antreanJtr.antrean[i]);
+  };
+  const inspeksiTerpilih =
+    terpilih?.jenis === "gardu"
+      ? antreanJtr.antrean.find(
+          (d) => d.gardu_kode.toUpperCase() === terpilih.kode.toUpperCase() && d.ulp.toUpperCase() === terpilih.ulp.toUpperCase(),
+        ) ?? null
+      : null;
+
+  // Dibuka dari tabel: menuju gardunya begitu titiknya diketahui.
+  const [awalDibuka, setAwalDibuka] = useState(!awal?.jtr);
+  if (!awalDibuka && awal?.jtr && antreanJtr.siap) {
+    const kode = awal.jtr.toUpperCase();
+    const d = antreanJtr.antrean.find((x) => x.gardu_kode.toUpperCase() === kode);
+    const l = semuaLapisan.find((x) => x.jaringan === "jtr" && x.kode.toUpperCase() === kode);
+    if (d) {
+      setAwalDibuka(true);
+      bukaAntrean(d);
+    } else if (l) {
+      // Sudah tidak menunggu persetujuan: cukup menuju jaringannya.
+      setAwalDibuka(true);
+      if (l.latMin !== null && l.latMaks !== null && l.lngMin !== null && l.lngMaks !== null) {
+        setFokus([[l.latMin, l.lngMin], [l.latMaks, l.lngMaks]]);
+      }
+    }
+  }
   const [memuatUlang, setMemuatUlang] = useState(false);
 
   /** Muat ulang isi peta yang terlihat + daftar lapisan + rincian yang
@@ -122,6 +186,7 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
     setMemuatUlang(true);
     objek.muatUlang();
     try {
+      antreanJtr.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -294,6 +359,9 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           kesehatan={kesehatan.gardu}
           onPilihKesehatan={pilihKesehatan}
           namaTiang={namaTiang}
+          antrean={antreanAktif ? antreanJtr.antrean : null}
+          onPilihAntrean={pilihAntrean}
+          sorotPerubahan={sorotBanding?.tiang ?? null}
         />
 
         {terpilih && (
@@ -350,6 +418,14 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
             onKabelJtr={(lama, baru, jenis, ukuran, hilir) =>
               koreksiJtr((id, g) => sunting.kabelJtr(id, g, lama, baru, jenis, ukuran, hilir))}
             onJurusanJtr={(jurusan, hilir) => koreksiJtr((id, g) => sunting.jurusanJtr(id, g, jurusan, hilir))}
+            inspeksiJtr={inspeksiTerpilih}
+            oleh={oleh}
+            onDiputuskan={() => {
+              antreanJtr.muatUlang();
+              setSorotBanding(null);
+              segarkan();
+            }}
+            onSorot={setSorotBanding}
           />
         )}
 
@@ -468,7 +544,49 @@ export default function PetaJaringan({ user }: { user: CurrentUser }) {
           )}
         </div>
 
+        {antreanAktif && (
+          <div
+            className="absolute z-[1000] top-14 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl border px-2 py-1.5 text-xs text-[#e2e8f0] shadow-xl"
+            style={{ background: PANEL, borderColor: GARIS }}
+          >
+            <ClipboardCheck size={14} className="text-[#FACC15]" />
+            {antreanJtr.antrean.length === 0 ? (
+              <span>Tidak ada inspeksi JTR menunggu persetujuan</span>
+            ) : (
+              <>
+                <button onClick={() => geserAntrean(-1)} className="p-1 rounded hover:bg-white/10" aria-label="Sebelumnya"><ChevronLeft size={15} /></button>
+                <span className="tabular-nums">
+                  {Math.min(posAntrean + 1, antreanJtr.antrean.length)} / {antreanJtr.antrean.length}
+                  <b className="ml-2">{antreanJtr.antrean[Math.min(posAntrean, antreanJtr.antrean.length - 1)]?.gardu_kode}</b>
+                </span>
+                <button onClick={() => geserAntrean(1)} className="p-1 rounded hover:bg-white/10" aria-label="Berikutnya"><ChevronRight size={15} /></button>
+              </>
+            )}
+            <button onClick={() => setAntreanAktif(false)} className="p-1 rounded hover:bg-white/10" aria-label="Tutup antrean"><X size={14} /></button>
+          </div>
+        )}
+
         <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+          {user.role === "UP3" || user.role === "admin" ? (
+            <button
+              onClick={() => {
+                const nyalakan = !antreanAktif;
+                setAntreanAktif(nyalakan);
+                if (nyalakan && antreanJtr.antrean.length > 0) {
+                  setPosAntrean(0);
+                  bukaAntrean(antreanJtr.antrean[0]);
+                }
+              }}
+              className={`${TOMBOL_ATAS} ${antreanAktif ? "ring-1 ring-[#FACC15]" : ""}`}
+              style={{ background: antreanAktif ? "rgba(250,204,21,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+              title="Antrean inspeksi JTR yang menunggu persetujuan"
+            >
+              <ClipboardCheck size={15} /> Persetujuan JTR
+              {antreanJtr.antrean.length > 0 && (
+                <span className="ml-0.5 px-1.5 rounded-full bg-[#FACC15] text-[#0b1220] text-[11px] font-bold">{antreanJtr.antrean.length}</span>
+              )}
+            </button>
+          ) : null}
           <button
             onClick={() => void muatUlangSemua()}
             disabled={memuatUlang}

@@ -11,6 +11,9 @@ import InfoTiang, { Baris, TOMBOL_PANEL } from "./InfoTiang";
 import RingkasSimulasi from "./RingkasSimulasi";
 import RincianKesehatan from "./RincianKesehatan";
 import KoreksiJtr from "./KoreksiJtr";
+import PersetujuanJtrPeta from "./PersetujuanJtrPeta";
+import type { AntreanJtr } from "../_hooks/useAntreanJtr";
+import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 
 /**
@@ -49,6 +52,11 @@ interface Props {
   onNamaJtr: (kode: string) => Promise<boolean>;
   onKabelJtr: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
   onJurusanJtr: (jurusan: string, hilir: boolean) => Promise<boolean>;
+  /** Inspeksi JTR gardu ini yang menunggu persetujuan (null = tidak ada). */
+  inspeksiJtr: AntreanJtr | null;
+  oleh: string;
+  onDiputuskan: () => void;
+  onSorot: (b: Banding | null) => void;
 }
 
 export default function PanelObjek(p: Props) {
@@ -183,6 +191,16 @@ export default function PanelObjek(p: Props) {
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}
             tanpaGantiInduk={!!tiang.jtr}
+          />
+        )}
+
+        {gardu && !geser && p.inspeksiJtr && boleh && (
+          <PersetujuanJtrPeta
+            key={p.inspeksiJtr.id}
+            d={p.inspeksiJtr}
+            oleh={p.oleh}
+            onDiputuskan={p.onDiputuskan}
+            onSorot={p.onSorot}
           />
         )}
 

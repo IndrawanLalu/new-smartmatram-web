@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search,
   SearchCheck, Send, SlidersHorizontal, TriangleAlert,
@@ -52,7 +53,9 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function JtrPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
-  const [idDetail, setIdDetail] = useState<string | null>(null);
+  // Dibuka dari peta (/admin/jtr?inspeksi=<id>): modal rinciannya langsung terbuka.
+  const sp = useSearchParams();
+  const [idDetail, setIdDetail] = useState<string | null>(() => sp.get("inspeksi"));
   const [mengunduh, setMengunduh] = useState(false);
   const [cariGardu, setCariGardu] = useState("");
   const o = useDaftarJtr(user);
