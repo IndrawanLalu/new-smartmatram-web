@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useEffect, useMemo } from "react";
+import { Fragment, memo, useEffect, useMemo } from "react";
 import {
   MapContainer, TileLayer, LayersControl, CircleMarker, Marker, Polyline, Tooltip,
   useMap, useMapEvents,
@@ -9,6 +9,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIsi";
 import { WARNA } from "../_ui";
+import { useGayaPeta, type GayaPeta } from "../_hooks/useGayaPeta";
 import { htmlPenandaJtm } from "@/lib/penandaJtm";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
@@ -66,16 +67,28 @@ interface Props {
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
 // yang digambar di sini TIDAK BISA berbeda — di situlah panel berhenti jadi
 // daftar dan mulai jadi legenda.
-const { rute: WARNA_RUTE, jtm: WARNA_JTM, jtr: WARNA_JTR, gardu: WARNA_GARDU, jtrUb: WARNA_JTR_UB, putus: WARNA_PUTUS } = WARNA;
+const { rute: WARNA_RUTE, gardu: WARNA_GARDU } = WARNA;
 
-/** Gaya garis tiang → induknya. JTR: underbuild (≥2 kabel) ungu tebal; kabel
- *  yang belum jelas asalnya merah muda putus-putus — gawang itu yang dibetulkan. */
-const gayaGaris = (t: TiangPeta) => {
-  if (t.jaringan !== "jtr") return { color: WARNA_JTM, weight: 2, opacity: 0.9 };
-  if (t.kabelPutus) return { color: WARNA_PUTUS, weight: 3, opacity: 1, dashArray: "6 5" };
-  if ((t.jumlahKabel ?? 0) >= 2) return { color: WARNA_JTR_UB, weight: 4, opacity: 0.95 };
-  return { color: WARNA_JTR, weight: 2, opacity: 0.9 };
-};
+type JenisGaris = "jtm" | "jtr" | "ub" | "putus";
+const jenisGaris = (t: TiangPeta): JenisGaris =>
+  t.jaringan !== "jtr" ? "jtm" : t.kabelPutus ? "putus" : (t.jumlahKabel ?? 0) >= 2 ? "ub" : "jtr";
+
+/** Gaya garis tiang → induknya, dari pengaturan Warna & simbol.
+ *  Underbuild JTR: garis tebal bertepi putih (terbaca "dua kabel");
+ *  kabel belum jelas: putus-putus + tanda "!" di tengah gawang. */
+const gayaGaris = (j: JenisGaris, g: GayaPeta) =>
+  j === "jtm" ? { color: g.jtm, weight: 2, opacity: 0.9 }
+  : j === "putus" ? { color: g.putus, weight: 3, opacity: 1, dashArray: "6 5" }
+  : j === "ub" ? { color: g.jtrUb, weight: 4, opacity: 1 }
+  : { color: g.jtr, weight: 2, opacity: 0.9 };
+
+const ikonPutus = (warna: string) =>
+  L.divIcon({
+    className: "",
+    iconSize: [16, 16],
+    iconAnchor: [8, 8],
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:${warna};border:2px solid #fff;color:#fff;font:700 11px/12px sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.6)">!</div>`,
+  });
 
 /**
  * Ikon rumah untuk gardu — bentuk yang sama dengan `/admin/peta-gardu`, supaya
@@ -198,6 +211,8 @@ const Isi = memo(function Isi({
   onPilihTiang: (t: TiangPeta) => void;
   onPilihGardu: (g: GarduPeta) => void;
 }) {
+  const gaya = useGayaPeta();
+  const ikonTandaPutus = useMemo(() => ikonPutus(gaya.putus), [gaya.putus]);
   const garisRute = useMemo(
     () =>
       rute.flatMap((r) =>
@@ -253,28 +268,41 @@ const Isi = memo(function Isi({
         </Polyline>
       ))}
 
-      {tiang.map((t) =>
-        t.indukLat !== null && t.indukLng !== null ? (
-          <Polyline
-            key={`b-${t.kelompok}-${t.id}`}
-            positions={[
-              [t.indukLat, t.indukLng],
-              [t.lat, t.lng],
-            ]}
-            pathOptions={gayaGaris(t)}
-          >
-            <Tooltip sticky>
-              <span className="text-[11px]">{t.kelompok}</span>
-              {t.jaringan === "jtr" && (t.jumlahKabel ?? 0) >= 2 && (
-                <span className="block text-[10px]">underbuild JTR · {t.jumlahKabel} kabel</span>
-              )}
-              {t.kabelPutus && (
-                <span className="block text-[10px]">{t.kode}: kabel belum jelas datang dari tiang mana</span>
-              )}
-            </Tooltip>
-          </Polyline>
-        ) : null,
-      )}
+      {tiang.map((t) => {
+        if (t.indukLat === null || t.indukLng === null) return null;
+        const j = jenisGaris(t);
+        const posisi: [number, number][] = [
+          [t.indukLat, t.indukLng],
+          [t.lat, t.lng],
+        ];
+        return (
+          <Fragment key={`b-${t.kelompok}-${t.id}`}>
+            {j === "ub" && (
+              <Polyline positions={posisi} interactive={false} pathOptions={{ color: "#ffffff", weight: 8, opacity: 0.85 }} />
+            )}
+            <Polyline positions={posisi} pathOptions={gayaGaris(j, gaya)}>
+              <Tooltip sticky>
+                <span className="text-[11px]">{t.kelompok}</span>
+                {j === "ub" && <span className="block text-[10px]">underbuild JTR · {t.jumlahKabel} kabel</span>}
+                {j === "putus" && (
+                  <span className="block text-[10px]">{t.kode}: kabel belum jelas datang dari tiang mana</span>
+                )}
+              </Tooltip>
+            </Polyline>
+            {j === "putus" && gaya.tandaPutus && (
+              <Marker
+                position={[(t.indukLat + t.lat) / 2, (t.indukLng + t.lng) / 2]}
+                icon={ikonTandaPutus}
+                eventHandlers={{ click: () => onPilihTiang(t) }}
+              >
+                <Tooltip direction="top" offset={[0, -8]}>
+                  <span className="text-[11px]">{t.kode}: kabel belum jelas datang dari tiang mana — klik untuk membetulkan</span>
+                </Tooltip>
+              </Marker>
+            )}
+          </Fragment>
+        );
+      })}
 
       {/* Tiang bertanda memakai bentuk dari tab Pengaturan — gardu segitiga,
           FCO belah ketupat, dan seterusnya. Sebelumnya semuanya bulat kuning,
@@ -285,7 +313,7 @@ const Isi = memo(function Isi({
           kelompok. Yang menumpang digambar berongga: batangnya milik orang
           lain, kabelnya milik kelompok ini. */}
       {biasa.map((t) => {
-        const warna = t.jaringan === "jtr" ? WARNA_JTR : WARNA_JTM;
+        const warna = t.jaringan === "jtr" ? gaya.jtr : gaya.jtm;
         return (
           <CircleMarker
             key={`${t.kelompok}-${t.id}`}
@@ -294,7 +322,7 @@ const Isi = memo(function Isi({
             eventHandlers={{ click: () => onPilihTiang(t) }}
             pathOptions={
               t.menumpang
-                ? { color: warna, weight: 2, fillColor: "#fff", fillOpacity: 0.35 }
+                ? { color: warna, weight: 2.5, fillColor: gaya.menumpang, fillOpacity: 1 }
                 : { color: "#fff", weight: 1, fillColor: warna, fillOpacity: 1 }
             }
           >

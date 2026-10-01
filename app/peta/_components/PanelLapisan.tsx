@@ -8,6 +8,8 @@ import {
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import type { Grup, Jaringan, Lapisan } from "../_hooks/usePetaDaftar";
 import { GARIS, INPUT, JUDUL_BAGIAN, WARNA } from "../_ui";
+import PengaturanGaya from "./PengaturanGaya";
+import { useGayaPeta } from "../_hooks/useGayaPeta";
 import Centang from "./Centang";
 
 /**
@@ -70,6 +72,8 @@ export default function PanelLapisan({
   const [folderBuka, setFolderBuka] = useState<Set<Jaringan>>(new Set(["jtm"]));
   const [grupBuka, setGrupBuka] = useState<Set<string>>(new Set());
   const semuaUnit = canSeeAllUnits(user.role);
+  // Kotak centang = legenda, jadi warnanya ikut pengaturan Warna & simbol.
+  const gaya = useGayaPeta();
 
   const q = cari.trim().toUpperCase();
 
@@ -182,7 +186,7 @@ export default function PanelLapisan({
             <Folder
               judul="JTM — per penyulang"
               ikon={Zap}
-              warna={WARNA.jtm}
+              warna={gaya.jtm}
               jumlah={perFolder.jtm.length}
               terbuka={folderBuka.has("jtm")}
               onAlih={() => alihFolder("jtm")}
@@ -209,7 +213,7 @@ export default function PanelLapisan({
             <Folder
               judul="JTR — per gardu"
               ikon={Waypoints}
-              warna={WARNA.jtr}
+              warna={gaya.jtr}
               jumlah={perFolder.jumlahJtr}
               terbuka={folderBuka.has("jtr")}
               onAlih={() => alihFolder("jtr")}
@@ -222,7 +226,7 @@ export default function PanelLapisan({
                     key={g.feeder}
                     g={g}
                     jaringan="jtr"
-                    warna={WARNA.jtr}
+                    warna={gaya.jtr}
                     terbuka={grupBuka.has(`jtr:${g.feeder}`)}
                     onAlihBuka={() => alihGrup(`jtr:${g.feeder}`)}
                     nyala={nyala}
@@ -233,16 +237,6 @@ export default function PanelLapisan({
                   />
                 ))
               )}
-              <div className="px-3 py-2 space-y-1 text-[10px] text-gray-400">
-                <p className="flex items-center gap-2">
-                  <span className="inline-block w-5 h-[4px] rounded" style={{ background: WARNA.jtrUb }} />
-                  underbuild JTR — gawang berkabel 2 atau lebih
-                </p>
-                <p className="flex items-center gap-2">
-                  <span className="inline-block w-5 border-t-2 border-dashed" style={{ borderColor: WARNA.putus }} />
-                  kabel belum jelas datang dari tiang mana — klik tiangnya untuk membetulkan
-                </p>
-              </div>
             </Folder>
 
             <Folder
@@ -288,6 +282,8 @@ export default function PanelLapisan({
             </Folder>
           </>
         )}
+        {/* Sekaligus legenda: tiang menumpang, underbuild JTR, kabel belum jelas. */}
+        <PengaturanGaya />
       </div>
     </aside>
   );
@@ -419,6 +415,8 @@ function BarisLapisan({
   rapat?: boolean;
 }) {
   const adaTitik = l.latMin !== null;
+  const gaya = useGayaPeta();
+  const warna = l.jaringan === "jtm" ? gaya.jtm : l.jaringan === "jtr" ? gaya.jtr : WARNA[l.jaringan];
 
   return (
     <div
@@ -429,7 +427,7 @@ function BarisLapisan({
       <Centang
         nyala={nyala}
         onAlih={onAlih}
-        warna={WARNA[l.jaringan]}
+        warna={warna}
         ukuran={13}
         label={`Tampilkan ${l.kode}`}
       />
