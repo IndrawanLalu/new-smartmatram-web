@@ -195,10 +195,38 @@ export function useMasterSegmen() {
     [toast, muat],
   );
 
+  /** Segmen lapangan: namanya disusun dari titik ujung, jadi TITIKNYA yang
+   *  dibetulkan — segmen yang bersambung di tiang yang sama ikut. */
+  const ubahTitik = useCallback(
+    async (segmenId: string, ujung: "awal" | "akhir", jenis: string, nama: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("ubah_titik_segmen", {
+        p_segmen_id: segmenId,
+        p_ujung: ujung,
+        p_jenis: jenis,
+        p_nama: nama,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(
+          error.message.includes("Could not find the function")
+            ? "Fungsi ubah_titik_segmen belum ada — jalankan scripts/segmen-ubah-titik.sql di Supabase."
+            : error.message.includes("segmen_nama_unik")
+              ? "Nama segmen itu sudah ada di penyulang ini."
+              : error.message,
+        );
+        return false;
+      }
+      toast.success(`Segmen kini bernama ${data as string}.`);
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
   const daftarUlp = useMemo(
     () => [...new Set(baris.map((b) => b.ulp))].filter(Boolean).sort(),
     [baris],
   );
 
-  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama };
+  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik };
 }

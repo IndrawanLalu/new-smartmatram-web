@@ -1,10 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, Pencil, Radio, TriangleAlert } from "lucide-react";
+import { Loader2, MapPinned, Pencil, Radio, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import type { SegmenBaris } from "../_hooks/useMasterSegmen";
+import UbahTitikSegmen from "./UbahTitikSegmen";
 
 /**
  * Daftar acuan segmen.
@@ -23,6 +24,10 @@ const LABEL_SUMBER: Record<string, { teks: string; kelas: string }> = {
 
 /** Sumber segmen yang namanya ditulis orang (lihat `ubah_nama_segmen`). */
 const NAMA_BISA_DIUBAH = new Set(["impor", "tempelan"]);
+/** Sumber segmen yang namanya disusun dari titik ujung (lihat `ubah_titik_segmen`). */
+const TITIK_BISA_DIUBAH = new Set(["lapangan", "manual"]);
+
+type UbahTitik = (segmenId: string, ujung: "awal" | "akhir", jenis: string, nama: string) => Promise<boolean>;
 
 export default function DaftarSegmen({
   baris,
@@ -31,6 +36,7 @@ export default function DaftarSegmen({
   user,
   onUbahPanjang,
   onUbahNama,
+  onUbahTitik,
 }: {
   baris: SegmenBaris[];
   daftarUlp: string[];
@@ -38,6 +44,7 @@ export default function DaftarSegmen({
   user: CurrentUser;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
+  onUbahTitik: UbahTitik;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -142,7 +149,7 @@ export default function DaftarSegmen({
             </thead>
             <tbody>
               {tampil.map((b) => (
-                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} />
+                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} onUbahTitik={onUbahTitik} />
               ))}
               {tampil.length === 0 && (
                 <tr>
@@ -169,12 +176,15 @@ function Baris({
   b,
   onUbahPanjang,
   onUbahNama,
+  onUbahTitik,
 }: {
   b: SegmenBaris;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
+  onUbahTitik: UbahTitik;
 }) {
   const [sunting, setSunting] = useState(false);
+  const [titik, setTitik] = useState(false);
   const [nilai, setNilai] = useState(b.panjang_manual_km?.toString() ?? "");
   const [sibuk, setSibuk] = useState(false);
 
@@ -197,8 +207,25 @@ function Baris({
             orang. Segmen manual/lapangan namanya disusun dari titik ujungnya. */}
         {NAMA_BISA_DIUBAH.has(b.sumber) ? (
           <NamaSegmen nama={b.nama} onSimpan={(nama) => onUbahNama(b.segmen_id, nama)} />
+        ) : TITIK_BISA_DIUBAH.has(b.sumber) ? (
+          <button
+            onClick={() => setTitik(true)}
+            className="inline-flex items-center gap-1 group text-left"
+            title="Nama disusun dari titik ujungnya — klik untuk membetulkan titiknya"
+          >
+            <span>{b.nama}</span>
+            <MapPinned size={11} className="text-ink-muted opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
         ) : (
           b.nama
+        )}
+        {titik && (
+          <UbahTitikSegmen
+            segmenId={b.segmen_id}
+            namaSegmen={b.nama}
+            onSimpan={(ujung, jenis, nama) => onUbahTitik(b.segmen_id, ujung, jenis, nama)}
+            onTutup={() => setTitik(false)}
+          />
         )}
         {b.tiang_bersama > 0 && (
           <span
