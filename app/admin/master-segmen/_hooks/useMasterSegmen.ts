@@ -223,10 +223,33 @@ export function useMasterSegmen() {
     [toast, muat],
   );
 
+  /** Segmen lapangan yang masih dirintis (ujung UJUNG) ditutup dari web —
+   *  fungsi yang sama dengan "Simpan segmen" di HP (`tutup_segmen_jtm`). */
+  const tutupSegmen = useCallback(
+    async (segmenId: string, tiangId: string, jenis: string, nama: string, penanda: string | null, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("tutup_segmen_jtm", {
+        p_segmen_id: segmenId,
+        p_jenis: jenis,
+        p_nama: nama,
+        p_tiang_id: tiangId,
+        p_penanda: penanda,
+        p_oleh: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      toast.success(`Segmen ditutup: ${(data as { nama?: string })?.nama ?? ""}.`);
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
   const daftarUlp = useMemo(
     () => [...new Set(baris.map((b) => b.ulp))].filter(Boolean).sort(),
     [baris],
   );
 
-  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik };
+  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik, tutupSegmen };
 }

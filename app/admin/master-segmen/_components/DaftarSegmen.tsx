@@ -28,6 +28,7 @@ const NAMA_BISA_DIUBAH = new Set(["impor", "tempelan"]);
 const TITIK_BISA_DIUBAH = new Set(["lapangan", "manual"]);
 
 type UbahTitik = (segmenId: string, ujung: "awal" | "akhir", jenis: string, nama: string) => Promise<boolean>;
+type TutupSegmen = (segmenId: string, tiangId: string, jenis: string, nama: string, penanda: string | null) => Promise<boolean>;
 
 export default function DaftarSegmen({
   baris,
@@ -37,6 +38,7 @@ export default function DaftarSegmen({
   onUbahPanjang,
   onUbahNama,
   onUbahTitik,
+  onTutupSegmen,
 }: {
   baris: SegmenBaris[];
   daftarUlp: string[];
@@ -45,6 +47,7 @@ export default function DaftarSegmen({
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
   onUbahTitik: UbahTitik;
+  onTutupSegmen: TutupSegmen;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState(bolehSemua ? "" : (user.unit ?? ""));
@@ -149,7 +152,7 @@ export default function DaftarSegmen({
             </thead>
             <tbody>
               {tampil.map((b) => (
-                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} onUbahTitik={onUbahTitik} />
+                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} onUbahTitik={onUbahTitik} onTutupSegmen={onTutupSegmen} />
               ))}
               {tampil.length === 0 && (
                 <tr>
@@ -177,11 +180,13 @@ function Baris({
   onUbahPanjang,
   onUbahNama,
   onUbahTitik,
+  onTutupSegmen,
 }: {
   b: SegmenBaris;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
   onUbahTitik: UbahTitik;
+  onTutupSegmen: TutupSegmen;
 }) {
   const [sunting, setSunting] = useState(false);
   const [titik, setTitik] = useState(false);
@@ -224,6 +229,7 @@ function Baris({
             segmenId={b.segmen_id}
             namaSegmen={b.nama}
             onSimpan={(ujung, jenis, nama) => onUbahTitik(b.segmen_id, ujung, jenis, nama)}
+            onTutupSegmen={(tiangId, jenis, nama, penanda) => onTutupSegmen(b.segmen_id, tiangId, jenis, nama, penanda)}
             onTutup={() => setTitik(false)}
           />
         )}
