@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: mulai/selesaikan/putuskan_penyapuan_jtm (kini bernama *_inspeksi_jtm), nilai_tiang_jtm (versi tanpa foto temuan — yang hidup dari jtm-temuan.sql), tambah_tiang_jtm (versi lama, akan lahir sebagai fungsi kembar).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- =============================================================================
 -- Fase 4.2f — Inspeksi JTM: fungsi penyapuan
 -- Jalankan SESUDAH `jtm-inspeksi-schema.sql`. Idempoten.

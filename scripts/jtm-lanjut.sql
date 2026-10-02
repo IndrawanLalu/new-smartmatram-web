@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: mulai_penyapuan_jtm (kini mulai_inspeksi_jtm, versi terakhir di jtm-kirim-otomatis.sql), selesaikan_penyapuan_jtm (kini selesaikan_inspeksi_jtm di inspeksi-wajib-dinilai.sql), tambah_tiang_jtm (terakhir di jtm-kirim-otomatis.sql).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- scripts/jtm-lanjut.sql
 --
 -- SATU SEGMEN, SATU PENYAPUAN — dan angka yang menyebut kebenaran.

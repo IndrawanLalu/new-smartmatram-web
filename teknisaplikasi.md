@@ -544,8 +544,9 @@ diketik bebas; diganti nama tim login.
 
 ## 17. Kirim = unggah foto dulu, lalu SATU transaksi di server
 
-**Aturan.** Tidak ada baris server sebelum petugas menekan **Kirim**. Kirim
-terdiri dari dua langkah:
+**Aturan.** Tidak ada baris server sebelum petugas menekan **Kirim** (satu
+pengecualian yang diputuskan user: titik tiang inspeksi bertahap, butir 20).
+Kirim terdiri dari dua langkah:
 
 1. Unggah foto satu per satu dengan kabar kemajuan ("foto 3 dari 10"); URL yang
    berhasil **ditulis balik ke draf** — kirim ulang setelah putus tidak
@@ -637,8 +638,47 @@ Ditemukan saat merancang peringatan draf di Beranda.
 
 ---
 
+## 20. Titik tiang boleh terkirim otomatis; penilaian tetap menunggu Kirim
+
+**Aturan.** Di inspeksi bertahap per tiang (JTM; JTR menyusul), **titik tiang
+baru** — aset yang ditemukan di lapangan — tersimpan di HP dulu, lalu terkirim
+**sendiri** begitu ada sinyal, satu transaksi per titik, sehingga namanya
+langsung turun. **Penilaian** tiang (pekerjaannya) tetap mengikuti butir 1:
+menunggu "Kirim sementara" / "Selesai di segmen ini". Ini satu-satunya
+pengecualian butir 17, diputuskan user 2 Okt 2026.
+
+**Kenapa.** Titik tiang yang menunggu di HP baru diperiksa server saat seluruh
+segmen dikirim. Satu titik bertumpuk menolak SELURUH kiriman, dengan nama tiang
+yang belum pernah ada, 50 tiang sesudah kesalahannya terjadi (BENTEK, 2 Okt
+2026). Nama yang langsung turun juga membuat salah sambung induk ketahuan di
+tiang berikutnya. Maksud butir 1 tetap terjaga: titik tiang tidak masuk angka
+mana pun — realisasi hanya menghitung inspeksi yang sudah dikirim selesai, dan
+temuan hanya dari inspeksi yang disetujui.
+
+**Cara menerapkan** (`kirimTitikJtm` di `jtmKerja.ts` proyek HP):
+- Tetap **simpan di HP dulu**; kirim otomatis dipicu sesudah titik tersimpan,
+  saat sinyal kembali (NetInfo), dan saat layar dibuka.
+- **Satu titik per transaksi, urut dititik** (induk lebih dulu), berhenti di
+  kegagalan pertama. Penolakan dicatat DI TIANGNYA dan dikabarkan saat itu juga,
+  dengan jalan keluarnya (Tumpangi / Dua batang berbeda / hapus). Sinyal mati
+  atau server diam bukan penolakan — titiknya cukup menunggu.
+- **Satu pengiriman per segmen**: kirim otomatis dan kirim manual berantre.
+- **Semua penulisan draf berantre** (`utils/antreSimpan.ts`) dan kirim hanya
+  membuang baris yang tidak berubah sejak dikirim. Tanpa ini, tiang yang dititik
+  selama pengiriman tertimpa salinan lama dan hilang diam-diam.
+- Hasilnya **ditambal di tempat**, bukan memuat ulang segmen. Id lokal yang
+  masih dipegang layar/formulir dipetakan ke id server (`aliasJtm`).
+- Tiang yang sudah bernama lalu ternyata salah titik: **dibatalkan** beralasan,
+  bukan dihapus (butir 2).
+- Penilaian yang sudah terkirim dibuka kembali **dari server**, bukan formulir
+  kosong (butir 2).
+
+**Contoh nyata.** Inspeksi JTM (2 Okt 2026), `rencana-kirim-otomatis-jtm.md`.
+
+---
+
 *Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
 diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18–19 ditambahkan
-30 September 2026.
+30 September 2026, butir 20 ditambahkan 2 Oktober 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*

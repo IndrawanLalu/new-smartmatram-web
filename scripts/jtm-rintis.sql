@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: tutup_segmen_jtm & rintis_segmen_jtm (terakhir di jtm-kirim-otomatis.sql).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- scripts/jtm-rintis.sql
 --
 -- MERINTIS SEGMEN DARI LAPANGAN: petugas memilih penyulang, berjalan menyusuri

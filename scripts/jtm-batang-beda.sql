@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: tambah_tiang_jtm & kirim_tiang_jtm (terakhir di jtm-kirim-otomatis.sql).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- =============================================================================
 -- Penjaga tiang berdekatan = PERTANYAAN, bukan larangan (user 26 Sep 2026)
 -- Jalankan manual di Supabase SQL Editor, SESUDAH `wo-inspeksi-jtm.sql`.

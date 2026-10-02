@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: _rekap_kinerja_inti (terakhir di jtm-kirim-otomatis.sql: realisasi JTM di bulan dikirim).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- =============================================================================
 -- Bulan WO untuk WO dari anomali pengukuran (Optimasi Trafo & Pemerataan Beban)
 -- Keputusan user 1 Okt 2026. Jalankan manual di Supabase SQL Editor, SESUDAH

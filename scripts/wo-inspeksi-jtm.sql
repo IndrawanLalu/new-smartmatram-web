@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (audit JTM 2 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: kirim_tiang_jtm (terakhir di jtm-kirim-otomatis.sql) & rekap_kinerja (kini pembungkus _rekap_kinerja_inti).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- =============================================================================
 -- J1 `rencana-mobile-jtm-jtr.md` (25 Sep 2026) — bagian JTM
 -- Jalankan manual di Supabase SQL Editor, SESUDAH `harjar-kerja-hp.sql`.
