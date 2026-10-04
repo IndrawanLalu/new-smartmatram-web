@@ -672,6 +672,12 @@ temuan hanya dari inspeksi yang disetujui.
   bukan dihapus (butir 2).
 - Penilaian yang sudah terkirim dibuka kembali **dari server**, bukan formulir
   kosong (butir 2).
+- **Menitik = menilai** (4 Okt 2026, kasus SANDUBAYA "Anda 62 m dari …"): tidak
+  ada lagi "titik dulu, isi belakangan". Tiang yang baru dititik / ditumpangi
+  wajib dinilai sebelum menitik lagi, jarak posisi saat Simpan diperiksa di HP
+  untuk SEMUA tiang, dan ketelitian GPS selalu tampil (oranye = tunggu).
+- **Satu penilaian yang ditolak tidak menahan yang lain** (`boleh_sebagian`):
+  yang sah diterima, yang ditolak tetap di HP bertanda dengan penjelasannya.
 
 **Contoh nyata.** Inspeksi JTM (2 Okt 2026), `rencana-kirim-otomatis-jtm.md`.
 
