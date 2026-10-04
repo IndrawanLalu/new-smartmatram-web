@@ -8,6 +8,7 @@ import type { Banding, InspeksiMenunggu } from "../_hooks/useApprovalJtr";
 import type { TitikTiang } from "./PetaUsulan";
 import UsulanTitikJtr from "./UsulanTitikJtr";
 import DaftarTemuanJtr from "./DaftarTemuanJtr";
+import AsalKabelBelumJelas from "./AsalKabelBelumJelas";
 import { km, rentangKerja } from "../_lib/tampilan";
 
 const PetaPerbandingan = dynamic(() => import("./PetaPerbandingan"), {
@@ -40,9 +41,11 @@ interface Props {
   banding: Banding | null;
   galatBanding: string | null;
   oleh: string;
+  /** Sesudah asal kabel diterapkan: muat ulang perbandingan. */
+  onBandingBerubah?: () => void;
 }
 
-export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh }: Props) {
+export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh, onBandingBerubah }: Props) {
   // Tiang gardu ini sebagai bukti di peta usulan titik — diambil dari data
   // perbandingan yang sudah dimuat, tanpa kueri kedua.
   const tiangPeta: TitikTiang[] = (() => {
@@ -149,8 +152,8 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh }: P
                           <tr key={`${t.tiang_kode}-${t.nomor_kabel}`} className="border-t border-line">
                             <td />
                             <td className="px-3 py-2 text-xs text-attention" colSpan={4}>
-                              <b>{t.tiang_kode}</b> kabel ke-{t.nomor_kabel} belum jelas datang dari tiang mana, jadi bentang{" "}
-                              {Math.round(Number(t.panjang_m))} m belum ikut dihitung.
+                              <b>{t.tiang_kode}</b> kabel ke-{t.nomor_kabel}: asalnya belum dipilih, jadi bentang{" "}
+                              {Math.round(Number(t.panjang_m))} m belum ikut dihitung — lihat usulan di bawah tabel.
                             </td>
                           </tr>
                         ))}
@@ -174,6 +177,16 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh }: P
         {aktif.inspektor_nama ?? "—"}
         {aktif.petugas_2 ? ` · ${aktif.petugas_2}` : ""}
       </div>
+
+      {banding && banding.terputus.length > 0 && (
+        <AsalKabelBelumJelas
+          gardu={aktif.gardu_kode}
+          ulp={aktif.ulp}
+          oleh={oleh}
+          kunci={String(banding.terputus.length)}
+          onBerubah={() => onBandingBerubah?.()}
+        />
+      )}
 
       {banding && <DaftarTemuanJtr temuan={banding.temuan} />}
 

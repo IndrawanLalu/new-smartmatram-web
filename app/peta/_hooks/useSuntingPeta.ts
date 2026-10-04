@@ -57,6 +57,12 @@ export function useSuntingPeta(oleh: string) {
       "Induk tiang diganti.",
     );
 
+  /** Tiang kedua gardu portal (`buat_pasangan_portal`, jtm-hak-akses-portal.sql). */
+  const buatPasanganPortal = (id: string) =>
+    jalankan<{ kode: string; dari: string }>("buat_pasangan_portal", { p_tiang_id: id, p_oleh: oleh }, (d) =>
+      `Pasangan portal ${d.kode} dibuat 2 m dari ${d.dari}. Geser titiknya kalau letaknya berbeda.`,
+    );
+
   const batalkan = (id: string, alasan: string) =>
     jalankan<unknown>("batalkan_tiang", { p_id: id, p_nama: oleh, p_alasan: alasan }, () =>
       "Tiang dibatalkan (salah input).",
@@ -94,13 +100,21 @@ export function useSuntingPeta(oleh: string) {
       (b) => `Digabung — gardu ${gardu} kini menumpang di batang ${b}.`,
     );
 
+  /** Asal satu kabel JTR: tiang lain, atau langsung dari gardu (`jtr-asal-kabel.sql`). */
+  const asalKabelJtr = (id: string, gardu: string, nomor: number, huluId: string | null, dariGardu: boolean) =>
+    jalankan<{ kode: string; nomor: number; asal: string }>(
+      "atur_asal_kabel_jtr",
+      { p_tiang_id: id, p_gardu: gardu, p_nomor: nomor, p_hulu_id: dariGardu ? null : huluId, p_dari_gardu: dariGardu, p_oleh: oleh },
+      (d) => `${d.kode} kabel ke-${d.nomor}: asal ${d.asal === "gardu" ? "langsung dari gardu" : d.asal}.`,
+    );
+
   const lepasTumpangJtr = (tumpangId: string, alasan: string) =>
     jalankan<unknown>("lepas_tumpang_jtr", { p_tumpang_id: tumpangId, p_alasan: alasan, p_nama: oleh },
       () => "Dilepas dari batang.",
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan,
-    indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan, buatPasanganPortal,
+    indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr,
   };
 }

@@ -39,6 +39,7 @@ interface Props {
   onBatalInduk: () => void;
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
+  onBuatPasangan: () => Promise<boolean>;
   onBatalkan: (alasan: string) => Promise<boolean>;
   onTutup: () => void;
   simulasi: HasilSimulasi | null;
@@ -51,6 +52,7 @@ interface Props {
   onPangkalGardu: () => Promise<boolean>;
   onNamaJtr: (kode: string) => Promise<boolean>;
   onKabelJtr: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
+  onAsalJtr: (nomor: number, huluId: string | null, dariGardu: boolean) => Promise<boolean>;
   onJurusanJtr: (jurusan: string, hilir: boolean) => Promise<boolean>;
   /** Inspeksi JTR gardu ini yang menunggu persetujuan (null = tidak ada). */
   inspeksiJtr: AntreanJtr | null;
@@ -188,6 +190,7 @@ export default function PanelObjek(p: Props) {
             onGantiInduk={p.onGantiInduk}
             onNama={p.onNamaJtr}
             onKabel={p.onKabelJtr}
+            onAsal={p.onAsalJtr}
             onJurusan={p.onJurusanJtr}
             onGabung={p.onMulaiGabung}
             onLepas={() => setTanyaLepas(true)}
@@ -204,6 +207,7 @@ export default function PanelObjek(p: Props) {
             onGeser={p.onMulaiGeser}
             onGantiInduk={p.onGantiInduk}
             onPercabangan={p.onPercabangan}
+            onBuatPasangan={p.onBuatPasangan}
             onBatalkan={() => setTanyaBatal(true)}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}

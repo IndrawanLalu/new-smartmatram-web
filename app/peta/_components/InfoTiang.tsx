@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { GitBranch, Loader2, Move, Pencil, Trash2, Waypoints, Zap } from "lucide-react";
+import { Columns2, GitBranch, Loader2, Move, Pencil, Trash2, Waypoints, Zap } from "lucide-react";
 import { PENANDA_ALAT } from "../_hooks/useSimulasiBuka";
 import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
@@ -40,11 +40,13 @@ interface Props {
   simulasiSibuk: boolean;
   /** Dipilih dari lapisan JTR: induk JTR diganti di bagian JTR, bukan di sini. */
   tanpaGantiInduk?: boolean;
+  /** Gardu portal yang masih satu tiang: buatkan tiang keduanya (admin). */
+  onBuatPasangan: () => Promise<boolean>;
 }
 
 export default function InfoTiang({
   t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
-  tanpaGantiInduk = false,
+  tanpaGantiInduk = false, onBuatPasangan,
 }: Props) {
   const jtr = !!t.gardu_kode;
   const [sunting, setSunting] = useState(false);
@@ -96,6 +98,18 @@ export default function InfoTiang({
         {!jtr && <Baris label="Nomor lama" nilai={t.nomor_lama} />}
         {!jtr && <Baris label="Penanda" nilai={t.penanda ? (penanda.get(t.penanda)?.label ?? t.penanda) : null} />}
         {!jtr && <Baris label="Percabangan" nilai={t.percabangan ? "ya" : "tidak"} />}
+        {!jtr && (t.portal.pasangan || t.portal.dari || t.portal.tanpaPasangan) && (
+          <Baris
+            label="Gardu portal"
+            nilai={
+              t.portal.dari
+                ? `tiang kedua — pasangan ${t.portal.dari}`
+                : t.portal.pasangan
+                  ? `dua tiang — pasangannya ${t.portal.pasangan}`
+                  : "masih satu tiang"
+            }
+          />
+        )}
         <Baris label="Sumber" nilai={t.sumber} />
         <Baris
           label="Dikonfirmasi"
@@ -113,6 +127,28 @@ export default function InfoTiang({
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Portal lama yang tercatat satu tiang — tiang kedua dibuat 2 m searah
+          jalur dengan nama dari aturan penamaan biasa; geser kalau letaknya beda. */}
+      {!jtr && boleh && t.portal.tanpaPasangan && (
+        <div className="rounded-lg border border-[#c084fc]/50 p-2.5 space-y-2">
+          <p className="text-[11px] text-[#e9d5ff] leading-relaxed">
+            Gardu portal berdiri di dua tiang, tapi baru satu yang tercatat. Tiang keduanya dibuat 2 m searah jalur —
+            geser titiknya kalau letak sebenarnya berbeda.
+          </p>
+          <button
+            onClick={async () => {
+              setSibuk(true);
+              await onBuatPasangan();
+              setSibuk(false);
+            }}
+            disabled={sibuk}
+            className={`${TOMBOL_PANEL} border-[#c084fc] text-[#e9d5ff]`}
+          >
+            {sibuk ? <Loader2 size={13} className="animate-spin" /> : <Columns2 size={13} />} Buat pasangan portal
+          </button>
         </div>
       )}
 

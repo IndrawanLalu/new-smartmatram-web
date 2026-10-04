@@ -9,6 +9,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { ambilPerbandingan, type Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import { JUDUL_BAGIAN } from "../_ui";
+import { muatUsulanAsalKabel, terapkanSemuaUsulan } from "@/lib/jtrAsalKabel";
 import { Baris, TOMBOL_PANEL } from "./InfoTiang";
 
 /**
@@ -37,6 +38,8 @@ export default function PersetujuanJtrPeta({ d, oleh, onDiputuskan, onSorot }: P
   const [galat, setGalat] = useState<string | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | null>(null);
+  /** Naik = daftar periksa dimuat ulang (sesudah asal kabel diterapkan). */
+  const [muatKe, setMuatKe] = useState(0);
 
   useEffect(() => {
     let hidup = true;
@@ -60,7 +63,25 @@ export default function PersetujuanJtrPeta({ d, oleh, onDiputuskan, onSorot }: P
     };
     // Per inspeksi; `onSorot` stabil dari induk.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [d.id]);
+  }, [d.id, muatKe]);
+
+  /** Kabel belum jelas asalnya → terapkan usulan sistem (tiang terdekat
+   *  sejurusan yang membawa kabel itu, atau gardu) sekaligus. */
+  const terapkanUsulanAsal = async () => {
+    setSibuk(true);
+    try {
+      const daftar = await muatUsulanAsalKabel(d.gardu_kode, d.ulp);
+      const h = await terapkanSemuaUsulan(d.gardu_kode, daftar, oleh);
+      if (h.galat) toast.error(`${h.berhasil} diterapkan, lalu berhenti — ${h.galat}`);
+      else toast.success(h.berhasil ? `${h.berhasil} asal kabel diterapkan.` : "Tidak ada usulan yang bisa diterapkan.");
+      setMuatKe((n) => n + 1);
+      onDiputuskan();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSibuk(false);
+    }
+  };
 
   const periksa = banding
     ? [
@@ -129,6 +150,16 @@ export default function PersetujuanJtrPeta({ d, oleh, onDiputuskan, onSorot }: P
               </li>
             ))}
           </ul>
+        )}
+        {banding && banding.terputus.length > 0 && (
+          <button
+            onClick={() => void terapkanUsulanAsal()}
+            disabled={sibuk}
+            className={`${TOMBOL_PANEL} mt-2 border-[#00897B] text-[#5eead4]`}
+            title="Usulan = tiang terdekat sejurusan yang membawa kabel bernomor sama, atau gardu bila lebih dekat. Per kabel bisa dilihat dengan mengklik tiangnya."
+          >
+            Terapkan usulan asal kabel ({banding.terputus.length})
+          </button>
         )}
         {banding && !bersih && usulan !== null && (
           <p className="text-[11px] text-amber-200 mt-1.5 leading-relaxed">

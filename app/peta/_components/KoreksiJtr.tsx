@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Cable, Loader2, Merge, Pencil, TriangleAlert, Unlink, Waypoints } from "lucide-react";
 import type { KabelJtr, PilihanAtribut, RincianJtr } from "../_hooks/useObjekPeta";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
+import { sebutUsulan } from "@/lib/jtrAsalKabel";
 import { Baris, TOMBOL_PANEL } from "./InfoTiang";
 
 /**
@@ -24,6 +25,8 @@ interface Props {
   onGantiInduk: () => void;
   onNama: (kode: string) => Promise<boolean>;
   onKabel: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
+  /** Asal kabel: tiang lain, atau langsung dari gardu. */
+  onAsal: (nomor: number, huluId: string | null, dariGardu: boolean) => Promise<boolean>;
   onJurusan: (jurusan: string, hilir: boolean) => Promise<boolean>;
   /** Tiang milik sendiri: jadikan pinjaman batang lain (tiang kembar). */
   onGabung: () => void;
@@ -31,7 +34,7 @@ interface Props {
   onLepas: () => void;
 }
 
-export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onJurusan, onGabung, onLepas }: Props) {
+export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onAsal, onJurusan, onGabung, onLepas }: Props) {
   const [mode, setMode] = useState<"nama" | "jurusan" | number | null>(null);
   const [nama, setNama] = useState(j.kode);
   const [jurusan, setJurusan] = useState(j.jurusan ?? "A");
@@ -100,7 +103,8 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
         ) : (
           <ul className="mt-1 space-y-1">
             {j.kabel.map((k) => (
-              <li key={k.nomor} className="flex items-center gap-2 text-xs">
+              <li key={k.nomor} className="text-xs">
+              <div className="flex items-center gap-2">
                 <span className={k.nomor > 1 ? "text-[#c084fc] font-semibold" : "text-[#e2e8f0]"}>{namaKabel(k.nomor)}</span>
                 <span className="text-gray-400 flex-1 min-w-0 truncate">{[k.jenis, k.ukuran, k.kondisi].filter(Boolean).join(" · ") || "—"}</span>
                 {k.putus && (
@@ -133,6 +137,53 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
                     </button>
                   </>
                 )}
+              </div>
+              {/* Asal kabel: ikut induk (bawaan), ditunjuk, atau belum jelas + usulan. */}
+              {k.putus ? (
+                <div className="mt-1 ml-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className="text-[#FB7185]">
+                    Asal belum dipilih{k.usulan && sebutUsulan(k.usulan) ? <> — usulan <b>{sebutUsulan(k.usulan)}</b></> : ""}
+                  </span>
+                  {boleh && mode === null && (
+                    <>
+                      {k.usulan?.usulTiangId && !k.usulan.usulDariGardu && (
+                        <button
+                          onClick={() => void jalankan(() => onAsal(k.nomor, k.usulan?.usulTiangId ?? null, false))}
+                          disabled={sibuk}
+                          className="px-1.5 py-0.5 rounded border border-[#00897B] text-[#5eead4] hover:bg-[#00897B]/20"
+                        >
+                          Dari {k.usulan.usulKode}
+                        </button>
+                      )}
+                      <button
+                        onClick={() => void jalankan(() => onAsal(k.nomor, null, true))}
+                        disabled={sibuk}
+                        className={`px-1.5 py-0.5 rounded border ${
+                          k.usulan?.usulDariGardu
+                            ? "border-[#00897B] text-[#5eead4] hover:bg-[#00897B]/20"
+                            : "border-[#1e3552] text-gray-300 hover:text-white"
+                        }`}
+                      >
+                        Dari gardu
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : k.asal ? (
+                <p className="mt-0.5 ml-1 text-[11px] text-gray-500">
+                  asal: {k.asal === "gardu" ? "langsung dari gardu" : k.asal}
+                  {boleh && mode === null && (
+                    <button
+                      onClick={() => void jalankan(() => onAsal(k.nomor, null, false))}
+                      disabled={sibuk}
+                      className="ml-2 underline hover:text-white"
+                      title="Kembalikan: kabel ini ikut induk tiang"
+                    >
+                      ikut induk
+                    </button>
+                  )}
+                </p>
+              ) : null}
               </li>
             ))}
           </ul>
@@ -145,8 +196,9 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
         )}
         {j.kabel.some((k) => k.putus) && (
           <p className="text-[11px] text-[#FB7185] mt-1.5 leading-relaxed">
-            Nomor kabel tidak sama dengan tiang induknya, jadi bentangnya belum terhitung. Samakan nomornya — mis.
-            ubah di tiang paling hulu lalu centang &ldquo;terapkan ke tiang sesudahnya&rdquo;.
+            Induk tiang ini tidak membawa kabel bernomor sama, jadi bentangnya belum terhitung. Biasanya dua jalur
+            berdampingan yang berbagi tiang: pilih asalnya (usulan = tiang terdekat sejurusan yang membawa kabel itu,
+            atau gardu). Kalau nomornya yang salah, samakan nomornya.
           </p>
         )}
       </div>

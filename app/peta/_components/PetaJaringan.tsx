@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Gauge, Hash, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
 import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
@@ -15,6 +15,7 @@ import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type GarduPeta, type Kotak, type Ti
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
 import { useSuntingPeta } from "../_hooks/useSuntingPeta";
+import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useKesehatanPeta, type KesehatanGardu, type SaringKesehatan, type StatusKesehatan } from "../_hooks/useKesehatanPeta";
 import PanelKesehatan from "./PanelKesehatan";
@@ -160,6 +161,23 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     setPosAntrean(i);
     bukaAntrean(antreanJtr.antrean[i]);
   };
+  // ── Gardu portal yang masih satu tiang (admin) ─────────────────────────────
+  const [portalAktif, setPortalAktif] = useState(false);
+  const [posPortal, setPosPortal] = useState(0);
+  const portal = usePortalTanpaPasangan(ulp, boleh);
+  const bukaPortal = useCallback((x: PortalTanpaPasangan) => {
+    setNyala((s) => new Set(s).add(`jtm:${x.penyulang}`));
+    setFokus([[x.lat - 0.0006, x.lng - 0.0009], [x.lat + 0.0006, x.lng + 0.0009]]);
+    setTerpilih({ jenis: "tiang", id: x.tiangId, kelompok: x.penyulang, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: "jtm" });
+  }, []);
+  const geserPortal = (arah: 1 | -1) => {
+    const n = portal.daftar.length;
+    if (n === 0) return;
+    const i = (posPortal + arah + n) % n;
+    setPosPortal(i);
+    bukaPortal(portal.daftar[i]);
+  };
+
   const inspeksiTerpilih =
     terpilih?.jenis === "gardu"
       ? antreanJtr.antrean.find(
@@ -408,6 +426,15 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               if (ok) segarkan();
               return ok;
             }}
+            onBuatPasangan={async () => {
+              if (terpilih.jenis !== "tiang") return false;
+              const ok = await sunting.buatPasanganPortal(terpilih.id);
+              if (ok) {
+                segarkan();
+                portal.muatUlang();
+              }
+              return ok;
+            }}
             onBatalkan={async (alasan) => {
               if (terpilih.jenis !== "tiang") return false;
               const ok = await sunting.batalkan(terpilih.id, alasan);
@@ -432,6 +459,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             }}
             onKabelJtr={(lama, baru, jenis, ukuran, hilir) =>
               koreksiJtr((id, g) => sunting.kabelJtr(id, g, lama, baru, jenis, ukuran, hilir))}
+            onAsalJtr={(nomor, huluId, dariGardu) =>
+              koreksiJtr((id, g) => sunting.asalKabelJtr(id, g, nomor, huluId, dariGardu))}
             onJurusanJtr={(jurusan, hilir) => koreksiJtr((id, g) => sunting.jurusanJtr(id, g, jurusan, hilir))}
             inspeksiJtr={inspeksiTerpilih}
             oleh={oleh}
@@ -616,7 +645,50 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           </div>
         )}
 
+        {portalAktif && (
+          <div
+            className="absolute z-[1000] top-[6.5rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl border px-2 py-1.5 text-xs text-[#e2e8f0] shadow-xl"
+            style={{ background: PANEL, borderColor: GARIS }}
+          >
+            <Columns2 size={14} className="text-[#c084fc]" />
+            {portal.daftar.length === 0 ? (
+              <span>Semua gardu portal sudah dua tiang</span>
+            ) : (
+              <>
+                <button onClick={() => geserPortal(-1)} className="p-1 rounded hover:bg-white/10" aria-label="Sebelumnya"><ChevronLeft size={15} /></button>
+                <span className="tabular-nums">
+                  {Math.min(posPortal + 1, portal.daftar.length)} / {portal.daftar.length}
+                  <b className="ml-2">{portal.daftar[Math.min(posPortal, portal.daftar.length - 1)]?.kode}</b>
+                  <span className="ml-1 text-gray-400">{portal.daftar[Math.min(posPortal, portal.daftar.length - 1)]?.nomorGardu ?? ""}</span>
+                </span>
+                <button onClick={() => geserPortal(1)} className="p-1 rounded hover:bg-white/10" aria-label="Berikutnya"><ChevronRight size={15} /></button>
+              </>
+            )}
+            <button onClick={() => setPortalAktif(false)} className="p-1 rounded hover:bg-white/10" aria-label="Tutup daftar portal"><X size={14} /></button>
+          </div>
+        )}
+
         <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+          {boleh && (
+            <button
+              onClick={() => {
+                const nyalakan = !portalAktif;
+                setPortalAktif(nyalakan);
+                if (nyalakan && portal.daftar.length > 0) {
+                  setPosPortal(0);
+                  bukaPortal(portal.daftar[0]);
+                }
+              }}
+              className={`${TOMBOL_ATAS} ${portalAktif ? "ring-1 ring-[#c084fc]" : ""}`}
+              style={{ background: portalAktif ? "rgba(192,132,252,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+              title="Gardu portal yang baru tercatat satu tiang — buatkan tiang keduanya"
+            >
+              <Columns2 size={15} /> Portal
+              {portal.daftar.length > 0 && (
+                <span className="ml-0.5 px-1.5 rounded-full bg-[#c084fc] text-[#0b1220] text-[11px] font-bold">{portal.daftar.length}</span>
+              )}
+            </button>
+          )}
           {user.role === "UP3" || user.role === "admin" ? (
             <button
               onClick={() => {

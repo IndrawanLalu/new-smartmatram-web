@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { muatUsulanAsalKabel, type UsulanAsalKabel } from "@/lib/jtrAsalKabel";
 import type { KesehatanGardu } from "./useKesehatanPeta";
 
 /**
@@ -42,6 +43,8 @@ export interface RincianTiang {
   /** Diisi bila tiang dipilih dari lapisan JTR: data tiang ini DI GARDU ITU
    *  (nama, jurusan, induk, kabel) — bisa berbeda dari batangnya bila menumpang. */
   jtr: RincianJtr | null;
+  /** Gardu portal (dua tiang): pasangannya, tiang gardunya, atau belum berpasangan. */
+  portal: { pasangan: string | null; dari: string | null; tanpaPasangan: boolean };
 }
 
 export interface KabelJtr {
@@ -51,6 +54,10 @@ export interface KabelJtr {
   kondisi: string | null;
   /** Kabel ini belum jelas datang dari tiang mana (`jtr_gawang_terputus`). */
   putus: boolean;
+  /** Asal yang DITUNJUK: "gardu", kode tiang, atau null = ikut induk tiang. */
+  asal: string | null;
+  /** Usulan asal dari server untuk kabel yang belum jelas (`usul_asal_kabel_jtr`). */
+  usulan: UsulanAsalKabel | null;
 }
 
 export interface RincianJtr {
@@ -91,12 +98,14 @@ export interface PilihanAtribut {
   kabelUkuran: string[];
 }
 
-async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
-  const [j, k, p] = await Promise.all([
+async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJtr | null> {
+  const [j, k, p, gk] = await Promise.all([
     supabaseBrowser.from("jtr_tiang").select("kode,jurusan,induk_id,menumpang,tumpang_id")
       .eq("id", id).ilike("gardu_kode", gardu).eq("status_hidup", "aktif").maybeSingle(),
     supabaseBrowser.from("jtr_kabel").select("nomor,jenis,ukuran,kondisi").eq("tiang_id", id).eq("gardu", gardu.toUpperCase()).order("nomor"),
     supabaseBrowser.from("jtr_gawang_terputus").select("nomor_kabel").eq("tiang_id", id).ilike("gardu_kode", gardu),
+    // hulu_ditunjuk & hulu_id: asal per kabel (ditunjuk tanpa hulu = langsung dari gardu).
+    supabaseBrowser.from("tiang_gawang_kabel").select("nomor_kabel,hulu_id,hulu_ditunjuk").eq("tiang_id", id).ilike("gardu_kode", gardu),
   ]);
   if (j.error) throw new Error(j.error.message);
   if (!j.data) return null;
@@ -106,6 +115,17 @@ async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
     indukKode = (i.data?.kode as string) ?? null;
   }
   const putus = new Set((p.data ?? []).map((x) => Number(x.nomor_kabel)));
+  const ditunjuk = (gk.data ?? []).filter((x) => x.hulu_ditunjuk);
+  const idHulu = [...new Set(ditunjuk.map((x) => x.hulu_id as string | null).filter((x): x is string => !!x))];
+  const kodeHulu = new Map<string, string>();
+  if (idHulu.length) {
+    const h = await supabaseBrowser.from("jtr_tiang").select("id,kode").in("id", idHulu).ilike("gardu_kode", gardu);
+    for (const x of h.data ?? []) kodeHulu.set(x.id as string, x.kode as string);
+  }
+  const asalKabel = new Map(
+    ditunjuk.map((x) => [Number(x.nomor_kabel), x.hulu_id ? (kodeHulu.get(x.hulu_id as string) ?? "tiang lain") : "gardu"]),
+  );
+  const usulan = putus.size ? (await muatUsulanAsalKabel(gardu, ulp)).filter((u) => u.tiangId === id) : [];
   const [lain, nyata] = await Promise.all([
     supabaseBrowser.from("jtr_tiang").select("gardu_kode").eq("id", id).eq("status_hidup", "aktif"),
     supabaseBrowser.from("tiang").select("jtr_gardu_lain,jtr_gardu_lain_kode").eq("id", id).maybeSingle(),
@@ -130,12 +150,14 @@ async function muatJtr(id: string, gardu: string): Promise<RincianJtr | null> {
       ukuran: (x.ukuran as string) ?? null,
       kondisi: (x.kondisi as string) ?? null,
       putus: putus.has(Number(x.nomor)),
+      asal: asalKabel.get(Number(x.nomor)) ?? null,
+      usulan: usulan.find((u) => u.nomor === Number(x.nomor)) ?? null,
     })),
   };
 }
 
 const KOLOM_TIANG =
-  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng";
+  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng,pasangan_portal_dari";
 
 async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTiang> {
   const [t, n, k] = await Promise.all([
@@ -149,7 +171,14 @@ async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTi
   ]);
   if (t.error) throw new Error(t.error.message);
   const r = t.data as Record<string, unknown>;
-  const jtr = garduJtr ? await muatJtr(id, garduJtr) : null;
+  const jtr = garduJtr ? await muatJtr(id, garduJtr, String(r.ulp ?? "")) : null;
+  const [pas, dari, tanpa] = await Promise.all([
+    supabaseBrowser.from("tiang").select("kode").eq("pasangan_portal_dari", id).eq("status_hidup", "aktif").limit(1),
+    r.pasangan_portal_dari
+      ? supabaseBrowser.from("tiang").select("kode").eq("id", r.pasangan_portal_dari as string).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabaseBrowser.from("jtm_portal_tanpa_pasangan").select("tiang_id").eq("tiang_id", id).limit(1),
+  ]);
   let induk: string | null = null;
   if (r.induk_id) {
     const i = await supabaseBrowser.from("tiang").select("kode").eq("id", r.induk_id as string).maybeSingle();
@@ -164,6 +193,11 @@ async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTi
     nama: (n.data ?? []) as RincianTiang["nama"],
     induk,
     jtr,
+    portal: {
+      pasangan: (pas.data?.[0]?.kode as string) ?? null,
+      dari: ((dari.data as { kode?: string } | null)?.kode as string) ?? null,
+      tanpaPasangan: (tanpa.data ?? []).length > 0,
+    },
     temuan: (k.data ?? []).map((x) => ({
       item: x.item_nama as string,
       bagian: x.bagian as string,

@@ -33,6 +33,8 @@ export default function DetailInspeksiJtrModal({ d, memproses, oleh, onTutup, pu
   const [banding, setBanding] = useState<Banding | null>(null);
   const [galatBanding, setGalatBanding] = useState<string | null>(null);
   const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | null>(null);
+  /** Naik = perbandingan dimuat ulang (sesudah asal kabel diterapkan). */
+  const [muatKe, setMuatKe] = useState(0);
   const status = statusTampil(d.status);
   const sibuk = memproses === d.id;
 
@@ -47,7 +49,7 @@ export default function DetailInspeksiJtrModal({ d, memproses, oleh, onTutup, pu
     // Hanya id yang menentukan data perbandingan; objek baris berganti setiap
     // kali daftar ditambal sesudah keputusan.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [d.id]);
+  }, [d.id, muatKe]);
 
   const jalankan = async (kerja: () => Promise<void>, pesan: string) => {
     try {
@@ -123,7 +125,13 @@ export default function DetailInspeksiJtrModal({ d, memproses, oleh, onTutup, pu
           </p>
         )}
 
-        <IsiInspeksiJtr aktif={d} banding={banding} galatBanding={galatBanding} oleh={oleh} />
+        <IsiInspeksiJtr
+          aktif={d}
+          banding={banding}
+          galatBanding={galatBanding}
+          oleh={oleh}
+          onBandingBerubah={() => setMuatKe((n) => n + 1)}
+        />
       </ModalShell>
 
       {dialog === "kembalikan" && (
