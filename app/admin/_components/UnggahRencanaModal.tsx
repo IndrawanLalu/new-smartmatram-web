@@ -5,22 +5,24 @@ import { FileSpreadsheet, Loader2, Lock, TriangleAlert, Upload, XCircle } from "
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
-import { labelBulan, type IsiBerkas, type Pratinjau } from "../_lib/rencana";
+import { labelBulan, type IsiBerkas, type Pratinjau } from "@/lib/rencanaGardu";
 
 /**
- * Unggah Rencana Pemeliharaan: pilih berkas → pratinjau (jumlah per bulan,
+ * Unggah rencana gardu (Rencana Pemeliharaan / Rencana Pengukuran): pilih berkas → pratinjau (jumlah per bulan,
  * galat yang menghalangi, peringatan yang tidak) → Simpan. Server memeriksa
  * ulang semua yang menghalangi.
  */
 
 interface Props {
+  /** "Rencana Pemeliharaan" / "Rencana Pengukuran". */
+  nama: string;
   ulp: string;
   pratinjau: (ulp: string, file: File) => Promise<{ isi: IsiBerkas; hasil: Pratinjau }>;
   simpan: (ulp: string, isi: IsiBerkas) => Promise<{ tersimpan: number; bulan_terkunci: string[] }>;
   onTutup: () => void;
 }
 
-export default function UnggahRencanaModal({ ulp, pratinjau, simpan, onTutup }: Props) {
+export default function UnggahRencanaModal({ nama: namaRencana, ulp, pratinjau, simpan, onTutup }: Props) {
   const toast = useToast();
   const [nama, setNama] = useState<string | null>(null);
   const [membaca, setMembaca] = useState(false);
@@ -65,7 +67,7 @@ export default function UnggahRencanaModal({ ulp, pratinjau, simpan, onTutup }: 
 
   return (
     <ModalShell
-      title={`Unggah Rencana Pemeliharaan · ${ulp}`}
+      title={`Unggah ${namaRencana} · ${ulp}`}
       subtitle="Berkas templat hasil tombol Unduh templat, sudah diberi tanda bulan"
       maxWidth="max-w-3xl"
       onClose={onTutup}
@@ -82,7 +84,7 @@ export default function UnggahRencanaModal({ ulp, pratinjau, simpan, onTutup }: 
         <FileSpreadsheet size={22} className="text-navy-600 shrink-0" />
         <span className="text-sm text-ink">
           {nama ?? "Pilih berkas Excel (.xlsx)"}
-          <span className="block text-[11px] text-ink-muted">{nama ? "Klik untuk memilih berkas lain" : "Templat Rencana Pemeliharaan dari SMART"}</span>
+          <span className="block text-[11px] text-ink-muted">{nama ? "Klik untuk memilih berkas lain" : `Templat ${namaRencana} dari SMART`}</span>
         </span>
         <input
           type="file"
@@ -102,7 +104,7 @@ export default function UnggahRencanaModal({ ulp, pratinjau, simpan, onTutup }: 
       {p && hasil && (
         <div className="mt-4 flex flex-col gap-4">
           <p className="text-sm text-ink">
-            <b>{p.jumlahGardu}</b> gardu · <b>{p.jumlahTanda}</b> tanda pemeliharaan ·{" "}
+            <b>{p.jumlahGardu}</b> gardu · <b>{p.jumlahTanda}</b> tanda bulan ·{" "}
             {labelBulan(p.perBulan[0].bulan)} s.d. {labelBulan(p.perBulan[p.perBulan.length - 1].bulan)}
           </p>
 

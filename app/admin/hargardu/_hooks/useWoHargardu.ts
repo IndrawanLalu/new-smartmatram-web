@@ -20,9 +20,13 @@ export interface WoHarHeader {
   tahun: number;
   tgl_wo: string;
   kuota: number;
-  kriteria: { sumber?: string; rencana?: number; sisa?: number; otomatis?: boolean } | null;
+  kriteria: { sumber?: string; rencana?: number; sisa?: number; otomatis?: boolean; disusun?: string } | null;
   created_at: string;
 }
+
+/** WO dari Tempel WO yang belum disusun dari rencana — rencana bisa ditambahkan
+ *  (`_susun_wo_hargardu_rencana`, rencana-pengukuran.sql). */
+export const bolehTambahRencana = (h: WoHarHeader) => h.kriteria?.sumber === "tempelan" && !h.kriteria?.disusun;
 
 export interface BarisWoHar {
   id: string;
@@ -89,7 +93,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     const ulp = kunciDaftar.split(",").filter(Boolean);
     const lalu = bulan === 1 ? { t: tahun - 1, b: 12 } : { t: tahun, b: bulan - 1 };
     const [set, head, rows, master, kerja, rencana, lewat] = await Promise.all([
-      supabaseBrowser.from("wo_hargardu_settings").select("ulp,frekuensi_per_tahun,kuota_per_bulan,hanya_gardu_aktif"),
+      supabaseBrowser.from("wo_hargardu_settings").select("ulp,frekuensi_per_tahun,kuota_per_bulan,hanya_gardu_aktif,terbit_otomatis"),
       supabaseBrowser
         .from("wo_hargardu")
         .select("id,ulp,bulan,tahun,tgl_wo,kuota,kriteria,created_at")
@@ -235,7 +239,10 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
    */
   const terbitkan = async (ulp: string) => {
     const info = perUlp.get(ulp);
-    if (!info || info.header) throw new Error(`WO ${ulp} bulan ini sudah terbit.`);
+    // WO dari Tempel WO yang belum disusun boleh DITAMBAH rencana (server sama).
+    if (!info || (info.header && !(bolehTambahRencana(info.header) && info.rencana > 0))) {
+      throw new Error(`WO ${ulp} bulan ini sudah terbit.`);
+    }
 
     // Bulan yang ada rencananya disusun server — fungsi yang sama dengan
     // penerbitan otomatis tanggal 1, jadi hasilnya selalu sama.
@@ -256,7 +263,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
 
     const s = settingsUntuk(ulp);
     const pilih = info.kandidat.slice(0, s.kuota_per_bulan);
-    if (pilih.length === 0) throw new Error(`Tidak ada gardu ${ulp} yang jatuh tempo.`);
+    if (pilih.length === 0) throw new Error(`Tidak ada gardu ${ulp} yang sudah masuk waktu pemeliharaan.`);
 
     setMemproses(`wo-${ulp}`);
     try {

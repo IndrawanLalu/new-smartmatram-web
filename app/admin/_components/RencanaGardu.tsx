@@ -5,29 +5,32 @@ import { ChevronDown, Download, Loader2, Lock, Trash2, TriangleAlert, Upload } f
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, CARD, DISPLAY } from "@/app/admin/_ui";
-import { kunciBulan, labelBulan } from "../_lib/rencana";
-import { useRencanaHargardu } from "../_hooks/useRencanaHargardu";
+import { kunciBulan, labelBulan } from "@/lib/rencanaGardu";
+import { useRencanaGardu, type JenisRencana } from "@/app/admin/_hooks/useRencanaGardu";
 import UnggahRencanaModal from "./UnggahRencanaModal";
 
 /**
- * Rencana Pemeliharaan — permulaan tanpa riwayat (keputusan user 28 Sep 2026).
- * Tiap ULP menandai bulan pemeliharaan tiap gardu di templat Excel. WO bulan
- * yang ada rencananya disusun dari sini; tanpa rencana, sistem menyusun dari
- * riwayat.
+ * Kartu rencana gardu per bulan per ULP — Rencana Pemeliharaan (keputusan user
+ * 28 Sep 2026) dan Rencana Pengukuran (5 Okt 2026). Tiap ULP menandai bulan
+ * tiap gardu di templat Excel; WO bulan yang ada rencananya disusun dari sini.
  */
 
 const tglWita = (ts: string) =>
   new Date(ts).toLocaleDateString("id-ID", { timeZone: "Asia/Makassar", day: "numeric", month: "short", year: "numeric" });
 
-interface Props {
+interface Props<S> {
+  jenis: JenisRencana<S>;
+  /** Kalimat penjelas di bawah judul. */
+  keterangan: string;
   daftar: string[];
   oleh: string;
   bolehKelola: boolean;
 }
 
-export default function RencanaPemeliharaan({ daftar, oleh, bolehKelola }: Props) {
+export default function RencanaGardu<S>({ jenis, keterangan, daftar, oleh, bolehKelola }: Props<S>) {
   const toast = useToast();
-  const r = useRencanaHargardu(daftar, oleh);
+  const r = useRencanaGardu(jenis, daftar, oleh);
+  const nama = jenis.templat.nama;
   const [buka, setBuka] = useState(true);
   const [sibuk, setSibuk] = useState<string | null>(null);
   const [unggah, setUnggah] = useState<string | null>(null);
@@ -48,11 +51,8 @@ export default function RencanaPemeliharaan({ daftar, oleh, bolehKelola }: Props
     <div className={CARD}>
       <button onClick={() => setBuka((b) => !b)} className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left">
         <div>
-          <p className={`${DISPLAY} text-base font-bold text-ink`}>Rencana Pemeliharaan</p>
-          <p className="text-[11px] text-ink-muted">
-            Selama riwayat belum ada, ULP menandai bulan pemeliharaan tiap gardu di templat Excel. WO bulan yang ada
-            rencananya disusun dari sini; tanpa rencana, sistem menyusun dari riwayat.
-          </p>
+          <p className={`${DISPLAY} text-base font-bold text-ink`}>{nama}</p>
+          <p className="text-[11px] text-ink-muted">{keterangan}</p>
         </div>
         <ChevronDown size={16} className={`shrink-0 text-ink-muted transition-transform ${buka ? "rotate-180" : ""}`} />
       </button>
@@ -116,10 +116,10 @@ export default function RencanaPemeliharaan({ daftar, oleh, bolehKelola }: Props
         </div>
       )}
 
-      {unggah && <UnggahRencanaModal ulp={unggah} pratinjau={r.pratinjau} simpan={r.simpan} onTutup={() => setUnggah(null)} />}
+      {unggah && <UnggahRencanaModal nama={nama} ulp={unggah} pratinjau={r.pratinjau} simpan={r.simpan} onTutup={() => setUnggah(null)} />}
       {hapus && (
         <ConfirmDialog
-          title={`Hapus Rencana Pemeliharaan ${hapus}?`}
+          title={`Hapus ${nama} ${hapus}?`}
           message="Rencana bulan berjalan ke depan yang WO-nya belum terbit dihapus, dan WO bulan-bulan itu kembali disusun sistem dari riwayat. WO yang sudah terbit tidak berubah."
           confirmLabel="Hapus rencana"
           tone="danger"

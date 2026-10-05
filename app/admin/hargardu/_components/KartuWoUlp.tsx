@@ -7,7 +7,7 @@ import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, CARD, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { intervalBulan, saranKuota, type KandidatHar, type WoHarSettings } from "../_lib/kandidatWo";
-import { statusWo, type BarisWoHar, type WoHarHeader } from "../_hooks/useWoHargardu";
+import { bolehTambahRencana, statusWo, type BarisWoHar, type WoHarHeader } from "../_hooks/useWoHargardu";
 
 /**
  * Satu ULP pada WO Pemeliharaan bulan terpilih: ringkasan realisasi kalau WO
@@ -50,6 +50,7 @@ export default function KartuWoUlp(p: Props) {
   const [dialog, setDialog] = useState<"terbit" | "hapus" | null>(null);
 
   const dariRencana = p.rencana > 0;
+  const tambahRencana = !!p.header && bolehTambahRencana(p.header) && dariRencana;
   const jumlahTerbit = dariRencana ? p.rencana + p.sisa : Math.min(p.settings.kuota_per_bulan, p.kandidat.length);
   const belumPernah = p.kandidat.filter((k) => k.alasan === "belum_pernah").length;
   const jadi = p.rows.filter((r) => r.terealisasi).length;
@@ -96,6 +97,13 @@ export default function KartuWoUlp(p: Props) {
             </div>
             <span className="text-xs font-bold tabular-nums text-emerald-700 w-10 text-right">{pct}%</span>
           </div>
+          {tambahRencana && (
+            <p className="text-[11px] text-amber-800">
+              WO ini dari Tempel WO. Rencana Pemeliharaan bulan ini ({p.rencana.toLocaleString("id-ID")} gardu
+              {p.sisa > 0 ? ` + ${p.sisa.toLocaleString("id-ID")} sisa` : ""}) belum ditambahkan
+              {p.settings.terbit_otomatis ? " — tertambah otomatis tanggal 1, atau tekan tombol di bawah." : " — tekan tombol di bawah."}
+            </p>
+          )}
           {p.header.kriteria?.sumber === "rencana" && (
             <p className="text-[11px] text-ink-muted">
               Disusun dari Rencana Pemeliharaan: {p.header.kriteria.rencana ?? 0} gardu rencana + {p.header.kriteria.sisa ?? 0} sisa bulan lalu
@@ -106,12 +114,14 @@ export default function KartuWoUlp(p: Props) {
       ) : dariRencana ? (
         <p className="text-xs text-ink-soft">
           <b className="text-ink">Rencana Pemeliharaan</b> · {p.rencana.toLocaleString("id-ID")} gardu
-          {p.sisa > 0 && <> + {p.sisa.toLocaleString("id-ID")} sisa WO bulan lalu yang belum dikerjakan</>}. Terbit otomatis
-          tanggal 1 pukul 00.05 WITA — tombol di bawah untuk menerbitkan sekarang.
+          {p.sisa > 0 && <> + {p.sisa.toLocaleString("id-ID")} sisa WO bulan lalu yang belum dikerjakan</>}.{" "}
+          {p.settings.terbit_otomatis
+            ? "Terbit otomatis tanggal 1 pukul 00.05 WITA — tombol di bawah untuk menerbitkan sekarang."
+            : "Terbit manual — tekan tombol di bawah."}
         </p>
       ) : (
         <p className="text-xs text-ink-soft">
-          <b className="text-ink">{p.kandidat.length.toLocaleString("id-ID")}</b> gardu jatuh tempo
+          <b className="text-ink">{p.kandidat.length.toLocaleString("id-ID")}</b> gardu sudah masuk waktu pemeliharaan
           {belumPernah > 0 && <> ({belumPernah.toLocaleString("id-ID")} belum pernah dipelihara)</>} dari{" "}
           {p.aktif.toLocaleString("id-ID")} gardu aktif. Kuota {p.settings.kuota_per_bulan} gardu/bulan.
         </p>
@@ -119,6 +129,12 @@ export default function KartuWoUlp(p: Props) {
 
       {p.bolehKelola && (
         <div className="flex flex-wrap items-center gap-2">
+          {tambahRencana && (
+            <button onClick={() => setDialog("terbit")} className={BTN_PRIMARY} disabled={!!p.memproses}>
+              {p.memproses === `wo-${p.ulp}` ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
+              Tambahkan {jumlahTerbit} gardu rencana
+            </button>
+          )}
           {p.header ? (
             <button
               onClick={() => setDialog("hapus")}
@@ -180,6 +196,24 @@ export default function KartuWoUlp(p: Props) {
             />
             Hanya gardu berstatus Aktif (tanpa status dianggap Aktif)
           </label>
+          <div className="text-xs">
+            <span className={EYEBROW}>Terbit WO</span>
+            <div className="mt-1 inline-flex rounded-lg border border-line overflow-hidden">
+              {([false, true] as const).map((o) => (
+                <button
+                  key={String(o)}
+                  type="button"
+                  onClick={() => setDraf({ ...draf, terbit_otomatis: o })}
+                  className={`px-3 h-8 text-xs font-semibold ${draf.terbit_otomatis === o ? "bg-navy-600 text-white" : "bg-white text-ink-soft hover:bg-surface"}`}
+                >
+                  {o ? "Otomatis (tanggal 1)" : "Manual"}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-ink-muted">
+              Otomatis: WO bulan yang ada Rencana Pemeliharaan terbit sendiri tanggal 1 pukul 00.05 WITA. Bulan tanpa rencana tetap diterbitkan manual.
+            </p>
+          </div>
           <div className="flex justify-end">
             <button
               onClick={() => void jalankan(() => p.simpanSetting(p.ulp, draf), `Kriteria WO ${p.ulp} disimpan.`)}
@@ -197,7 +231,7 @@ export default function KartuWoUlp(p: Props) {
 
       {dialog === "terbit" && (
         <ConfirmDialog
-          title={`Terbitkan WO Pemeliharaan ${p.ulp} — ${p.periode}?`}
+          title={tambahRencana ? `Tambahkan rencana ke WO ${p.ulp} — ${p.periode}?` : `Terbitkan WO Pemeliharaan ${p.ulp} — ${p.periode}?`}
           message={`${jumlahTerbit} gardu${dariRencana ? ` (${p.rencana} dari Rencana Pemeliharaan${p.sisa > 0 ? `, ${p.sisa} sisa bulan lalu` : ""})` : ""} masuk WO dan langsung muncul di HP regu HARGAR ${p.ulp}. WO yang sudah terbit tidak bisa disusun ulang tanpa dihapus lebih dulu.`}
           confirmLabel="Terbitkan"
           tone="primary"

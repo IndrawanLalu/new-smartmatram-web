@@ -1,14 +1,12 @@
 /**
- * Rencana Pemeliharaan Gardu (`scripts/rencana-hargardu.sql`) — fungsi murni:
- * jendela 12 bulan templat dan pratinjau unggahan. Baca/tulis Excel ada di
- * `rencanaExcel.ts` (dimuat hanya saat dipakai).
+ * Rencana gardu per bulan — dipakai Rencana Pemeliharaan (hargardu) dan
+ * Rencana Pengukuran. Fungsi murni: jendela 12 bulan templat dan pratinjau
+ * unggahan. Baca/tulis Excel ada di `rencanaGarduExcel.ts` (dimuat saat dipakai).
  *
- * Rencana adalah sumber SEMENTARA selama riwayat pemeliharaan belum ada
- * (keputusan user 28 Sep 2026). Satu gardu boleh direncanakan lebih dari
- * sekali; beda dengan frekuensi/kuota hanya PERINGATAN — SLA bisa berubah.
+ * Rencana adalah DASAR yang dipilih ULP (keputusan user 28 Sep & 5 Okt 2026).
+ * Satu gardu boleh ditandai lebih dari sekali; beda dengan pengaturan WO
+ * hanya PERINGATAN — SLA bisa berubah.
  */
-
-import { garduAktif, type WoHarSettings } from "./kandidatWo";
 
 export interface BulanRencana {
   tahun: number;
@@ -22,6 +20,9 @@ export interface GarduRencana {
   penyulang: string | null;
   kva_master: number | null;
   status: string | null;
+  /** Kolom bantu templat pengukuran (hanya dibaca). */
+  persen_beban?: number | null;
+  event_date?: string | null;
 }
 
 export interface BarisRencana {
@@ -48,6 +49,9 @@ export const kunciKeBulan = (k: string): BulanRencana => ({ tahun: Number(k.slic
 
 const berikut = (b: BulanRencana): BulanRencana => (b.bulan === 12 ? { tahun: b.tahun + 1, bulan: 1 } : { tahun: b.tahun, bulan: b.bulan + 1 });
 
+/** Gardu tanpa status dianggap Aktif (master lama banyak yang kosong). */
+export const garduAktif = (status: string | null) => !status || status.toUpperCase() === "AKTIF";
+
 /** Bulan berjalan menurut WITA (UTC+8). */
 export const bulanKini = (): BulanRencana => {
   const w = new Date(Date.now() + 8 * 3600 * 1000);
@@ -71,6 +75,11 @@ export function jendelaRencana(terbit: Set<string>, kini: BulanRencana): BulanRe
   return duaBelasBulan(awal);
 }
 
+/** WO yang lahir dari Tempel WO dan belum disusun dari rencana BELUM dihitung
+ *  terbit — rencana bulan itu masih bisa diganti (sama dengan server). */
+export const woSudahTerbit = (kriteria: Record<string, unknown> | null) =>
+  !(kriteria?.sumber === "tempelan" && !kriteria?.disusun);
+
 export interface BulanPratinjau {
   bulan: BulanRencana;
   jumlah: number;
@@ -88,6 +97,15 @@ export interface Pratinjau {
   jumlahTanda: number;
 }
 
+/** Yang berbeda antar jenis rencana: kuota, saringan gardu aktif, dan
+ *  peringatan khusus (frekuensi pemeliharaan / jarak ukur). */
+export interface AturanPratinjau {
+  kuota: number;
+  hanyaAktif: boolean;
+  /** jumlahPerGardu: kode → banyak tanda dalam 12 bulan (gardu bertanda saja). */
+  periksa: (jumlahPerGardu: Map<string, number>, master: GarduRencana[]) => string[];
+}
+
 /**
  * Cocokkan isi berkas ke master & WO yang sudah terbit. Server menjaga ulang
  * semua yang menghalangi; ini supaya kesalahan terlihat sebelum Simpan.
@@ -96,7 +114,7 @@ export function susunPratinjau(
   isi: IsiBerkas,
   ulp: string,
   master: GarduRencana[],
-  s: WoHarSettings,
+  aturan: AturanPratinjau,
   terbit: Set<string>,
   kini: BulanRencana,
 ): Pratinjau {
@@ -129,7 +147,7 @@ export function susunPratinjau(
 
   const perBulan = duaBelasBulan(isi.dari).map((bulan) => {
     const jumlah = perBulanN.get(kunciBulan(bulan)) ?? 0;
-    return { bulan, jumlah, terkunci: terbit.has(kunciBulan(bulan)), lewatKuota: jumlah > s.kuota_per_bulan };
+    return { bulan, jumlah, terkunci: terbit.has(kunciBulan(bulan)), lewatKuota: jumlah > aturan.kuota };
   });
 
   const terkunci = perBulan.filter((p) => p.terkunci);
@@ -138,17 +156,14 @@ export function susunPratinjau(
   }
   const lewat = perBulan.filter((p) => p.lewatKuota && !p.terkunci);
   if (lewat.length) {
-    peringatan.push(`${lewat.length} bulan melebihi kuota ${s.kuota_per_bulan} gardu/bulan di pengaturan ULP.`);
+    peringatan.push(`${lewat.length} bulan melebihi kuota ${aturan.kuota} gardu/bulan di pengaturan ULP.`);
   }
 
-  const aktif = master.filter((g) => !s.hanya_gardu_aktif || garduAktif(g.status));
+  const aktif = master.filter((g) => !aturan.hanyaAktif || garduAktif(g.status));
   const tanpa = aktif.filter((g) => !perGardu.has(g.kode.toUpperCase())).length;
   if (tanpa) peringatan.push(`${tanpa} dari ${aktif.length} gardu aktif tidak direncanakan dalam 12 bulan ini.`);
 
-  const beda = [...perGardu.values()].filter((n) => n !== s.frekuensi_per_tahun).length;
-  if (beda) {
-    peringatan.push(`${beda} gardu direncanakan tidak ${s.frekuensi_per_tahun}× setahun (frekuensi di pengaturan ULP).`);
-  }
+  peringatan.push(...aturan.periksa(perGardu, master));
 
   return { galat, peringatan, perBulan, jumlahGardu: perGardu.size, jumlahTanda: isi.baris.length };
 }

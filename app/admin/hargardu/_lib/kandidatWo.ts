@@ -18,12 +18,15 @@ export interface WoHarSettings {
   frekuensi_per_tahun: number;
   kuota_per_bulan: number;
   hanya_gardu_aktif: boolean;
+  /** WO bulan yang ada Rencana Pemeliharaan terbit sendiri tanggal 1 (5 Okt 2026). */
+  terbit_otomatis: boolean;
 }
 
 export const DEFAULT_WO_HAR: WoHarSettings = {
   frekuensi_per_tahun: 1,
   kuota_per_bulan: 30,
   hanya_gardu_aktif: true,
+  terbit_otomatis: true,
 };
 
 export interface MasterGardu {
@@ -55,7 +58,7 @@ export interface KandidatHar {
 
 export const LABEL_ALASAN: Record<AlasanWoHar, string> = {
   belum_pernah: "Belum pernah dipelihara",
-  jatuh_tempo: "Jatuh tempo",
+  jatuh_tempo: "Sudah masuk waktu pemeliharaan",
   rencana: "Sesuai rencana ULP",
   sisa: "Sisa bulan lalu",
 };

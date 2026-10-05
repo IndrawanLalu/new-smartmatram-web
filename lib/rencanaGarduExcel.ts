@@ -3,24 +3,41 @@ import { CLR_HEADER, CLR_WHITE, downloadBuffer, mergeSet, styleCell } from "@/li
 import {
   duaBelasBulan, kunciBulan, kunciKeBulan, labelBulan,
   type BarisRencana, type BulanRencana, type GarduRencana, type IsiBerkas,
-} from "./rencana";
+} from "./rencanaGardu";
 
 /**
- * Templat Excel Rencana Pemeliharaan — dibuat aplikasi per ULP, bukan
- * disalin-salin antar ULP, supaya seragam dan kodenya pasti kode master.
+ * Templat Excel rencana gardu per bulan (Rencana Pemeliharaan, Rencana
+ * Pengukuran) — dibuat aplikasi per ULP, bukan disalin-salin antar ULP,
+ * supaya seragam dan kodenya pasti kode master.
  *
  *   Rencana    gardu master (terkunci) + kisi 12 bulan + Jumlah + Catatan
  *   Petunjuk   cara mengisi
  *   _meta      tersembunyi: penanda, versi, ULP, bulan awal, jumlah baris gardu
- *              — berkas ULP lain atau templat lama ditolak saat diunggah, dan
- *              baris hijau "Jumlah" (sel gabungan) tidak terbaca sebagai gardu
+ *              — berkas ULP lain, jenis lain, atau templat lama ditolak saat
+ *              diunggah, dan baris hijau "Jumlah" tidak terbaca sebagai gardu
  */
 
-const PENANDA = "SMART-RENCANA-HARGARDU";
+/** Yang berbeda antar jenis rencana. */
+export interface JenisTemplat {
+  /** Penanda di lembar _meta — Rencana Pemeliharaan tetap "SMART-RENCANA-HARGARDU"
+   *  supaya templat yang sudah diunduh ULP tetap bisa diunggah. */
+  penanda: string;
+  /** "Rencana Pemeliharaan" */
+  nama: string;
+  /** "RENCANA PEMELIHARAAN GARDU" */
+  judul: string;
+  /** "dipelihara" */
+  kerja: string;
+  /** Jalan menu di SMART untuk mengunggah. */
+  lokasi: string;
+  /** Kolom bantu Beban % & Ukur terakhir (Rencana Pengukuran). */
+  bantuUkur?: boolean;
+}
+
 const VERSI = 1;
 const TANDA = "✓";
 
-const KOLOM_TETAP: { judul: string; lebar: number }[] = [
+const KOLOM_DASAR: { judul: string; lebar: number }[] = [
   { judul: "No", lebar: 5 },
   { judul: "Kode Gardu", lebar: 11 },
   { judul: "Nama Gardu", lebar: 28 },
@@ -28,6 +45,12 @@ const KOLOM_TETAP: { judul: string; lebar: number }[] = [
   { judul: "Alamat", lebar: 28 },
   { judul: "kVA", lebar: 7 },
 ];
+const KOLOM_UKUR = [
+  { judul: "Beban %", lebar: 8 },
+  { judul: "Ukur terakhir", lebar: 12 },
+];
+
+const tglPendek = (v: string | null | undefined) => (v ? `${v.slice(8, 10)}-${v.slice(5, 7)}-${v.slice(0, 4)}` : "");
 const JUDUL_BARIS = 3;
 const ABU = "EEEEEE";
 const HIJAU = "E2EFDA";
@@ -57,7 +80,8 @@ interface OpsiTemplat {
   catatan: Map<string, string>;
 }
 
-export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }: OpsiTemplat) {
+export async function unduhTemplatRencana(j: JenisTemplat, { ulp, gardu, jendela, ada, catatan }: OpsiTemplat) {
+  const KOLOM_TETAP = j.bantuUkur ? [...KOLOM_DASAR, ...KOLOM_UKUR] : KOLOM_DASAR;
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
   const ws = wb.addWorksheet("Rencana", { pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 } });
@@ -72,10 +96,10 @@ export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }:
   const barisTotal = barisAkhir + 1;
 
   mergeSet(ws, 1, 1, 1, kCatatan,
-    `RENCANA PEMELIHARAAN GARDU — ULP ${ulp} — ${labelBulan(jendela[0])} s.d. ${labelBulan(jendela[jendela.length - 1])}`,
+    `${j.judul} — ULP ${ulp} — ${labelBulan(jendela[0])} s.d. ${labelBulan(jendela[jendela.length - 1])}`,
     { bold: true, size: 12, align: "left", wrap: false });
   mergeSet(ws, 2, 1, 2, kCatatan,
-    `Beri tanda ${TANDA} pada bulan gardu dipelihara (pilih dari daftar, atau ketik huruf apa saja). Satu gardu boleh lebih dari satu bulan. Kolom abu-abu jangan diubah.`,
+    `Beri tanda ${TANDA} pada bulan gardu ${j.kerja} (pilih dari daftar, atau ketik huruf apa saja). Satu gardu boleh lebih dari satu bulan. Kolom abu-abu jangan diubah.`,
     { size: 9, align: "left", wrap: false, fontColor: "595959" });
   ws.getRow(1).height = 22;
 
@@ -91,6 +115,7 @@ export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }:
     const kode = g.kode.toUpperCase();
     const tanda = ada.get(kode);
     const tetap: (string | number)[] = [idx + 1, g.kode, g.nama ?? "", g.penyulang ?? "", g.alamat ?? "", g.kva_master ?? ""];
+    if (j.bantuUkur) tetap.push(g.persen_beban == null ? "" : Math.round(g.persen_beban), tglPendek(g.event_date));
     tetap.forEach((v, i) => {
       const c = ws.getCell(r, i + 1);
       c.value = v;
@@ -104,9 +129,9 @@ export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }:
       // Daftar pilihan, tapi ketikan lain tetap diterima (tidak ada pesan galat).
       c.dataValidation = { type: "list", allowBlank: true, formulae: [`"${TANDA}"`], showErrorMessage: false };
     });
-    const j = ws.getCell(r, kJumlah);
-    j.value = { formula: `COUNTA(${hBulan1}${r}:${hBulan12}${r})` };
-    styleCell(j, { size: 9, bgColor: ABU });
+    const jml = ws.getCell(r, kJumlah);
+    jml.value = { formula: `COUNTA(${hBulan1}${r}:${hBulan12}${r})` };
+    styleCell(jml, { size: 9, bgColor: ABU });
     const n = ws.getCell(r, kCatatan);
     n.value = catatan.get(kode) ?? null;
     styleCell(n, { size: 9, bgColor: CLR_WHITE, align: "left", wrap: false });
@@ -131,14 +156,14 @@ export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }:
   const p = wb.addWorksheet("Petunjuk");
   p.getColumn(1).width = 110;
   [
-    `Rencana Pemeliharaan Gardu — ULP ${ulp}`,
+    `${j.nama} — ULP ${ulp}`,
     "",
-    `1. Isi di lembar "Rencana": beri tanda ${TANDA} pada kolom bulan gardu itu dipelihara.`,
+    `1. Isi di lembar "Rencana": beri tanda ${TANDA} pada kolom bulan gardu itu ${j.kerja}.`,
     "2. Satu gardu boleh diberi tanda di lebih dari satu bulan. Gardu yang tidak diberi tanda tidak direncanakan.",
-    "3. Kolom abu-abu (kode, nama, penyulang, alamat, kVA) diambil dari Master Gardu — jangan diubah.",
+    `3. Kolom abu-abu (kode, nama, penyulang, alamat, kVA${j.bantuUkur ? ", beban, ukur terakhir" : ""}) diambil dari Master Gardu — jangan diubah.`,
     "   Gardu yang belum ada di daftar: daftarkan dulu di menu Master Gardu, lalu unduh templat lagi.",
     "4. Baris hijau di bawah menghitung jumlah gardu per bulan — sesuaikan dengan kemampuan regu.",
-    "5. Unggah berkas ini di SMART: Pemeliharaan Gardu → WO Pemeliharaan → Rencana Pemeliharaan → Unggah rencana.",
+    `5. Unggah berkas ini di SMART: ${j.lokasi} → Unggah rencana.`,
     "6. Unggah ulang boleh kapan saja: bulan yang WO-nya belum terbit diganti seluruhnya, yang sudah terbit tidak berubah.",
     "7. Templat ini hanya untuk ULP dan periode di judulnya. Setelah bulan pertamanya lewat, unduh templat baru.",
   ].forEach((t, i) => {
@@ -148,13 +173,13 @@ export async function unduhTemplatRencana({ ulp, gardu, jendela, ada, catatan }:
   });
 
   const m = wb.addWorksheet("_meta", { state: "veryHidden" });
-  [PENANDA, VERSI, ulp, kunciBulan(jendela[0]), gardu.length].forEach((v, i) => { m.getCell(i + 1, 1).value = v; });
+  [j.penanda, VERSI, ulp, kunciBulan(jendela[0]), gardu.length].forEach((v, i) => { m.getCell(i + 1, 1).value = v; });
 
-  await downloadBuffer(wb, `Rencana_Pemeliharaan_${ulp}_${kunciBulan(jendela[0])}.xlsx`);
+  await downloadBuffer(wb, `${j.nama.replace(/\s+/g, "_")}_${ulp}_${kunciBulan(jendela[0])}.xlsx`);
 }
 
 /** Baca berkas templat. Pencocokan ke master & WO dilakukan `susunPratinjau`. */
-export async function bacaTemplatRencana(file: File): Promise<IsiBerkas> {
+export async function bacaTemplatRencana(j: JenisTemplat, file: File): Promise<IsiBerkas> {
   const wb = new ExcelJS.Workbook();
   try {
     await wb.xlsx.load(await file.arrayBuffer());
@@ -163,8 +188,8 @@ export async function bacaTemplatRencana(file: File): Promise<IsiBerkas> {
   }
 
   const m = wb.getWorksheet("_meta");
-  if (!m || teks(m.getCell(1, 1).value) !== PENANDA) {
-    throw new Error("Ini bukan templat Rencana Pemeliharaan dari SMART. Unduh templatnya dari tombol Unduh templat.");
+  if (!m || teks(m.getCell(1, 1).value) !== j.penanda) {
+    throw new Error(`Ini bukan templat ${j.nama} dari SMART. Unduh templatnya dari tombol Unduh templat.`);
   }
   if (Number(teks(m.getCell(2, 1).value)) !== VERSI) throw new Error("Versi templat tidak dikenali — unduh templat terbaru.");
   const ulp = teks(m.getCell(3, 1).value).toUpperCase();

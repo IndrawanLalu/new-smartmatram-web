@@ -3,20 +3,22 @@
 import { useState, useMemo } from "react";
 import {
   Ban, ClipboardList, Download, Loader2, Search, FilePlus2, RefreshCw, CheckCircle2,
-  ListPlus, ChevronDown,
+  ListPlus, ChevronDown, TriangleAlert,
 } from "lucide-react";
-import { canManageSettings, type CurrentUser } from "@/lib/roles";
+import { canManageSettings, UNITS, type CurrentUser } from "@/lib/roles";
 import StatTile from "@/app/admin/_components/StatTile";
-import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
-import { useWoPengukuran, useMasterUntukWo, type BarisWo, type RencanaTerbit } from "../_hooks/useWoPengukuran";
+import RencanaGardu from "@/app/admin/_components/RencanaGardu";
+import { useWoPengukuran, type BarisWo } from "../_hooks/useWoPengukuran";
 import { useWoPengukuranSettings } from "../_hooks/useWoPengukuranSettings";
-import {
-  ringkasKandidat, susunKandidatPerUlp, tanggalWo, type KandidatWo,
-} from "../_lib/kandidatWo";
+import { usePratinjauWo, type BarisPratinjau } from "../_hooks/usePratinjauWo";
+import { tanggalWo } from "../_lib/kandidatWo";
+import { RENCANA_PENGUKURAN } from "../_lib/rencanaJenis";
 import { downloadWoPengukuranXlsx } from "../_utils/woPengukuranXlsx";
 import TabelWoPengukuran, { type BarisTampil } from "./TabelWoPengukuran";
 import WoSettingsPanel from "./WoSettingsPanel";
+import TerbitWoModal, { type RencanaUlp } from "./TerbitWoModal";
+import PengingatWoModal from "./PengingatWoModal";
 
 // ── Konstanta ─────────────────────────────────────────────────────────────────
 
@@ -42,10 +44,6 @@ function fmtTanggal(v: string): string {
   return `${d}-${m}-${y}`;
 }
 
-/** Kuota diabaikan saat menghitung tunggakan — angka itu menjawab "berapa yang
- *  sebenarnya menunggu", bukan "berapa yang muat bulan ini". */
-const TANPA_KUOTA = 1_000_000;
-
 // ── Pemetaan ke bentuk tabel ──────────────────────────────────────────────────
 
 const dariWo = (r: BarisWo): BarisTampil => ({
@@ -65,9 +63,9 @@ const dariWo = (r: BarisWo): BarisTampil => ({
   dikerjakan: !!r.pengukuran_id,
 });
 
-/** Kandidat belum punya tanggal WO maupun realisasi — itu yang membedakannya
- *  dari baris yang sudah terbit, dan yang dibaca tabel sebagai "pratinjau". */
-const dariKandidat = (k: KandidatWo): BarisTampil => ({
+/** Calon isi WO (pratinjau server) belum punya tanggal WO maupun realisasi —
+ *  itu yang membedakannya dari baris yang sudah terbit. */
+const dariPratinjau = (k: BarisPratinjau): BarisTampil => ({
   kode_gardu: k.kode_gardu,
   ulp: k.ulp,
   nama: k.nama,
@@ -81,14 +79,6 @@ const dariKandidat = (k: KandidatWo): BarisTampil => ({
   tgl_realisasi: null,
   petugas_nama: null,
 });
-
-interface Konfirmasi {
-  title: string;
-  message: React.ReactNode;
-  confirmLabel: string;
-  tone: "primary" | "danger";
-  onConfirm: () => void;
-}
 
 // ── Komponen ──────────────────────────────────────────────────────────────────
 
@@ -105,7 +95,8 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
   const [cari, setCari] = useState("");
   const [saring, setSaring] = useState<Saringan>("");
   const [bukaLuarWo, setBukaLuarWo] = useState(false);
-  const [konfirmasi, setKonfirmasi] = useState<Konfirmasi | null>(null);
+  const [terbitBuka, setTerbitBuka] = useState(false);
+  const [pengingatUlp, setPengingatUlp] = useState<string | null>(null);
   const [pesan, setPesan] = useState<{ ok: boolean; teks: string } | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [pilih, setPilih] = useState<Set<string>>(new Set());
@@ -124,57 +115,61 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
     });
 
   const {
-    settings, settingsUntuk, ulpKey, loading: loadingSettings, saving, savedAt, simpan, reset,
+    settings, ulpKey, loading: loadingSettings, saving, savedAt, simpan, reset,
   } = useWoPengukuranSettings(ulp);
 
   const {
-    headers, rows, luarWo, loading, error, ulpSudahTerbit, terbitkan, batalkan, keluarkan: keluarkanWo, refresh,
+    headers, rows, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan: keluarkanWo, refresh,
   } = useWoPengukuran(user, ulp, tahun, bulan);
 
-  const { master, loading: loadingMaster, error: errorMaster } = useMasterUntukWo(user, ulp);
+  /** ULP yang dikelola layar ini: satu, atau keempatnya untuk UP3 "Semua". */
+  const daftarUlp = useMemo(() => (unit ? [unit] : UNITS.map((u) => u.value as string)), [unit]);
+  const pratinjau = usePratinjauWo(daftarUlp, tahun, bulan);
 
   const tglWo = tanggalWo(tahun, bulan);
 
-  // ── Kandidat ────────────────────────────────────────────────────────────────
+  // ── Pratinjau dari database ─────────────────────────────────────────────────
 
-  /** Sudah dipotong kuota — inilah yang akan diterbitkan. */
-  const kandidatPerUlp = useMemo(
-    () => susunKandidatPerUlp(master, settingsUntuk, tglWo),
-    [master, settingsUntuk, tglWo],
+  /** ULP yang WO-nya bisa diterbitkan sekarang (atau WO tempelan yang belum disusun). */
+  const rencanaTerbit = useMemo<RencanaUlp[]>(
+    () =>
+      daftarUlp
+        .map((u) => {
+          const b = pratinjau.perUlp.get(u) ?? [];
+          return { ulp: u, wo: b.filter((x) => x.kelompok === "wo"), pengingat: b.filter((x) => x.kelompok === "pengingat") };
+        })
+        .filter((r) => r.wo.length > 0),
+    [daftarUlp, pratinjau.perUlp],
   );
 
-  /** Seluruh gardu yang memenuhi kriteria, tanpa potong kuota. */
-  const tunggakan = useMemo(() => {
-    const penuh = susunKandidatPerUlp(
-      master,
-      (u) => ({ ...settingsUntuk(u), kuota_per_bulan: TANPA_KUOTA }),
-      tglWo,
-    );
+  const akanDiterbitkan = useMemo(() => rencanaTerbit.reduce((s, r) => s + r.wo.length, 0), [rencanaTerbit]);
+
+  /** Gardu yang sudah masuk waktu ukur menurut Pengaturan WO (belum di WO terbit). */
+  const masukWaktu = useMemo(() => {
     let n = 0;
-    for (const [, daftar] of penuh) n += daftar.length;
+    for (const b of pratinjau.perUlp.values()) n += b.filter((x) => x.masuk_waktu).length;
     return n;
-  }, [master, settingsUntuk, tglWo]);
+  }, [pratinjau.perUlp]);
 
-  /** WO yang belum terbit untuk periode ini. ULP yang sudah punya tidak ikut. */
-  const rencana = useMemo<RencanaTerbit[]>(() => {
-    const hasil: RencanaTerbit[] = [];
-    for (const [u, kandidat] of kandidatPerUlp) {
-      if (ulpSudahTerbit.has(u)) continue;
-      hasil.push({ ulp: u, kandidat, settings: settingsUntuk(u) });
-    }
-    return hasil;
-  }, [kandidatPerUlp, ulpSudahTerbit, settingsUntuk]);
-
-  const akanDiterbitkan = useMemo(
-    () => rencana.reduce((s, r) => s + r.kandidat.length, 0),
-    [rencana],
+  /** Pengingat sesudah terbit: per ULP yang WO-nya sudah ada. */
+  const pengingatTerbit = useMemo(
+    () =>
+      headers
+        .map((h) => ({ ulp: h.ulp, baris: (pratinjau.perUlp.get(h.ulp) ?? []).filter((x) => x.kelompok === "pengingat") }))
+        .filter((p) => p.baris.length > 0 && !rencanaTerbit.some((r) => r.ulp === p.ulp)),
+    [headers, pratinjau.perUlp, rencanaTerbit],
   );
+
+  const muatSemua = () => {
+    refresh();
+    void pratinjau.muat();
+  };
 
   // ── Baris tabel ─────────────────────────────────────────────────────────────
 
   const semuaBaris = useMemo<BarisTampil[]>(
-    () => [...rows.map(dariWo), ...rencana.flatMap((r) => r.kandidat.map(dariKandidat))],
-    [rows, rencana],
+    () => [...rows.map(dariWo), ...rencanaTerbit.flatMap((r) => r.wo.map(dariPratinjau))],
+    [rows, rencanaTerbit],
   );
 
   const barisTampil = useMemo(() => {
@@ -202,53 +197,6 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
 
   const namaPeriode = `${BULAN[bulan - 1]} ${tahun}`;
 
-  const mintaTerbitkan = () => {
-    setKonfirmasi({
-      title: `Terbitkan WO ${namaPeriode}?`,
-      tone: "primary",
-      confirmLabel: `WO-kan ${akanDiterbitkan} gardu`,
-      message: (
-        <>
-          <b>{akanDiterbitkan} gardu</b> akan diterbitkan sebagai Work Order bertanggal{" "}
-          <b>1 {namaPeriode}</b>.
-          <ul className="mt-2 space-y-1">
-            {rencana.map((r) => {
-              const ringkas = ringkasKandidat(r.kandidat);
-              return (
-                <li key={r.ulp}>
-                  <b>{r.ulp}</b> — {ringkas.total} gardu ({ringkas.belumPernah} belum pernah diukur,{" "}
-                  {ringkas.kedaluwarsa} kedaluwarsa)
-                </li>
-              );
-            })}
-          </ul>
-          <p className="mt-2">
-            Setelah terbit, daftarnya tidak bisa diubah — untuk menyusun ulang, WO-nya harus
-            dihapus lebih dulu.
-          </p>
-        </>
-      ),
-      onConfirm: async () => {
-        setSibuk(true);
-        setPesan(null);
-        const hasil = await terbitkan(rencana);
-        setSibuk(false);
-        if (hasil.error) {
-          setPesan({ ok: false, teks: `Gagal menerbitkan WO: ${hasil.error}` });
-          return;
-        }
-        const total = hasil.diterbitkan.reduce((s, d) => s + d.jumlah, 0);
-        const rincian = hasil.diterbitkan.map((d) => `${d.ulp} ${d.jumlah}`).join(", ");
-        setPesan({
-          ok: true,
-          teks:
-            `WO ${namaPeriode} terbit — ${total} gardu (${rincian}).` +
-            (hasil.ditolak.length ? ` Dilewati karena sudah punya WO: ${hasil.ditolak.join(", ")}.` : ""),
-        });
-      },
-    });
-  };
-
   /** Batalkan WO (bukan hapus — teknisaplikasi.md butir 12). Hanya selama belum ada yang diukur. */
   const jalankanBatalWo = async (alasan: string) => {
     if (!batalWo) return false;
@@ -256,6 +204,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
     setPesan(null);
     const gagal = await batalkan(batalWo.id, alasan, oleh);
     setSibuk(false);
+    void pratinjau.muat();
     setPesan(
       gagal
         ? { ok: false, teks: `Gagal membatalkan WO: ${gagal}` }
@@ -297,11 +246,8 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
     );
   };
 
-  // Pengaturan ikut dihitung: sebelum ia tiba, kandidat tersusun dari nilai
-  // bawaan kode. Membiarkan tombol WO-kan hidup di jeda itu berarti WO bisa
-  // terbit memakai kriteria yang bukan milik ULP-nya.
-  const memuat = loading || loadingMaster || loadingSettings;
-  const galat = error ?? errorMaster;
+  const memuat = loading || pratinjau.loading || loadingSettings;
+  const galat = error ?? pratinjau.error;
 
   // ── Render ──────────────────────────────────────────────────────────────────
 
@@ -332,7 +278,7 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
 
         <div className="ml-auto flex items-center gap-2">
           <button
-            onClick={refresh}
+            onClick={muatSemua}
             disabled={memuat}
             className="flex items-center gap-1.5 h-9 px-3 rounded-lg border border-line text-sm text-ink-soft hover:text-ink hover:bg-surface transition-colors disabled:opacity-50"
           >
@@ -347,9 +293,9 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
             <Download size={14} />
             Unduh Excel
           </button>
-          {akanDiterbitkan > 0 && (
+          {akanDiterbitkan > 0 && bolehKelola && (
             <button
-              onClick={mintaTerbitkan}
+              onClick={() => setTerbitBuka(true)}
               disabled={sibuk || memuat}
               className="flex items-center gap-2 h-9 px-4 rounded-lg bg-navy-600 text-white text-sm font-semibold hover:bg-navy-500 transition-colors disabled:opacity-50"
             >
@@ -371,6 +317,31 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
           onReset={reset}
         />
       )}
+
+      {/* ── Rencana Pengukuran (dasar WO; keputusan user 5 Okt 2026) ── */}
+      <RencanaGardu
+        jenis={RENCANA_PENGUKURAN}
+        keterangan="ULP menandai bulan pengukuran tiap gardu di templat Excel sebagai dasar. WO bulan yang ada rencananya = rencana + sisa bulan lalu; tanpa rencana, sistem menyusun dari Pengaturan WO. Gardu yang sudah masuk waktu ukur di luar rencana tetap diingatkan."
+        daftar={daftarUlp}
+        oleh={oleh}
+        bolehKelola={bolehKelola}
+      />
+
+      {/* ── Pengingat sesudah terbit ── */}
+      {!memuat && pengingatTerbit.map((p) => (
+        <div key={p.ulp} className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex flex-wrap items-center gap-3 text-sm">
+          <TriangleAlert size={16} className="text-amber-600 shrink-0" />
+          <span className="text-amber-900">
+            <b>{p.baris.length} gardu sudah masuk waktu ukur</b> tidak ada di WO {p.ulp} {namaPeriode}.
+          </span>
+          <button
+            onClick={() => setPengingatUlp(p.ulp)}
+            className="ml-auto inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-amber-300 bg-white text-xs font-semibold text-amber-900 hover:bg-amber-100"
+          >
+            <ListPlus size={13} /> Lihat & tambahkan ke WO
+          </button>
+        </div>
+      ))}
 
       {/* ── Pesan hasil aksi ── */}
       {pesan && (
@@ -398,10 +369,10 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
       {/* ── Ringkasan ── */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <StatTile
-          label="Tunggakan"
-          value={memuat ? "—" : tunggakan}
+          label="Sudah masuk waktu ukur"
+          value={memuat ? "—" : masukWaktu}
           tone="attention"
-          hint="gardu memenuhi kriteria"
+          hint={headers.length > 0 ? "belum masuk WO terbit" : "menurut Pengaturan WO"}
         />
         <StatTile
           label="Akan di-WO"
@@ -484,6 +455,8 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
               >
                 <b className="text-ink">{h.ulp}</b>
                 <span>{jumlah} gardu</span>
+                {h.kriteria?.sumber === "rencana" && <span className="text-navy-600">dari rencana</span>}
+                {h.kriteria?.otomatis && <span className="text-ink-muted">· terbit otomatis</span>}
                 {bolehKelola && (
                   <button
                     onClick={() => setBatalWo({ id: h.id, ulp: h.ulp, jumlah })}
@@ -569,14 +542,26 @@ export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
         />
       )}
 
-      {konfirmasi && (
-        <ConfirmDialog
-          title={konfirmasi.title}
-          message={konfirmasi.message}
-          tone={konfirmasi.tone}
-          confirmLabel={konfirmasi.confirmLabel}
-          onConfirm={konfirmasi.onConfirm}
-          onClose={() => setKonfirmasi(null)}
+      {terbitBuka && (
+        <TerbitWoModal
+          periode={namaPeriode}
+          rencana={rencanaTerbit}
+          onTerbit={terbitkan}
+          onTutup={() => setTerbitBuka(false)}
+          onSelesai={muatSemua}
+        />
+      )}
+      {pengingatUlp && (
+        <PengingatWoModal
+          ulp={pengingatUlp}
+          periode={namaPeriode}
+          baris={pengingatTerbit.find((p) => p.ulp === pengingatUlp)?.baris ?? []}
+          onTambah={async (kode) => {
+            const n = await tambahPengingat(pengingatUlp, kode);
+            void pratinjau.muat();
+            return n;
+          }}
+          onTutup={() => setPengingatUlp(null)}
         />
       )}
     </div>

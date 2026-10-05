@@ -4,14 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
-import {
-  batasBulanWo,
-  tanggalWo,
-  type AlasanWo,
-  type BarisMasterUntukWo,
-  type KandidatWo,
-  type WoSettings,
-} from "../_lib/kandidatWo";
+import { batasBulanWo, type AlasanWo } from "../_lib/kandidatWo";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -23,6 +16,8 @@ export interface WoHeader {
   tahun: number;
   tgl_wo: string;
   kuota: number;
+  /** Jejak penyusunan: sumber (rencana/sistem/tempelan), jumlah per alasan, otomatis. */
+  kriteria: { sumber?: string; rencana?: number; sisa?: number; sistem?: number; tambahan?: number; otomatis?: boolean; disusun?: string } | null;
   created_at: string;
 }
 
@@ -90,22 +85,14 @@ export interface GarduLuarWo {
   petugas_nama: string | null;
 }
 
-/** Satu WO yang akan diterbitkan. */
-export interface RencanaTerbit {
-  ulp: string;
-  kandidat: KandidatWo[];
-  settings: WoSettings;
-}
-
+/** Jawaban `terbitkan_wo_pengukuran` (rencana-pengukuran.sql). */
 export interface HasilTerbit {
-  diterbitkan: { ulp: string; jumlah: number }[];
-  ditolak: string[];
-  error: string | null;
+  jumlah: number;
+  rencana?: number;
+  sisa?: number;
+  sistem?: number;
+  tambahan?: number;
 }
-
-/** Baris per sekali kirim. Kuota bisa sampai 2.000 dan empat ULP diterbitkan
- *  berurutan, jadi dipecah supaya satu permintaan tidak jadi terlalu besar. */
-const UKURAN_BATCH = 500;
 
 // ── Hook ──────────────────────────────────────────────────────────────────────
 
@@ -125,7 +112,7 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     try {
       const qHeader = supabaseBrowser
         .from("wo_pengukuran")
-        .select("id,ulp,bulan,tahun,tgl_wo,kuota,created_at")
+        .select("id,ulp,bulan,tahun,tgl_wo,kuota,kriteria,created_at")
         .eq("tahun", tahun)
         .eq("bulan", bulan)
         .order("ulp");
@@ -182,9 +169,6 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
 
   useEffect(() => { muat(); }, [muat]);
 
-  /** ULP yang WO bulan ini sudah terbit — dipakai menolak penerbitan ulang. */
-  const ulpSudahTerbit = useMemo(() => new Set(headers.map((h) => h.ulp)), [headers]);
-
   /**
    * Gardu yang diukur bulan ini tapi tidak ada di WO mana pun.
    *
@@ -214,77 +198,34 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
   }, [rows, pengukuranBulan]);
 
   /**
-   * Terbitkan WO untuk tiap rencana yang ULP-nya belum punya WO bulan ini.
-   *
-   * ULP yang sudah punya DITOLAK, tidak ditimpa: daftar yang sudah terbit boleh
-   * jadi sudah dicetak dan dipegang petugas, dan realisasi yang menempel padanya
-   * akan ikut lepas kalau barisnya disusun ulang. Menerbitkan ulang harus lewat
-   * hapus yang disengaja.
+   * Terbitkan WO satu ULP lewat penyusun di database — fungsi yang sama dengan
+   * penerbitan otomatis tanggal 1, jadi hasilnya selalu sama. `tambahan` =
+   * gardu "sudah masuk waktu ukur" yang dicentang admin ikut masuk. WO yang
+   * sudah terbit ditolak database (kecuali WO tempelan yang belum disusun —
+   * itu ditambah).
    */
   const terbitkan = useCallback(
-    async (rencana: RencanaTerbit[]): Promise<HasilTerbit> => {
-      const tglWo = tanggalWo(tahun, bulan);
-      const diterbitkan: { ulp: string; jumlah: number }[] = [];
-      const ditolak: string[] = [];
-
-      const { data: auth } = await supabaseBrowser.auth.getUser();
-
-      for (const r of rencana) {
-        if (ulpSudahTerbit.has(r.ulp)) { ditolak.push(r.ulp); continue; }
-        if (r.kandidat.length === 0) continue;
-
-        // Id dibuat di klien, bukan diambil dari `.select()` setelah insert —
-        // pola yang sudah dipakai di tabel lain proyek ini supaya tidak
-        // bergantung pada nilai balik yang bisa ditahan RLS.
-        const woId = crypto.randomUUID();
-
-        const { error: eWo } = await supabaseBrowser.from("wo_pengukuran").insert({
-          id: woId,
-          ulp: r.ulp,
-          bulan,
-          tahun,
-          tgl_wo: tglWo,
-          kuota: r.settings.kuota_per_bulan,
-          kriteria: r.settings,
-          created_by: auth?.user?.id ?? null,
-        });
-        if (eWo) return { diterbitkan, ditolak, error: eWo.message };
-
-        const items = r.kandidat.map((k, i) => ({
-          wo_id: woId,
-          kode_gardu: k.kode_gardu,
-          ulp: k.ulp,
-          nama: k.nama,
-          alamat: k.alamat,
-          penyulang: k.penyulang,
-          kva_master: k.kva_master,
-          lat: k.lat,
-          lng: k.lng,
-          alasan: k.alasan,
-          tgl_ukur_terakhir: k.tgl_ukur_terakhir,
-          umur_bulan: k.umur_bulan,
-          urutan: i + 1,
-        }));
-
-        for (let i = 0; i < items.length; i += UKURAN_BATCH) {
-          const { error: eItem } = await supabaseBrowser
-            .from("wo_pengukuran_item")
-            .insert(items.slice(i, i + UKURAN_BATCH));
-          if (eItem) {
-            // Header tanpa baris adalah keadaan yang menyesatkan — tampil sebagai
-            // "WO sudah terbit" padahal kosong, dan menghalangi percobaan ulang.
-            await supabaseBrowser.from("wo_pengukuran").delete().eq("id", woId);
-            return { diterbitkan, ditolak, error: eItem.message };
-          }
-        }
-
-        diterbitkan.push({ ulp: r.ulp, jumlah: items.length });
-      }
-
-      await muat();
-      return { diterbitkan, ditolak, error: null };
+    async (u: string, tambahan: string[]): Promise<HasilTerbit> => {
+      const { data, error: e } = await supabaseBrowser.rpc("terbitkan_wo_pengukuran", {
+        p_ulp: u, p_tahun: tahun, p_bulan: bulan, p_tambahan: tambahan,
+      });
+      if (e) throw new Error(e.message);
+      return data as HasilTerbit;
     },
-    [tahun, bulan, ulpSudahTerbit, muat],
+    [tahun, bulan],
+  );
+
+  /** Gardu "sudah masuk waktu ukur" ditambahkan ke WO yang sudah terbit. */
+  const tambahPengingat = useCallback(
+    async (u: string, kode: string[]): Promise<number> => {
+      const { data, error: e } = await supabaseBrowser.rpc("tambah_pengingat_wo_pengukuran", {
+        p_ulp: u, p_tahun: tahun, p_bulan: bulan, p_kode: kode,
+      });
+      if (e) throw new Error(e.message);
+      await muat();
+      return data as number;
+    },
+    [tahun, bulan, muat],
   );
 
   /**
@@ -317,52 +258,5 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     [muat],
   );
 
-  return { headers, rows, luarWo, loading, error, unit, ulpSudahTerbit, terbitkan, batalkan, keluarkan, refresh: muat };
-}
-
-// ── Hook: master gardu untuk penyusunan kandidat ──────────────────────────────
-
-const KOLOM_MASTER =
-  "kode,ulp,nama,alamat,penyulang,kva_master,status,belum_diukur,event_date,persen_beban,lat,lng";
-
-/**
- * Baris master + kondisi terakhir, seperlunya untuk menyusun kandidat WO.
- *
- * Sepuluh kolom, bukan `*`. View yang sama dipakai tab Data Gardu dengan 31
- * kolom (186 KB untuk 2.526 gardu), dan yang paling berat di sana adalah JSONB
- * `perjurusan` — tidak ada gunanya di sini, sebab penyusunan WO hanya bertanya
- * "kapan terakhir diukur dan seberapa berat bebannya".
- */
-export function useMasterUntukWo(user: CurrentUser, ulp: string) {
-  const [master, setMaster] = useState<BarisMasterUntukWo[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const unit = !canSeeAllUnits(user.role) && user.unit ? user.unit : ulp;
-
-  useEffect(() => {
-    let batal = false;
-    setLoading(true);
-    setError(null);
-
-    // Wajib paginasi: master berisi 2.526 gardu, dan PostgREST memotong di 1.000
-    // tanpa berkata apa-apa — separuh lebih armada akan hilang dari kandidat.
-    fetchAllRows<BarisMasterUntukWo>(() => {
-      const q = supabaseBrowser
-        .from("gardu_master_state")
-        .select(KOLOM_MASTER)
-        .order("kode")
-        .order("ulp");
-      return unit ? q.eq("ulp", unit) : q;
-    })
-      .then((rows) => { if (!batal) setMaster(rows); })
-      .catch((e: unknown) => {
-        if (!batal) setError(e instanceof Error ? e.message : "Gagal mengambil master gardu");
-      })
-      .finally(() => { if (!batal) setLoading(false); });
-
-    return () => { batal = true; };
-  }, [unit]);
-
-  return { master, loading, error };
+  return { headers, rows, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan, refresh: muat };
 }

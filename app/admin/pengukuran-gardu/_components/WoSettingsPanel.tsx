@@ -51,7 +51,7 @@ const ANGKA: FieldAngka[] = [
 ];
 
 interface FieldSaklar {
-  key: "sertakan_belum_pernah" | "hanya_gardu_aktif";
+  key: "sertakan_belum_pernah" | "hanya_gardu_aktif" | "terbit_otomatis";
   label: string;
   petunjuk: string;
 }
@@ -66,6 +66,12 @@ const SAKLAR: FieldSaklar[] = [
     key: "hanya_gardu_aktif",
     label: "Hanya gardu berstatus Aktif",
     petunjuk: "Gardu Nonaktif tidak di-WO-kan. Gardu tanpa status dianggap Aktif.",
+  },
+  {
+    key: "terbit_otomatis",
+    label: "Terbit WO: Otomatis (tanggal 1)",
+    petunjuk:
+      "Nyala: WO terbit sendiri tanggal 1 pukul 00.10 WITA — dari Rencana Pengukuran bila ada, kalau tidak dari kriteria di atas. Mati: Manual, WO terbit saat tombol WO-kan ditekan.",
   },
 ];
 

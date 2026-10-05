@@ -7,7 +7,8 @@ import { CARD, FIELD } from "@/app/admin/_ui";
 import { useWoHargardu } from "../_hooks/useWoHargardu";
 import KartuWoUlp from "./KartuWoUlp";
 import TabelWoHar from "./TabelWoHar";
-import RencanaPemeliharaan from "./RencanaPemeliharaan";
+import RencanaGardu from "@/app/admin/_components/RencanaGardu";
+import { RENCANA_HARGARDU } from "../_lib/rencanaJenis";
 
 /**
  * Tab WO Pemeliharaan — langkah 7 `rencana-hargardu.md`, sepola WO Pengukuran.
@@ -33,7 +34,13 @@ export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: Current
 
   return (
     <div className="flex flex-col gap-4">
-      <RencanaPemeliharaan daftar={daftar} oleh={user.name ?? user.email ?? ""} bolehKelola={canManageSettings(user.role)} />
+      <RencanaGardu
+        jenis={RENCANA_HARGARDU}
+        keterangan="Selama riwayat belum ada, ULP menandai bulan pemeliharaan tiap gardu di templat Excel. WO bulan yang ada rencananya disusun dari sini; tanpa rencana, sistem menyusun dari riwayat."
+        daftar={daftar}
+        oleh={user.name ?? user.email ?? ""}
+        bolehKelola={canManageSettings(user.role)}
+      />
 
       <div className="flex flex-wrap items-center gap-2">
         <input
@@ -45,7 +52,8 @@ export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: Current
         />
         <p className="text-[11px] text-ink-muted">
           Satu WO per ULP per bulan. Bulan yang ada Rencana Pemeliharaan: gardu rencana + sisa WO bulan lalu, terbit
-          otomatis tanggal 1. Tanpa rencana: gardu jatuh tempo menurut riwayat, diterbitkan manual.
+          otomatis tanggal 1 (atau manual, sesuai Kriteria). Tanpa rencana: gardu yang sudah masuk waktu pemeliharaan
+          menurut riwayat, diterbitkan manual.
         </p>
       </div>
 

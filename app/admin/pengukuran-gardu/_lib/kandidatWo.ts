@@ -1,13 +1,13 @@
 /**
- * Aturan penyusunan WO Pengukuran — gardu mana yang harus diukur bulan ini.
+ * Pengaturan & label WO Pengukuran.
  *
- * Fungsi murni, tanpa Supabase dan tanpa React: aturannya bisa dibaca, diuji,
- * dan nanti dipakai ulang dari sisi lain (agen terjadwal, mobile) tanpa menarik
- * seluruh halaman ikut serta.
+ * Aturan penyusunannya (gardu mana yang sudah masuk waktu ukur, urutan, kuota)
+ * sejak 5 Okt 2026 tinggal di DATABASE — `_hitung_wo_pengukuran` di
+ * `scripts/rencana-pengukuran.sql` — karena WO kini bisa terbit sendiri
+ * tanggal 1 tanpa layar web. Satu aturan, satu tempat; diuji sama persis
+ * dengan aturan web lama pada data asli keempat ULP.
  *
  * Umur pengukuran selalu dihitung terhadap TANGGAL WO, bukan terhadap hari ini.
- * Itu yang membuat WO tanggal 1 berbunyi konsisten — daftar yang sama akan
- * tersusun sama persis entah tombolnya ditekan tanggal 1 atau tanggal 9.
  */
 
 // ── Pengaturan ────────────────────────────────────────────────────────────────
@@ -20,12 +20,14 @@ export interface WoSettings {
   /** Umur maksimum untuk gardu berbeban < ambang. Samakan dengan yang di atas
    *  kalau ingin satu ambang untuk semua gardu. */
   bulan_beban_rendah: number;
-  /** Berapa gardu yang diterbitkan per bulan per ULP. */
+  /** Berapa gardu yang diterbitkan per bulan per ULP (aturan sistem). */
   kuota_per_bulan: number;
   /** Gardu yang belum pernah diukur ikut jadi kandidat. */
   sertakan_belum_pernah: boolean;
   /** Gardu berstatus Nonaktif tidak di-WO-kan. */
   hanya_gardu_aktif: boolean;
+  /** WO terbit sendiri tanggal 1 pukul 00.10 WITA (5 Okt 2026). */
+  terbit_otomatis: boolean;
 }
 
 export const DEFAULT_WO_SETTINGS: WoSettings = {
@@ -35,59 +37,21 @@ export const DEFAULT_WO_SETTINGS: WoSettings = {
   kuota_per_bulan: 50,
   sertakan_belum_pernah: true,
   hanya_gardu_aktif: true,
+  terbit_otomatis: false,
 };
 
-// ── Masukan & keluaran ────────────────────────────────────────────────────────
+// ── Alasan gardu masuk WO ─────────────────────────────────────────────────────
 
-/**
- * Bentuk minimal yang dibutuhkan, bukan `GarduMasterState` utuh.
- *
- * Pola yang sama dipakai `pengukuranBasi()`: pemanggil boleh menarik kolom
- * seperlunya dari view yang sama tanpa harus menyediakan 31 kolom lengkap.
- */
-export interface BarisMasterUntukWo {
-  kode: string;
-  ulp: string;
-  nama: string | null;
-  alamat: string | null;
-  penyulang: string | null;
-  kva_master: number | null;
-  status: string | null;
-  belum_diukur: boolean;
-  event_date: string | null;
-  persen_beban: number | null;
-  /** Koordinat gardu dari master. Tipe kolomnya di tabel `gardu` warisan
-   *  migrasi Firebase dan tidak dipatok skrip mana pun — bisa datang sebagai
-   *  angka ATAU teks, jadi dilonggarkan di sini lalu dibereskan `koordinat()`. */
-  lat: number | string | null;
-  lng: number | string | null;
-}
+export type AlasanWo = "belum_pernah" | "kedaluwarsa" | "tempelan" | "rencana" | "sisa";
 
-export type AlasanWo = "belum_pernah" | "kedaluwarsa";
-
-export interface KandidatWo {
-  kode_gardu: string;
-  ulp: string;
-  nama: string | null;
-  alamat: string | null;
-  penyulang: string | null;
-  kva_master: number | null;
-  alasan: AlasanWo;
-  /** NULL untuk gardu yang belum pernah diukur. */
-  tgl_ukur_terakhir: string | null;
-  umur_bulan: number | null;
-  /** Beban terakhir — dipakai mengurutkan, tidak disimpan ke tabel. */
-  persen_beban: number | null;
-  /** Titik gardu, sudah dibereskan jadi angka. NULL = master belum punya. */
-  lat: number | null;
-  lng: number | null;
-}
-
-export interface RingkasKandidat {
-  total: number;
-  belumPernah: number;
-  kedaluwarsa: number;
-}
+/** "Kedaluwarsa" diganti "Sudah masuk waktu ukur" (keputusan user 5 Okt 2026). */
+export const LABEL_ALASAN: Record<AlasanWo, string> = {
+  belum_pernah: "Belum pernah diukur",
+  kedaluwarsa: "Sudah masuk waktu ukur",
+  tempelan: "Tempel WO",
+  rencana: "Sesuai rencana ULP",
+  sisa: "Sisa bulan lalu",
+};
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -111,11 +75,11 @@ export function batasBulanWo(tahun: number, bulan: number): { awal: string; akhi
 }
 
 /**
- * Selisih bulan penuh antara dua tanggal YYYY-MM-DD.
+ * Selisih bulan penuh antara dua tanggal YYYY-MM-DD — dipakai WO Pemeliharaan
+ * (versi SQL-nya ada di penyusun WO Pengukuran).
  *
- * Dibulatkan ke bawah dan tidak pernah negatif: gardu yang diukur SETELAH
- * tanggal WO (mis. WO disusun ulang di pertengahan bulan) berumur 0, bukan −1
- * yang akan mengacaukan pengurutan.
+ * Dibulatkan ke bawah dan tidak pernah negatif: gardu yang dikerjakan SETELAH
+ * tanggal WO berumur 0, bukan −1 yang akan mengacaukan pengurutan.
  */
 export function umurBulan(dari: string, sampai: string): number {
   const [ya, ma, da] = dari.split("-").map(Number);
@@ -124,10 +88,6 @@ export function umurBulan(dari: string, sampai: string): number {
   if (db < da) bulan -= 1;
   return Math.max(0, bulan);
 }
-
-/** Gardu tanpa status dianggap Aktif — master lama banyak yang kolomnya kosong,
- *  dan template impor pun menyatakan kosong = Aktif. */
-const aktif = (status: string | null) => !status || status.toUpperCase() === "AKTIF";
 
 /**
  * Satu koordinat jadi angka, atau NULL kalau tidak ada yang bisa dipakai.
@@ -143,111 +103,3 @@ export function koordinat(v: number | string | null | undefined): number | null 
   if (!Number.isFinite(n) || n === 0) return null;
   return n;
 }
-
-// ── Seleksi ───────────────────────────────────────────────────────────────────
-
-/**
- * Susun daftar kandidat WO untuk satu tanggal WO, sudah terurut dan terpotong
- * sesuai kuota.
- *
- * Urutannya tetap dan disengaja:
- *   1. Belum pernah diukur — satu-satunya kelompok yang kondisinya benar-benar
- *      tidak diketahui, jadi paling berisiko dibiarkan.
- *   2. Paling lama tidak diukur.
- *   3. Beban terakhir tertinggi.
- *   4. Kode gardu — bukan kriteria, hanya pemutus supaya hasilnya tidak
- *      berubah-ubah antar pemanggilan untuk data yang sama.
- */
-export function susunKandidat(
-  rows: BarisMasterUntukWo[],
-  settings: WoSettings,
-  tglWo: string,
-): KandidatWo[] {
-  const kandidat: KandidatWo[] = [];
-
-  for (const r of rows) {
-    if (settings.hanya_gardu_aktif && !aktif(r.status)) continue;
-
-    const dasar = {
-      kode_gardu: r.kode,
-      ulp: r.ulp,
-      nama: r.nama,
-      alamat: r.alamat,
-      penyulang: r.penyulang,
-      kva_master: r.kva_master,
-      persen_beban: r.persen_beban,
-      lat: koordinat(r.lat),
-      lng: koordinat(r.lng),
-    };
-
-    if (r.belum_diukur || !r.event_date) {
-      if (!settings.sertakan_belum_pernah) continue;
-      kandidat.push({ ...dasar, alasan: "belum_pernah", tgl_ukur_terakhir: null, umur_bulan: null });
-      continue;
-    }
-
-    const umur = umurBulan(r.event_date, tglWo);
-    // Dibandingkan pada persen yang TAMPIL, sama dengan kartu overload dan
-    // `pengukuranBasi()` — supaya gardu di ambang tidak masuk WO tapi tampil
-    // aman di tab sebelah, atau sebaliknya.
-    const batas =
-      Math.round(r.persen_beban ?? 0) >= settings.ambang_beban_pct
-        ? settings.bulan_beban_tinggi
-        : settings.bulan_beban_rendah;
-
-    if (umur < batas) continue;
-    kandidat.push({ ...dasar, alasan: "kedaluwarsa", tgl_ukur_terakhir: r.event_date, umur_bulan: umur });
-  }
-
-  kandidat.sort((a, b) => {
-    if (a.alasan !== b.alasan) return a.alasan === "belum_pernah" ? -1 : 1;
-    if ((b.umur_bulan ?? 0) !== (a.umur_bulan ?? 0)) return (b.umur_bulan ?? 0) - (a.umur_bulan ?? 0);
-    if ((b.persen_beban ?? 0) !== (a.persen_beban ?? 0)) return (b.persen_beban ?? 0) - (a.persen_beban ?? 0);
-    return a.kode_gardu.localeCompare(b.kode_gardu);
-  });
-
-  return kandidat.slice(0, settings.kuota_per_bulan);
-}
-
-/** Rincian per alasan — dipakai di dialog konfirmasi dan kartu ringkasan. */
-export function ringkasKandidat(kandidat: KandidatWo[]): RingkasKandidat {
-  let belumPernah = 0;
-  for (const k of kandidat) if (k.alasan === "belum_pernah") belumPernah += 1;
-  return { total: kandidat.length, belumPernah, kedaluwarsa: kandidat.length - belumPernah };
-}
-
-/**
- * Susun kandidat untuk beberapa ULP sekaligus — satu daftar per ULP.
- *
- * UP3 tanpa filter menerbitkan satu WO per ULP, dan kuota berlaku PER ULP.
- * Karena itu pemisahannya harus terjadi SEBELUM pemotongan kuota: menyeleksi
- * gabungan lalu memotong 50 teratas akan menghabiskan seluruh jatah untuk ULP
- * yang datanya paling tertinggal, dan tiga ULP lain tidak kebagian sama sekali.
- *
- * `settingsUntuk` dipanggil per ULP supaya tiap ULP memakai kriteria dan
- * kuotanya sendiri.
- */
-export function susunKandidatPerUlp(
-  rows: BarisMasterUntukWo[],
-  settingsUntuk: (ulp: string) => WoSettings,
-  tglWo: string,
-): Map<string, KandidatWo[]> {
-  const perUlp = new Map<string, BarisMasterUntukWo[]>();
-  for (const r of rows) {
-    const daftar = perUlp.get(r.ulp);
-    if (daftar) daftar.push(r);
-    else perUlp.set(r.ulp, [r]);
-  }
-
-  const hasil = new Map<string, KandidatWo[]>();
-  for (const [ulp, barisUlp] of [...perUlp].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const kandidat = susunKandidat(barisUlp, settingsUntuk(ulp), tglWo);
-    if (kandidat.length > 0) hasil.set(ulp, kandidat);
-  }
-  return hasil;
-}
-
-export const LABEL_ALASAN: Record<AlasanWo, string> = {
-  belum_pernah: "Belum pernah diukur",
-  kedaluwarsa: "Kedaluwarsa",
-};

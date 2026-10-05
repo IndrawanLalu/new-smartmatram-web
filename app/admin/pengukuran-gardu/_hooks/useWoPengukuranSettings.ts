@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { DEFAULT_WO_SETTINGS, type WoSettings } from "../_lib/kandidatWo";
 
 const KOLOM =
-  "ulp,ambang_beban_pct,bulan_beban_tinggi,bulan_beban_rendah,kuota_per_bulan,sertakan_belum_pernah,hanya_gardu_aktif";
+  "ulp,ambang_beban_pct,bulan_beban_tinggi,bulan_beban_rendah,kuota_per_bulan,sertakan_belum_pernah,hanya_gardu_aktif,terbit_otomatis";
 
 /**
  * Pengaturan WO Pengukuran.
@@ -39,6 +39,7 @@ export function useWoPengukuranSettings(ulp: string) {
           kuota_per_bulan: Number(r.kuota_per_bulan),
           sertakan_belum_pernah: r.sertakan_belum_pernah,
           hanya_gardu_aktif: r.hanya_gardu_aktif,
+          terbit_otomatis: !!r.terbit_otomatis,
         });
       }
     }
