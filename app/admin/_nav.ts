@@ -84,7 +84,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck },
       { href: "/admin/command-center",      label: "Command Center",       icon: Radar },
-      { href: "/admin/peta-gardu",          label: "Peta Aset",            icon: Map },
+      { href: "/admin/peta-gardu",          label: "Peta SLD",             icon: Map },
       { href: "/admin/peta",                label: "Peta Jaringan",        icon: Globe },
     ],
   },

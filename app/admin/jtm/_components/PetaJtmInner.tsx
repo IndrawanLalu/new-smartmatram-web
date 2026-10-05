@@ -8,7 +8,7 @@ import L, { type LatLngBoundsExpression, type LeafletMouseEvent } from "leaflet"
 import "leaflet/dist/leaflet.css";
 import type { TiangJtm } from "../_hooks/useTiangJtm";
 import type { RefBaris } from "../_hooks/useJtmRef";
-import { htmlPenandaJtm } from "@/lib/penandaJtm";
+import { htmlPenandaJtm, titikTengahPortal } from "@/lib/penandaJtm";
 
 interface Props {
   tiang: TiangJtm[];
@@ -136,6 +136,13 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, pen
     [tiang],
   );
   const petaId = useMemo(() => new Map(tiang.map((t) => [t.id, t])), [tiang]);
+  const portal = useMemo(
+    () =>
+      titikTengahPortal(
+        berkoordinat.map((t) => ({ id: t.id, lat: t.lat, lng: t.lng, pasanganPortalDari: t.pasangan_portal_dari })),
+      ),
+    [berkoordinat],
+  );
 
   /** Warna per segmen, dibagikan menurut urutan kemunculan. */
   const warnaSegmen = useMemo(() => {
@@ -226,6 +233,7 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, pen
               <br />
               {t.penyulang}
               {tanda ? ` · ${tanda.label}` : ""}
+              {t.penanda === "gardu" && t.gardu_di_tiang ? ` ${t.gardu_di_tiang}` : ""}
               <br />
               {t.jenis ?? "jenis belum dicatat"}
               {t.konstruksi ? ` · ${t.konstruksi}` : ""}
@@ -250,38 +258,37 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, pen
             </Popup>
           );
 
+          const klik = menandai ? { click: () => onUbahPilihan([t.id], "alih") } : undefined;
+          // Gardu portal: tiangnya bulatan biasa, gardunya di tengah pasangan.
+          const tengah = tanda ? portal.get(t.id) : undefined;
+
           // Tiang bertanda memakai ikon berbentuk, bukan lingkaran: gardu dan
           // recloser adalah PATOKAN orang membaca peta ini, jadi harus menonjol
           // dari ratusan tiang biasa di sekelilingnya.
-          if (tanda) {
-            return (
-              <Marker
-                key={t.id}
-                position={[t.lat!, t.lng!]}
-                icon={ikonPenanda(tanda, dipilih)}
-                zIndexOffset={500}
-                eventHandlers={
-                  menandai ? { click: () => onUbahPilihan([t.id], "alih") } : undefined
-                }
-              >
-                {tampilNama && (
-                  <Tooltip permanent direction="right" offset={[11, 0]} className="tooltip-tiang">
-                    {t.kode}
-                  </Tooltip>
-                )}
-                {!menandai && isiPopup}
-              </Marker>
-            );
-          }
+          const ikon = tanda && (
+            <Marker
+              key={tengah ? `g-${t.id}` : t.id}
+              position={tengah ?? [t.lat!, t.lng!]}
+              icon={ikonPenanda(tanda, dipilih)}
+              zIndexOffset={500}
+              eventHandlers={klik}
+            >
+              {tampilNama && !tengah && (
+                <Tooltip permanent direction="right" offset={[11, 0]} className="tooltip-tiang">
+                  {t.kode}
+                </Tooltip>
+              )}
+              {!menandai && isiPopup}
+            </Marker>
+          );
+          if (ikon && !tengah) return ikon;
 
-          return (
+          const bulat = (
             <CircleMarker
               key={t.id}
               center={[t.lat!, t.lng!]}
               radius={dipilih ? 9 : bersama ? 8 : 6}
-              eventHandlers={
-                menandai ? { click: () => onUbahPilihan([t.id], "alih") } : undefined
-              }
+              eventHandlers={klik}
               pathOptions={{
                 color: tepi,
                 weight: bersama ? 3 : 2,
@@ -301,6 +308,7 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, pen
               {!menandai && isiPopup}
             </CircleMarker>
           );
+          return ikon ? [bulat, ikon] : bulat;
         })}
       </MapContainer>
 

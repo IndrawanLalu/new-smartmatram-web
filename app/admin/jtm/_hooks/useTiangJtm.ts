@@ -28,6 +28,10 @@ export interface TiangJtm {
   nomor_lama: string | null;
   /** Kode penanda (gardu/lbsm/recloser/…) — menentukan ikonnya di peta. */
   penanda: string | null;
+  /** Tiang kedua gardu portal — id tiang gardunya. */
+  pasangan_portal_dari: string | null;
+  /** Kode gardu yang berdiri di tiang ini (AM013). */
+  gardu_di_tiang: string | null;
   sumber: string | null;
   dikonfirmasi_at: string | null;
   /** Diisi di sini, bukan dari database: nama segmen yang memikul tiang ini. */
@@ -71,7 +75,7 @@ export function useTiangJtm(user: CurrentUser, ulpPilihan: string) {
           const q = supabaseBrowser
             .from("tiang")
             .select(
-              "id,kode,penyulang,ulp,induk_id,lat,lng,jenis,konstruksi,nomor_lama,penanda,sumber,dikonfirmasi_at",
+              "id,kode,penyulang,ulp,induk_id,lat,lng,jenis,konstruksi,nomor_lama,penanda,pasangan_portal_dari,gardu_di_tiang,sumber,dikonfirmasi_at",
             )
             .not("penyulang", "is", null)
             .is("gardu_kode", null)

@@ -51,3 +51,22 @@ export function htmlPenandaJtm(
 
   return `<div style="width:${sisi}px;height:${sisi}px;background:${w};border:2px solid #fff;${BAYANG};${rupa}"></div>`;
 }
+
+/**
+ * Gardu portal berdiri di DUA tiang tetapi tetap satu gardu: penandanya hanya
+ * di tiang pertama (`scripts/jtm-portal-satu-gardu.sql`), dan digambar di
+ * tengah pasangannya. Hasil: id tiang gardu → titik tengah. Pasangan yang
+ * berada di luar layar tidak masuk — gardunya tetap di tiangnya sendiri.
+ */
+export function titikTengahPortal(
+  tiang: { id: string; lat: number | null; lng: number | null; pasanganPortalDari: string | null }[],
+): Map<string, [number, number]> {
+  const perId = new Map(tiang.map((t) => [t.id, t]));
+  const hasil = new Map<string, [number, number]>();
+  for (const p of tiang) {
+    const g = p.pasanganPortalDari ? perId.get(p.pasanganPortalDari) : undefined;
+    if (!g || g.lat === null || g.lng === null || p.lat === null || p.lng === null) continue;
+    hasil.set(g.id, [(g.lat + p.lat) / 2, (g.lng + p.lng) / 2]);
+  }
+  return hasil;
+}

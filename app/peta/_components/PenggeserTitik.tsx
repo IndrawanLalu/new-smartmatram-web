@@ -9,7 +9,7 @@ import L from "leaflet";
  * posisi baru, supaya yang menggeser selalu melihat seberapa jauh dia memindah.
  */
 
-const IKON_GESER = L.divIcon({
+export const IKON_GESER = L.divIcon({
   className: "",
   iconSize: [26, 26],
   iconAnchor: [13, 13],

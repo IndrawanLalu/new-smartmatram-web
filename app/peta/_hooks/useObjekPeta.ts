@@ -36,7 +36,9 @@ export interface RincianTiang {
   lat: number;
   lng: number;
   /** Nama tiang di tiap penyulang yang melewatinya (JTM). */
-  nama: { penyulang: string; kode: string; utama: boolean }[];
+  /** `induk` = nama induk tiang ini di penyulang itu, bila diatur khusus
+   *  (titik pertemuan dua penyulang); null = ikut induk batangnya. */
+  nama: { penyulang: string; kode: string; utama: boolean; induk: string | null }[];
   induk: string | null;
   /** Keadaan terakhir yang BUKAN normal — temuan terbuka. */
   temuan: { item: string; bagian: string; nilai: string }[];
@@ -45,6 +47,9 @@ export interface RincianTiang {
   jtr: RincianJtr | null;
   /** Gardu portal (dua tiang): pasangannya, tiang gardunya, atau belum berpasangan. */
   portal: { pasangan: string | null; dari: string | null; tanpaPasangan: boolean };
+  /** JTM: kode gardu di tiang ini (AM013) & namanya di Master Gardu — null bila belum ada di Master. */
+  gardu_di_tiang: string | null;
+  garduNama: string | null;
 }
 
 export interface KabelJtr {
@@ -157,12 +162,12 @@ async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJ
 }
 
 const KOLOM_TIANG =
-  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng,pasangan_portal_dari";
+  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng,pasangan_portal_dari,gardu_di_tiang";
 
 async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTiang> {
   const [t, n, k] = await Promise.all([
     supabaseBrowser.from("tiang").select(KOLOM_TIANG).eq("id", id).single(),
-    supabaseBrowser.from("tiang_kode_penyulang").select("penyulang,kode,utama").eq("tiang_id", id),
+    supabaseBrowser.from("tiang_kode_penyulang").select("penyulang,kode,utama,induk_id").eq("tiang_id", id),
     supabaseBrowser
       .from("tiang_kondisi_terakhir")
       .select("item_nama,bagian,nilai_label,nilai,normal")
@@ -172,13 +177,22 @@ async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTi
   if (t.error) throw new Error(t.error.message);
   const r = t.data as Record<string, unknown>;
   const jtr = garduJtr ? await muatJtr(id, garduJtr, String(r.ulp ?? "")) : null;
-  const [pas, dari, tanpa] = await Promise.all([
+  const [pas, dari, tanpa, gm] = await Promise.all([
     supabaseBrowser.from("tiang").select("kode").eq("pasangan_portal_dari", id).eq("status_hidup", "aktif").limit(1),
     r.pasangan_portal_dari
       ? supabaseBrowser.from("tiang").select("kode").eq("id", r.pasangan_portal_dari as string).maybeSingle()
       : Promise.resolve({ data: null }),
     supabaseBrowser.from("jtm_portal_tanpa_pasangan").select("tiang_id").eq("tiang_id", id).limit(1),
+    r.gardu_di_tiang
+      ? supabaseBrowser.from("gardu").select("nama").eq("kode", r.gardu_di_tiang as string).limit(1)
+      : Promise.resolve({ data: null }),
   ]);
+  const namaRaw = (n.data ?? []) as { penyulang: string; kode: string; utama: boolean; induk_id: string | null }[];
+  const indukPer = namaRaw.filter((x) => x.induk_id);
+  const kodeIndukPer = indukPer.length
+    ? ((await supabaseBrowser.from("tiang_kode_penyulang").select("tiang_id,penyulang,kode")
+        .in("tiang_id", indukPer.map((x) => x.induk_id as string))).data ?? [])
+    : [];
   let induk: string | null = null;
   if (r.induk_id) {
     const i = await supabaseBrowser.from("tiang").select("kode").eq("id", r.induk_id as string).maybeSingle();
@@ -190,7 +204,14 @@ async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTi
     percabangan: !!r.percabangan,
     lat: Number(r.lat),
     lng: Number(r.lng),
-    nama: (n.data ?? []) as RincianTiang["nama"],
+    nama: namaRaw.map((x) => ({
+      penyulang: x.penyulang,
+      kode: x.kode,
+      utama: x.utama,
+      induk: x.induk_id
+        ? ((kodeIndukPer.find((k) => k.tiang_id === x.induk_id && k.penyulang === x.penyulang)?.kode as string) ?? "?")
+        : null,
+    })),
     induk,
     jtr,
     portal: {
@@ -198,6 +219,7 @@ async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTi
       dari: ((dari.data as { kode?: string } | null)?.kode as string) ?? null,
       tanpaPasangan: (tanpa.data ?? []).length > 0,
     },
+    garduNama: ((gm.data as { nama?: string }[] | null)?.[0]?.nama as string) ?? null,
     temuan: (k.data ?? []).map((x) => ({
       item: x.item_nama as string,
       bagian: x.bagian as string,

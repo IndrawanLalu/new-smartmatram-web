@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, Loader2, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, Loader2, Move, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
 import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
@@ -15,6 +15,7 @@ import { usePetaIsi, ZOOM_GARDU, ZOOM_TIANG, type GarduPeta, type Kotak, type Ti
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
 import { useSuntingPeta } from "../_hooks/useSuntingPeta";
+import { useGeserBanyak } from "../_hooks/useGeserBanyak";
 import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useKesehatanPeta, type KesehatanGardu, type SaringKesehatan, type StatusKesehatan } from "../_hooks/useKesehatanPeta";
@@ -23,6 +24,7 @@ import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } fro
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
 import PanelObjek from "./PanelObjek";
+import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelUjung from "./PanelUjung";
 
 const PetaInner = dynamic(() => import("./PetaInner"), {
@@ -109,6 +111,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [terpilih, setTerpilih] = useState<Terpilih | null>(null);
   const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
   const [modeInduk, setModeInduk] = useState(false);
+  /** Ganti induk DI PENYULANG YANG MENUMPANG (titik pertemuan); null = induk batang. */
+  const [indukPenyulang, setIndukPenyulang] = useState<string | null>(null);
   /** Gabungkan tiang kembar: menunggu klik batang aslinya. */
   const [modeGabung, setModeGabung] = useState(false);
   const [calonGabung, setCalonGabung] = useState<TiangPeta | null>(null);
@@ -117,6 +121,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [alasanInduk, setAlasanInduk] = useState("");
   const objek = useObjekPeta(terpilih);
   const sunting = useSuntingPeta(oleh);
+  const geserBanyak = useGeserBanyak(oleh);
   const simulasi = useSimulasiBuka();
 
   const jalankanSimulasi = async () => {
@@ -240,9 +245,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
   // Stabil — `Isi` di peta di-memo, dan ribuan objeknya tidak boleh digambar
   // ulang hanya karena panel berubah.
+  const { aktif: geserBanyakAktif, pilih: pilihGeserBanyak } = geserBanyak;
   const pilihTiang = useCallback(
     (t: TiangPeta) => {
       if (geser) return;
+      if (geserBanyakAktif) {
+        pilihGeserBanyak(t);
+        return;
+      }
       if (modeGabung) {
         // Batang asli = batang LAIN, di jaringan lain (JTM, atau JTR gardu lain).
         if (terpilih?.jenis !== "tiang" || t.id === terpilih.id) return;
@@ -254,19 +264,21 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         if (terpilih?.jenis !== "tiang" || t.id === terpilih.id) return;
         // Induk JTR harus tiang JTR gardu yang sama.
         if (terpilih.jaringan === "jtr" && (t.jaringan !== "jtr" || t.kelompok !== terpilih.kelompok)) return;
+        // Induk di penyulang yang menumpang: tiang dari lapisan penyulang itu.
+        if (indukPenyulang && (t.jaringan !== "jtm" || t.kelompok.toUpperCase() !== indukPenyulang.toUpperCase())) return;
         setCalonInduk(t);
         return;
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
-    [geser, modeInduk, modeGabung, terpilih],
+    [geser, modeInduk, modeGabung, terpilih, geserBanyakAktif, pilihGeserBanyak, indukPenyulang],
   );
   const pilihGardu = useCallback(
     (g: GarduPeta) => {
-      if (geser || modeInduk) return;
+      if (geser || modeInduk || geserBanyakAktif) return;
       setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
     },
-    [geser, modeInduk],
+    [geser, modeInduk, geserBanyakAktif],
   );
   const aturGeser = useCallback((lat: number, lng: number) => setGeser({ lat, lng }), []);
   const tutupObjek = () => {
@@ -274,8 +286,20 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     setTerpilih(null);
     setGeser(null);
     setModeInduk(false);
+    setIndukPenyulang(null);
     setModeGabung(false);
     setAlasanInduk("");
+  };
+
+  const aturIndukPenyulang = async (indukId: string | null) => {
+    if (terpilih?.jenis !== "tiang" || !indukPenyulang) return false;
+    const ok = await sunting.indukPenyulang(terpilih.id, indukPenyulang, indukId);
+    if (ok) {
+      setModeInduk(false);
+      setIndukPenyulang(null);
+      segarkan();
+    }
+    return ok;
   };
 
   /** Koreksi JTR: semua per gardu yang sedang dipilih (`terpilih.kelompok`). */
@@ -385,6 +409,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onPilihTiang={pilihTiang} onPilihGardu={pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={geser} onGeser={aturGeser}
+          geserBanyak={geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
           ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
           simulasi={simulasi.hasil}
@@ -397,7 +422,21 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           sorotPerubahan={sorotBanding?.tiang ?? null}
         />
 
-        {terpilih && (
+        {geserBanyak.aktif && (
+          <PanelGeserBanyak
+            daftar={geserBanyak.daftar}
+            jumlahTergeser={geserBanyak.tergeser.length}
+            onBuang={geserBanyak.buang}
+            onKeluar={geserBanyak.keluar}
+            onSimpan={async (alasan) => {
+              const ok = await geserBanyak.simpan(alasan);
+              if (ok) void muatUlangPeta();
+              return ok;
+            }}
+          />
+        )}
+
+        {terpilih && !geserBanyak.aktif && (
           <PanelObjek
             key={terpilih.jenis === "tiang" ? terpilih.id : `${terpilih.ulp}-${terpilih.kode}`}
             terpilih={terpilih}
@@ -413,7 +452,16 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             onSimpanGeser={simpanGeser}
             modeInduk={modeInduk}
             onGantiInduk={() => setModeInduk(true)}
-            onBatalInduk={() => setModeInduk(false)}
+            onBatalInduk={() => {
+              setModeInduk(false);
+              setIndukPenyulang(null);
+            }}
+            indukPenyulang={indukPenyulang}
+            onIndukPenyulang={(p) => {
+              setIndukPenyulang(p);
+              setModeInduk(true);
+            }}
+            onIkutBatang={() => aturIndukPenyulang(null)}
             onUbahAtribut={async (isi) => {
               if (terpilih.jenis !== "tiang") return false;
               const ok = await sunting.ubahAtribut(terpilih.id, isi);
@@ -487,7 +535,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
-        {!terpilih && (ujungAktif || kesehatanAktif) && (
+        {!terpilih && !geserBanyak.aktif && (ujungAktif || kesehatanAktif) && (
           <div className="absolute z-[1050] top-14 right-3 bottom-3 flex flex-col gap-2 overflow-y-auto pointer-events-none [&>*]:pointer-events-auto">
             {kesehatanAktif && (
               <PanelKesehatan
@@ -557,7 +605,21 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
-        {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan !== "jtr" && (
+        {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan !== "jtr" && indukPenyulang && (
+          <ConfirmDialog
+            title={`Sambungkan ${terpilih.kode} dari ${calonInduk.kode} di ${indukPenyulang}?`}
+            message={`Di penyulang ${indukPenyulang}, tiang ini menyambung dari ${calonInduk.kode}. Induk di penyulang pemiliknya tidak berubah. Nama ${indukPenyulang} tiang ini tidak berubah otomatis — Generate ulang nama ${indukPenyulang} sesudahnya.`}
+            confirmLabel="Sambungkan"
+            onConfirm={async () => {
+              const t = calonInduk;
+              setCalonInduk(null);
+              await aturIndukPenyulang(t.id);
+            }}
+            onClose={() => setCalonInduk(null)}
+          />
+        )}
+
+        {calonInduk && terpilih?.jenis === "tiang" && terpilih.jaringan !== "jtr" && !indukPenyulang && (
           <ConfirmDialog
             title={`Jadikan ${calonInduk.kode} induk ${terpilih.kode}?`}
             message="Jalur jaringan tiang ini akan menyambung dari tiang yang Anda klik. Nama tiang tidak berubah otomatis — kalau urutannya jadi janggal, nomori ulang penyulangnya dari tab Tiang di Inspeksi JTM."
@@ -710,6 +772,20 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               )}
             </button>
           ) : null}
+          {boleh && (
+            <button
+              onClick={() => {
+                tutupObjek();
+                geserBanyak.mulai();
+              }}
+              disabled={geserBanyak.aktif}
+              className={`${TOMBOL_ATAS} ${geserBanyak.aktif ? "ring-1 ring-[#5eead4]" : ""}`}
+              style={{ background: geserBanyak.aktif ? "rgba(94,234,212,0.2)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+              title="Geser titik banyak tiang sekaligus, simpan dengan satu alasan"
+            >
+              <Move size={15} /> Geser titik
+            </button>
+          )}
           <button
             onClick={() => void muatUlangSemua()}
             disabled={memuatUlang}

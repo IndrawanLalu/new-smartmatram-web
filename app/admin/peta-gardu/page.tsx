@@ -1,200 +1,130 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { Loader2, Tags } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { canSeeAllUnits } from "@/lib/roles";
-import { usePetaGardu } from "./_hooks/usePetaGardu";
-import { useDrawing } from "./_hooks/useDrawing";
-import { useMeasure } from "./_hooks/useMeasure";
-import { useMapSelection } from "./_hooks/useMapSelection";
-import { useTiangReferensi } from "./_hooks/useTiangReferensi";
-import PetaGarduCanvas from "./_components/PetaGarduCanvas";
-import LayerPanel from "./_components/_LayerPanel";
-import AttributePanel from "./_components/_AttributePanel";
-import FeatureForm from "./_components/_FeatureForm";
-import type { FeatureType, Gardu, Jalur, Tiang } from "./_hooks/types";
+import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { FIELD } from "@/app/admin/_ui";
+import { lepas } from "@/lib/sld";
+import { usePenandaJtm } from "@/app/peta/_hooks/usePenandaJtm";
+import { usePetaSld } from "./_hooks/usePetaSld";
+import DaftarPenyulang, { angka } from "./_components/DaftarPenyulang";
+import RingkasSldPanel from "./_components/RingkasSldPanel";
+import HasilLepasPanel from "./_components/HasilLepasPanel";
 
-export default function PetaGarduPage() {
+/**
+ * Peta SLD — diagram garis tunggal di atas peta, diringkas dari master tiang
+ * (`lib/sld.ts`). Rencana: `rencana-peta-sld.md`. Menggantikan Peta Aset
+ * (alat gambar lama tabel `jalur`), route tetap supaya hak menu tidak berubah.
+ */
+
+const PetaSldInner = dynamic(() => import("./_components/PetaSldInner"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-full grid place-items-center text-sm text-ink-muted gap-2">
+      <Loader2 size={18} className="animate-spin" /> Menyiapkan peta…
+    </div>
+  ),
+});
+
+const PALET = ["#2563EB", "#9333EA", "#0891B2", "#CA8A04", "#DB2777", "#059669", "#EA580C", "#4F46E5"];
+
+export default function PetaSldPage() {
   const user = useCurrentUser();
-  const peta = usePetaGardu(user);
-  const drawing = useDrawing();
-  const measure = useMeasure();
-  const selection = useMapSelection();
-  const tiangRef = useTiangReferensi(peta.feederOptions);
+  const semuaUnit = canSeeAllUnits(user.role);
+  const [ulp, setUlp] = useState(semuaUnit ? "" : (user.unit ?? ""));
+  const sld = usePetaSld(semuaUnit ? ulp || null : (user.unit ?? null));
+  const penanda = usePenandaJtm();
+  const [dipilih, setDipilih] = useState<Set<string>>(new Set());
+  const [sim, setSim] = useState<{ penyulang: string; id: string } | null>(null);
+  const [label, setLabel] = useState(false);
 
-  const [showForm, setShowForm] = useState(false);
-  const [formMode, setFormMode] = useState<"add" | "edit">("add");
-  const [formType, setFormType] = useState<FeatureType>("tiang");
-  const [formInitial, setFormInitial] = useState<Gardu | Jalur | Tiang | null>(null);
-  const [formPoints, setFormPoints] = useState<[number, number][]>([]);
-  const [formLatLng, setFormLatLng] = useState<[number, number] | null>(null);
+  const warna = useMemo(
+    () => new Map(sld.ringkas.map((r, i) => [r.penyulang, PALET[i % PALET.length]])),
+    [sld.ringkas],
+  );
+  const grafTampil = useMemo(
+    () => [...dipilih].map((p) => sld.graf.get(p)).filter((g) => g !== undefined),
+    [dipilih, sld.graf],
+  );
+  const grafSim = sim ? sld.graf.get(sim.penyulang) : undefined;
+  const hasil = useMemo(() => (grafSim && sim ? lepas(grafSim, sim.id) : null), [grafSim, sim]);
+  const simpulSim = sim ? grafSim?.simpul.get(sim.id) : undefined;
 
-  // Fetch on mount
-  useEffect(() => {
-    peta.refresh();
-  }, [peta.refresh]);
-
-  // Handle map click routing
-  const handleMapClick = (latlng: [number, number]) => {
-    const { activeTool } = drawing;
-    if (activeTool === "addTiang") {
-      setFormType("tiang");
-      setFormMode("add");
-      setFormInitial(null);
-      setFormLatLng(latlng);
-      setFormPoints([]);
-      setShowForm(true);
-      drawing.setActiveTool("select");
-    } else if (activeTool === "drawJalur") {
-      drawing.addPoint(latlng);
-    } else if (activeTool === "measure") {
-      measure.addMeasurePoint(latlng);
+  const alih = (p: string) => {
+    const b = new Set(dipilih);
+    if (b.has(p)) {
+      b.delete(p);
+      if (sim?.penyulang === p) setSim(null);
+    } else {
+      b.add(p);
+      void sld.muat(p);
     }
+    setDipilih(b);
   };
 
-  const handleFinishDrawJalur = () => {
-    const pts = drawing.finishDrawing();
-    if (pts.length < 2) return;
-    setFormType("jalur");
-    setFormMode("add");
-    setFormInitial(null);
-    setFormPoints(pts);
-    setFormLatLng(null);
-    setShowForm(true);
-    drawing.setActiveTool("select");
-  };
-
-  const handleEditFeature = () => {
-    if (!selection.selectedFeature) return;
-    setFormType(selection.selectedFeature.type);
-    setFormMode("edit");
-    setFormInitial(selection.selectedFeature.data);
-    setFormPoints(
-      selection.selectedFeature.type === "jalur"
-        ? (selection.selectedFeature.data as Jalur).koordinat
-        : []
+  const unduh = async () => {
+    if (!hasil || !simpulSim || !sim) return;
+    const { unduhGarduPadam } = await import("@/lib/sldExcel");
+    const nama = simpulSim.jenis === "pangkal" ? `Penyulang ${sim.penyulang}` : `${simpulSim.kode} (${sim.penyulang})`;
+    await unduhGarduPadam(
+      `GARDU PADAM — SIMULASI LEPAS ${nama.toUpperCase()}`,
+      `${angka(hasil.km, 2)} kms · ${hasil.gardu.length} gardu · beban dari pengukuran terakhir`,
+      hasil.gardu.map((k) => sld.gardu.get(k) ?? { kode: k, nama: null, daya: null, bebanKva: null, persen: null, tglUkur: null }),
+      `simulasi-lepas-${(simpulSim.jenis === "pangkal" ? sim.penyulang : simpulSim.kode).replace(/[^A-Za-z0-9-]+/g, "_")}.xlsx`,
     );
-    setFormLatLng(null);
-    setShowForm(true);
   };
-
-  const handleFormSaved = () => {
-    setShowForm(false);
-    selection.clearSelection();
-  };
-
-  const isUP3 = user ? canSeeAllUnits(user.role) : false;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-var(--topbar-h)-96px)] -m-6">
-      {/* Status bar */}
-      <div className="flex items-center gap-3 px-4 py-1.5 bg-[#0a1628] border-b border-[#1e3552] shrink-0">
-        <span className="text-[#5eead4] text-xs font-semibold tracking-wide uppercase">
-          Peta Aset Jaringan
-        </span>
-        <span className="text-gray-600 text-xs">·</span>
-        <span className="text-gray-400 text-xs font-mono">
-          {peta.stats.garduCount} gardu
-        </span>
-        <span className="text-gray-600 text-xs">·</span>
-        <span className="text-gray-400 text-xs font-mono">
-          {peta.stats.jalurCount} jalur ({peta.stats.jalurKm.toFixed(1)} km)
-        </span>
-        <span className="text-gray-600 text-xs">·</span>
-        <span className="text-gray-400 text-xs font-mono">
-          {peta.stats.tiangCount} tiang
-        </span>
-        {peta.loading && (
-          <div className="ml-2 w-3 h-3 border-2 border-gray-700 border-t-[#00897B] rounded-full animate-spin" />
+    <div className="flex h-[calc(100vh-var(--topbar-h))] -m-6 text-ink">
+      <aside className="w-[300px] shrink-0 bg-white border-r border-line flex flex-col min-h-0">
+        {semuaUnit && (
+          <div className="p-3 border-b border-line">
+            <select value={ulp} onChange={(e) => { setUlp(e.target.value); setDipilih(new Set()); setSim(null); }} className={`${FIELD} w-full`}>
+              <option value="">Semua ULP</option>
+              {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+          </div>
         )}
-        {peta.error && (
-          <span className="text-red-400 text-xs ml-auto">{peta.error}</span>
-        )}
-      </div>
+        <DaftarPenyulang ringkas={sld.ringkas} memuatDaftar={sld.memuatDaftar} dipilih={dipilih}
+          memuat={sld.memuat} warna={warna} onAlih={alih} />
+      </aside>
 
-      {/* Main layout */}
-      <div className="flex flex-1 min-h-0">
-        {/* Left panel */}
-        <LayerPanel
-          filter={peta.filter}
-          setFilter={peta.setFilter}
-          stats={peta.stats}
-          feederOptions={peta.feederOptions}
-          isUP3={isUP3}
-          garduList={peta.garduList}
-          jalurList={peta.jalurList}
-          tiangList={peta.tiangList}
-          tiangRefCount={tiangRef.tiangRef.length}
-          tiangRefLoading={tiangRef.loading}
-          tiangRefError={tiangRef.error}
-          tiangRefSelectedFeeders={tiangRef.selectedFeeders}
-          toggleTiangFeeder={tiangRef.toggleFeeder}
-          showTiangRef={tiangRef.showLayer}
-          setShowTiangRef={tiangRef.setShowLayer}
-          snapEnabled={tiangRef.snapEnabled}
-          setSnapEnabled={tiangRef.setSnapEnabled}
-          tiangSheetNames={tiangRef.sheetNames}
-          tiangSheetNamesLoading={tiangRef.sheetNamesLoading}
-        />
-
-        {/* Map */}
-        <div className="flex-1 min-w-0 relative">
-          <PetaGarduCanvas
-            filteredGardu={peta.filteredGardu}
-            filteredJalur={peta.filteredJalur}
-            filteredTiang={peta.filteredTiang}
-            selectedFeature={selection.selectedFeature}
-            onFeatureSelect={selection.selectFeature}
-            activeTool={drawing.activeTool}
-            setActiveTool={drawing.setActiveTool}
-            currentPoints={drawing.currentPoints}
-            undoLastPoint={drawing.undoLastPoint}
-            onFinishDrawJalur={handleFinishDrawJalur}
-            measurePoints={measure.measurePoints}
-            totalDistanceM={measure.totalDistanceM}
-            clearMeasure={measure.clearMeasure}
-            onMapClick={handleMapClick}
-            mapRef={selection.mapRef}
-            tiangRef={tiangRef.tiangRef}
-            showTiangRef={tiangRef.showLayer}
-            snapEnabled={tiangRef.snapEnabled}
-          />
-        </div>
-
-        {/* Right panel — attribute */}
-        {selection.selectedFeature && (
-          <AttributePanel
-            feature={selection.selectedFeature}
-            jalurList={peta.jalurList}
-            onClose={selection.clearSelection}
-            onZoomTo={selection.zoomToSelected}
-            onEdit={handleEditFeature}
-            onDeleteJalur={peta.deleteJalur}
-            onDeleteTiang={peta.deleteTiang}
-          />
+      <div className="flex-1 min-w-0 relative">
+        <PetaSldInner graf={grafTampil} warna={warna} gardu={sld.gardu} penanda={penanda}
+          padam={hasil?.padam ?? null} terpilih={sim?.id ?? null} label={label}
+          onPilih={(penyulang, id) => setSim({ penyulang, id })} />
+        <button onClick={() => setLabel((v) => !v)}
+          className={`absolute top-3 right-3 z-[1000] h-8 px-3 rounded-lg border text-xs font-semibold shadow-sm inline-flex items-center gap-1.5 ${
+            label ? "bg-navy-600 border-navy-600 text-white" : "bg-white border-line text-ink"}`}>
+          <Tags size={13} /> Label
+        </button>
+        {dipilih.size === 0 && (
+          <div className="absolute inset-0 z-[999] grid place-items-center pointer-events-none">
+            <p className="bg-white/95 rounded-xl border border-line shadow-sm px-4 py-3 text-sm text-ink-soft max-w-sm text-center">
+              Pilih penyulang di kiri. Klik <b>pangkal</b> atau <b>keypoint</b> di peta untuk simulasi lepas.
+            </p>
+          </div>
         )}
       </div>
 
-      {/* Feature form drawer */}
-      {showForm && (
-        <FeatureForm
-          mode={formMode}
-          featureType={formType}
-          initialData={formInitial}
-          initialLatLng={formLatLng}
-          drawnPoints={formPoints}
-          jalurList={peta.jalurList}
-          userUnit={user?.unit ?? null}
-          isUP3={isUP3}
-          onClose={() => setShowForm(false)}
-          onSaved={handleFormSaved}
-          insertJalur={peta.insertJalur}
-          updateJalur={peta.updateJalur}
-          insertTiang={peta.insertTiang}
-          updateTiang={peta.updateTiang}
-        />
+      {dipilih.size > 0 && (
+        <aside className="w-[340px] shrink-0 bg-white border-l border-line overflow-y-auto p-3 space-y-3">
+          {hasil && simpulSim && sim && (
+            <HasilLepasPanel penyulang={sim.penyulang} simpul={simpulSim}
+              labelPenanda={simpulSim.penanda ? penanda.get(simpulSim.penanda)?.label ?? simpulSim.penanda : "keypoint"}
+              hasil={hasil} gardu={sld.gardu}
+              onPilihKeypoint={(id) => setSim({ penyulang: sim.penyulang, id })}
+              onUnduh={() => void unduh()} onTutup={() => setSim(null)} />
+          )}
+          {grafTampil.map((g) => (
+            <RingkasSldPanel key={g.penyulang} graf={g} ringkas={sld.ringkas.find((r) => r.penyulang === g.penyulang)}
+              warna={warna.get(g.penyulang) ?? "#64748B"} gardu={sld.gardu} penanda={penanda}
+              onLepasPangkal={() => setSim({ penyulang: g.penyulang, id: g.akar[0] })} />
+          ))}
+        </aside>
       )}
-
     </div>
   );
 }

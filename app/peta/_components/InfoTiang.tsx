@@ -7,6 +7,7 @@ import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
 import NamaTiangJtm from "./NamaTiangJtm";
+import PilihKodeGardu from "./PilihKodeGardu";
 
 /**
  * Rincian satu tiang di panel kanan peta, dan suntingan yang boleh dari meja:
@@ -34,6 +35,8 @@ interface Props {
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onGeser: () => void;
   onGantiInduk: () => void;
+  /** Titik pertemuan: pilih induk tiang ini di penyulang yang menumpang. */
+  onIndukPenyulang: (penyulang: string) => void;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
   onBatalkan: () => void;
   /** Simulasi "kalau alat ini dibuka" — hanya membaca, untuk semua pengguna. */
@@ -49,7 +52,7 @@ interface Props {
 }
 
 export default function InfoTiang({
-  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
+  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onIndukPenyulang, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
   tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah,
 }: Props) {
   const jtr = !!t.gardu_kode;
@@ -61,7 +64,10 @@ export default function InfoTiang({
     setIsi(
       jtr
         ? { jenis: t.jenis ?? "", tinggi: t.tinggi === null ? "" : String(t.tinggi) }
-        : { jenis: t.jenis ?? "", konstruksi: t.konstruksi ?? "", nomor_lama: t.nomor_lama ?? "", penanda: t.penanda ?? "" },
+        : {
+            jenis: t.jenis ?? "", konstruksi: t.konstruksi ?? "", nomor_lama: t.nomor_lama ?? "", penanda: t.penanda ?? "",
+            gardu_di_tiang: t.gardu_di_tiang ?? "",
+          },
     );
     setSunting(true);
   };
@@ -97,10 +103,28 @@ export default function InfoTiang({
           />
         )}
         <Baris label="Induk" nilai={t.induk ?? "pangkal"} />
+        {/* Penyulang yang menumpang: induknya di penyulang itu. Titik pertemuan
+            dua penyulang (LBSM tie) didatangi tiap penyulang dari arah lain. */}
+        {!jtr &&
+          t.nama
+            .filter((n) => !n.utama)
+            .map((n) => (
+              <Baris key={n.penyulang} label={`Induk di ${n.penyulang}`} nilai={n.induk ?? "ikut induk batang"} />
+            ))}
         <Baris label="Jenis" nilai={t.jenis} />
         {jtr ? <Baris label="Tinggi" nilai={t.tinggi === null ? null : `${t.tinggi} m`} /> : <Baris label="Konstruksi" nilai={t.konstruksi} />}
         {!jtr && <Baris label="Nomor lama" nilai={t.nomor_lama} />}
         {!jtr && <Baris label="Penanda" nilai={t.penanda ? (penanda.get(t.penanda)?.label ?? t.penanda) : null} />}
+        {!jtr && (t.penanda === "gardu" || t.gardu_di_tiang) && (
+          <Baris
+            label="Kode gardu"
+            nilai={
+              t.gardu_di_tiang
+                ? `${t.gardu_di_tiang} — ${t.garduNama ?? "belum ada di Master Gardu"}`
+                : "belum diisi"
+            }
+          />
+        )}
         {!jtr && <Baris label="Percabangan" nilai={t.percabangan ? "ya" : "tidak"} />}
         {!jtr && (t.portal.pasangan || t.portal.dari || t.portal.tanpaPasangan) && (
           <Baris
@@ -134,13 +158,17 @@ export default function InfoTiang({
         </div>
       )}
 
-      {/* Portal lama yang tercatat satu tiang — tiang kedua dibuat 2 m searah
-          jalur dengan nama dari aturan penamaan biasa; geser kalau letaknya beda. */}
-      {!jtr && boleh && t.portal.tanpaPasangan && (
+      {/* Portal yang tercatat satu tiang — tiang kedua dibuat 2 m searah jalur
+          dengan nama dari aturan penamaan biasa; geser kalau letaknya beda.
+          Juga untuk tiang yang ditandai gardu dari meja: tanpa penilaian regu,
+          hanya admin yang tahu gardunya portal. */}
+      {!jtr && boleh && !t.portal.pasangan && !t.portal.dari && (t.portal.tanpaPasangan || t.penanda === "gardu") && (
         <div className="rounded-lg border border-[#c084fc]/50 p-2.5 space-y-2">
           <p className="text-[11px] text-[#e9d5ff] leading-relaxed">
-            Gardu portal berdiri di dua tiang, tapi baru satu yang tercatat. Tiang keduanya dibuat 2 m searah jalur —
-            geser titiknya kalau letak sebenarnya berbeda.
+            {t.portal.tanpaPasangan
+              ? "Gardu portal berdiri di dua tiang, tapi baru satu yang tercatat."
+              : "Gardu ini portal (berdiri di dua tiang)? Buatkan tiang keduanya."}{" "}
+            Tiang keduanya dibuat 2 m searah jalur — geser titiknya kalau letak sebenarnya berbeda.
           </p>
           <button
             onClick={async () => {
@@ -176,6 +204,15 @@ export default function InfoTiang({
             </label>
           )}
           {!jtr && pilih("penanda", [...penanda.keys()], "Penanda", (v) => penanda.get(v)?.label ?? v)}
+          {!jtr && isi.penanda === "gardu" && (
+            <PilihKodeGardu
+              ulp={t.ulp}
+              lat={t.lat}
+              lng={t.lng}
+              nilai={isi.gardu_di_tiang ?? ""}
+              onUbah={(v) => setIsi({ ...isi, gardu_di_tiang: v })}
+            />
+          )}
           <div className="flex gap-2 pt-1">
             <button onClick={() => void simpan()} disabled={sibuk} className={`${TOMBOL_PANEL} border-[#00897B] text-[#5eead4]`}>
               Simpan
@@ -196,6 +233,14 @@ export default function InfoTiang({
           <button onClick={mulai} className={TOMBOL_PANEL}><Pencil size={13} /> Ubah atribut</button>
           <button onClick={onGeser} className={TOMBOL_PANEL}><Move size={13} /> Geser titik</button>
           {!jtr && !tanpaGantiInduk && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
+          {!jtr && !tanpaGantiInduk &&
+            t.nama
+              .filter((n) => !n.utama)
+              .map((n) => (
+                <button key={n.penyulang} onClick={() => onIndukPenyulang(n.penyulang)} className={TOMBOL_PANEL}>
+                  <Waypoints size={13} /> Induk di {n.penyulang}
+                </button>
+              ))}
           {!jtr && (
             <button onClick={() => void onPercabangan(!t.percabangan)} className={TOMBOL_PANEL}>
               <GitBranch size={13} /> {t.percabangan ? "Lepas percabangan" : "Tandai percabangan"}

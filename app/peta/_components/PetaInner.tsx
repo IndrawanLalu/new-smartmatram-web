@@ -10,11 +10,13 @@ import "leaflet/dist/leaflet.css";
 import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIsi";
 import { WARNA } from "../_ui";
 import { useGayaPeta, type GayaPeta } from "../_hooks/useGayaPeta";
-import { htmlPenandaJtm } from "@/lib/penandaJtm";
+import { htmlPenandaJtm, titikTengahPortal } from "@/lib/penandaJtm";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
 import LapisanUjung from "./LapisanUjung";
 import PenggeserTitik from "./PenggeserTitik";
+import PenggeserBanyak from "./PenggeserBanyak";
+import type { GeserTiang } from "../_hooks/useGeserBanyak";
 import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
 import LapisanNama from "./LapisanNama";
@@ -56,6 +58,9 @@ interface Props {
   sorot: { lat: number; lng: number } | null;
   geser: { lat: number; lng: number } | null;
   onGeser: (lat: number, lng: number) => void;
+  /** Mode geser titik: pegangan seret tiap tiang yang sudah diklik. */
+  geserBanyak: GeserTiang[];
+  onSeretBanyak: (id: string, lat: number, lng: number) => void;
   ujung: TitikUjungPeta[];
   bolehSetujuiUjung: boolean;
   oleh: string;
@@ -124,7 +129,7 @@ const IKON_GARDU = L.divIcon({
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
-  sorot, geser, onGeser, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
+  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
   kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan,
 }: Props) {
   return (
@@ -169,6 +174,7 @@ export default function PetaInner({
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
+      <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />
     </MapContainer>
   );
 }
@@ -245,13 +251,18 @@ const Isi = memo(function Isi({
    *  daripada hilang dari peta. */
   const { biasa, bertanda } = useMemo(() => {
     const b: TiangPeta[] = [];
-    const p: { t: TiangPeta; ikon: L.DivIcon; label: string }[] = [];
+    const p: { t: TiangPeta; ikon: L.DivIcon; label: string; posisi: [number, number] }[] = [];
+    const portal = titikTengahPortal(tiang);
     for (const t of tiang) {
       const ref = t.penanda ? penanda.get(t.penanda) : undefined;
       if (!ref) { b.push(t); continue; }
+      // Gardu portal: kedua tiangnya bulatan biasa, gardunya di tengah.
+      const tengah = portal.get(t.id);
+      if (tengah) b.push(t);
       p.push({
         t,
-        label: ref.label,
+        posisi: tengah ?? [t.lat, t.lng],
+        label: tengah ? `${ref.label} portal` : ref.label,
         ikon: L.divIcon({
           className: "",
           html: htmlPenandaJtm(ref.bentuk, ref.warna, SISI_PENANDA),
@@ -373,10 +384,10 @@ const Isi = memo(function Isi({
         );
       })}
 
-      {bertanda.map(({ t, ikon, label }) => (
+      {bertanda.map(({ t, ikon, label, posisi }) => (
         <Marker
           key={`${t.kelompok}-${t.id}`}
-          position={[t.lat, t.lng]}
+          position={posisi}
           icon={ikon}
           eventHandlers={{ click: () => onPilihTiang(t) }}
         >

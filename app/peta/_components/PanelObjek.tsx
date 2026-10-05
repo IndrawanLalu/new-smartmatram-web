@@ -36,6 +36,10 @@ interface Props {
   onSimpanGeser: (alasan: string) => Promise<boolean>;
   modeInduk: boolean;
   onGantiInduk: () => void;
+  /** Mode pilih induk di penyulang yang menumpang (null = induk batang). */
+  indukPenyulang: string | null;
+  onIndukPenyulang: (penyulang: string) => void;
+  onIkutBatang: () => Promise<boolean>;
   onBatalInduk: () => void;
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
@@ -165,6 +169,16 @@ export default function PanelObjek(p: Props) {
                   Jadikan pangkal (langsung dari gardu)
                 </button>
               </>
+            ) : p.indukPenyulang ? (
+              <>
+                <p>
+                  Klik tiang <b>{p.indukPenyulang}</b> yang menyambung ke tiang ini — lapisan {p.indukPenyulang} harus
+                  menyala. Induk di penyulang pemilik tidak berubah.
+                </p>
+                <button onClick={() => void p.onIkutBatang()} className={TOMBOL_PANEL}>
+                  Ikut induk batang
+                </button>
+              </>
             ) : (
               <p>Klik tiang di peta yang menjadi <b>induk</b> baru tiang ini.</p>
             )}
@@ -207,6 +221,7 @@ export default function PanelObjek(p: Props) {
             onUbahAtribut={p.onUbahAtribut}
             onGeser={p.onMulaiGeser}
             onGantiInduk={p.onGantiInduk}
+            onIndukPenyulang={p.onIndukPenyulang}
             onPercabangan={p.onPercabangan}
             onBuatPasangan={p.onBuatPasangan}
             oleh={p.oleh}

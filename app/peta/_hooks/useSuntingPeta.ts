@@ -47,6 +47,18 @@ export function useSuntingPeta(oleh: string) {
       n === 0 ? "Tidak ada yang berubah." : `${n} isian diperbarui.`,
     );
 
+  /** Titik pertemuan dua penyulang: induk tiang ini DI PENYULANG YANG MENUMPANG.
+   *  `indukId` null = kembali ikut induk batangnya. */
+  const indukPenyulang = (id: string, penyulang: string, indukId: string | null) =>
+    jalankan<{ kode: string; penyulang: string; induk: string | null }>(
+      "atur_induk_penyulang",
+      { p_tiang_id: id, p_penyulang: penyulang, p_induk_id: indukId, p_oleh: oleh },
+      (d) =>
+        d.induk
+          ? `${d.kode} di ${d.penyulang} kini menyambung dari ${d.induk}.`
+          : `${d.kode} di ${d.penyulang} kembali ikut induk batangnya.`,
+    );
+
   const tandaiPercabangan = (id: string, nyala: boolean) =>
     jalankan<unknown>("tandai_percabangan_jtm", { p_tiang_id: id, p_nyala: nyala, p_oleh: oleh }, () =>
       nyala ? "Ditandai percabangan." : "Tanda percabangan dilepas.",
@@ -114,7 +126,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, ubahInduk, batalkan, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, ubahInduk, batalkan, buatPasanganPortal,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr,
   };
 }

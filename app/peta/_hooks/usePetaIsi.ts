@@ -80,6 +80,10 @@ export interface TiangPeta {
   garduBersama: string | null;
   /** JTR: nomor kabel gardu ini di tiang ini — "1", "1,2", "3". */
   nomorKabel: string | null;
+  /** JTM: tiang kedua gardu portal — id tiang gardunya. */
+  pasanganPortalDari: string | null;
+  /** JTM: kode gardu yang berdiri di tiang ini (AM013). */
+  garduDiTiang: string | null;
 }
 
 export interface GarduPeta {
@@ -208,7 +212,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -230,6 +234,8 @@ export function usePetaIsi(
           diJtm: !!x.di_jtm,
           garduBersama: (x.gardu_bersama as string) ?? null,
           nomorKabel: (x.nomor_kabel as string) ?? null,
+          pasanganPortalDari: (x.pasangan_portal_dari as string) ?? null,
+          garduDiTiang: (x.gardu_di_tiang as string) ?? null,
         }));
       }
 
