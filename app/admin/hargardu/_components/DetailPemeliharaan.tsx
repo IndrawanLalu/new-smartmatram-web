@@ -23,7 +23,7 @@ const tgl = (iso: string | null) =>
       })
     : "—";
 
-/** Gambar mini diperkecil Supabase (`lib/fotoKecil`). Tautan "buka" tetap
+/** Gambar mini diperkecil server web (`lib/fotoKecil`). Tautan "buka" tetap
  *  menunjuk berkas aslinya — admin yang membaca nomor seri di nama plat butuh
  *  ketelitian penuh. */
 const kecilkan = fotoKecil;

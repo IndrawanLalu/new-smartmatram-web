@@ -1,5 +1,14 @@
 import type { NextConfig } from "next";
 
+/** Host Supabase dari env (di-bake saat build, sama dengan klien). */
+const supabaseHost = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").hostname || "*.supabase.co";
+  } catch {
+    return "*.supabase.co";
+  }
+})();
+
 const nextConfig: NextConfig = {
   // Docker: bundel mandiri (server.js + node_modules minimal) untuk image ramping.
   // WAJIB ada — Dockerfile menyalin `.next/standalone`, dan tanpa baris ini
@@ -21,6 +30,23 @@ const nextConfig: NextConfig = {
   // browser konsisten dengan halaman admin lainnya.
   async rewrites() {
     return [{ source: "/admin/peta", destination: "/peta" }];
+  },
+
+  // Gambar mini foto lapangan diperkecil server ini (`lib/fotoKecil.ts`), bukan
+  // oleh Supabase — jatah Image Transformations Supabase Pro cuma 100 foto
+  // sumber per bulan. Hanya berkas publik Storage proyek ini yang boleh lewat.
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: supabaseHost,
+        pathname: "/storage/v1/object/public/**",
+      },
+    ],
+    // Next 16 menolak lebar & mutu yang tidak terdaftar. Bawaan imageSizes
+    // ditambah lebar gambar mini kita (120, 160, 240); mutu 65 untuk mini.
+    imageSizes: [32, 48, 64, 96, 120, 128, 160, 240, 256, 384],
+    qualities: [65, 75],
   },
 };
 
