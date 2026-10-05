@@ -17,7 +17,13 @@ import { canSeeAllUnits, UNITS } from "@/lib/roles";
  *
  * Tanggal, bukan saklar: realisasi diturunkan, jadi saklar akan menghitung
  * ulang bulan-bulan yang sudah dilaporkan.
+ *
+ * Batas jarak titik ukur dari tiang JTR gardu (bawaan 100 m, keputusan user
+ * 5 Okt 2026) diatur di sini juga, per ULP — dipakai HP saat Simpan dan server
+ * saat Kirim (`tegangan-ujung-jarak.sql`).
  */
+
+const JARAK_BAWAAN = 100;
 
 const NAMA_BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -33,11 +39,13 @@ export default function AturanUjungModal({ onTutup }: { onTutup: () => void }) {
   const [aturan, setAturan] = useState<Record<string, string | null> | null>(null);
   const [isian, setIsian] = useState<Record<string, string>>({});
   const [sibuk, setSibuk] = useState<string | null>(null);
+  const [jarak, setJarak] = useState<Record<string, number>>({});
+  const [isianJarak, setIsianJarak] = useState<Record<string, string>>({});
 
   useEffect(() => {
     supabaseBrowser
       .from("aturan_tegangan_ujung")
-      .select("ulp,berlaku_mulai")
+      .select("*")
       .then(({ data, error }) => {
         if (error) {
           toast.error(
@@ -49,6 +57,10 @@ export default function AturanUjungModal({ onTutup }: { onTutup: () => void }) {
         const a = Object.fromEntries((data ?? []).map((r) => [String(r.ulp), r.berlaku_mulai ? String(r.berlaku_mulai) : null]));
         setAturan(a);
         setIsian(Object.fromEntries(Object.entries(a).map(([u, v]) => [u, v ? v.slice(0, 7) : ""])));
+        // Kolom jarak baru ada sesudah tegangan-ujung-jarak.sql — sebelum itu bawaan.
+        const j = Object.fromEntries((data ?? []).map((r) => [String(r.ulp), Number(r.jarak_maks_m ?? JARAK_BAWAAN)]));
+        setJarak(j);
+        setIsianJarak(Object.fromEntries(Object.entries(j).map(([u, v]) => [u, String(v)])));
       });
   }, [toast]);
 
@@ -67,6 +79,27 @@ export default function AturanUjungModal({ onTutup }: { onTutup: () => void }) {
     }
     setAturan((p) => ({ ...(p ?? {}), [ulp]: v ? `${v}-01` : null }));
     toast.success(v ? `Aturan ULP ${ulp} berlaku mulai ${labelBulan(`${v}-01`)}.` : `Aturan ULP ${ulp} dikosongkan — seperti semula.`);
+  };
+
+  const simpanJarak = async (ulp: string) => {
+    const v = Number(isianJarak[ulp]);
+    if (!Number.isInteger(v) || v < 10 || v > 1000) {
+      toast.error("Batas jarak harus bilangan bulat 10–1000 m.");
+      return;
+    }
+    setSibuk(`jarak-${ulp}`);
+    const { error } = await supabaseBrowser.rpc("atur_jarak_tegangan_ujung", { p_ulp: ulp, p_jarak: v, p_oleh: user.name ?? user.email });
+    setSibuk(null);
+    if (error) {
+      toast.error(
+        error.message.includes("Could not find the function")
+          ? "Pengaturan jarak belum terpasang — jalankan scripts/tegangan-ujung-jarak.sql di Supabase."
+          : error.message,
+      );
+      return;
+    }
+    setJarak((p) => ({ ...p, [ulp]: v }));
+    toast.success(`Batas jarak titik ukur ULP ${ulp}: ${v} m dari tiang JTR terdekat.`);
   };
 
   return (
@@ -125,6 +158,33 @@ export default function AturanUjungModal({ onTutup }: { onTutup: () => void }) {
                   Simpan
                 </button>
                 {lewat && <p className="w-full text-[11px] text-ink-muted">Sudah berlaku — bulan yang sudah lewat tidak diubah dari sini.</p>}
+                <div className="w-full flex flex-wrap items-end gap-3 border-t border-line pt-2.5">
+                  <div>
+                    <label className={EYEBROW}>Batas jarak titik ukur</label>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={10}
+                        max={1000}
+                        value={isianJarak[ulp] ?? String(JARAK_BAWAAN)}
+                        onChange={(e) => setIsianJarak((p) => ({ ...p, [ulp]: e.target.value }))}
+                        className={`${FIELD} w-[100px] text-right`}
+                      />
+                      <span className="text-xs text-ink-muted">m dari tiang JTR gardu yang terdekat</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => void simpanJarak(ulp)}
+                    disabled={sibuk !== null || Number(isianJarak[ulp] ?? JARAK_BAWAAN) === (jarak[ulp] ?? JARAK_BAWAAN)}
+                    className={`${BTN_GHOST} ml-auto`}
+                  >
+                    {sibuk === `jarak-${ulp}` ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
+                    Simpan batas
+                  </button>
+                  <p className="w-full text-[11px] text-ink-muted">
+                    Lebih jauh dari ini, Simpan di HP dan Kirim ditolak. Gardu tanpa data JTR tidak dicek jaraknya.
+                  </p>
+                </div>
               </div>
             );
           })}

@@ -97,8 +97,11 @@ export default function DetailUjungModal({ t, onTutup, setujui, kembalikan, bata
             />
             <p className="text-[11px] mt-1.5 text-ink-soft">
               Titik ukur <b className="text-ink">{meter(t.jarak_gardu_m)}</b> dari gardu
+              {t.tiang_terdekat_kode && (
+                <> · <b className="text-ink">{meter(t.jarak_tiang_terdekat_m ?? null)}</b> dari tiang JTR terdekat ({t.tiang_terdekat_kode})</>
+              )}
               {t.tiang_rekomendasi_kode
-                ? <> · <b className="text-ink">{meter(t.jarak_rekomendasi_m)}</b> dari ujung terjauh (tiang {t.tiang_rekomendasi_kode}, {meter(t.panjang_jaringan_m)} jaringan)</>
+                ? <> · <b className="text-ink">{meter(t.jarak_rekomendasi_m)}</b> dari ujung terjauh yang direkomendasikan (tiang {t.tiang_rekomendasi_kode}, {meter(t.panjang_jaringan_m)} jaringan)</>
                 : " · data JTR gardu ini belum ada, tidak ada tiang pembanding"}
               {t.akurasi_m !== null && <> · GPS ±{Math.round(t.akurasi_m)} m</>}
             </p>

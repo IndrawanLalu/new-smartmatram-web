@@ -47,6 +47,9 @@ export interface TitikUjung {
   tiang_lng: number | null;
   jarak_rekomendasi_m: number | null;
   panjang_jaringan_m: number | null;
+  /** Tiang JTR gardu yang terdekat dari titik ukur (tegangan-ujung-jarak.sql). */
+  tiang_terdekat_kode?: string | null;
+  jarak_tiang_terdekat_m?: number | null;
   tgl_beban: string | null;
   amg_sent_at: string | null;
   amg_queued_at: string | null;
