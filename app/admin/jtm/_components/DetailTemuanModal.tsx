@@ -1,6 +1,9 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { ExternalLink, MapPin, Send, TreePine } from "lucide-react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
+import FotoTambahan from "@/app/admin/_components/FotoTambahan";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, NADA_TUGAS } from "@/app/admin/_ui";
 import type { TemuanJtm } from "../_hooks/useTemuanJtm";
@@ -21,8 +24,33 @@ function Baris({ label, nilai }: { label: string; nilai: React.ReactNode }) {
   );
 }
 
+/** Foto temuan tambahan — tidak dibawa view `jtm_temuan`, dibaca dari baris penilaiannya. */
+function useFotoLain(t: TemuanJtm) {
+  const [foto, setFoto] = useState<string[]>([]);
+  useEffect(() => {
+    if (!t.foto_url || !t.inspeksi_jtm_id) return;
+    let batal = false;
+    let q = supabaseBrowser
+      .from("inspeksi_jtm_periksa")
+      .select("foto_lain,inspeksi_jtm_titik!inner(inspeksi_id,tiang_id)")
+      .eq("inspeksi_jtm_titik.inspeksi_id", t.inspeksi_jtm_id)
+      .eq("inspeksi_jtm_titik.tiang_id", t.tiang_id)
+      .eq("item_kode", t.item_kode)
+      .eq("bagian", t.bagian ?? "-");
+    q = t.sirkit_segmen_id ? q.eq("sirkit_segmen_id", t.sirkit_segmen_id) : q.is("sirkit_segmen_id", null);
+    void q.limit(1).then(({ data }) => {
+      if (!batal) setFoto(((data?.[0]?.foto_lain as string[] | null) ?? []).filter(Boolean));
+    });
+    return () => {
+      batal = true;
+    };
+  }, [t]);
+  return foto;
+}
+
 export default function DetailTemuanModal({ t, onTutup, onTugaskan }: Props) {
   const belum = t.status_tugas === "Belum ditugaskan";
+  const fotoLain = useFotoLain(t);
 
   return (
     <ModalShell
@@ -58,10 +86,13 @@ export default function DetailTemuanModal({ t, onTutup, onTugaskan }: Props) {
         <div>
           <p className={`${EYEBROW} mb-1.5`}>Foto temuan</p>
           {t.foto_url ? (
-            <a href={t.foto_url} target="_blank" rel="noreferrer">
-              {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage, ukuran tak tentu */}
-              <img src={t.foto_url} alt={`Temuan ${t.item_nama} tiang ${t.tiang_kode}`} className="w-full max-h-72 object-cover rounded-xl border border-line" />
-            </a>
+            <>
+              <a href={t.foto_url} target="_blank" rel="noreferrer">
+                {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage, ukuran tak tentu */}
+                <img src={t.foto_url} alt={`Temuan ${t.item_nama} tiang ${t.tiang_kode}`} className="w-full max-h-72 object-cover rounded-xl border border-line" />
+              </a>
+              <FotoTambahan foto={fotoLain} alt={`Temuan ${t.item_nama} tiang ${t.tiang_kode}`} />
+            </>
           ) : (
             <p className="text-xs text-ink-muted rounded-xl border border-dashed border-line p-6 text-center">Tidak ada foto.</p>
           )}

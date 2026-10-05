@@ -9,6 +9,7 @@ import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
 import type { BarisPemeliharaan, KategoriRef, KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
 import { NADA_STATUS, tanggal } from "./TabelPemeliharaan";
 import FormKoreksiPemeliharaan, { ID_FORM_KOREKSI } from "./FormKoreksiPemeliharaan";
+import FotoTambahan from "@/app/admin/_components/FotoTambahan";
 
 /**
  * Detail satu pemeliharaan — pola sama dengan Optimasi Trafo.
@@ -30,15 +31,18 @@ interface Props {
   onKoreksi: (id: string, v: KoreksiPemeliharaan) => Promise<void>;
 }
 
-function Foto({ url, label }: { url: string; label: string }) {
+function Foto({ url, lain, label }: { url: string; lain: string[]; label: string }) {
   return (
     <div className="flex-1 min-w-0">
       <p className={`${EYEBROW} mb-1.5`}>{label}</p>
       {url ? (
-        <a href={url} target="_blank" rel="noreferrer" className="block group" title={`Buka foto ${label.toLowerCase()} ukuran penuh`}>
-          {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage */}
-          <img src={url} alt={label} className="w-full h-64 object-cover rounded-xl border border-line group-hover:border-navy-300" />
-        </a>
+        <>
+          <a href={url} target="_blank" rel="noreferrer" className="block group" title={`Buka foto ${label.toLowerCase()} ukuran penuh`}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage */}
+            <img src={url} alt={label} className="w-full h-64 object-cover rounded-xl border border-line group-hover:border-navy-300" />
+          </a>
+          <FotoTambahan foto={lain} alt={label} />
+        </>
       ) : (
         <div className="w-full h-64 rounded-xl border border-dashed border-line grid place-items-center text-xs text-ink-muted">
           tidak ada foto
@@ -166,8 +170,8 @@ export default function DetailPemeliharaanModal({
             )}
 
             <div className="flex flex-col sm:flex-row gap-3">
-              <Foto url={b.fotoSebelum} label="Sebelum" />
-              <Foto url={b.fotoSesudah} label="Sesudah" />
+              <Foto url={b.fotoSebelum} lain={b.fotoSebelumLain} label="Sebelum" />
+              <Foto url={b.fotoSesudah} lain={b.fotoSesudahLain} label="Sesudah" />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">

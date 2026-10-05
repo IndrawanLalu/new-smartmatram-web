@@ -33,6 +33,8 @@ export interface TemuanJtm {
   nilai_label: string | null;
   catatan: string | null;
   foto_url: string | null;
+  /** Inspeksi tempat temuan ini dicatat — untuk membaca foto tambahannya. */
+  inspeksi_jtm_id: string | null;
   ditemukan_pada: string;
   penemu: string | null;
   segmen_nama: string | null;

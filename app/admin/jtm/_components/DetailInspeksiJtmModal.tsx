@@ -275,11 +275,11 @@ function IsiTiang({ t }: { t: JawabanTiang }) {
                 {x.nilaiLabel ?? "—"}
                 {x.catatan ? <span className="text-ink-muted"> — {x.catatan}</span> : null}
               </span>
-              {x.fotoUrl && (
-                <a href={x.fotoUrl} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-navy-600 hover:underline shrink-0">
-                  foto
+              {[x.fotoUrl, ...x.fotoLain].filter((u): u is string => !!u).map((u, n) => (
+                <a key={u} href={u} target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-navy-600 hover:underline shrink-0">
+                  {n === 0 ? "foto" : `foto ${n + 1}`}
                 </a>
-              )}
+              ))}
             </div>
           ))}
         </div>

@@ -63,6 +63,8 @@ export interface JawabanTiang {
     normal: boolean;
     catatan: string | null;
     fotoUrl: string | null;
+    /** Foto temuan tambahan (`foto_lain`). */
+    fotoLain: string[];
   }[];
 }
 
@@ -277,7 +279,7 @@ export function useDaftarJtm(user: CurrentUser) {
  */
 export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
   interface Titik { id: string; tiang_id: string; jarak_m: number | null; dinilai_at: string | null; tiang: { kode: string } | { kode: string }[] | null }
-  interface Periksa { titik_id: string; item_kode: string; bagian: string | null; nilai: string | null; nilai_angka: number | null; catatan: string | null; foto_url: string | null }
+  interface Periksa { titik_id: string; item_kode: string; bagian: string | null; nilai: string | null; nilai_angka: number | null; catatan: string | null; foto_url: string | null; foto_lain: string[] | null }
 
   const titik = await fetchAllRows<Titik>(() =>
     supabaseBrowser.from("inspeksi_jtm_titik").select("id,tiang_id,jarak_m,dinilai_at,tiang(kode)").eq("inspeksi_id", id).order("dinilai_at").order("id"),
@@ -290,7 +292,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
         fetchAllRows<Periksa>(() =>
           supabaseBrowser
             .from("inspeksi_jtm_periksa")
-            .select("titik_id,item_kode,bagian,nilai,nilai_angka,catatan,foto_url")
+            .select("titik_id,item_kode,bagian,nilai,nilai_angka,catatan,foto_url,foto_lain")
             .in("titik_id", ids)
             .order("id"),
         ),
@@ -321,6 +323,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
       normal: o ? !!o.normal : true,
       catatan: p.catatan,
       fotoUrl: p.foto_url,
+      fotoLain: p.foto_lain ?? [],
     });
     per.set(p.titik_id, d);
   }

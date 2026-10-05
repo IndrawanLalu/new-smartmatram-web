@@ -87,6 +87,7 @@ export interface GawangTerputus {
 }
 
 export interface Temuan {
+  tiang_id: string;
   tiang_kode: string;
   temuan: string;
   urgensi: string;
@@ -444,7 +445,7 @@ export async function ambilPerbandingan(
       ? Promise.resolve({ data: [] as Temuan[] })
       : supabaseBrowser
           .from("inspeksi_jtr_temuan")
-          .select("tiang_kode,temuan,urgensi,foto_url")
+          .select("tiang_id,tiang_kode,temuan,urgensi,foto_url")
           .eq("inspeksi_id", inspeksi.id),
     supabaseBrowser
       .from("gardu")

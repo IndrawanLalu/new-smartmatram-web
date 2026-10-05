@@ -41,6 +41,9 @@ export interface BarisPemeliharaan {
   lng: number | null;
   fotoSebelum: string;
   fotoSesudah: string;
+  /** Foto tambahan (paling banyak 2 per sisi) — `scripts/foto-temuan-banyak.sql`. */
+  fotoSebelumLain: string[];
+  fotoSesudahLain: string[];
   statusDb: string;
   status: StatusTabel;
   petugasNama: string | null;
@@ -113,6 +116,8 @@ const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     lng: angka(r.lng),
     fotoSebelum: (r.foto_sebelum_url as string) ?? "",
     fotoSesudah: (r.foto_sesudah_url as string) ?? "",
+    fotoSebelumLain: (r.foto_sebelum_lain as string[] | null) ?? [],
+    fotoSesudahLain: (r.foto_sesudah_lain as string[] | null) ?? [],
     statusDb,
     status: STATUS_DB[statusDb] ?? "Menunggu verifikasi",
     petugasNama: teks(r.petugas_nama),

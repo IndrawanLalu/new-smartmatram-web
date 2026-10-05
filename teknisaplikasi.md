@@ -722,9 +722,38 @@ dulu cuma bisa dibetulkan satu per satu.
 
 ---
 
+## 22. Foto temuan/bukti: sampai 3, kolom lama tetap foto UTAMA
+
+**Aturan.** Foto temuan dan foto bukti boleh lebih dari satu, **paling banyak 3**
+per temuan / per sisi (1 utama + 2 tambahan). Kolom foto yang sudah ada tetap
+menyimpan foto **pertama**; foto tambahan disimpan terpisah. Di layar istilah
+yang dipakai "foto 2", "foto 3" — dan di HP satu komponen: `FotoBanyak`.
+
+**Kenapa.** Satu bingkai sering tidak cukup (dekat untuk detail kerusakan, jauh
+untuk letaknya). Tapi kolom lama dibaca HP versi lama, view temuan, laporan, dan
+aturan "temuan wajib berfoto" — mengubahnya jadi larik mematahkan semuanya
+sekaligus di sistem yang sudah jalan. Batas 3 menjaga kuota dan lama kirim di
+sinyal lapangan (butir 4).
+
+**Cara menerapkan.**
+- Kolom baru `…_lain TEXT[] NOT NULL DEFAULT '{}'`; RPC kirim menolak URI lokal
+  dan lebih dari 2 tambahan; HP lama yang tidak mengirim kuncinya = kosong.
+- Bila fotonya sudah berupa peta isian→foto yang digabung (JTR `foto_temuan`),
+  tambahan cukup di kunci `"<isian>#2"`/`"#3"`, slot kosong dikirim **null**
+  supaya tambahan inspeksi lama terhapus — tanpa perubahan server. `#` jangan
+  sampai masuk nama berkas di Storage (dibaca sebagai penanda bagian URL).
+- Hapus foto utama → tambahan pertama naik jadi utama.
+- Web: foto utama seperti biasa + `FotoTambahan` di bawahnya.
+
+**Contoh nyata.** `scripts/foto-temuan-banyak.sql` (JTM `foto_lain`,
+Pemeliharaan Jaringan `foto_sebelum_lain`/`foto_sesudah_lain`), HP
+`components/FotoBanyak.tsx`, `utils/fotoTemuanJtr.ts`; web `lib/fotoTambahan.ts`.
+
+---
+
 *Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
 diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18–19 ditambahkan
-30 September 2026, butir 20 ditambahkan 2 Oktober 2026, butir 21 ditambahkan
+30 September 2026, butir 20 ditambahkan 2 Oktober 2026, butir 21–22 ditambahkan
 5 Oktober 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*

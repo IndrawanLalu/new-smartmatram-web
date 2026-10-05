@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { muatFotoTambahanJtr } from "@/lib/fotoTambahan";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Search, Send, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD, NADA_TUGAS } from "@/app/admin/_ui";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
@@ -30,6 +31,18 @@ export default function TemuanJtr({ ulp, oleh }: { ulp: string; oleh: string }) 
   const total = Math.max(1, Math.ceil(o.baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
   const tampil = o.baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
+
+  // Foto tambahan — hanya untuk baris yang tampil di halaman ini.
+  const [tambahan, setTambahan] = useState<Map<string, string[]>>(new Map());
+  const kunciFoto = tampil.filter((t) => t.foto_url).map((t) => t.tiang_id).join(",");
+  useEffect(() => {
+    if (!kunciFoto) return;
+    let batal = false;
+    void muatFotoTambahanJtr(kunciFoto.split(",")).then((m) => !batal && setTambahan(m));
+    return () => {
+      batal = true;
+    };
+  }, [kunciFoto]);
   const bisaPilih = (t: Temuan) => t.status_tugas === "Belum ditugaskan";
   const pilihan = o.semua.filter((t) => terpilih.has(kunciTemuanJtr(t)) && bisaPilih(t));
   const halamanBisa = tampil.filter(bisaPilih);
@@ -163,11 +176,13 @@ export default function TemuanJtr({ ulp, oleh }: { ulp: string; oleh: string }) 
                         <span className="text-ink">{t.temuan}</span>
                         <p className={`font-semibold ${NADA_URGENSI[t.urgensi ?? ""] ?? "text-ink-soft"}`}>
                           urgensi {t.urgensi?.toLowerCase() ?? "—"}
-                          {t.foto_url && (
-                            <a href={t.foto_url} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-0.5 text-navy-600 font-medium hover:underline">
-                              foto <ExternalLink size={10} />
-                            </a>
-                          )}
+                          {[t.foto_url, ...(t.foto_url ? (tambahan.get(t.foto_url) ?? []) : [])]
+                            .filter((u): u is string => !!u)
+                            .map((u, n) => (
+                              <a key={u} href={u} target="_blank" rel="noreferrer" className="ml-2 inline-flex items-center gap-0.5 text-navy-600 font-medium hover:underline">
+                                {n === 0 ? "foto" : `foto ${n + 1}`} <ExternalLink size={10} />
+                              </a>
+                            ))}
                         </p>
                       </td>
                       <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>
