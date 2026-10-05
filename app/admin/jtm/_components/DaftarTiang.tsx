@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
-import { Ban, GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
+import { Ban, Download, GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import { useToast } from "@/app/admin/_components/Toast";
 import type { PermintaanNama } from "@/lib/jtmNama";
 import { useTiangDaftar, type TiangBaris } from "../_hooks/useTiangDaftar";
 import PratinjauNamaModal from "./PratinjauNamaModal";
@@ -44,6 +45,34 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
   const [pintu, setPintu] = useState<PintuNama | null>(null);
+  const [mengunduh, setMengunduh] = useState(false);
+  const toast = useToast();
+
+  /** Excel hasil inspeksi (`/api/export/jtm`) — penyulang terpilih, atau semua
+   *  penyulang ULP ini. Disusun di server: ribuan baris penilaian tidak ditarik
+   *  ke peramban. */
+  const unduhHasil = async () => {
+    setMengunduh(true);
+    try {
+      const p = new URLSearchParams();
+      if (semuaUnit && ulp) p.set("ulp", ulp);
+      if (penyulang) p.set("penyulang", penyulang);
+      const res = await fetch(`/api/export/jtm?${p.toString()}`);
+      if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Gagal mengunduh");
+      const nama = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "Hasil_Inspeksi_JTM.xlsx";
+      const url = URL.createObjectURL(await res.blob());
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nama;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${nama} terunduh.`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal mengunduh");
+    } finally {
+      setMengunduh(false);
+    }
+  };
 
   // UP3 memilih ULP di layar; peran lain terkunci di unitnya dan tidak pernah
   // melihat saringan ini sama sekali.
@@ -242,6 +271,14 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
               <ListOrdered size={15} /> Generate ulang nama
             </button>
           )}
+          <button
+            onClick={() => void unduhHasil()}
+            disabled={mengunduh}
+            className={BTN_GHOST}
+            title="Excel: tiang per penyulang berurutan dengan keadaan terakhir hasil inspeksinya, dan rekap temuan"
+          >
+            {mengunduh ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />} Unduh hasil inspeksi
+          </button>
         </div>
 
         <p className="text-[11px] text-ink-muted mt-3 max-w-3xl">

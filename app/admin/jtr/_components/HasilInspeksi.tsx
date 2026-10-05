@@ -6,6 +6,7 @@ import { type CurrentUser } from "@/lib/roles";
 import { CARD, EYEBROW, BTN_PRIMARY } from "@/app/admin/_ui";
 import { useTiangJtr, tanggalPeriksa, type TiangBaris } from "../_hooks/useTiangJtr";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import { useToast } from "@/app/admin/_components/Toast";
 
 const BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -57,6 +58,7 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
   const [gardu, setGardu] = useState("");
   const [halaman, setHalaman] = useState(1);
   const [mengunduh, setMengunduh] = useState(false);
+  const toast = useToast();
 
   const garduTersedia = useMemo(() => {
     if (!penyulang) return garduList;
@@ -104,15 +106,16 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
 
       const res = await fetch(`/api/export/jtr?${p.toString()}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Gagal mengunduh");
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
+      const nama = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "Hasil_Inspeksi_JTR.xlsx";
+      const url = URL.createObjectURL(await res.blob());
       const a = document.createElement("a");
       a.href = url;
-      a.download = `inspeksi-jtr-${tanggal || `${tahun}-${String(bulan).padStart(2, "0")}`}.xlsx`;
+      a.download = nama;
       a.click();
       URL.revokeObjectURL(url);
+      toast.success(`${nama} terunduh.`);
     } catch (e) {
-      alert(e instanceof Error ? e.message : "Gagal mengunduh");
+      toast.error(e instanceof Error ? e.message : "Gagal mengunduh");
     } finally {
       setMengunduh(false);
     }
