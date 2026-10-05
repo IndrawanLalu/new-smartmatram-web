@@ -6,6 +6,7 @@ import { PENANDA_ALAT } from "../_hooks/useSimulasiBuka";
 import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
+import NamaTiangJtm from "./NamaTiangJtm";
 
 /**
  * Rincian satu tiang di panel kanan peta, dan suntingan yang boleh dari meja:
@@ -42,11 +43,14 @@ interface Props {
   tanpaGantiInduk?: boolean;
   /** Gardu portal yang masih satu tiang: buatkan tiang keduanya (admin). */
   onBuatPasangan: () => Promise<boolean>;
+  oleh: string;
+  /** Nama tiang (dan hilirnya) baru saja diganti — muat ulang peta. */
+  onNamaBerubah: () => void;
 }
 
 export default function InfoTiang({
   t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
-  tanpaGantiInduk = false, onBuatPasangan,
+  tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah,
 }: Props) {
   const jtr = !!t.gardu_kode;
   const [sunting, setSunting] = useState(false);
@@ -181,6 +185,10 @@ export default function InfoTiang({
             </button>
           </div>
         </div>
+      )}
+
+      {!jtr && !tanpaGantiInduk && boleh && !sunting && (
+        <NamaTiangJtm t={t} oleh={oleh} onBerubah={onNamaBerubah} />
       )}
 
       {boleh && !sunting && (

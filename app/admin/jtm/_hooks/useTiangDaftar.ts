@@ -229,25 +229,6 @@ export function useTiangDaftar(ulp: string | null) {
     [toast, muat],
   );
 
-  const nomoriUlang = useCallback(
-    async (penyulang: string, ulp: string, oleh: string) => {
-      const { data, error } = await supabaseBrowser.rpc("nomori_ulang_penyulang_jtm", {
-        p_penyulang: penyulang,
-        p_ulp: ulp,
-        p_oleh: oleh,
-      });
-      if (error) {
-        toast.error(error.message);
-        return false;
-      }
-      const h = data as { tiang: number; diubah: number };
-      toast.success(`${h.diubah} dari ${h.tiang} tiang ${penyulang} dinomori ulang.`);
-      await muat();
-      return true;
-    },
-    [toast, muat],
-  );
-
   const tandaiPercabangan = useCallback(
     async (tiangId: string, nyala: boolean, oleh: string) => {
       const { data, error } = await supabaseBrowser.rpc("tandai_percabangan_jtm", {
@@ -311,7 +292,6 @@ export function useTiangDaftar(ulp: string | null) {
     muat,
     ubahInduk,
     ubahKode,
-    nomoriUlang,
     tandaiPercabangan,
   };
 }

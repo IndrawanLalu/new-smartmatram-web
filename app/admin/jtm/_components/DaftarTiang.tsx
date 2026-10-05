@@ -4,9 +4,10 @@ import { useCallback, useMemo, useState } from "react";
 import { Ban, GitBranch, ListOrdered, Loader2, Pencil, Search } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
-import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
+import type { PermintaanNama } from "@/lib/jtmNama";
 import { useTiangDaftar, type TiangBaris } from "../_hooks/useTiangDaftar";
+import PratinjauNamaModal from "./PratinjauNamaModal";
 
 /**
  * Tabel tiang JTM.
@@ -25,19 +26,30 @@ const PER_HALAMAN = 50;
 const tanggal = (iso: string | null) =>
   iso ? new Date(iso).toLocaleDateString("id-ID", { day: "2-digit", month: "short" }) : null;
 
+/** Satu pintu penamaan yang sedang dibuka (lihat PratinjauNamaModal). */
+interface PintuNama {
+  judul: string;
+  subjudul: string;
+  permintaan: PermintaanNama;
+  keterangan: React.ReactNode;
+  kosong?: string;
+  /** Ganti nama: koreksi satu tiang tanpa menyentuh hilirnya. */
+  hanyaIni?: { tiangId: string; penyulang: string; kode: string };
+}
+
 export default function DaftarTiang({ user }: { user: CurrentUser }) {
   const semuaUnit = canSeeAllUnits(user.role);
   const [ulp, setUlp] = useState("");
   const [penyulang, setPenyulang] = useState("");
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
-  const [nomorUlang, setNomorUlang] = useState(false);
+  const [pintu, setPintu] = useState<PintuNama | null>(null);
 
   // UP3 memilih ULP di layar; peran lain terkunci di unitnya dan tidak pernah
   // melihat saringan ini sama sekali.
   // `namaDi` tidak dipakai di sini: dropdown induk sudah menyebut nama versi
   // penyulangnya sendiri lewat `namaPerPenyulang`.
-  const { baris, batalkan, penyulangList, namaPerPenyulang, namaPerTiang, loading, ubahInduk, ubahKode, nomoriUlang, tandaiPercabangan } =
+  const { baris, batalkan, penyulangList, namaPerPenyulang, namaPerTiang, loading, muat, ubahInduk, ubahKode, tandaiPercabangan } =
     useTiangDaftar(
     semuaUnit ? (ulp || null) : (user.unit ?? null),
   );
@@ -93,9 +105,69 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
   /** Batang menurut id — dipakai menyebut nama asli tiang milik penyulang lain
    *  di daftar calon induk. */
   const perId = useMemo(
-    () => new Map(baris.map((b) => [b.id, { kode: b.kode, penyulang: b.penyulang }])),
+    () => new Map(baris.map((b) => [b.id, { kode: b.kode, penyulang: b.penyulang, jumlahAnak: b.jumlahAnak }])),
     [baris],
   );
+
+  // ULP penyulang dibaca dari tiangnya — UP3 yang sedang melihat "Semua ULP"
+  // tidak perlu memilih ULP dulu hanya untuk menamai satu penyulang.
+  const ulpPenyulang = (f: string) =>
+    baris.find((b) => b.penyulang === f)?.ulp ?? (semuaUnit ? ulp : (user.unit ?? ""));
+
+  const namaDiPenyulang = (tiangId: string | null, f: string) =>
+    (namaPerTiang.get(tiangId ?? "") ?? []).find((n) => n.penyulang === f)?.kode;
+
+  const bukaGenerate = () =>
+    setPintu({
+      judul: `Generate ulang nama ${penyulang}`,
+      subjudul: "Seluruh penyulang, dari pangkalnya",
+      permintaan: { penyulang, ulp: ulpPenyulang(penyulang) },
+      keterangan: (
+        <>
+          <p className="text-sm text-ink-soft">
+            Jalur utama bernomor terus (<b>PRM-001, PRM-002, …</b>); cabang yang lewat FCO
+            diberi sisi <b>R</b>/<b>L</b> (<b>PRM-015R001</b>). Temuan, WO, penilaian, dan segmen
+            terhubung lewat ID tiang, jadi tidak terpengaruh; label segmen ikut diperbarui.
+          </p>
+          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
+            Nama yang sudah tertulis di papan nomor atau laporan akan berbeda. Nama lama tiap
+            tiang tetap tercatat di jejak audit.
+          </p>
+        </>
+      ),
+    });
+
+  const bukaGantiNama = (b: TiangBaris, f: string, lama: string, baru: string) =>
+    setPintu({
+      judul: `Ganti nama ${lama} → ${baru}`,
+      subjudul: `Penyulang ${f} — tiang di hilirnya ikut`,
+      permintaan: { penyulang: f, ulp: ulpPenyulang(f), mulai: b.id, namaMulai: baru },
+      keterangan: (
+        <p className="text-sm text-ink-soft">
+          Tiang di hilir <b>{lama}</b> ikut berganti mengikuti nama barunya. Untuk membetulkan
+          satu tiang saja, pilih <b>Hanya tiang ini</b>.
+        </p>
+      ),
+      hanyaIni: { tiangId: b.id, penyulang: f, kode: baru },
+    });
+
+  const bukaJadikanUtama = (b: TiangBaris) => {
+    const f = penyulang || b.penyulang;
+    const induk = namaDiPenyulang(b.indukId, f) ?? b.indukKode ?? "induknya";
+    const kode = namaDiPenyulang(b.id, f) ?? b.kode;
+    setPintu({
+      judul: `Jadikan ${kode} jalur utama`,
+      subjudul: `Lanjutan utama dari ${induk} — penyulang ${f}`,
+      permintaan: { penyulang: f, ulp: ulpPenyulang(f), mulai: b.indukId, utamaPaksa: b.id },
+      kosong: `${kode} sudah jalur utama dari ${induk} — tidak ada nama yang berubah.`,
+      keterangan: (
+        <p className="text-sm text-ink-soft">
+          <b>{kode}</b> menjadi lanjutan jalur utama dari <b>{induk}</b>; anak {induk} yang lain
+          menjadi cabang (lewat FCO). Nama di hilir kedua jalur ikut berubah.
+        </p>
+      ),
+    });
+  };
 
   const halamanMaks = Math.max(1, Math.ceil(tersaring.length / PER_HALAMAN));
   const kini = Math.min(halaman, halamanMaks);
@@ -166,8 +238,8 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
             {tersaring.length} tiang
           </span>
           {penyulang && (
-            <button onClick={() => setNomorUlang(true)} className={BTN_GHOST}>
-              <ListOrdered size={15} /> Nomori ulang
+            <button onClick={bukaGenerate} className={BTN_GHOST}>
+              <ListOrdered size={15} /> Generate ulang nama
             </button>
           )}
         </div>
@@ -206,8 +278,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                     <NamaTiang
                       b={b}
                       nama={namaPerTiang.get(b.id) ?? []}
-                      oleh={oleh}
-                      onSimpan={ubahKode}
+                      onGanti={(f, lama, baru) => bukaGantiNama(b, f, lama, baru)}
                     />
                     {/* Percabangan ditandai di TIANGNYA, jadi anak yang lahir
                         belakangan tetap dapat garis bawah apa pun urutan regu
@@ -273,6 +344,16 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
                         );
                       })}
                     </select>
+                    {/* Anak tiang percabangan: mana yang jalur utama menentukan
+                        nama kedua jalur (utama bernomor terus, cabang R/L). */}
+                    {b.indukId && (perId.get(b.indukId)?.jumlahAnak ?? 0) > 1 && (
+                      <button
+                        onClick={() => bukaJadikanUtama(b)}
+                        className="block text-[10px] font-semibold text-navy-600 hover:underline mt-0.5"
+                      >
+                        Jadikan jalur utama
+                      </button>
+                    )}
                   </td>
                   <td className="px-3 py-2 text-xs text-ink-soft max-w-[260px] truncate">
                     {b.segmen ?? <span className="text-ink-muted">belum masuk segmen</span>}
@@ -343,49 +424,30 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
         )}
       </div>
 
-      {nomorUlang && (
-        <ModalShell
-          title={`Nomori ulang ${penyulang}`}
-          subtitle="Penomoran mengikuti rute, bukan urutan pencatatan"
-          maxWidth="max-w-lg"
-          onClose={() => setNomorUlang(false)}
-        >
-          <div className="p-5 space-y-3">
-            <p className="text-sm text-ink-soft">
-              Seluruh tiang <b>{penyulang}</b> dinomori ulang menurut rutenya — dimulai dari
-              tiang paling hulu, walaupun batangnya milik penyulang lain.
-            </p>
-            <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
-              <b>Nama tiang yang sudah tercatat akan berganti.</b> Aman selama nama itu belum
-              terpasang sebagai papan nomor dan belum pernah disebut di laporan gangguan.
-              Sesudah itu, jangan dipakai lagi. Tiap tiang tercatat di jejak audit.
-            </p>
-            <p className="text-xs text-ink-muted">
-              Betulkan dulu kolom <b>Induk</b> kalau ada yang salah sambung — urutan nomor
-              mengikuti pohon induk, bukan urutan pencatatan.
-            </p>
-            <div className="flex justify-end gap-2 pt-1">
-              <button onClick={() => setNomorUlang(false)} className={BTN_GHOST}>
-                Batal
-              </button>
+      {pintu && (
+        <PratinjauNamaModal
+          judul={pintu.judul}
+          subjudul={pintu.subjudul}
+          permintaan={pintu.permintaan}
+          keterangan={pintu.keterangan}
+          kosong={pintu.kosong}
+          oleh={oleh}
+          onTutup={() => setPintu(null)}
+          onSelesai={() => void muat()}
+          aksiLain={
+            pintu.hanyaIni && (
               <button
                 onClick={async () => {
-                  const u = semuaUnit ? ulp : (user.unit ?? "");
-                  if (!u) return;
-                  await nomoriUlang(penyulang, u, oleh);
-                  setNomorUlang(false);
+                  const h = pintu.hanyaIni!;
+                  if (await ubahKode(h.tiangId, h.penyulang, h.kode, oleh)) setPintu(null);
                 }}
-                disabled={semuaUnit && !ulp}
-                className="inline-flex items-center justify-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold bg-amber-600 text-white hover:bg-amber-500 disabled:opacity-40 transition-colors"
+                className={BTN_GHOST}
               >
-                <ListOrdered size={15} /> Nomori ulang
+                Hanya tiang ini
               </button>
-            </div>
-            {semuaUnit && !ulp && (
-              <p className="text-xs text-amber-700">Pilih ULP dulu — penomoran per unit.</p>
-            )}
-          </div>
-        </ModalShell>
+            )
+          }
+        />
       )}
 
       {batalUntuk && (
@@ -417,13 +479,11 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
 function NamaTiang({
   b,
   nama,
-  oleh,
-  onSimpan,
+  onGanti,
 }: {
   b: TiangBaris;
   nama: { penyulang: string; kode: string }[];
-  oleh: string;
-  onSimpan: (tiangId: string, penyulang: string, kode: string, oleh: string) => Promise<boolean>;
+  onGanti: (penyulang: string, lama: string, baru: string) => void;
 }) {
   // Tiang yang belum punya baris nama sama sekali (data lama) tetap bisa
   // diganti lewat nama pemiliknya.
@@ -434,12 +494,10 @@ function NamaTiang({
       {daftar.map((n) => (
         <SatuNama
           key={n.penyulang}
-          tiangId={b.id}
           penyulang={n.penyulang}
           kode={n.kode}
           tampilPenyulang={daftar.length > 1}
-          oleh={oleh}
-          onSimpan={onSimpan}
+          onGanti={(baru) => onGanti(n.penyulang, n.kode, baru)}
         />
       ))}
     </div>
@@ -447,19 +505,15 @@ function NamaTiang({
 }
 
 function SatuNama({
-  tiangId,
   penyulang,
   kode,
   tampilPenyulang,
-  oleh,
-  onSimpan,
+  onGanti,
 }: {
-  tiangId: string;
   penyulang: string;
   kode: string;
   tampilPenyulang: boolean;
-  oleh: string;
-  onSimpan: (tiangId: string, penyulang: string, kode: string, oleh: string) => Promise<boolean>;
+  onGanti: (baru: string) => void;
 }) {
   const [ubah, setUbah] = useState(false);
   const [nilai, setNilai] = useState(kode);
@@ -470,9 +524,9 @@ function SatuNama({
         autoFocus
         value={nilai}
         onChange={(e) => setNilai(e.target.value)}
-        onBlur={async () => {
+        onBlur={() => {
           if (nilai.trim() && nilai.trim().toUpperCase() !== kode.toUpperCase()) {
-            await onSimpan(tiangId, penyulang, nilai.trim(), oleh);
+            onGanti(nilai.trim().toUpperCase());
           }
           setUbah(false);
         }}

@@ -40,6 +40,7 @@ interface Props {
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
   onBuatPasangan: () => Promise<boolean>;
+  onNamaBerubah: () => void;
   onBatalkan: (alasan: string) => Promise<boolean>;
   onTutup: () => void;
   simulasi: HasilSimulasi | null;
@@ -208,6 +209,8 @@ export default function PanelObjek(p: Props) {
             onGantiInduk={p.onGantiInduk}
             onPercabangan={p.onPercabangan}
             onBuatPasangan={p.onBuatPasangan}
+            oleh={p.oleh}
+            onNamaBerubah={p.onNamaBerubah}
             onBatalkan={() => setTanyaBatal(true)}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}

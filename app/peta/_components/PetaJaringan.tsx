@@ -435,6 +435,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               }
               return ok;
             }}
+            onNamaBerubah={segarkan}
             onBatalkan={async (alasan) => {
               if (terpilih.jenis !== "tiang") return false;
               const ok = await sunting.batalkan(terpilih.id, alasan);

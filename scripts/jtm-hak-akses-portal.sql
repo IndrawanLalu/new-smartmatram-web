@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (5 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: kirim_tiang_jtm (terakhir di jtm-penamaan-baru.sql).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- =============================================================================
 -- Hak akses fungsi JTM (audit A6) + gardu portal = dua tiang
 -- Keputusan user 2 Okt 2026 (rencana-hak-akses-dan-portal.md):

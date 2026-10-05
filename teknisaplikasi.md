@@ -683,8 +683,48 @@ temuan hanya dari inspeksi yang disetujui.
 
 ---
 
+## 21. Nama tiang lahir dari induknya — urutan menitik bebas, nama tetap dari pangkal
+
+**Aturan.** Regu boleh menitik dari ujung atau dari tengah ("pulau"). Tiang
+pulau tinggal di HP tanpa nama dan **tidak ikut terkirim** sampai regu
+menekan "Sambungkan pulau" ke tiang bernama, gardu (JTR), atau tanpa induk
+(JTM). Sesudah disambungkan, draf **diurutkan ulang induk lebih dulu**
+(`utils/pulau.ts`), lalu terkirim seperti biasa. Satu pulau terbuka per
+segmen/gardu; "Selesai" ditolak selama pulau terbuka; keluar layar
+diingatkan.
+
+Nama JTM (sejak 5 Okt 2026): **jalur utama bernomor terus** (`PRM-016`),
+**R/L hanya untuk cabang lewat FCO**, diukur terhadap arah jalur utama yang
+keluar dari tiang percabangan (`PRM-015L001`, cabang kedua di sisi sama
+`PRM-015RR001`), angka **selalu tiga digit**. Belokan tidak memberi huruf.
+Mana yang utama ditanyakan ke regu, bukan ditebak dari bentuk jalan; kalau
+regu salah, server **tidak menolak**: tiangnya dinamai cabang dan HP
+menampilkan catatannya. Admin membetulkan dari web dengan **pratinjau dulu**:
+Ganti nama (hilir ikut) / Hanya tiang ini, Jadikan jalur utama, Generate ulang
+nama penyulang. Satu mesin (`susun_nama_jtm`) untuk ketiganya.
+
+**Kenapa.** Nama yang lahir dari induk memaksa regu menyapu dari pangkal,
+yang di jalan raya berarti melawan arus. Aturan lama (setiap belokan > 60°
+memulai huruf baru) menghasilkan nama 43 huruf di SANDUBAYA. Nama yang salah
+dulu cuma bisa dibetulkan satu per satu.
+
+**Cara menerapkan.**
+- Fitur apa pun yang melahirkan aset bernama dari induknya: pulau di HP,
+  urutkan topologis sebelum kirim, tahan baris yang bergantung pada pulau.
+- Penggantian nama massal: **pratinjau → Terapkan** dengan jumlah baris
+  pratinjau; server menolak bila jaringan berubah di antaranya. Nama sementara
+  dulu (indeks unik), satu baris audit per tiang.
+- Semua pesan penolakan menyebut apa, kenapa, dan jalan keluarnya
+  (katalog D di `rencana-pulau-dan-penamaan.md`).
+
+**Contoh nyata.** `rencana-pulau-dan-penamaan.md`;
+`scripts/jtm-penamaan-baru.sql`.
+
+---
+
 *Ditulis 23 September 2026, butir 7–14 ditambahkan 24 September 2026, butir 2
 diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18–19 ditambahkan
-30 September 2026, butir 20 ditambahkan 2 Oktober 2026.
+30 September 2026, butir 20 ditambahkan 2 Oktober 2026, butir 21 ditambahkan
+5 Oktober 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*

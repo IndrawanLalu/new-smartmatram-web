@@ -1,3 +1,6 @@
+-- ⚠ JANGAN DIJALANKAN ULANG SELURUHNYA (5 Okt 2026). Fungsi berikut di
+--   skrip ini SUDAH DIGANTIKAN: tiang_buat_kode_jtm & jtm_kode_penyulang_baru (aturan lama huruf mata angin — terakhir di jtm-penamaan-baru.sql).
+--   Menjalankan ulang skrip ini mengembalikan versi lamanya.
 -- scripts/jtm-nama-penuh.sql
 --
 -- NAMA TIANG MEMBAWA SELURUH JALURNYA.
