@@ -129,6 +129,12 @@ export async function POST(req: NextRequest) {
 
   if (type !== "INSERT" && type !== "UPDATE") return NextResponse.json({ skipped: true });
 
+  // Tugas yang lahir dari "Tugaskan" temuan JTM: WA-nya sudah terkirim saat regu
+  // mengirim penilaian (/api/wa-notify-jtm) — jangan dikirim lagi sebagai temuan baru.
+  if (table === "inspeksi" && record.source === "inspeksi_jtm") {
+    return NextResponse.json({ skipped: true, reason: "temuan JTM, sudah dikirim saat dinilai" });
+  }
+
   // UPDATE temuan yang SUDAH Urgent / Sangat Tinggi sebelumnya (ditugaskan,
   // diproses, selesai, …) bukan berita baru — tanpa ini tiap perubahan status
   // mengirim WA lagi. Pemicu: container `pekerja` (Supabase Realtime) atau

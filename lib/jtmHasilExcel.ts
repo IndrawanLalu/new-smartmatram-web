@@ -25,6 +25,8 @@ export interface KondisiJtm {
   foto_url: string | null;
   tgl: string | null;
   inspeksi_id: string | null;
+  /** Kategori pilihan regu (Urgent/Rawan/Biasa); null = aplikasi lama. */
+  kategori?: string | null;
 }
 
 export interface TiangJtm {
@@ -101,7 +103,7 @@ export function susunHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string)
       for (const k of daftar) {
         if (k.catatan) catatan.add(`${it.nama}: ${k.catatan}`);
         if (k.normal) continue;
-        const keadaan = teksNilai(k, it.satuan) || "—";
+        const keadaan = `${teksNilai(k, it.satuan) || "—"}${k.kategori ? ` (${k.kategori})` : ""}`;
         const bagian = k.bagian !== "-" ? ` ${k.bagian}` : "";
         temuan.push({ kelompok: it.kelompok, isian: it.nama, keadaan, nama: `${t.kode}${bagian ? ` (${k.bagian})` : ""}` });
         ringkas.push(`${it.nama}${bagian}: ${keadaan}`);

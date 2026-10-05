@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Search, Send, TreePine, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD, NADA_TUGAS } from "@/app/admin/_ui";
-import { STATUS_TUGAS, kunciTemuan, useTemuanJtm, type TemuanJtm as Temuan } from "../_hooks/useTemuanJtm";
+import { KATEGORI_TEMUAN, PRIORITAS_DARI_KATEGORI, STATUS_TUGAS, kunciTemuan, useTemuanJtm, type KategoriTemuan, type TemuanJtm as Temuan } from "../_hooks/useTemuanJtm";
 import { tgl } from "../_lib/tampilan";
 import DetailTemuanModal from "./DetailTemuanModal";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
@@ -14,6 +14,19 @@ import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
  */
 
 const PAGE_SIZE = 20;
+
+/** Warna kategori pilihan regu — Urgent dikirim WA saat regu mengirim. */
+export const NADA_KATEGORI: Record<KategoriTemuan, string> = {
+  Urgent: "bg-red-50 text-red-700 border-red-200",
+  Rawan: "bg-amber-50 text-amber-800 border-amber-200",
+  Biasa: "bg-gray-100 text-gray-600 border-gray-200",
+};
+
+/** Prioritas awal penugasan: kategori paling berat di antara yang dipilih. */
+const prioritasAwal = (pilih: Temuan[]) => {
+  const ada = KATEGORI_TEMUAN.find((k) => pilih.some((t) => t.kategori === k));
+  return ada ? PRIORITAS_DARI_KATEGORI[ada] : "Normal";
+};
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
 const TD = "px-3 py-2.5 border-b border-line align-top";
 
@@ -58,6 +71,13 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
           <button key={j} onClick={() => saring(() => o.setJenis(j))} className={`${CHIP} ${o.jenis === j ? CHIP_ON : CHIP_OFF}`}>
             {j === "SEMUA" ? "Semua jenis" : j}
             {j !== "SEMUA" && <span className="opacity-70">{o.loading ? "" : o.hitungJenis[j]}</span>}
+          </button>
+        ))}
+        <span className="w-px h-6 bg-line mx-1" />
+        {(["SEMUA", ...KATEGORI_TEMUAN] as const).map((k) => (
+          <button key={k} onClick={() => saring(() => o.setKategori(k))} className={`${CHIP} ${o.kategori === k ? CHIP_ON : CHIP_OFF}`}>
+            {k === "SEMUA" ? "Semua kategori" : k}
+            {k !== "SEMUA" && <span className="opacity-70">{o.loading ? "" : o.hitungKategori[k]}</span>}
           </button>
         ))}
         <span className="w-px h-6 bg-line mx-1" />
@@ -166,7 +186,14 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
                       </td>
                       <td className={`${TD} text-xs`}>
                         <span className="text-ink">{t.item_nama}{t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}</span>
-                        <p className="text-amber-800 font-semibold">{t.nilai_label ?? t.nilai ?? "—"}</p>
+                        <p className="text-amber-800 font-semibold">
+                          {t.nilai_label ?? t.nilai ?? "—"}
+                          {t.kategori && (
+                            <span className={`ml-1.5 inline-block px-1.5 py-px rounded-full border text-[10px] font-semibold ${NADA_KATEGORI[t.kategori]}`}>
+                              {t.kategori}
+                            </span>
+                          )}
+                        </p>
                       </td>
                       <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>
                         {tgl(t.ditemukan_pada)}
@@ -211,6 +238,7 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
             keterangan: `${t.item_nama}: ${t.nilai_label ?? t.nilai ?? "—"}${t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}`,
           }))}
           peringatan={<PeringatanRabas pilih={tugaskan} />}
+          prioritasAwal={prioritasAwal(tugaskan)}
           tugaskan={(p) => o.tugaskan(tugaskan, p)}
           onTutup={() => setTugaskan(null)}
           onSelesai={() => setTerpilih(new Set())}

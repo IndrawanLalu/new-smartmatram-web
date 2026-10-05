@@ -46,10 +46,10 @@ export async function GET(req: NextRequest) {
         if (ulp) q = q.eq("ulp", ulp);
         return q.order("id");
       }),
-      fetchAllRows<KondisiJtm & { tiang_id: string; sirkit_penyulang: string | null }>(() => {
+      fetchAllRows<KondisiJtm & { tiang_id: string; sirkit_segmen_id: string | null; sirkit_penyulang: string | null }>(() => {
         let q = supabaseAdmin
           .from("tiang_kondisi_terakhir")
-          .select("tiang_id,item_kode,bagian,sirkit_penyulang,nilai,nilai_label,nilai_angka,catatan,normal,foto_url,tgl,inspeksi_id");
+          .select("tiang_id,item_kode,bagian,sirkit_segmen_id,sirkit_penyulang,nilai,nilai_label,nilai_angka,catatan,normal,foto_url,tgl,inspeksi_id");
         if (ulp) q = q.eq("ulp", ulp);
         return q.order("tiang_id").order("item_kode").order("bagian").order("sirkit_segmen_id");
       }),
@@ -57,6 +57,15 @@ export async function GET(req: NextRequest) {
         supabaseAdmin.from("segmen_tiang").select("tiang_id,segmen(nama,penyulang,status)").order("segmen_id").order("tiang_id"),
       ),
     ]);
+
+    // Kategori pilihan regu (view kecil `jtm_kategori_temuan`); belum ada = tanpa kategori.
+    const kategori = await fetchAllRows<{ inspeksi_id: string; tiang_id: string; item_kode: string; bagian: string; sirkit_segmen_id: string | null; kategori_temuan: string }>(() =>
+      supabaseAdmin.from("jtm_kategori_temuan").select("inspeksi_id,tiang_id,item_kode,bagian,sirkit_segmen_id,kategori_temuan")
+        .order("inspeksi_id").order("tiang_id").order("item_kode").order("bagian"),
+    ).catch(() => []);
+    const kunciKat = (x: { inspeksi_id: string | null; tiang_id: string; item_kode: string; bagian: string | null; sirkit_segmen_id: string | null }) =>
+      `${x.inspeksi_id}|${x.tiang_id}|${x.item_kode}|${x.bagian ?? "-"}|${x.sirkit_segmen_id ?? ""}`;
+    const katPer = new Map(kategori.map((k) => [kunciKat(k), k.kategori_temuan]));
 
     const perBatang = new Map(batang.map((t) => [t.id, t]));
     const namaDi = new Map(nama.map((n) => [`${n.tiang_id}|${n.penyulang}`, n.kode]));
@@ -116,7 +125,12 @@ export async function GET(req: NextRequest) {
           lng: b.lng === null ? null : Number(b.lng),
           petugas: insp?.petugas_nama ?? null,
           statusInspeksi: insp?.status ?? null,
-          kondisi: ks.map((k) => ({ ...k, bagian: k.bagian ?? "-", nilai_angka: k.nilai_angka === null ? null : Number(k.nilai_angka) })),
+          kondisi: ks.map((k) => ({
+            ...k,
+            bagian: k.bagian ?? "-",
+            nilai_angka: k.nilai_angka === null ? null : Number(k.nilai_angka),
+            kategori: katPer.get(kunciKat(k)) ?? null,
+          })),
         };
       })
       .sort((a, b) => a.penyulang.localeCompare(b.penyulang) || urutKode(a.kode, b.kode));

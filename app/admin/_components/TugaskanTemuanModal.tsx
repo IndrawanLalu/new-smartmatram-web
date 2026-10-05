@@ -22,17 +22,19 @@ interface Props {
   daftar: { kunci: string; judul: string; keterangan: string }[];
   /** Peringatan khusus jenis temuan (mis. segmen sedang WO Perabasan). */
   peringatan?: ReactNode;
+  /** Prioritas terpilih saat dibuka (mis. dari kategori pilihan regu). */
+  prioritasAwal?: string;
   onTutup: () => void;
   tugaskan: (p: Penugasan) => Promise<{ berhasil: number; gagal: string[] }>;
   onSelesai: () => void;
 }
 
-export default function TugaskanTemuanModal({ daftar, peringatan, onTutup, tugaskan, onSelesai }: Props) {
+export default function TugaskanTemuanModal({ daftar, peringatan, prioritasAwal, onTutup, tugaskan, onSelesai }: Props) {
   const toast = useToast();
   const { roles } = useRoles();
   const eksekutorRoles = useMemo(() => roles.filter((r) => r.is_eksekutor), [roles]);
   const [eksekutor, setEksekutor] = useState("");
-  const [prioritas, setPrioritas] = useState("Normal");
+  const [prioritas, setPrioritas] = useState(prioritasAwal && PRIORITAS.includes(prioritasAwal) ? prioritasAwal : "Normal");
   const [catatan, setCatatan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 

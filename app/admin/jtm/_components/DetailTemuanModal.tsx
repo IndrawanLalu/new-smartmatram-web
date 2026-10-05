@@ -101,6 +101,7 @@ export default function DetailTemuanModal({ t, onTutup, onTugaskan }: Props) {
           <Baris label="Jenis" nilai={t.jenis} />
           <Baris label="Item" nilai={`${t.item_nama}${t.bagian && t.bagian !== "-" ? ` (${t.bagian})` : ""}`} />
           <Baris label="Keadaan" nilai={<b className="text-amber-800">{t.nilai_label ?? t.nilai ?? "—"}</b>} />
+          <Baris label="Kategori regu" nilai={t.kategori ?? "— (aplikasi lama)"} />
           {t.catatan && <Baris label="Catatan regu" nilai={t.catatan} />}
           <Baris label="Segmen" nilai={t.segmen_nama ?? "—"} />
           {t.sirkit_nama && <Baris label="Sirkit" nilai={t.sirkit_nama} />}

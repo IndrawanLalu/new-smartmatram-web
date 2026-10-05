@@ -83,3 +83,20 @@ pohon ke grup **Jaringan** — sama dengan temuan inspeksi lama.
 2. Bagian B: SQL (kolom, view, kirim_tiang_jtm, publication) → push web (route
    `wa-notify-jtm`, tab Temuan, Excel) → bangun ulang `pekerja` → **OTA HP**
    (pilihan kategori). Urutan ini aman: HP lama tak mengirim kategori → tak ada WA.
+
+## Status pembangunan (6 Okt 2026)
+- **Bagian A** ter-push `ead57b3` — menunggu dipasang di homelab (blok `pekerja` di compose).
+- **Bagian B dibangun, BELUM commit:**
+  - SQL `scripts/jtm-kategori-temuan.sql` (kolom + kirim_tiang_jtm ◆ + view kecil
+    `jtm_kategori_temuan` + publication). Uji PGlite lulus (6 cek baru + uji lama).
+  - Web: `/api/wa-notify-jtm` (satu pesan per tiang, pohon → perabasan),
+    `lib/wa/kirimGrup.ts`, `/api/wa-notify` & pekerja melewati `source='inspeksi_jtm'`,
+    pekerja kanal kedua `temuan-jtm` (ditahan 30 dtk per tiang), pengingat + temuan
+    Urgent JTM belum ditugaskan (satu pesan ringkas per grup), tab Temuan (chip &
+    saring kategori, prioritas awal Urgent→Urgent / Rawan→Scheduled / Biasa→Normal),
+    Excel (kategori di kolom Temuan & rekap).
+  - HP: pilihan kategori wajib di kotak temuan (tanpa bawaan), penjaga simpan,
+    dibuka lagi memuat kategori; salinan tiang kedua portal TIDAK membawa kategori
+    (cegah dua WA untuk satu temuan).
+- Urutan: pasang & uji A → SQL B → push web + bangun ulang `web pekerja` → OTA HP.
+  ⚠ OTA HP setelah SQL (HP membaca kolom `kategori_temuan` saat membuka penilaian).

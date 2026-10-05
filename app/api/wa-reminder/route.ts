@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { gatewayEnabled, gatewaySend } from "@/lib/wa/gateway";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
  * Reminder inspeksi urgent — pengganti wa-bot/reminder.js (cron di dalam bot).
@@ -87,16 +89,83 @@ async function sendToGroup(chatId: string, items: any[], totalAll: number) {
   }
 }
 
+// ── Temuan JTM berkategori Urgent yang BELUM ditugaskan ─────────────────────
+// (rencana-notif-temuan-jtm.md, keputusan 3). Satu pesan ringkas per grup,
+// bukan satu pesan per temuan — temuan JTM bisa puluhan per ULP.
+const ISIAN_POHON = new Set(["vegetasi", "jenis_pohon", "posisi_pohon"]);
+const MAX_BARIS_JTM = 15;
+
+async function jtmUrgentBelumDitugaskan() {
+  const [temuan, kategori] = await Promise.all([
+    fetchAllRows<any>(() =>
+      supabaseAdmin
+        .from("jtm_temuan")
+        .select("tiang_id,tiang_kode,penyulang,ulp,item_kode,item_nama,bagian,sirkit_segmen_id,nilai_label,nilai,inspeksi_jtm_id,ditemukan_pada")
+        .eq("status_tugas", "Belum ditugaskan")
+        .order("tiang_id").order("item_kode").order("bagian"),
+    ),
+    fetchAllRows<any>(() =>
+      supabaseAdmin
+        .from("jtm_kategori_temuan")
+        .select("inspeksi_id,tiang_id,item_kode,bagian,sirkit_segmen_id")
+        .eq("kategori_temuan", "Urgent")
+        .order("inspeksi_id").order("tiang_id").order("item_kode"),
+    ),
+  ]);
+  const kunci = (x: any, insp: string) => `${insp}|${x.tiang_id}|${x.item_kode}|${x.bagian ?? "-"}|${x.sirkit_segmen_id ?? ""}`;
+  const urgent = new Set(kategori.map((k) => kunci(k, k.inspeksi_id)));
+  return temuan.filter((t) => urgent.has(kunci(t, t.inspeksi_jtm_id)));
+}
+
+async function sendJtmReminder(jenis: string, settingsJaringan: any[], settingsPohon: any[]) {
+  let daftar: any[];
+  try {
+    daftar = await jtmUrgentBelumDitugaskan();
+  } catch (err) {
+    console.error("[wa-reminder] gagal membaca temuan JTM:", (err as Error).message);
+    return;
+  }
+  const kirimKe = async (settings: any[], pohon: boolean) => {
+    for (const setting of settings) {
+      const ulp = (setting.ulp ?? "").toUpperCase();
+      const data = daftar
+        .filter((t) => ISIAN_POHON.has(t.item_kode) === pohon && (!ulp || (t.ulp ?? "").toUpperCase() === ulp))
+        .sort((a, b) => +new Date(a.ditemukan_pada) - +new Date(b.ditemukan_pada));
+      if (data.length === 0) continue;
+      const chatId = setting.group_id.includes("@g.us") ? setting.group_id : `${setting.group_id}@g.us`;
+      const baris = data.slice(0, MAX_BARIS_JTM).map((t) =>
+        `• *${t.tiang_kode}* (${t.penyulang ?? "-"}) — ${t.item_nama}${t.bagian && t.bagian !== "-" ? ` ${t.bagian}` : ""}: ${t.nilai_label ?? t.nilai ?? "-"} · ${fmtTanggal(String(t.ditemukan_pada).slice(0, 10))}`,
+      );
+      await gatewaySend({
+        to: chatId,
+        text: [
+          `🚨 *PENGINGAT TEMUAN URGENT JTM${pohon ? " — POHON" : ""}*`,
+          `Ada *${data.length}* temuan urgent dari inspeksi JTM yang *belum ditugaskan*:`,
+          "",
+          ...baris,
+          data.length > MAX_BARIS_JTM
+            ? `_(dan ${data.length - MAX_BARIS_JTM} lainnya — lihat tab Temuan di Inspeksi JTM)_`
+            : null,
+          "",
+          "_SMART MATARAM — PLN UP3 Mataram_",
+        ].filter((x) => x !== null).join("\n"),
+      });
+      await delay(SEND_DELAY_MS * 2);
+    }
+  };
+  if (jenis !== "pohon") await kirimKe(settingsJaringan, false);
+  if (jenis !== "jaringan") await kirimKe(settingsPohon, true);
+}
+
 async function sendUrgentReminder(jenis = "all") {
   const [settingsJaringan, settingsPohon, urgentData] = await Promise.all([
     fetchWaSettings("reminder_jaringan"),
     fetchWaSettings("reminder_pohon"),
     fetchUrgent(),
   ]);
-  if (!urgentData) return;
-
-  const rawJaringan = jenis === "pohon" ? [] : (urgentData.jaringan ?? []);
-  const rawPohon = jenis === "jaringan" ? [] : (urgentData.pohon ?? []);
+  // Gagal membaca tugas lama tidak boleh ikut menghentikan pengingat temuan JTM.
+  const rawJaringan = !urgentData || jenis === "pohon" ? [] : (urgentData.jaringan ?? []);
+  const rawPohon = !urgentData || jenis === "jaringan" ? [] : (urgentData.pohon ?? []);
 
   for (const setting of settingsJaringan) {
     const ulp = (setting.ulp ?? "").toUpperCase();
@@ -118,6 +187,7 @@ async function sendUrgentReminder(jenis = "all") {
     await sendToGroup(chatId, items, data.length);
     await delay(SEND_DELAY_MS * 2);
   }
+  await sendJtmReminder(jenis, settingsJaringan, settingsPohon);
 }
 
 export async function POST(req: NextRequest) {
