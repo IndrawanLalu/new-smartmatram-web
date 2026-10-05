@@ -1,0 +1,14 @@
+{
+  "name": "smart-mataram-pekerja",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Pemicu notif WA realtime temuan + penjadwal pengingat untuk SMART Mataram (homelab)",
+  "type": "module",
+  "main": "index.mjs",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.108.2"
+  }
+}

@@ -65,6 +65,22 @@ services:
       - wa_session:/app/wa-bot/session
     mem_limit: 1g
 
+  # Pemicu notif WA realtime temuan + penjadwal pengingat (pekerja/index.mjs).
+  # Menggantikan realtime & cron di wa-bot lama; kirim tetap lewat web → gateway.
+  pekerja:
+    build:
+      context: .
+      dockerfile: pekerja/Dockerfile
+    image: smart-mataram-pekerja
+    container_name: smart-mataram-pekerja
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      WEB_URL: "http://web:3000"
+    depends_on:
+      - web
+    mem_limit: 128m
+
   ml-engine:
     build:
       context: .

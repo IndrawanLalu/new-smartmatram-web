@@ -120,13 +120,26 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
-  const { type, table, record } = body as {
+  const { type, table, record, old_record } = body as {
     type: string;
     table: string;
     record: Record<string, string>;
+    old_record?: Record<string, string> | null;
   };
 
   if (type !== "INSERT" && type !== "UPDATE") return NextResponse.json({ skipped: true });
+
+  // UPDATE temuan yang SUDAH Urgent / Sangat Tinggi sebelumnya (ditugaskan,
+  // diproses, selesai, …) bukan berita baru — tanpa ini tiap perubahan status
+  // mengirim WA lagi. Pemicu: container `pekerja` (Supabase Realtime) atau
+  // webhook Supabase; keduanya membawa old_record.
+  if (
+    type === "UPDATE" &&
+    ((table === "inspeksi" && old_record?.category === "Urgent") ||
+      (table === "inspeksi_pohon" && old_record?.tingkat_risiko === "Sangat Tinggi"))
+  ) {
+    return NextResponse.json({ skipped: true, reason: "sudah dikirim saat menjadi urgent" });
+  }
 
   const ulp      = (record.ulp ?? "").toUpperCase();
   const imageUrl = record.foto_sebelum_url || record.foto_lokasi_url || undefined;
