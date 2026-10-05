@@ -1,4 +1,4 @@
-import { parseClipboardTable } from "@/lib/parseClipboardTable";
+import { parseClipboardTable, parseDelimited } from "@/lib/parseClipboardTable";
 import { parseLocaleNumber } from "@/lib/parseLocaleNumber";
 import { isoTgl } from "./woSurat";
 
@@ -35,6 +35,37 @@ const POLA: [Kolom, RegExp][] = [
   ["alamat", /alamat|nama|lokasi/i],
 ];
 
+/**
+ * Isian bawaan WO bersatuan gardu (keputusan user 5 Okt 2026): tempelan cukup
+ * kode gardu — alamat, kVA, dan penyulang dari Master Gardu, keterangan &
+ * pelaksana dari sini. Isian yang ikut ditempel tetap menang.
+ */
+export const BAWAAN_GARDU: Record<string, { keterangan: string | null; pelaksana: string }> = {
+  igardu1: { keterangan: "INSPEKSI GARDU TIER 1", pelaksana: "INSPEKSI GARDU" },
+  igardu2: { keterangan: "INSPEKSI GARDU TIER 2", pelaksana: "INSPEKSI GARDU" },
+  hargardu: { keterangan: null, pelaksana: "PEMELIHARAAN GARDU" },
+  penyeimbangan: { keterangan: null, pelaksana: "PENYEIMBANGAN BEBAN" },
+  pengukuran: { keterangan: null, pelaksana: "PENGUKURAN GARDU" },
+};
+
+/** Kode gardu: huruf + angka, tanpa spasi (AM358, GG009). Nomor urut saja
+ *  ("1", "2") dan kata judul ("GARDU") tidak lolos. */
+const KODE_GARDU = /^(?=.*\d)(?=.*[A-Za-z])[A-Za-z0-9.\-\/]{2,15}$/;
+
+const barisKosong = (objek: string): BarisTempel => ({
+  objek, alamat: null, penyulang: null, km: null, kva: null, uraian: null, keterangan: null, pelaksana: null, tgl_rencana: null,
+});
+
+/** Tempelan tanpa judul kolom: kolom pertama tiap baris = kode gardu (boleh
+ *  beberapa kode dipisah spasi/koma dalam satu baris). */
+function bacaKodeSaja(raw: string): BarisTempel[] {
+  return parseDelimited(raw)
+    .flatMap((r) => (r[0] ?? "").split(/[\s,;]+/))
+    .map((t) => t.trim().toUpperCase())
+    .filter((t) => KODE_GARDU.test(t))
+    .map(barisKosong);
+}
+
 export interface HasilTempel {
   baris: BarisTempel[];
   /** Judul kolom yang dikenali — ditampilkan supaya user bisa memeriksa. */
@@ -58,7 +89,9 @@ function bacaTanggal(s: string, tahun: number, bulan: number): string | null {
   return null;
 }
 
-export function bacaTempelan(raw: string, tahun: number, bulan: number): HasilTempel {
+/** `kodeSaja` = jenis bersatuan gardu: tempelan tanpa judul kolom dibaca
+ *  sebagai daftar kode gardu. */
+export function bacaTempelan(raw: string, tahun: number, bulan: number, kodeSaja = false): HasilTempel {
   const { headers, rows } = parseClipboardTable(raw);
   const indeks: Partial<Record<Kolom, number>> = {};
   const dikenali: Partial<Record<Kolom, string>> = {};
@@ -70,6 +103,11 @@ export function bacaTempelan(raw: string, tahun: number, bulan: number): HasilTe
       dikenali[hit[0]] = h;
     }
   });
+
+  if (indeks.objek === undefined && kodeSaja) {
+    const baris = bacaKodeSaja(raw);
+    return { baris, dikenali: {}, galat: baris.length === 0 ? "Tidak ada kode gardu yang terbaca (contoh: AM006)." : null };
+  }
 
   if (indeks.objek === undefined) {
     return {

@@ -6,9 +6,10 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { bacaTempelan, tierDari, type BarisTempel } from "../_lib/tempelWo";
+import { BAWAAN_GARDU, bacaTempelan, tierDari, type BarisTempel } from "../_lib/tempelWo";
 import { fmtAngka, JENIS_SURAT, kolomLampiran, labelBulan } from "../_lib/woSurat";
 import HasilTempel, { type HasilRpc } from "./HasilTempel";
+import { useLengkapiGardu, type BarisGardu } from "../_hooks/useLengkapiGardu";
 
 /**
  * Tempel WO dari Excel (keputusan user 29 Sep 2026). Kolom mengikuti format
@@ -19,6 +20,9 @@ import HasilTempel, { type HasilRpc } from "./HasilTempel";
  *
  * Inspeksi JTM: satu tempelan boleh berisi Tier 1 dan Tier 2 — dipisah dari
  * kolom keterangan; tanpa keterangan ikut tier baris yang tombolnya ditekan.
+ *
+ * Bersatuan gardu (5 Okt 2026): cukup kode gardu — alamat, kVA, penyulang dari
+ * Master Gardu; keterangan & pelaksana bawaan per jenis (`BAWAAN_GARDU`).
  */
 
 interface Props {
@@ -41,17 +45,26 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
   const jenis = JENIS_SURAT.find((j) => j.kunci === kunci)!;
   const kolom = kolomLampiran(jenis);
   const jtm = kunci === "jtm" || kunci === "jtm2";
-  const hasil = useMemo(() => (teks.trim() ? bacaTempelan(teks, tahun, bulan) : null), [teks, tahun, bulan]);
+  const gardu = jenis.format === "gardu";
+  const hasil = useMemo(() => (teks.trim() ? bacaTempelan(teks, tahun, bulan, gardu) : null), [teks, tahun, bulan, gardu]);
+  const lengkap = useLengkapiGardu(kunci, ulp, hasil?.baris ?? null, gardu);
+  const barisPakai: (BarisTempel & Partial<Pick<BarisGardu, "adaDiMaster" | "diperiksa">>)[] = useMemo(
+    () => (gardu ? lengkap.baris : (hasil?.baris ?? [])),
+    [gardu, lengkap.baris, hasil],
+  );
 
   /** Kelompok yang akan disimpan: kunci → baris. */
   const kelompok = useMemo(() => {
     const g = new Map<string, BarisTempel[]>();
-    for (const b of hasil?.baris ?? []) {
+    // Gardu yang tidak ada di master tetap dikirim: server menolaknya dengan
+    // alasan, dan penolakan itu ikut tampil di hasil simpan. (Kunci tambahan
+    // adaDiMaster/diperiksa diabaikan server.)
+    for (const b of barisPakai) {
       const k = jtm ? (tierDari(b.keterangan, kunci === "jtm2" ? 2 : 1) === 2 ? "jtm2" : "jtm") : kunci;
       g.set(k, [...(g.get(k) ?? []), b]);
     }
     return g;
-  }, [hasil, jtm, kunci]);
+  }, [barisPakai, jtm, kunci]);
 
   const template = async () => {
     const { unduhTemplate } = await import("../_lib/unduhTemplate");
@@ -112,9 +125,13 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
   const footer = (
     <>
       <button onClick={onTutup} className={BTN_GHOST} disabled={sibuk}>Batal</button>
-      <button onClick={() => void simpan()} className={BTN_PRIMARY} disabled={sibuk || !hasil || !!hasil.galat}>
-        {sibuk ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
-        Simpan {hasil && !hasil.galat ? `(${hasil.baris.length} baris)` : ""}
+      <button
+        onClick={() => void simpan()}
+        className={BTN_PRIMARY}
+        disabled={sibuk || !hasil || !!hasil.galat || (gardu && lengkap.memuat)}
+      >
+        {sibuk || (gardu && lengkap.memuat) ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
+        Simpan {hasil && !hasil.galat ? `(${barisPakai.length} ${gardu ? "gardu" : "baris"})` : ""}
       </button>
     </>
   );
@@ -131,11 +148,20 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
         <button onClick={() => void template()} className={`${BTN_GHOST} float-right ml-3 mb-1`}>
           <FileDown size={14} /> Unduh template
         </button>
-        <p>
-          Salin blok tabel di Excel <b>termasuk baris judul kolomnya</b>, lalu tempel di bawah. Kolom:{" "}
-          <b className="text-ink">{kolom.map((k) => k.label.toLowerCase()).join(" · ")}</b>
-          {jtm && " (keterangan: Tier 1 / Tier 2)"}. Tanggal kerja dibagi rata otomatis.
-        </p>
+        {gardu ? (
+          <p>
+            Cukup tempel <b className="text-ink">kode gardu</b> — satu per baris, dengan atau tanpa judul kolom.
+            Alamat, kVA, dan penyulang diambil dari <b>Master Gardu {ulp}</b>; keterangan
+            {BAWAAN_GARDU[kunci]?.keterangan ? ` “${BAWAAN_GARDU[kunci].keterangan}”` : ""} dan pelaksana
+            {" "}“{BAWAAN_GARDU[kunci]?.pelaksana}” terisi otomatis. Tanggal kerja dibagi rata otomatis.
+          </p>
+        ) : (
+          <p>
+            Salin blok tabel di Excel <b>termasuk baris judul kolomnya</b>, lalu tempel di bawah. Kolom:{" "}
+            <b className="text-ink">{kolom.map((k) => k.label.toLowerCase()).join(" · ")}</b>
+            {jtm && " (keterangan: Tier 1 / Tier 2)"}. Tanggal kerja dibagi rata otomatis.
+          </p>
+        )}
         <p className="mt-1">
           {jenis.modul
             ? "Masuk sebagai WO modulnya dan tampil di HP regu. Yang sudah ada di WO bulan ini dilewati; baris lama tidak dihapus — pembatalan lewat modulnya."
@@ -146,19 +172,34 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
         value={teks}
         onChange={(e) => setTeks(e.target.value)}
         rows={6}
-        placeholder="Tempel di sini…"
+        placeholder={gardu ? "Tempel kode gardu di sini, mis.\nAM006\nAM017" : "Tempel di sini…"}
         className="w-full rounded-xl border border-line bg-white px-3 py-2 text-xs font-mono focus:outline-none focus:border-navy-500"
       />
 
       {hasil?.galat && <p className="text-xs text-red-600">{hasil.galat}</p>}
+      {gardu && lengkap.galat && <p className="text-xs text-amber-700">{lengkap.galat} — tetap bisa disimpan; server memeriksa ulang.</p>}
 
       {hasil && !hasil.galat && (
         <>
           <div className="flex flex-wrap gap-2 text-[11px] text-ink-soft">
+            {gardu && Object.keys(hasil.dikenali).length === 0 && (
+              <span className="px-2 py-0.5 rounded-full bg-surface border border-line">dibaca sebagai daftar kode gardu</span>
+            )}
             {Object.entries(hasil.dikenali).map(([k, h]) => (
               <span key={k} className="px-2 py-0.5 rounded-full bg-surface border border-line">{h} → {k}</span>
             ))}
           </div>
+          {gardu && (lengkap.tidakAda > 0 || lengkap.ganda > 0 || lengkap.memuat) && (
+            <p className="text-xs">
+              {lengkap.memuat && <span className="text-ink-muted">Mencocokkan dengan Master Gardu {ulp}… </span>}
+              {lengkap.tidakAda > 0 && (
+                <span className="text-red-700 font-semibold">
+                  {lengkap.tidakAda} gardu tidak ada di Master Gardu {ulp} (baris merah) — akan ditolak saat disimpan.{" "}
+                </span>
+              )}
+              {lengkap.ganda > 0 && <span className="text-ink-soft">{lengkap.ganda} kode ganda dihitung sekali.</span>}
+            </p>
+          )}
           <div className="flex flex-wrap gap-3 text-xs">
             {[...kelompok].map(([k, b]) => {
               const j = JENIS_SURAT.find((x) => x.kunci === k)!;
@@ -178,23 +219,28 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
                 </tr>
               </thead>
               <tbody>
-                {hasil.baris.slice(0, PRATINJAU).map((b, i) => (
-                  <tr key={i} className="border-t border-line">
-                    {kolom.map((k) => (
-                      <td key={k.isi} className={`px-2 py-1 ${k.kanan ? "text-right tabular-nums" : ""}`}>
-                        {k.isi === "km" || k.isi === "kva"
-                          ? (b[k.isi] === null ? "" : fmtAngka(b[k.isi], k.isi === "km"))
-                          : (b[k.isi] ?? "")}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+                {barisPakai.slice(0, PRATINJAU).map((b, i) => {
+                  const hilang = b.diperiksa && !b.adaDiMaster;
+                  return (
+                    <tr key={i} className={`border-t border-line ${hilang ? "bg-red-50 text-red-700" : ""}`}>
+                      {kolom.map((k) => (
+                        <td key={k.isi} className={`px-2 py-1 ${k.kanan ? "text-right tabular-nums" : ""}`}>
+                          {hilang && k.isi === "alamat"
+                            ? `Tidak ada di Master Gardu ${ulp}`
+                            : k.isi === "km" || k.isi === "kva"
+                              ? (b[k.isi] === null ? "" : fmtAngka(b[k.isi], k.isi === "km"))
+                              : (b[k.isi] ?? "")}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
-          {hasil.baris.length > PRATINJAU && (
+          {barisPakai.length > PRATINJAU && (
             <p className="text-[11px] text-ink-muted">
-              Menampilkan {PRATINJAU} dari {hasil.baris.length} baris — semuanya ikut tersimpan.
+              Menampilkan {PRATINJAU} dari {barisPakai.length} baris — semuanya ikut tersimpan.
             </p>
           )}
         </>

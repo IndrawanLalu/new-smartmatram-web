@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Loader2, Upload } from "lucide-react";
+import { Check, Eraser, Loader2, Upload } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
@@ -12,7 +12,8 @@ import type { PengaturanSurat } from "../_lib/woSurat";
 /**
  * Kop, penerima, penandatangan, dan tanda tangan surat WO — sekali per ULP.
  * Tanda tangan disimpan di bucket PRIVAT `ttd`: yang bisa diambil lewat
- * tautan publik bisa ditempel di surat mana pun.
+ * tautan publik bisa ditempel di surat mana pun. Tanda tangan Manager boleh
+ * dikosongkan — Manager lalu menandatangani langsung di surat cetak.
  */
 
 interface Props {
@@ -46,6 +47,8 @@ export default function PengaturanSuratModal({ awal, oleh, onTutup, onTersimpan 
   const [berkas, setBerkas] = useState<{ manager?: File; tl?: File }>({});
   const [lihat, setLihat] = useState<{ manager: string | null; tl: string | null }>({ manager: null, tl: null });
   const [sibuk, setSibuk] = useState(false);
+  /** Tanda tangan Manager dihapus saat Simpan (tanda tangan basah). */
+  const [kosongkanManager, setKosongkanManager] = useState(false);
 
   useEffect(() => {
     let hidup = true;
@@ -61,12 +64,25 @@ export default function PengaturanSuratModal({ awal, oleh, onTutup, onTersimpan 
     if (f.size > BATAS_TTD) return toast.error("Berkas tanda tangan maksimal 1 MB.");
     setBerkas((b) => ({ ...b, [siapa]: f }));
     setLihat((l) => ({ ...l, [siapa]: URL.createObjectURL(f) }));
+    if (siapa === "manager") setKosongkanManager(false);
+  };
+
+  const kosongkan = () => {
+    setKosongkanManager(true);
+    setBerkas((b) => ({ ...b, manager: undefined }));
+    setLihat((l) => ({ ...l, manager: null }));
   };
 
   const simpan = async () => {
     setSibuk(true);
     try {
       const baru = { ...isi };
+      if (kosongkanManager && isi.ttd_manager) {
+        // Berkas lama ikut dibuang: tanda tangan yang tidak dipakai tidak
+        // perlu tersimpan. Gagal menghapus tidak menggagalkan pengaturan.
+        await supabaseBrowser.storage.from("ttd").remove([isi.ttd_manager]);
+        baru.ttd_manager = null;
+      }
       for (const siapa of ["manager", "tl"] as const) {
         const f = berkas[siapa];
         if (!f) continue;
@@ -103,10 +119,24 @@ export default function PengaturanSuratModal({ awal, oleh, onTutup, onTersimpan 
           <span className="text-[11px] text-ink-muted">belum ada</span>
         )}
       </div>
-      <label className={`${BTN_GHOST} cursor-pointer w-full`}>
-        <Upload size={13} /> Pilih PNG
-        <input type="file" accept="image/png" className="hidden" onChange={(e) => pilih(siapa, e.target.files?.[0])} />
-      </label>
+      <div className="flex gap-2">
+        <label className={`${BTN_GHOST} cursor-pointer flex-1`}>
+          <Upload size={13} /> Pilih PNG
+          <input type="file" accept="image/png" className="hidden" onChange={(e) => pilih(siapa, e.target.files?.[0])} />
+        </label>
+        {siapa === "manager" && lihat.manager && (
+          <button onClick={kosongkan} className={BTN_GHOST} title="Kosongkan — Manager tanda tangan langsung">
+            <Eraser size={13} /> Kosongkan
+          </button>
+        )}
+      </div>
+      {siapa === "manager" && (
+        <p className="text-[11px] text-ink-muted mt-1.5">
+          {kosongkanManager
+            ? "Akan dikosongkan saat Simpan — Manager menandatangani langsung di surat cetak."
+            : "Boleh kosong: tempat tanda tangan dibiarkan kosong untuk ditandatangani langsung."}
+        </p>
+      )}
     </div>
   );
 

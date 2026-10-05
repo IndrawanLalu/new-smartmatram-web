@@ -65,7 +65,8 @@ export default function CetakWoModal({ user, ulpAwal, onTutup, onBerubah }: Prop
         !s.nama_manager && "nama Manager",
         !s.mitra && "pelaksana (mitra)",
         !s.penerima && "penerima",
-        !s.ttd_manager && "tanda tangan Manager",
+        // Tanda tangan Manager boleh kosong: Manager menandatangani langsung
+        // di surat cetak (keputusan user 5 Okt 2026).
         !s.ttd_tl && "tanda tangan pembuat lampiran",
       ].filter(Boolean)
     : [];

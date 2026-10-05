@@ -13,7 +13,8 @@ import { kolomLampiran, type JenisSurat } from "./woSurat";
 const BARIS_KOSONG = 30;
 
 export async function unduhTemplate(j: JenisSurat, tier?: boolean) {
-  const kolom = kolomLampiran(j);
+  // Bersatuan gardu: cukup kode gardu — sisanya dari Master Gardu (5 Okt 2026).
+  const kolom = j.format === "gardu" ? kolomLampiran(j).slice(0, 1) : kolomLampiran(j);
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
   const ws = wb.addWorksheet("WO", { views: [{ state: "frozen", ySplit: 1 }] });
@@ -36,7 +37,9 @@ export async function unduhTemplate(j: JenisSurat, tier?: boolean) {
     "Isi mulai baris 2. Blok tabel TERMASUK baris judul, salin, lalu tempel di SMART.",
     tier ? "Keterangan: tulis Tier 1 atau Tier 2 — keduanya boleh dalam satu tempelan." : "",
     j.penyulang ? "Penyulang wajib diisi — segmen milik satu penyulang di Master Penyulang." : "",
-    j.format === "gardu" ? "Gardu = kode gardu di Master Gardu (mis. AM006)." : "",
+    j.format === "gardu"
+      ? "Cukup kode gardu di Master Gardu (mis. AM006) — alamat, kVA, keterangan, pelaksana terisi otomatis."
+      : "",
     "Tanggal kerja tidak perlu diisi — dibagi rata otomatis ke hari efektif.",
   ].filter(Boolean);
   catatan.forEach((t, i) => {
