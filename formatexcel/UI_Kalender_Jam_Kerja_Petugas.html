@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Jam Kerja Petugas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: '#0a0a0c',
+                        surface: '#121214',
+                        surfaceHover: '#1c1c1f',
+                        brand: '#3b82f6',
+                        border: 'rgba(255, 255, 255, 0.08)',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+        }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #52525b; }
+
+        .glass-header {
+            background: rgba(10, 10, 12, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, minmax(150px, 1fr));
+            border-top: 1px solid var(--tw-colors-border);
+            border-left: 1px solid var(--tw-colors-border);
+        }
+
+        .calendar-cell {
+            border-right: 1px solid var(--tw-colors-border);
+            border-bottom: 1px solid var(--tw-colors-border);
+            min-height: 120px;
+            position: relative;
+            padding: 8px;
+            transition: background-color 0.2s;
+        }
+        
+        .calendar-cell:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .calendar-header-cell {
+            border-right: 1px solid var(--tw-colors-border);
+            border-bottom: 1px solid var(--tw-colors-border);
+            padding: 12px 8px;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.01);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(8px);
+        }
+
+        .time-label-cell {
+            position: sticky;
+            left: 0;
+            z-index: 10;
+            background-color: #0a0a0c;
+            border-right: 1px solid var(--tw-colors-border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #71717a;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .work-card {
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.15) 0%, rgba(59, 130, 246, 0.05) 100%);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-left: 3px solid #3b82f6;
+            border-radius: 6px;
+            padding: 6px 8px;
+            font-size: 0.75rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            transition: all 0.2s ease;
+            cursor: pointer;
+            margin-bottom: 4px;
+        }
+
+        .work-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px -2px rgba(59, 130, 246, 0.2);
+            background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(59, 130, 246, 0.1) 100%);
+        }
+        
+        .work-card.maintenance {
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.15) 0%, rgba(249, 115, 22, 0.05) 100%);
+            border: 1px solid rgba(249, 115, 22, 0.3);
+            border-left: 3px solid #f97316;
+        }
+        
+        .work-card.maintenance:hover {
+            box-shadow: 0 6px 12px -2px rgba(249, 115, 22, 0.2);
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.2) 0%, rgba(249, 115, 22, 0.1) 100%);
+        }
+        
+        .work-card.inspection {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-left: 3px solid #10b981;
+        }
+        
+        .work-card.inspection:hover {
+            box-shadow: 0 6px 12px -2px rgba(16, 185, 129, 0.2);
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+        }
+
+        .avatar-group {
+            display: flex;
+            align-items: center;
+        }
+        .avatar-group img {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid #121214;
+            margin-left: -6px;
+        }
+        .avatar-group img:first-child { margin-left: 0; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- Navbar -->
+    <header class="glass-header px-6 py-4 flex justify-between items-center z-20">
+        <div class="flex items-center gap-6">
+            <div class="flex items-center gap-3 border-r border-white/10 pr-6">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <i data-lucide="calendar-clock" class="text-white w-5 h-5"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-white tracking-tight">WorkLog Calendar</h1>
+                    <p class="text-xs text-gray-400">Monitoring Jam Kerja Petugas</p>
+                </div>
+            </div>
+            
+            <!-- Controls -->
+            <div class="flex items-center gap-2 bg-surface rounded-lg p-1 border border-white/5">
+                <button class="p-2 rounded-md hover:bg-white/10 text-gray-400 transition"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+                <span class="text-sm font-semibold text-white px-3">Oktober 2026</span>
+                <button class="p-2 rounded-md hover:bg-white/10 text-gray-400 transition"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+            </div>
+            
+            <div class="flex items-center gap-2 bg-surface rounded-lg p-1 border border-white/5">
+                <button class="px-3 py-1.5 text-xs font-medium bg-white/10 text-white rounded-md">Minggu</button>
+                <button class="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition">Bulan</button>
+                <button class="px-3 py-1.5 text-xs font-medium text-gray-400 hover:text-white transition">Hari</button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <!-- Filter -->
+            <button class="flex items-center gap-2 px-4 py-2 bg-surface border border-white/10 rounded-lg text-sm font-medium hover:bg-surfaceHover transition">
+                <i data-lucide="filter" class="w-4 h-4 text-gray-400"></i>
+                <span>Filter Petugas</span>
+            </button>
+            
+            <!-- Add New -->
+            <button class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition shadow-lg shadow-blue-500/20">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Jadwal Baru</span>
+            </button>
+            
+            <!-- User -->
+            <img src="https://ui-avatars.com/api/?name=Admin&background=333&color=fff" alt="Admin" class="w-9 h-9 rounded-full border border-white/20">
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar Summary (Optional but good for desktop) -->
+        <aside class="w-64 bg-dark border-r border-white/10 p-5 overflow-y-auto hidden lg:block z-10 flex-shrink-0">
+            <h2 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4">Statistik Minggu Ini</h2>
+            
+            <div class="space-y-4">
+                <div class="bg-surface border border-white/5 rounded-xl p-4">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center text-blue-400">
+                            <i data-lucide="clock" class="w-4 h-4"></i>
+                        </div>
+                        <span class="text-sm font-medium text-gray-300">Total Jam Kerja</span>
+                    </div>
+                    <p class="text-2xl font-bold text-white">164 <span class="text-sm font-normal text-gray-500">Jam</span></p>
+                </div>
+                
+                <div class="bg-surface border border-white/5 rounded-xl p-4">
+                    <h3 class="text-sm font-medium text-gray-300 mb-3">Distribusi Tugas</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-blue-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-500"></span> Pelayanan</span>
+                                <span class="text-gray-400">60 jam</span>
+                            </div>
+                            <div class="w-full bg-white/5 rounded-full h-1.5"><div class="bg-blue-500 h-1.5 rounded-full" style="width: 45%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-orange-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-orange-500"></span> Pemeliharaan</span>
+                                <span class="text-gray-400">72 jam</span>
+                            </div>
+                            <div class="w-full bg-white/5 rounded-full h-1.5"><div class="bg-orange-500 h-1.5 rounded-full" style="width: 55%"></div></div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-emerald-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500"></span> Inspeksi</span>
+                                <span class="text-gray-400">32 jam</span>
+                            </div>
+                            <div class="w-full bg-white/5 rounded-full h-1.5"><div class="bg-emerald-500 h-1.5 rounded-full" style="width: 25%"></div></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t border-white/5">
+                    <h3 class="text-sm font-medium text-gray-300 mb-3">Petugas Teraktif</h3>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <img src="https://ui-avatars.com/api/?name=Budi&background=random" class="w-6 h-6 rounded-full" alt="User">
+                                <span class="text-xs text-gray-300">Budi S.</span>
+                            </div>
+                            <span class="text-xs font-mono text-gray-400">42j 30m</span>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <img src="https://ui-avatars.com/api/?name=Agus&background=random" class="w-6 h-6 rounded-full" alt="User">
+                                <span class="text-xs text-gray-300">Agus R.</span>
+                            </div>
+                            <span class="text-xs font-mono text-gray-400">38j 15m</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Calendar Wrapper -->
+        <div class="flex-1 overflow-auto relative bg-[#0a0a0c]">
+            <div class="min-w-[900px]"> <!-- Ensure min width for scrolling on smaller screens -->
+                
+                <!-- Calendar Header (Days) -->
+                <div class="calendar-grid bg-[#0a0a0c] sticky top-0 z-20 shadow-sm border-b-0">
+                    <div class="calendar-header-cell border-t-0 border-l-0 border-none bg-[#0a0a0c]">
+                        <!-- Empty corner cell -->
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Senin</div>
+                        <div class="text-lg font-bold text-white mt-0.5">5 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Selasa</div>
+                        <div class="text-lg font-bold text-white mt-0.5">6 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell bg-blue-500/5 border-b-blue-500/30">
+                        <div class="text-xs text-blue-400 font-bold">Rabu (Hari Ini)</div>
+                        <div class="text-lg font-bold text-blue-400 mt-0.5">7 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Kamis</div>
+                        <div class="text-lg font-bold text-white mt-0.5">8 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Jumat</div>
+                        <div class="text-lg font-bold text-white mt-0.5">9 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Sabtu</div>
+                        <div class="text-lg font-bold text-gray-400 mt-0.5">10 Okt</div>
+                    </div>
+                    <div class="calendar-header-cell">
+                        <div class="text-xs text-gray-500 font-medium">Minggu</div>
+                        <div class="text-lg font-bold text-gray-400 mt-0.5">11 Okt</div>
+                    </div>
+                </div>
+
+                <!-- Calendar Body (Time slots) -->
+                <div class="calendar-grid">
+                    
+                    <!-- Row 08:00 -->
+                    <div class="time-label-cell">08:00</div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell">
+                        <!-- Event Yantek -->
+                        <div class="work-card">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="font-semibold text-blue-300 text-[11px] uppercase tracking-wide">Yantek</span>
+                                <span class="bg-blue-500/20 text-blue-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">4h</span>
+                            </div>
+                            <div class="text-gray-200 font-medium mb-1 line-clamp-2 leading-tight">Penanganan Gangguan Trafo Ampenan</div>
+                            <div class="flex items-center gap-1 text-gray-400 text-[10px] mb-2 font-mono">
+                                <i data-lucide="clock" class="w-3 h-3"></i> 08:00 - 12:00
+                            </div>
+                            <div class="flex justify-between items-center mt-auto">
+                                <div class="avatar-group">
+                                    <img src="https://ui-avatars.com/api/?name=Regu+1&background=random" alt="Petugas" title="Regu 1">
+                                    <img src="https://ui-avatars.com/api/?name=B&background=random" alt="Petugas">
+                                </div>
+                                <span class="text-[10px] text-gray-500 flex items-center gap-1"><i data-lucide="map-pin" class="w-3 h-3"></i> Zone A</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell bg-blue-500/5"> <!-- Today column -->
+                        <!-- Event Inspection -->
+                        <div class="work-card inspection">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="font-semibold text-emerald-400 text-[11px] uppercase tracking-wide">Inspeksi</span>
+                                <span class="bg-emerald-500/20 text-emerald-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">2.5h</span>
+                            </div>
+                            <div class="text-gray-200 font-medium mb-1 line-clamp-2 leading-tight">Patroli Jaringan Drone SUTM</div>
+                            <div class="flex items-center gap-1 text-gray-400 text-[10px] mb-2 font-mono">
+                                <i data-lucide="clock" class="w-3 h-3"></i> 08:30 - 11:00
+                            </div>
+                            <div class="avatar-group">
+                                <img src="https://ui-avatars.com/api/?name=Drone+Tim&background=10b981&color=fff" alt="Petugas">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+
+                    <!-- Row 12:00 -->
+                    <div class="time-label-cell">12:00</div>
+                    <div class="calendar-cell bg-white/5 flex items-center justify-center opacity-50"><span class="text-xs text-gray-500">Istirahat</span></div>
+                    <div class="calendar-cell bg-white/5"></div>
+                    <div class="calendar-cell bg-blue-500/5 bg-white/5"></div>
+                    <div class="calendar-cell bg-white/5"></div>
+                    <div class="calendar-cell bg-white/5"></div>
+                    <div class="calendar-cell bg-white/5"></div>
+                    <div class="calendar-cell bg-white/5"></div>
+
+                    <!-- Row 13:00 -->
+                    <div class="time-label-cell">13:00</div>
+                    <div class="calendar-cell">
+                        <!-- Event Maintenance -->
+                        <div class="work-card maintenance">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="font-semibold text-orange-400 text-[11px] uppercase tracking-wide">Pemeliharaan</span>
+                                <span class="bg-orange-500/20 text-orange-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">5h</span>
+                            </div>
+                            <div class="text-gray-200 font-medium mb-1 line-clamp-2 leading-tight">Penggantian Isolator Tumpu</div>
+                            <div class="flex items-center gap-1 text-gray-400 text-[10px] mb-2 font-mono">
+                                <i data-lucide="clock" class="w-3 h-3"></i> 13:00 - 18:00
+                            </div>
+                            <div class="flex justify-between items-center mt-auto">
+                                <div class="avatar-group">
+                                    <img src="https://ui-avatars.com/api/?name=Har+1&background=f97316&color=fff" alt="Petugas">
+                                    <img src="https://ui-avatars.com/api/?name=C&background=random" alt="Petugas">
+                                    <img src="https://ui-avatars.com/api/?name=D&background=random" alt="Petugas">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell bg-blue-500/5">
+                        <!-- Event Yantek -->
+                        <div class="work-card relative overflow-hidden">
+                            <!-- In Progress Indicator -->
+                            <div class="absolute top-0 right-0 w-8 h-8 bg-blue-500/20 blur-xl rounded-full"></div>
+                            
+                            <div class="flex justify-between items-start mb-1.5 relative z-10">
+                                <span class="font-semibold text-blue-300 text-[11px] uppercase tracking-wide">Yantek</span>
+                                <div class="flex gap-1 items-center">
+                                    <span class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></span>
+                                    <span class="bg-blue-500/20 text-blue-400 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">3h</span>
+                                </div>
+                            </div>
+                            <div class="text-gray-200 font-medium mb-1 line-clamp-2 leading-tight relative z-10">Pengecekan Laporan Tegangan Drop</div>
+                            <div class="flex items-center gap-1 text-blue-300/80 text-[10px] mb-2 font-mono relative z-10">
+                                <i data-lucide="clock" class="w-3 h-3"></i> 14:00 - 17:00
+                            </div>
+                            <div class="flex justify-between items-center mt-auto relative z-10">
+                                <div class="avatar-group">
+                                    <img src="https://ui-avatars.com/api/?name=Regu+2&background=3b82f6&color=fff" alt="Petugas">
+                                </div>
+                                <span class="text-[10px] text-gray-500">Mataram</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    
+                    <!-- Row 17:00 -->
+                    <div class="time-label-cell">17:00</div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell bg-blue-500/5 relative">
+                        <!-- Current Time Line -->
+                        <div class="absolute top-[30%] left-0 right-0 z-20 flex items-center transform -translate-y-1/2">
+                            <div class="w-2 h-2 rounded-full bg-blue-500 ml-[-4px]"></div>
+                            <div class="h-[1px] bg-blue-500 w-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"></div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell">
+                        <div class="work-card maintenance">
+                            <div class="flex justify-between items-start mb-1.5">
+                                <span class="font-semibold text-orange-400 text-[11px] uppercase tracking-wide">Darurat</span>
+                                <span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[10px] px-1.5 py-0.5 rounded font-mono font-medium">4h</span>
+                            </div>
+                            <div class="text-gray-200 font-medium mb-1 line-clamp-2 leading-tight">Perbaikan Pohon Tumbang</div>
+                            <div class="flex items-center gap-1 text-gray-400 text-[10px] mb-2 font-mono">
+                                <i data-lucide="clock" class="w-3 h-3"></i> 17:30 - 21:30
+                            </div>
+                            <div class="avatar-group">
+                                <img src="https://ui-avatars.com/api/?name=Tim+Cepat&background=ef4444&color=fff" alt="Petugas">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-cell"></div>
+                    <div class="calendar-cell"></div>
+                    
+                    <!-- Row 21:00 -->
+                    <div class="time-label-cell">21:00</div>
+                    <div class="calendar-cell border-b-0"></div>
+                    <div class="calendar-cell border-b-0"></div>
+                    <div class="calendar-cell border-b-0 bg-blue-500/5"></div>
+                    <div class="calendar-cell border-b-0"></div>
+                    <div class="calendar-cell border-b-0"></div>
+                    <div class="calendar-cell border-b-0"></div>
+                    <div class="calendar-cell border-b-0"></div>
+
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Initialize Lucide Icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>
