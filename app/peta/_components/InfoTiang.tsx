@@ -7,7 +7,7 @@ import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
 import NamaTiangJtm from "./NamaTiangJtm";
-import PilihKodeGardu from "./PilihKodeGardu";
+import PenandaTiang from "./PenandaTiang";
 
 /**
  * Rincian satu tiang di panel kanan peta, dan suntingan yang boleh dari meja:
@@ -65,8 +65,8 @@ export default function InfoTiang({
       jtr
         ? { jenis: t.jenis ?? "", tinggi: t.tinggi === null ? "" : String(t.tinggi) }
         : {
-            jenis: t.jenis ?? "", konstruksi: t.konstruksi ?? "", nomor_lama: t.nomor_lama ?? "", penanda: t.penanda ?? "",
-            gardu_di_tiang: t.gardu_di_tiang ?? "",
+            // Penanda & kode gardu/nama peralatan: bagian "Penanda" sendiri (PenandaTiang).
+            jenis: t.jenis ?? "", konstruksi: t.konstruksi ?? "", nomor_lama: t.nomor_lama ?? "",
           },
     );
     setSunting(true);
@@ -114,17 +114,7 @@ export default function InfoTiang({
         <Baris label="Jenis" nilai={t.jenis} />
         {jtr ? <Baris label="Tinggi" nilai={t.tinggi === null ? null : `${t.tinggi} m`} /> : <Baris label="Konstruksi" nilai={t.konstruksi} />}
         {!jtr && <Baris label="Nomor lama" nilai={t.nomor_lama} />}
-        {!jtr && <Baris label="Penanda" nilai={t.penanda ? (penanda.get(t.penanda)?.label ?? t.penanda) : null} />}
-        {!jtr && (t.penanda === "gardu" || t.gardu_di_tiang) && (
-          <Baris
-            label="Kode gardu"
-            nilai={
-              t.gardu_di_tiang
-                ? `${t.gardu_di_tiang} — ${t.garduNama ?? "belum ada di Master Gardu"}`
-                : "belum diisi"
-            }
-          />
-        )}
+        {!jtr && <PenandaTiang t={t} penanda={penanda} boleh={boleh} onUbahAtribut={onUbahAtribut} />}
         {!jtr && <Baris label="Percabangan" nilai={t.percabangan ? "ya" : "tidak"} />}
         {!jtr && (t.portal.pasangan || t.portal.dari || t.portal.tanpaPasangan) && (
           <Baris
@@ -202,16 +192,6 @@ export default function InfoTiang({
               <span className="text-gray-500">Nomor lama</span>
               <input value={isi.nomor_lama ?? ""} onChange={(e) => setIsi({ ...isi, nomor_lama: e.target.value })} className={`${INPUT} mt-1`} />
             </label>
-          )}
-          {!jtr && pilih("penanda", [...penanda.keys()], "Penanda", (v) => penanda.get(v)?.label ?? v)}
-          {!jtr && isi.penanda === "gardu" && (
-            <PilihKodeGardu
-              ulp={t.ulp}
-              lat={t.lat}
-              lng={t.lng}
-              nilai={isi.gardu_di_tiang ?? ""}
-              onUbah={(v) => setIsi({ ...isi, gardu_di_tiang: v })}
-            />
           )}
           <div className="flex gap-2 pt-1">
             <button onClick={() => void simpan()} disabled={sibuk} className={`${TOMBOL_PANEL} border-[#00897B] text-[#5eead4]`}>

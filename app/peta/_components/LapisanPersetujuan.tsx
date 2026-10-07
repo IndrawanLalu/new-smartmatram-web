@@ -3,24 +3,30 @@
 import { CircleMarker, Tooltip } from "react-leaflet";
 import type { TiangBanding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
+import type { KeadaanTiangJtm, SorotJtm } from "./PersetujuanJtmPeta";
 
 /**
  * Lapisan persetujuan inspeksi JTR:
  *   • gardu dalam antrean — cincin kuning, klik untuk membuka persetujuannya;
  *   • tiang yang BARU / DIKOREKSI / DINONAKTIFKAN dalam inspeksi yang sedang
  *     dibuka — supaya perbandingan sebelum–sesudah tidak luput di peta utama.
+ * Persetujuan JTM: tiang segmen yang sedang dibuka — dinilai normal, ada
+ * temuan, atau belum dinilai.
  */
 
 const WARNA_UBAH = { baru: "#22C55E", berubah: "#F59E0B", hilang: "#EF4444" } as const;
+const WARNA_JTM: Record<KeadaanTiangJtm, string> = { normal: "#22C55E", temuan: "#F97316", belum: "#EF4444" };
 
 export default function LapisanPersetujuan({
   antrean,
   onPilih,
   sorot,
+  sorotJtm,
 }: {
   antrean: AntreanJtr[] | null;
   onPilih: (d: AntreanJtr) => void;
   sorot: TiangBanding[] | null;
+  sorotJtm: SorotJtm[] | null;
 }) {
   return (
     <>
@@ -59,6 +65,21 @@ export default function LapisanPersetujuan({
           // menutupi tiang di bawahnya, dan tiang itulah yang mau diklik.
         ),
       )}
+
+      {(sorotJtm ?? []).map((t) => (
+        <CircleMarker
+          key={`jtm-${t.id}`}
+          center={[t.lat, t.lng]}
+          radius={10}
+          interactive={false}
+          pathOptions={{
+            color: WARNA_JTM[t.keadaan],
+            weight: 2.5,
+            fillOpacity: 0,
+            dashArray: t.keadaan === "belum" ? "3 3" : undefined,
+          }}
+        />
+      ))}
     </>
   );
 }

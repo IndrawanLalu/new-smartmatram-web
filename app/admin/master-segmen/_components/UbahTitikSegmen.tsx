@@ -1,23 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { JENIS_TITIK } from "@/app/admin/jtm/_hooks/useSegmen";
+import { useJtmRef } from "@/app/admin/jtm/_hooks/useJtmRef";
+import { kodeTitik, labelTitik, penandaDariTitik, susunJenisTitik } from "@/lib/jenisTitikJtm";
 
 /**
  * Membetulkan titik ujung segmen lapangan. Nama segmennya tidak diketik —
  * tersusun ulang dari kedua titik (`ubah_titik_segmen`), dan segmen yang
  * bersambung di tiang yang sama ikut diperbarui.
  */
-
-/** UJUNG bukan pilihan di sini: itu keadaan "masih dirintis", bukan tempat. */
-const JENIS = JENIS_TITIK.filter((j) => j.kode !== "UJUNG");
-const DENGAN_TITIK = new Set(["REC", "LBS", "PENG", "PMT"]);
-const label = (jenis: string, nama: string) =>
-  `${jenis}${DENGAN_TITIK.has(jenis) ? "." : ""} ${nama.trim().toUpperCase()}`.trim();
 
 interface Titik {
   jenis: string;
@@ -30,15 +25,6 @@ interface TiangSegmen {
   kode: string;
   penanda: string | null;
 }
-
-/** Penanda tiang → jenis ujung (sama dengan layar Simpan segmen di HP). */
-const JENIS_DARI_PENANDA: Record<string, string> = {
-  recloser: "REC", lbs: "LBS", lbsm: "LBS", pmt: "PMT", peng: "PENG", gardu: "GARDU",
-};
-/** Jenis ujung → penanda yang ditulis ke tiang penutup (bila belum bertanda). */
-const PENANDA_DARI_JENIS: Record<string, string> = {
-  REC: "recloser", LBS: "lbs", PMT: "pmt", PENG: "peng", GARDU: "gardu",
-};
 
 interface Props {
   segmenId: string;
@@ -57,6 +43,11 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
   const [sibuk, setSibuk] = useState(false);
   const [tiangSegmen, setTiangSegmen] = useState<TiangSegmen[]>([]);
   const [penutup, setPenutup] = useState<string>("");
+  // Pilihan = Penanda tiang di Pengaturan JTM. UJUNG bukan pilihan di sini:
+  // itu keadaan "masih dirintis", bukan tempat.
+  const { per } = useJtmRef();
+  const penandaRef = per("penanda");
+  const JENIS = useMemo(() => susunJenisTitik(penandaRef), [penandaRef]);
 
   useEffect(() => {
     let hidup = true;
@@ -91,7 +82,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
           .filter((t): t is NonNullable<typeof t> => !!t && t.status_hidup === "aktif")
           .sort((x, y) => y.created_at.localeCompare(x.created_at));
         setTiangSegmen(isi.map((t) => ({ id: t.id, kode: t.kode, penanda: t.penanda })));
-        const usul = isi.find((t) => t.penanda && JENIS_DARI_PENANDA[t.penanda]) ?? isi[0];
+        const usul = isi.find((t) => t.penanda) ?? isi[0];
         if (usul) pilihPenutup(usul.id, isi);
       });
     return () => { hidup = false; };
@@ -104,7 +95,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
     const t = daftar.find((x) => x.id === id);
     setPenutup(id);
     if (!t) return;
-    const j = t.penanda ? JENIS_DARI_PENANDA[t.penanda] : undefined;
+    const j = t.penanda ? kodeTitik(t.penanda) : undefined;
     setAkhir({ jenis: j ?? "TIANG", nama: j ? "" : t.kode });
   }
 
@@ -128,7 +119,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
           akhir.jenis,
           akhir.nama.trim().toUpperCase(),
           // Tiang yang sudah bertanda tidak ditimpa (mis. LBS motorized tetap lbsm).
-          t?.penanda ? null : (PENANDA_DARI_JENIS[akhir.jenis] ?? null),
+          t?.penanda ? null : penandaDariTitik(akhir.jenis, penandaRef),
         )));
     setSibuk(false);
     if (ok) onTutup();
@@ -139,6 +130,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
       {judul && <p className={EYEBROW}>{judul}</p>}
       <div className="flex gap-2">
         <select value={v.jenis} onChange={(e) => set({ ...v, jenis: e.target.value })} className={`${FIELD} w-44`}>
+          {!JENIS.some((j) => j.kode === v.jenis) && <option value={v.jenis}>{v.jenis}</option>}
           {JENIS.map((j) => <option key={j.kode} value={j.kode}>{j.label}</option>)}
         </select>
         <input
@@ -195,7 +187,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
           <div className="rounded-lg bg-surface px-3 py-2 text-sm">
             <span className="text-ink-muted">Nama segmen menjadi </span>
             <b className="text-ink">
-              {label(awal.jenis, awal.nama)} - {masihDirintis && !penutup ? "UJUNG" : label(akhir.jenis, akhir.nama)}
+              {labelTitik(awal.jenis, awal.nama)} - {masihDirintis && !penutup ? "UJUNG" : labelTitik(akhir.jenis, akhir.nama)}
             </b>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">

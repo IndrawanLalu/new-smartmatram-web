@@ -13,6 +13,8 @@ import { titikTengahPortal } from "@/lib/penandaJtm";
  *
  * Kode gardu (AM013) ikut tombol Nama tiang, ditulis di samping SIMBOL
  * gardunya — untuk gardu portal itu di tengah kedua tiang, bukan di tiangnya.
+ * Nama peralatan (SAMPOERNA) di tiang LBS/recloser/FCO ditulis dengan cara
+ * yang sama.
  *
  * Label adalah elemen DOM, bukan gambar kanvas, jadi jumlahnya dibatasi: di
  * atas BATAS_NAMA label peta mulai tersendat, dan label yang bertumpuk juga
@@ -26,6 +28,7 @@ const NADA = {
   ub: "!bg-[#A855F7] !text-white",
   curiga: "!bg-red-600 !text-white",
   gardu: "!bg-[#1D3573] !text-white",
+  alat: "!bg-[#B3701A] !text-white",
 };
 
 /** "3" sendirian = curiga; "1,2" = underbuild JTR; "1" = biasa. */
@@ -62,6 +65,9 @@ export default function LapisanNama({
   const gardu = nama
     ? [...new Map(tiang.filter((t) => t.penanda === "gardu" && t.garduDiTiang).map((t) => [t.id, t])).values()]
     : [];
+  const alat = nama
+    ? [...new Map(tiang.filter((t) => t.penanda && t.penanda !== "gardu" && t.namaPeralatan).map((t) => [t.id, t])).values()]
+    : [];
   return (
     <>
       {gardu.map((t) => (
@@ -74,6 +80,19 @@ export default function LapisanNama({
         >
           <Tooltip permanent direction="left" offset={[-8, 0]} className={`${DASAR} ${NADA.gardu}`}>
             {t.garduDiTiang}
+          </Tooltip>
+        </CircleMarker>
+      ))}
+      {alat.map((t) => (
+        <CircleMarker
+          key={`alat-${t.id}`}
+          center={[t.lat, t.lng]}
+          radius={0}
+          interactive={false}
+          pathOptions={{ opacity: 0, fillOpacity: 0 }}
+        >
+          <Tooltip permanent direction="left" offset={[-8, 0]} className={`${DASAR} ${NADA.alat}`}>
+            {t.namaPeralatan}
           </Tooltip>
         </CircleMarker>
       ))}

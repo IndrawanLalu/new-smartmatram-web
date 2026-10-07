@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, Loader2, Move, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
 import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
+import { useAntreanJtm, type AntreanJtm } from "../_hooks/useAntreanJtm";
+import PersetujuanJtmPeta, { type SorotJtm } from "./PersetujuanJtmPeta";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import { BATAS_NAMA } from "./LapisanNama";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
@@ -166,6 +168,35 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     setPosAntrean(i);
     bukaAntrean(antreanJtr.antrean[i]);
   };
+  // ── Persetujuan inspeksi JTM dari peta (koreksi user 6 Okt 2026) ──────────
+  // Satu antrean tampil pada satu waktu: membuka JTM menutup antrean JTR.
+  const antreanJtm = useAntreanJtm(ulp);
+  const [jtmAktif, setJtmAktif] = useState(false);
+  const [posJtm, setPosJtm] = useState(0);
+  const [bukaJtm, setBukaJtm] = useState<AntreanJtm | null>(null);
+  const [sorotJtm, setSorotJtm] = useState<SorotJtm[] | null>(null);
+  const bukaAntreanJtm = useCallback((d: AntreanJtm) => {
+    setNyala((s) => new Set(s).add(`jtm:${d.penyulang}`));
+    setTerpilih(null);
+    setBukaJtm(d);
+  }, []);
+  const geserJtm = (arah: 1 | -1) => {
+    const n = antreanJtm.antrean.length;
+    if (n === 0) return;
+    const i = (posJtm + arah + n) % n;
+    setPosJtm(i);
+    bukaAntreanJtm(antreanJtm.antrean[i]);
+  };
+  /** Tiang segmen termuat: sorot, lalu bingkai peta ke segmennya. */
+  const sorotSegmenJtm = useCallback((t: SorotJtm[] | null) => {
+    setSorotJtm(t);
+    if (!t || t.length === 0) return;
+    const lat = t.map((x) => x.lat);
+    const lng = t.map((x) => x.lng);
+    const pad = 0.0004;
+    setFokus([[Math.min(...lat) - pad, Math.min(...lng) - pad], [Math.max(...lat) + pad, Math.max(...lng) + pad]]);
+  }, []);
+
   // ── Gardu portal yang masih satu tiang (admin) ─────────────────────────────
   const [portalAktif, setPortalAktif] = useState(false);
   const [posPortal, setPosPortal] = useState(0);
@@ -216,6 +247,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     objek.muatUlang();
     try {
       antreanJtr.muatUlang();
+      antreanJtm.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -420,6 +452,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           antrean={antreanAktif ? antreanJtr.antrean : null}
           onPilihAntrean={pilihAntrean}
           sorotPerubahan={sorotBanding?.tiang ?? null}
+          sorotJtm={sorotJtm}
         />
 
         {geserBanyak.aktif && (
@@ -433,6 +466,21 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               if (ok) void muatUlangPeta();
               return ok;
             }}
+          />
+        )}
+
+        {bukaJtm && !terpilih && !geserBanyak.aktif && (
+          <PersetujuanJtmPeta
+            key={bukaJtm.id}
+            d={bukaJtm}
+            oleh={oleh}
+            onTutup={() => setBukaJtm(null)}
+            onDiputuskan={() => {
+              setBukaJtm(null);
+              antreanJtm.muatUlang();
+              segarkan();
+            }}
+            onSorot={sorotSegmenJtm}
           />
         )}
 
@@ -708,6 +756,34 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           </div>
         )}
 
+        {jtmAktif && (
+          <div
+            className="absolute z-[1000] top-14 left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl border px-2 py-1.5 text-xs text-[#e2e8f0] shadow-xl"
+            style={{ background: PANEL, borderColor: GARIS }}
+          >
+            <ClipboardCheck size={14} className="text-[#60A5FA]" />
+            {antreanJtm.antrean.length === 0 ? (
+              <span>Tidak ada inspeksi JTM menunggu persetujuan</span>
+            ) : (
+              <>
+                <button onClick={() => geserJtm(-1)} className="p-1 rounded hover:bg-white/10" aria-label="Sebelumnya"><ChevronLeft size={15} /></button>
+                <span className="tabular-nums">
+                  {Math.min(posJtm + 1, antreanJtm.antrean.length)} / {antreanJtm.antrean.length}
+                  <b className="ml-2">{antreanJtm.antrean[Math.min(posJtm, antreanJtm.antrean.length - 1)]?.segmen_nama ?? "segmen"}</b>
+                </span>
+                <button onClick={() => geserJtm(1)} className="p-1 rounded hover:bg-white/10" aria-label="Berikutnya"><ChevronRight size={15} /></button>
+              </>
+            )}
+            <button
+              onClick={() => { setJtmAktif(false); setBukaJtm(null); }}
+              className="p-1 rounded hover:bg-white/10"
+              aria-label="Tutup antrean JTM"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {portalAktif && (
           <div
             className="absolute z-[1000] top-[6.5rem] left-1/2 -translate-x-1/2 flex items-center gap-2 rounded-xl border px-2 py-1.5 text-xs text-[#e2e8f0] shadow-xl"
@@ -757,6 +833,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               onClick={() => {
                 const nyalakan = !antreanAktif;
                 setAntreanAktif(nyalakan);
+                if (nyalakan) { setJtmAktif(false); setBukaJtm(null); }
                 if (nyalakan && antreanJtr.antrean.length > 0) {
                   setPosAntrean(0);
                   bukaAntrean(antreanJtr.antrean[0]);
@@ -769,6 +846,28 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               <ClipboardCheck size={15} /> Persetujuan JTR
               {antreanJtr.antrean.length > 0 && (
                 <span className="ml-0.5 px-1.5 rounded-full bg-[#FACC15] text-[#0b1220] text-[11px] font-bold">{antreanJtr.antrean.length}</span>
+              )}
+            </button>
+          ) : null}
+          {user.role === "UP3" || user.role === "admin" ? (
+            <button
+              onClick={() => {
+                const nyalakan = !jtmAktif;
+                setJtmAktif(nyalakan);
+                if (nyalakan) setAntreanAktif(false);
+                if (!nyalakan) setBukaJtm(null);
+                if (nyalakan && antreanJtm.antrean.length > 0) {
+                  setPosJtm(0);
+                  bukaAntreanJtm(antreanJtm.antrean[0]);
+                }
+              }}
+              className={`${TOMBOL_ATAS} ${jtmAktif ? "ring-1 ring-[#60A5FA]" : ""}`}
+              style={{ background: jtmAktif ? "rgba(96,165,250,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+              title="Antrean inspeksi JTM yang menunggu persetujuan"
+            >
+              <ClipboardCheck size={15} /> Persetujuan JTM
+              {antreanJtm.antrean.length > 0 && (
+                <span className="ml-0.5 px-1.5 rounded-full bg-[#60A5FA] text-[#0b1220] text-[11px] font-bold">{antreanJtm.antrean.length}</span>
               )}
             </button>
           ) : null}

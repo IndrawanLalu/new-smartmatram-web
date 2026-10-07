@@ -84,6 +84,8 @@ export interface TiangPeta {
   pasanganPortalDari: string | null;
   /** JTM: kode gardu yang berdiri di tiang ini (AM013). */
   garduDiTiang: string | null;
+  /** JTM: nama peralatan di tiang bertanda (SAMPOERNA) — label di samping ikonnya. */
+  namaPeralatan: string | null;
 }
 
 export interface GarduPeta {
@@ -212,7 +214,7 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang")
+            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang,nama_peralatan")
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
@@ -236,6 +238,7 @@ export function usePetaIsi(
           nomorKabel: (x.nomor_kabel as string) ?? null,
           pasanganPortalDari: (x.pasangan_portal_dari as string) ?? null,
           garduDiTiang: (x.gardu_di_tiang as string) ?? null,
+          namaPeralatan: (x.nama_peralatan as string) ?? null,
         }));
       }
 

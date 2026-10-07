@@ -22,6 +22,7 @@ import LapisanKesehatan from "./LapisanKesehatan";
 import LapisanNama from "./LapisanNama";
 import LapisanPersetujuan from "./LapisanPersetujuan";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
+import type { SorotJtm } from "./PersetujuanJtmPeta";
 import type { TiangBanding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
 import type { KesehatanGardu } from "../_hooks/useKesehatanPeta";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
@@ -76,6 +77,8 @@ interface Props {
   antrean: AntreanJtr[] | null;
   onPilihAntrean: (d: AntreanJtr) => void;
   sorotPerubahan: TiangBanding[] | null;
+  /** Tiang segmen inspeksi JTM yang sedang dibuka persetujuannya. */
+  sorotJtm: SorotJtm[] | null;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -130,7 +133,7 @@ const IKON_GARDU = L.divIcon({
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm,
 }: Props) {
   return (
     <MapContainer
@@ -169,7 +172,7 @@ export default function PetaInner({
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
       />
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
-      <LapisanPersetujuan antrean={antrean} onPilih={onPilihAntrean} sorot={sorotPerubahan} />
+      <LapisanPersetujuan antrean={antrean} onPilih={onPilihAntrean} sorot={sorotPerubahan} sorotJtm={sorotJtm} />
       <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />

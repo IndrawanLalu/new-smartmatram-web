@@ -287,10 +287,30 @@ export function useDaftarJtm(user: CurrentUser) {
     return h;
   };
 
+  /** Membetulkan nama segmen dari layar persetujuan — fungsi yang sama dengan
+   *  Master Segmen: nama tersusun ulang dari kedua titik ujungnya. Mengembalikan
+   *  nama barunya. */
+  const ubahTitikSegmen = async (id: string, segmenId: string, ujung: "awal" | "akhir", jenis: string, nama: string) => {
+    const baru = await rpc<string>(id, "ubah_titik_segmen", {
+      p_segmen_id: segmenId, p_ujung: ujung, p_jenis: jenis, p_nama: nama, p_oleh: oleh,
+    });
+    await segarkanSatu(id);
+    return baru;
+  };
+
+  /** Segmen yang masih dirintis: tutup di tiang pilihan (`tutup_segmen_jtm`, sama dengan HP). */
+  const tutupSegmen = async (id: string, segmenId: string, tiangId: string, jenis: string, nama: string, penanda: string | null) => {
+    const h = await rpc<{ nama?: string } | null>(id, "tutup_segmen_jtm", {
+      p_segmen_id: segmenId, p_jenis: jenis, p_nama: nama, p_tiang_id: tiangId, p_penanda: penanda, p_oleh: oleh,
+    });
+    await segarkanSatu(id);
+    return h?.nama ?? "";
+  };
+
   return {
     semua, baris, hitung, loading, galat, memproses,
     ulp, setUlp, daftarUlp, bulan, setBulan, tahun, setTahun, daftarTahun, cari, setCari, status, setStatus,
-    muat, putuskan, batalkan, buang, gabung, pratinjauBatalSegmen, batalkanSegmen,
+    muat, putuskan, batalkan, buang, gabung, pratinjauBatalSegmen, batalkanSegmen, ubahTitikSegmen, tutupSegmen,
   };
 }
 

@@ -5,20 +5,8 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { useToast } from "@/app/admin/_components/Toast";
 import { type CurrentUser, canSeeAllUnits } from "@/lib/roles";
+import { labelTitik } from "@/lib/jenisTitikJtm";
 
-/** Jenis titik ujung segmen. Yang MEMOTONG jaringan ditandai — pengambilan
- *  tidak memotong, dia percabangan di dalam segmen. */
-export const JENIS_TITIK = [
-  { kode: "GI", label: "GI", memotong: true },
-  { kode: "PMT", label: "PMT", memotong: true },
-  { kode: "PLTD", label: "PLTD", memotong: true },
-  { kode: "REC", label: "Recloser", memotong: true },
-  { kode: "LBS", label: "LBS", memotong: true },
-  { kode: "PENG", label: "Pengambilan", memotong: false },
-  { kode: "TIANG", label: "Tiang percabangan", memotong: false },
-  { kode: "GARDU", label: "Gardu", memotong: false },
-  { kode: "UJUNG", label: "Ujung jaringan", memotong: false },
-] as const;
 
 export interface SegmenBaris {
   segmen_id: string;
@@ -67,12 +55,7 @@ export const namaSegmen = (
   akhirJenis: string,
   akhirNama: string,
 ) => {
-  const label = (jenis: string, nama: string) => {
-    const n = nama.trim().toUpperCase();
-    if (jenis === "UJUNG" && !n) return "UJUNG";
-    return ["REC", "LBS", "PENG", "PMT"].includes(jenis) ? `${jenis}. ${n}` : `${jenis} ${n}`;
-  };
-  return `${label(awalJenis, awalNama)} - ${label(akhirJenis, akhirNama)}`;
+  return `${labelTitik(awalJenis, awalNama)} - ${labelTitik(akhirJenis, akhirNama)}`;
 };
 
 /** Tiang yang belum masuk segmen mana pun — tidak terlihat regu saat inspeksi. */

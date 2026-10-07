@@ -50,6 +50,8 @@ export interface RincianTiang {
   /** JTM: kode gardu di tiang ini (AM013) & namanya di Master Gardu — null bila belum ada di Master. */
   gardu_di_tiang: string | null;
   garduNama: string | null;
+  /** JTM: nama peralatan di tiang (LBS/recloser …), mis. SAMPOERNA. */
+  nama_peralatan: string | null;
 }
 
 export interface KabelJtr {
@@ -162,7 +164,7 @@ async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJ
 }
 
 const KOLOM_TIANG =
-  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng,pasangan_portal_dari,gardu_di_tiang";
+  "id,kode,ulp,penyulang,gardu_kode,jurusan,jenis,konstruksi,tinggi,kondisi,nomor_lama,penanda,percabangan,sumber,dikonfirmasi_at,dikonfirmasi_oleh,induk_id,lat,lng,pasangan_portal_dari,gardu_di_tiang,nama_peralatan";
 
 async function muatTiang(id: string, garduJtr: string | null): Promise<RincianTiang> {
   const [t, n, k] = await Promise.all([

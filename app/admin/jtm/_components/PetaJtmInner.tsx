@@ -234,6 +234,7 @@ export default function PetaJtmInner({ tiang, mode, terpilih, onUbahPilihan, pen
               {t.penyulang}
               {tanda ? ` · ${tanda.label}` : ""}
               {t.penanda === "gardu" && t.gardu_di_tiang ? ` ${t.gardu_di_tiang}` : ""}
+              {t.penanda !== "gardu" && t.nama_peralatan ? ` ${t.nama_peralatan}` : ""}
               <br />
               {t.jenis ?? "jenis belum dicatat"}
               {t.konstruksi ? ` · ${t.konstruksi}` : ""}

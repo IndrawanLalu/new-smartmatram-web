@@ -6,12 +6,12 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { UNITS } from "@/lib/roles";
 import {
-  JENIS_TITIK,
   namaSegmen,
   type SegmenBaris,
   type SegmenBaru,
 } from "../_hooks/useSegmen";
 import { useJtmRef } from "../_hooks/useJtmRef";
+import { susunJenisTitik, type JenisTitik } from "@/lib/jenisTitikJtm";
 
 interface Props {
   penyulangList: string[];
@@ -45,6 +45,8 @@ export default function SegmenModal({
   const [menyimpan, setMenyimpan] = useState(false);
   const [sambungDari, setSambungDari] = useState("");
   const { per: pilihanRef } = useJtmRef();
+  // Pilihan pangkal/ujung = Penanda tiang di Pengaturan JTM (koreksi user 6 Okt 2026).
+  const jenisTitik = useMemo(() => susunJenisTitik(pilihanRef("penanda"), { denganUjung: true }), [pilihanRef]);
 
   const ubah = (patch: Partial<typeof KOSONG>) => setV((s) => ({ ...s, ...patch }));
 
@@ -217,6 +219,7 @@ export default function SegmenModal({
 
         <div className="grid sm:grid-cols-2 gap-3">
           <Ujung
+            daftar={jenisTitik}
             judul="Titik awal"
             jenis={v.titik_awal_jenis}
             nama={v.titik_awal_nama}
@@ -227,6 +230,7 @@ export default function SegmenModal({
             onNama={(x) => ubah({ titik_awal_nama: x })}
           />
           <Ujung
+            daftar={jenisTitik}
             judul="Titik akhir"
             jenis={v.titik_akhir_jenis}
             nama={v.titik_akhir_nama}
@@ -294,6 +298,7 @@ export default function SegmenModal({
 }
 
 function Ujung({
+  daftar,
   judul,
   jenis,
   nama,
@@ -303,6 +308,7 @@ function Ujung({
   onJenis,
   onNama,
 }: {
+  daftar: JenisTitik[];
   judul: string;
   jenis: string;
   nama: string;
@@ -312,7 +318,7 @@ function Ujung({
   onJenis: (x: string) => void;
   onNama: (x: string) => void;
 }) {
-  const info = JENIS_TITIK.find((j) => j.kode === jenis);
+  const info = daftar.find((j) => j.kode === jenis);
   const idDaftar = `titik-${judul.replace(/\s+/g, "-").toLowerCase()}`;
 
   return (
@@ -336,7 +342,9 @@ function Ujung({
         disabled={dariSambungan}
         className={`${FIELD} mt-1 w-full disabled:bg-surface disabled:text-ink-soft`}
       >
-        {JENIS_TITIK.map((j) => (
+        {/* Nilai lama yang tak ada lagi di daftar tetap tampil apa adanya. */}
+        {!info && <option value={jenis}>{jenis}</option>}
+        {daftar.map((j) => (
           <option key={j.kode} value={j.kode}>
             {j.label}
           </option>

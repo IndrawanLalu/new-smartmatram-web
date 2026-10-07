@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, Calendar, CheckCircle2, GitBranch, Loader2, Merge, Ruler, Trash2, TriangleAlert, XCircle } from "lucide-react";
+import { Ban, Calendar, CheckCircle2, GitBranch, Loader2, MapPinned, Merge, Ruler, Trash2, TriangleAlert, XCircle } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
@@ -9,6 +9,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
 import { ambilIsiInspeksi, type BarisJtm, type JawabanTiang, type PratinjauBatalJtm } from "../_hooks/useDaftarJtm";
 import { NADA_STATUS, km, rentangKerja, statusTampil, tglJam } from "../_lib/tampilan";
+import UbahTitikSegmen from "@/app/admin/master-segmen/_components/UbahTitikSegmen";
 
 /**
  * Modal persetujuan inspeksi JTM — pola Kinerja Pelayanan Teknik.
@@ -29,6 +30,8 @@ interface Props {
   batalkanSegmen: (d: BarisJtm, alasan: string) => Promise<void>;
   buang: (id: string) => Promise<void>;
   gabung: (id: string) => Promise<{ penyapuan_dibuang: number; tiang_dinilai: number }>;
+  ubahTitikSegmen: (id: string, segmenId: string, ujung: "awal" | "akhir", jenis: string, nama: string) => Promise<string>;
+  tutupSegmen: (id: string, segmenId: string, tiangId: string, jenis: string, nama: string, penanda: string | null) => Promise<string>;
 }
 
 function Fakta({ ikon, label, nilai }: { ikon: React.ReactNode; label: string; nilai: string }) {
@@ -52,7 +55,7 @@ function rincianSegmen(p: PratinjauBatalJtm): string {
 }
 
 export default function DetailInspeksiJtmModal({
-  d, memproses, onTutup, putuskan, batalkan, pratinjauBatalSegmen, batalkanSegmen, buang, gabung,
+  d, memproses, onTutup, putuskan, batalkan, pratinjauBatalSegmen, batalkanSegmen, buang, gabung, ubahTitikSegmen, tutupSegmen,
 }: Props) {
   const toast = useToast();
   const [isi, setIsi] = useState<JawabanTiang[] | null>(null);
@@ -61,6 +64,7 @@ export default function DetailInspeksiJtmModal({
   const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | "batalSegmen" | "buang" | "satukan" | null>(null);
   const [pratinjau, setPratinjau] = useState<PratinjauBatalJtm | null>(null);
   const [memeriksa, setMemeriksa] = useState(false);
+  const [ubahNama, setUbahNama] = useState(false);
   const status = statusTampil(d.status);
   const sibuk = memproses === d.id;
 
@@ -142,9 +146,21 @@ export default function DetailInspeksiJtmModal({
         onClose={onTutup}
         footer={footer}
       >
-        <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${NADA_STATUS[status]}`}>
-          {status}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`inline-block px-2.5 py-0.5 rounded-full border text-[11px] font-semibold ${NADA_STATUS[status]}`}>
+            {status}
+          </span>
+          {d.segmen_id && (
+            // Nama segmen disusun dari kedua titik ujungnya — dibetulkan di sini
+            // juga, bukan hanya di Master Segmen (koreksi user 6 Okt 2026).
+            <button
+              onClick={() => setUbahNama(true)}
+              className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:text-navy-500"
+            >
+              <MapPinned size={13} /> Ubah nama segmen
+            </button>
+          )}
+        </div>
 
         {menunggu && (
           <p className="text-xs text-ink-soft">
@@ -285,6 +301,19 @@ export default function DetailInspeksiJtmModal({
               (e: Error) => toast.error(e.message),
             );
           }}
+        />
+      )}
+      {ubahNama && d.segmen_id && (
+        <UbahTitikSegmen
+          segmenId={d.segmen_id}
+          namaSegmen={d.segmen_nama ?? ""}
+          onSimpan={(ujung, jenis, nama) =>
+            jalankan(() => ubahTitikSegmen(d.id, d.segmen_id ?? "", ujung, jenis, nama), "Nama segmen diperbarui — judul di atas sudah memakai nama baru.")
+          }
+          onTutupSegmen={(tiangId, jenis, nama, penanda) =>
+            jalankan(() => tutupSegmen(d.id, d.segmen_id ?? "", tiangId, jenis, nama, penanda), "Segmen ditutup.")
+          }
+          onTutup={() => setUbahNama(false)}
         />
       )}
     </>

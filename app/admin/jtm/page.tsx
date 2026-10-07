@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   CheckCheck, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search, SearchCheck,
   Send, SlidersHorizontal, TowerControl, TriangleAlert, Upload,
@@ -46,7 +47,9 @@ type TabKey = (typeof TABS)[number]["key"];
 export default function JtmPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
-  const [idDetail, setIdDetail] = useState<string | null>(null);
+  // Dibuka dari peta (/admin/jtm?inspeksi=<id>): modal rinciannya langsung terbuka.
+  const sp = useSearchParams();
+  const [idDetail, setIdDetail] = useState<string | null>(() => sp.get("inspeksi"));
   const [mengunduh, setMengunduh] = useState(false);
   const o = useDaftarJtm(user);
 
@@ -182,6 +185,8 @@ export default function JtmPage() {
           batalkanSegmen={o.batalkanSegmen}
           buang={o.buang}
           gabung={o.gabung}
+          ubahTitikSegmen={o.ubahTitikSegmen}
+          tutupSegmen={o.tutupSegmen}
         />
       )}
     </div>
