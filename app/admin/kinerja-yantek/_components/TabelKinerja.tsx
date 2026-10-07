@@ -207,7 +207,13 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                     <Angka v={b.belumApprove} satuan={b.satuan} nada="text-amber-700" desimal={b.desimal} />
                   </td>
                   <td className={`${TD} text-right`}>
-                    <Capaian p={capaianWo(b)} />
+                    {b.dinilaiSla ? (
+                      <span className="text-ink-muted text-xs" title="WO disusun dari jalur yang dikerjakan — dinilai terhadap SLA">
+                        WO = realisasi
+                      </span>
+                    ) : (
+                      <Capaian p={capaianWo(b)} />
+                    )}
                   </td>
                   <td className={`${TD} text-right`}>
                     <Capaian p={capaianSla(b)} />
@@ -224,7 +230,8 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
         <p className="text-[11px] text-ink-soft leading-relaxed">
           <b>Capaian WO</b> = realisasi ÷ WO terbit, hanya muncul kalau ada WO-nya.{" "}
           <b>Capaian SLA</b> = seluruh realisasi (WO maupun di luar WO) ÷ SLA — pembanding
-          untuk pekerjaan yang belum ber-WO. SLA diisi per ULP lewat <b>Atur SLA</b>; seluruh
+          untuk pekerjaan yang belum ber-WO. <b>Inspeksi JTR</b> dinilai terhadap SLA saja: WO-nya
+          disusun dari jalur yang dikerjakan, jadi WO selalu sama dengan realisasi. SLA diisi per ULP lewat <b>Atur SLA</b>; seluruh
           tahun = jumlah SLA bulanannya (tahun berjalan: sampai bulan ini), semua ULP = jumlah
           SLA tiap ULP. Yang belum punya pembanding sengaja dikosongkan daripada dihitung
           terhadap angka yang dikarang.

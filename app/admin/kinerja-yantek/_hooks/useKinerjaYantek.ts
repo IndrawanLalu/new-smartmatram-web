@@ -60,6 +60,11 @@ export interface BarisKinerja {
   /** Angka pecahan (km) atau cacah bulat. Menentukan cara menuliskannya. */
   desimal: boolean;
   woTerbit: number | null;
+  /** Dinilai terhadap SLA saja. Inspeksi JTR: WO-nya disusun dari jalur yang
+   *  dikerjakan, jadi WO = realisasi dan capaian WO selalu 100% — angka itu
+   *  tidak berarti apa-apa dan menutupi capaian SLA (keputusan user 7 Okt 2026,
+   *  sama dengan Beranda HP). */
+  dinilaiSla?: boolean;
   /** Inspeksi JTR saja: jumlah gardu di WO. WO dari sistem belum tentu membawa
    *  KMS (panjang penghantar gardu belum terukur), sehingga WO yang ada tampil
    *  "0 KMS" — jumlah gardunya yang menunjukkan WO itu ada. */
@@ -80,9 +85,10 @@ export interface BarisKinerja {
 const persen = (r: number | null, w: number | null) =>
   r === null || w === null || w === 0 ? null : Math.round((r / w) * 100);
 
-/** Capaian WO = realisasi ÷ WO terbit. */
+/** Capaian WO = realisasi ÷ WO terbit. Kosong untuk baris yang dinilai
+ *  terhadap SLA saja. */
 export function capaianWo(b: BarisKinerja) {
-  return persen(b.realisasi, b.woTerbit);
+  return b.dinilaiSla ? null : persen(b.realisasi, b.woTerbit);
 }
 
 /** Capaian SLA = SEMUA realisasi (WO + di luar WO) ÷ SLA — keputusan user
@@ -172,6 +178,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     keadaan: "tanpaWo",
     satuan: "KMS",
     desimal: true,
+    dinilaiSla: true,
     catatan:
       "Panjang penghantar gardu yang penyapuannya selesai, termasuk underbuild. WO dari WO Inspeksi JTR.",
   },
