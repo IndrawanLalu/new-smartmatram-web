@@ -7,7 +7,9 @@
  *                dengan webhook Supabase) → web kirim WA lewat gateway.
  *                Temuan JTM yang BARU berkategori Urgent (inspeksi_jtm_periksa)
  *                → ditahan 30 detik per tiang → `/api/wa-notify-jtm`.
- *   2. JADWAL    pengingat temuan urgent 08/11/15/18 WITA → `/api/wa-reminder`.
+ *   2. JADWAL    pengingat temuan urgent 08/11/15/18 WITA → `/api/wa-reminder`;
+ *                rekap kinerja bulan berjalan (4 ULP) 18.00 WITA →
+ *                `/api/rekap-kinerja-wa` (grup UP3 di Pengaturan WA).
  *
  * Kenapa container sendiri: di homelab notif realtime mati diam-diam karena
  * pemicunya (wa-bot lama) tidak ikut dinyalakan, dan sebelumnya karena secret
@@ -24,6 +26,7 @@ const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const SECRET = process.env.CRON_SECRET;
 const WEB = (process.env.WEB_URL || "http://web:3000").replace(/\/$/, "");
 const JAM_PENGINGAT = (process.env.JAM_PENGINGAT || "8,11,15,18").split(",").map(Number);
+const JAM_REKAP_KINERJA = Number(process.env.JAM_REKAP_KINERJA || 18);
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -149,9 +152,11 @@ setInterval(() => {
   const jam = wita.getUTCHours();
   const menit = wita.getUTCMinutes();
   const kunci = `${wita.toISOString().slice(0, 10)} ${jam}`;
-  if (menit !== 0 || !JAM_PENGINGAT.includes(jam) || terakhirJadwal === kunci) return;
+  if (menit !== 0 || terakhirJadwal === kunci) return;
   terakhirJadwal = kunci;
-  void kirim("/api/wa-reminder", { method: "POST", headers: { "X-Cron-Secret": SECRET } }, `pengingat ${jam}:00 WITA`);
+  const kepala = { method: "POST", headers: { "X-Cron-Secret": SECRET } };
+  if (JAM_PENGINGAT.includes(jam)) void kirim("/api/wa-reminder", kepala, `pengingat ${jam}:00 WITA`);
+  if (jam === JAM_REKAP_KINERJA) void kirim("/api/rekap-kinerja-wa", kepala, `rekap kinerja ${jam}:00 WITA`);
 }, 20 * 1000);
 
-log(`pekerja jalan — web ${WEB}, pengingat jam ${JAM_PENGINGAT.join("/")} WITA`);
+log(`pekerja jalan — web ${WEB}, pengingat jam ${JAM_PENGINGAT.join("/")} WITA, rekap kinerja jam ${JAM_REKAP_KINERJA} WITA`);

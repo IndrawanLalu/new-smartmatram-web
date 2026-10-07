@@ -12,16 +12,18 @@ const LABEL_BAGIAN: Record<string, string> = { luar: "Di luar WO", ujung: "Tegan
 
 interface Props {
   k: KelompokHarian;
+  /** ULP sel yang diklik di tabel per ULP; null = tanpa keterangan ULP. */
+  ulp?: string | null;
   tgl: string;
   onTutup: () => void;
 }
 
-export default function RincianHarianModal({ k, tgl, onTutup }: Props) {
+export default function RincianHarianModal({ k, ulp, tgl, onTutup }: Props) {
   const adaKm = k.item.some((x) => x.km !== null);
   const semuaUlp = new Set(k.item.map((x) => x.ulp)).size > 1;
 
   return (
-    <ModalShell title={k.meta.jenis} subtitle={`${tanggalPanjang(tgl)} · ${ringkasan(k).utama}`} maxWidth="max-w-4xl" onClose={onTutup}>
+    <ModalShell title={ulp ? `${k.meta.jenis} · ${ulp}` : k.meta.jenis} subtitle={`${tanggalPanjang(tgl)} · ${ringkasan(k).utama}`} maxWidth="max-w-4xl" onClose={onTutup}>
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse">
           <thead className="bg-surface">

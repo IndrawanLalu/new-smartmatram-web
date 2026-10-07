@@ -26,9 +26,10 @@ const CATEGORY_LABELS: Record<string, string> = {
   morning_brief:     "☀️ Morning Brief",
   reminder_jaringan: "🚨⚡ Reminder Jaringan Urgent",
   reminder_pohon:    "🚨🌳 Reminder Pohon Sangat Tinggi",
+  rekap_kinerja:     "📊 Rekap Kinerja Bulanan (UP3, otomatis 18.00 WITA)",
 };
 
-const CATEGORY_ORDER = ["jaringan", "perabasan", "morning_brief", "reminder_jaringan", "reminder_pohon"];
+const CATEGORY_ORDER = ["jaringan", "perabasan", "morning_brief", "reminder_jaringan", "reminder_pohon", "rekap_kinerja"];
 
 export default function WaSettingsPage() {
   const user = useCurrentUser();

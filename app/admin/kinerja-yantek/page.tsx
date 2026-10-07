@@ -25,7 +25,9 @@ import RealisasiHarian from "./_components/RealisasiHarian";
  * dipercaya.
  *
  * Tab "Realisasi Harian" (6 Okt 2026): pekerjaan yang dikirim regu pada satu
- * tanggal + teks WA-nya. Tabel bulanan tidak berubah.
+ * tanggal + teks WA-nya. Tabel bulanan tidak berubah. 7 Okt: ditambah "Per
+ * bulan" (perbandingan antar-ULP, rata-rata per hari berealisasi), dan "Semua
+ * ULP" di Per hari tampil berkolom per ULP.
  */
 
 const TABS = [
@@ -62,7 +64,7 @@ export default function KinerjaYantekPage() {
       </div>
 
       {tab === "harian" ? (
-        <RealisasiHarian ulpAwal={ulp} daftarUlp={daftarUlp} />
+        <RealisasiHarian ulpAwal={ulp} daftarUlp={daftarUlp} daftarTahun={daftarTahun} />
       ) : (
       <>
       <div className="flex flex-wrap items-center gap-2">

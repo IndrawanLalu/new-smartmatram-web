@@ -1,5 +1,8 @@
 -- ════════════════════════════════════════════════════════════════════════════
 -- Realisasi harian Rekap Kinerja (6 Okt 2026)
+-- ⚠ DIGANTIKAN scripts/realisasi-rentang.sql (7 Okt 2026): aturan yang sama kini
+--   tinggal di realisasi_rentang, dan realisasi_harian jadi pembungkusnya.
+--   Berkas ini disimpan sebagai sejarah — jangan dijalankan lagi.
 -- ════════════════════════════════════════════════════════════════════════════
 -- Tab "Realisasi Harian" di /admin/kinerja-yantek + teks WA. Satu baris = satu
 -- pekerjaan yang DIKIRIM regu pada tanggal itu, dipetakan ke kunci baris Rekap
