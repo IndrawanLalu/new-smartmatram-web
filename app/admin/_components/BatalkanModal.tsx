@@ -29,6 +29,8 @@ interface Props {
   labelTombol?: string;
   /** Contoh isian kotak alasan — bawaannya untuk pembatalan. */
   placeholder?: string;
+  /** Pilihan lain yang lebih ringan — mis. "Batalkan inspeksinya saja". */
+  aksiLain?: { label: string; onClick: () => void };
   onTutup: () => void;
   onBatalkan: (alasan: string) => Promise<boolean>;
 }
@@ -39,6 +41,7 @@ export default function BatalkanModal({
   peringatan,
   labelTombol = "Batalkan",
   placeholder = "Alasan pembatalan — mis. salah gardu, data uji coba, tiang ganda",
+  aksiLain,
   onTutup,
   onBatalkan,
 }: Props) {
@@ -91,6 +94,11 @@ export default function BatalkanModal({
           <button onClick={onTutup} className={BTN_GHOST} disabled={sibuk}>
             Tutup
           </button>
+          {aksiLain && (
+            <button onClick={aksiLain.onClick} className={`${BTN_GHOST} text-ink-soft`} disabled={sibuk}>
+              {aksiLain.label}
+            </button>
+          )}
           <button
             onClick={() => void kirim()}
             disabled={!alasan.trim() || sibuk}

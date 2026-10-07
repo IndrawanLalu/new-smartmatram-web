@@ -32,5 +32,32 @@ Satu tombol di layar segmen; server memilih jalannya (`_jtm_rencana_batal`, satu
   dibuat sesudah inspeksi dimulai, tidak dinilai inspeksi lain yang masih hidup.
 - `batalkan_segmen_rintisan` (lembar Rintis, HP lama) memakai aturan yang sama, satu segmen saja.
 
+## Segmen yatim (dari Batalkan di web)
+"Batalkan" di Daftar Inspeksi JTM dulu hanya membatalkan **inspeksinya** (`batalkan_inspeksi_jtm`).
+Segmen hasil rintis beserta tiangnya tertinggal: tetap ada di Master Segmen (sumber *lapangan*,
+jumlah tiangnya utuh), dan muncul lagi di HP sebagai rintisan terbuka di penyulang itu, lengkap
+dengan nomor tiang yang sudah terpakai.
+
+- **A — web Batalkan memakai jalan yang sama dengan HP.** Pratinjau dulu; kalau segmennya hasil
+  rintis, belum WO, belum disetujui → pilihan utama "Batalkan segmen + N tiang" (rantai sambungan
+  terdaftar), dengan pilihan "Inspeksinya saja". Selain itu jalan lama, dan alasan segmen tidak
+  ikut batal ditampilkan.
+- **B — segmen yatim yang sudah telanjur.** View `jtm_segmen_yatim` (lapangan, aktif, tanpa
+  inspeksi hidup, tanpa WO). Master Segmen memberi lencana *yatim*, chip saring "Segmen yatim · N",
+  dan tombol Hapus (pratinjau → alasan → `batalkan_jtm_hp`).
+
+## "45/50 tiang dinilai" saat persetujuan
+Penyebabnya sama: tiang yang dibatalkan **tetap anggota segmen** di `segmen_tiang`. Jumlah tiang
+segmen (`inspeksi_jtm_ringkas.tiang_segmen`, `master_segmen.jumlah_tiang`) menghitung semua
+anggota, sedangkan syarat kirim hanya menghitung tiang **aktif** — jadi inspeksi lolos dikirim
+dengan 45 dinilai dari "50".
+
+Perbaikan di `jtm-batal-hp.sql`: pemicu `tiang_batal_lepas_segmen` (tiang jadi batal → lepas dari
+segmennya) + pembersihan sekali jalan. Akibat sampingan yang **benar**: jumlah tiang dan km
+segmen yang pernah kena pembatalan tiang turun ke angka sebenarnya — termasuk realisasi km di
+rekap bulan lalu. Cek dulu: `scripts/cek-jtm-tiang-batal-segmen.sql` (hanya baca).
+
 ## Urutan
-SQL (`jtm-batal-hp.sql`, sesudah `wo-jtm-tier.sql`) → OTA HP.
+1. `cek-jtm-tiang-batal-segmen.sql` (hanya baca) — lihat dulu berapa segmen yang angkanya akan turun.
+2. SQL `jtm-batal-hp.sql`, sesudah `wo-jtm-tier.sql`.
+3. OTA HP, deploy web.

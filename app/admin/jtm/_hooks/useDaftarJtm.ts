@@ -249,6 +249,28 @@ export function useDaftarJtm(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
+  /**
+   * Pratinjau batal segmen (`jtm-batal-hp.sql`): segmen HASIL RINTIS yang belum
+   * masuk WO dan belum pernah disetujui bisa dibatalkan beserta inspeksinya —
+   * dulu hanya inspeksinya yang batal, segmen & tiangnya tertinggal sebagai
+   * "rintisan terbuka" di HP. null = fungsi belum dipasang / gagal dibaca.
+   */
+  const pratinjauBatalSegmen = async (d: BarisJtm): Promise<PratinjauBatalJtm | null> => {
+    if (!d.segmen_id) return null;
+    const { data: h, error } = await supabaseBrowser.rpc("pratinjau_batal_jtm", {
+      p_segmen_id: d.segmen_id,
+      p_tier: d.tier,
+      p_nama: oleh,
+    });
+    return error ? null : (h as PratinjauBatalJtm);
+  };
+
+  /** Batalkan inspeksi + segmen rintisannya (+ segmen sambungannya). */
+  const batalkanSegmen = async (d: BarisJtm, alasan: string) => {
+    await rpc(d.id, "batalkan_jtm_hp", { p_segmen_id: d.segmen_id, p_tier: d.tier, p_alasan: alasan, p_nama: oleh });
+    await segarkanSatu(d.id);
+  };
+
   /** Hanya untuk catatan nol tiang — bekas layar yang pernah dibuka. */
   const buang = async (id: string) => {
     await rpc(id, "buang_inspeksi_kosong_jtm", { p_id: id, p_oleh: oleh });
@@ -268,8 +290,16 @@ export function useDaftarJtm(user: CurrentUser) {
   return {
     semua, baris, hitung, loading, galat, memproses,
     ulp, setUlp, daftarUlp, bulan, setBulan, tahun, setTahun, daftarTahun, cari, setCari, status, setStatus,
-    muat, putuskan, batalkan, buang, gabung,
+    muat, putuskan, batalkan, buang, gabung, pratinjauBatalSegmen, batalkanSegmen,
   };
+}
+
+export interface PratinjauBatalJtm {
+  mode: "segmen" | "ulangi" | null;
+  boleh: boolean;
+  tolak: string | null;
+  tiang?: number;
+  segmen?: { id: string; nama: string; kedalaman: number; tiang: number; perintis: string | null; halangan: string | null }[];
 }
 
 /**

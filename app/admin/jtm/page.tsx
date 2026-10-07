@@ -178,6 +178,8 @@ export default function JtmPage() {
           onTutup={() => setIdDetail(null)}
           putuskan={o.putuskan}
           batalkan={o.batalkan}
+          pratinjauBatalSegmen={o.pratinjauBatalSegmen}
+          batalkanSegmen={o.batalkanSegmen}
           buang={o.buang}
           gabung={o.gabung}
         />

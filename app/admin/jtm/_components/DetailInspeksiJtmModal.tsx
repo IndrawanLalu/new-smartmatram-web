@@ -7,7 +7,7 @@ import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
-import { ambilIsiInspeksi, type BarisJtm, type JawabanTiang } from "../_hooks/useDaftarJtm";
+import { ambilIsiInspeksi, type BarisJtm, type JawabanTiang, type PratinjauBatalJtm } from "../_hooks/useDaftarJtm";
 import { NADA_STATUS, km, rentangKerja, statusTampil, tglJam } from "../_lib/tampilan";
 
 /**
@@ -25,6 +25,8 @@ interface Props {
   onTutup: () => void;
   putuskan: (id: string, setuju: boolean, catatan?: string) => Promise<void>;
   batalkan: (id: string, alasan: string) => Promise<void>;
+  pratinjauBatalSegmen: (d: BarisJtm) => Promise<PratinjauBatalJtm | null>;
+  batalkanSegmen: (d: BarisJtm, alasan: string) => Promise<void>;
   buang: (id: string) => Promise<void>;
   gabung: (id: string) => Promise<{ penyapuan_dibuang: number; tiang_dinilai: number }>;
 }
@@ -41,12 +43,24 @@ function Fakta({ ikon, label, nilai }: { ikon: React.ReactNode; label: string; n
   );
 }
 
-export default function DetailInspeksiJtmModal({ d, memproses, onTutup, putuskan, batalkan, buang, gabung }: Props) {
+/** Keterangan pembatalan segmen rintisan: daftar segmen (rantai sambungan) + tiangnya. */
+function rincianSegmen(p: PratinjauBatalJtm): string {
+  const daftar = (p.segmen ?? [])
+    .map((s) => `${s.nama} (${s.tiang} tiang${s.perintis ? `, dirintis ${s.perintis}` : ""})`)
+    .join(" · ");
+  return `Segmen ini dibuat dari rintisan HP dan belum masuk WO. Yang ikut dibatalkan: ${daftar}. Tiangnya ditandai batal (nomornya tidak dipakai lagi), segmennya dinonaktifkan dari Master Segmen.`;
+}
+
+export default function DetailInspeksiJtmModal({
+  d, memproses, onTutup, putuskan, batalkan, pratinjauBatalSegmen, batalkanSegmen, buang, gabung,
+}: Props) {
   const toast = useToast();
   const [isi, setIsi] = useState<JawabanTiang[] | null>(null);
   const [galatIsi, setGalatIsi] = useState<string | null>(null);
   const [hanyaTemuan, setHanyaTemuan] = useState(false);
-  const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | "buang" | "satukan" | null>(null);
+  const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | "batalSegmen" | "buang" | "satukan" | null>(null);
+  const [pratinjau, setPratinjau] = useState<PratinjauBatalJtm | null>(null);
+  const [memeriksa, setMemeriksa] = useState(false);
   const status = statusTampil(d.status);
   const sibuk = memproses === d.id;
 
@@ -72,6 +86,17 @@ export default function DetailInspeksiJtmModal({ d, memproses, onTutup, putuskan
     }
   };
 
+  // Batalkan: tanya dulu ke server apakah segmen rintisannya ikut bisa
+  // dibatalkan (`jtm-batal-hp.sql`). Kalau ya, itu pilihan utamanya — kalau
+  // tidak, segmen & tiangnya tertinggal jadi "rintisan terbuka" di HP.
+  const mulaiBatal = async () => {
+    setMemeriksa(true);
+    const p = await pratinjauBatalSegmen(d);
+    setMemeriksa(false);
+    setPratinjau(p);
+    setDialog(p?.mode === "segmen" && p.boleh ? "batalSegmen" : "batalkan");
+  };
+
   const menunggu = d.status === "Selesai";
   const kosong = d.tiang_dinilai === 0;
   const bisaBuang = kosong && d.status !== "Diverifikasi" && d.status !== "Dibatalkan";
@@ -81,8 +106,8 @@ export default function DetailInspeksiJtmModal({ d, memproses, onTutup, putuskan
   const footer = (
     <>
       {bisaBatal ? (
-        <button onClick={() => setDialog("batalkan")} className={`${BTN_GHOST} text-ink-muted hover:text-red-600`} disabled={sibuk}>
-          <Ban size={14} /> Batalkan
+        <button onClick={() => void mulaiBatal()} className={`${BTN_GHOST} text-ink-muted hover:text-red-600`} disabled={sibuk || memeriksa}>
+          {memeriksa ? <Loader2 size={14} className="animate-spin" /> : <Ban size={14} />} Batalkan
         </button>
       ) : bisaBuang ? (
         <button onClick={() => setDialog("buang")} className={`${BTN_GHOST} text-ink-muted hover:text-red-600`} disabled={sibuk}>
@@ -208,10 +233,29 @@ export default function DetailInspeksiJtmModal({ d, memproses, onTutup, putuskan
         <BatalkanModal
           judul="Batalkan inspeksi JTM ini?"
           keterangan="Catatannya dibuang dari hitungan cakupan dan rekap temuan. Tiang yang sudah dinilai TIDAK ikut dibatalkan — tiangnya nyata berdiri di lapangan."
-          peringatan="Berbeda dengan Kembalikan: segmennya tidak dikembalikan jadi pekerjaan, jadi tidak akan ada yang mengerjakannya ulang."
+          peringatan={
+            pratinjau?.mode === "segmen" && pratinjau.tolak
+              ? `Segmennya tidak ikut dibatalkan: ${pratinjau.tolak} Segmen & tiangnya tetap ada — hapus dari Master Segmen bila memang salah.`
+              : "Berbeda dengan Kembalikan: segmennya tidak dikembalikan jadi pekerjaan, jadi tidak akan ada yang mengerjakannya ulang."
+          }
           labelTombol="Batalkan inspeksi"
           onTutup={() => setDialog(null)}
           onBatalkan={(alasan) => jalankan(() => batalkan(d.id, alasan), "Inspeksi dibatalkan.")}
+        />
+      )}
+      {dialog === "batalSegmen" && pratinjau && (
+        <BatalkanModal
+          judul={(pratinjau.segmen?.length ?? 0) > 1 ? `Batalkan inspeksi + ${pratinjau.segmen?.length} segmen rintisan?` : "Batalkan inspeksi + segmen rintisannya?"}
+          keterangan={rincianSegmen(pratinjau)}
+          peringatan={
+            (pratinjau.segmen?.length ?? 0) > 1
+              ? "Segmen lanjutan yang disambung dari segmen ini ikut batal — termasuk inspeksinya. Tidak bisa dikembalikan."
+              : "Tidak bisa dikembalikan. Kalau segmennya benar dan hanya inspeksinya yang salah, pilih \"Inspeksinya saja\"."
+          }
+          labelTombol={`Batalkan segmen + ${pratinjau.tiang ?? 0} tiang`}
+          aksiLain={{ label: "Inspeksinya saja", onClick: () => setDialog("batalkan") }}
+          onTutup={() => setDialog(null)}
+          onBatalkan={(alasan) => jalankan(() => batalkanSegmen(d, alasan), "Inspeksi & segmen rintisannya dibatalkan.")}
         />
       )}
       {dialog === "buang" && (

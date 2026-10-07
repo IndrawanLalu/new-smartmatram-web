@@ -1,11 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Loader2, MapPinned, Pencil, Radio, TriangleAlert } from "lucide-react";
+import { Loader2, MapPinned, Pencil, Radio, Trash2, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
-import type { SegmenBaris } from "../_hooks/useMasterSegmen";
+import type { PratinjauBatalJtm } from "@/app/admin/jtm/_hooks/useDaftarJtm";
+import type { SegmenBaris, SegmenYatim } from "../_hooks/useMasterSegmen";
 import UbahTitikSegmen from "./UbahTitikSegmen";
+import HapusSegmenYatim from "./HapusSegmenYatim";
 
 /**
  * Daftar acuan segmen.
@@ -34,29 +36,43 @@ export default function DaftarSegmen({
   baris,
   daftarUlp,
   loading,
+  yatim,
   user,
   onUbahPanjang,
   onUbahNama,
   onUbahTitik,
   onTutupSegmen,
+  onPratinjauHapus,
+  onHapus,
 }: {
   baris: SegmenBaris[];
   daftarUlp: string[];
   loading: boolean;
+  yatim: Map<string, SegmenYatim>;
   user: CurrentUser;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
   onUbahTitik: UbahTitik;
   onTutupSegmen: TutupSegmen;
+  onPratinjauHapus: (segmenId: string) => Promise<PratinjauBatalJtm | null>;
+  onHapus: (segmenId: string, alasan: string) => Promise<boolean>;
 }) {
   const bolehSemua = canSeeAllUnits(user.role);
   const [saring, setSaring] = useState(bolehSemua ? "" : (user.unit ?? ""));
   const [cari, setCari] = useState("");
+  const [hanyaYatim, setHanyaYatim] = useState(false);
+  const [hapus, setHapus] = useState<SegmenBaris | null>(null);
+
+  const jumlahYatim = useMemo(
+    () => baris.filter((b) => (!saring || b.ulp === saring) && b.status === "aktif" && yatim.has(b.segmen_id)).length,
+    [baris, saring, yatim],
+  );
 
   const tampil = useMemo(() => {
     const q = cari.trim().toLowerCase();
     return baris
       .filter((b) => (!saring || b.ulp === saring) && b.status === "aktif")
+      .filter((b) => !hanyaYatim || yatim.has(b.segmen_id))
       .filter((b) => !q || b.nama.toLowerCase().includes(q) || b.penyulang.toLowerCase().includes(q))
       .sort((a, b) => {
         // Belum pernah diinspeksi = paling mendesak, jadi paling atas.
@@ -65,7 +81,7 @@ export default function DaftarSegmen({
         if (ua !== ub) return ub - ua;
         return a.penyulang.localeCompare(b.penyulang) || a.nama.localeCompare(b.nama);
       });
-  }, [baris, saring, cari]);
+  }, [baris, saring, cari, hanyaYatim, yatim]);
 
   const totalKm = tampil.reduce((n, b) => n + (b.panjang_pakai_km ?? 0), 0);
   const kmKetikan = tampil
@@ -104,6 +120,16 @@ export default function DaftarSegmen({
                 </button>
               ))}
             </>
+          )}
+          {/* Hanya muncul kalau ada — chip yang selalu "0" cuma jadi hiasan. */}
+          {(jumlahYatim > 0 || hanyaYatim) && (
+            <button
+              onClick={() => setHanyaYatim((v) => !v)}
+              className={`${CHIP} ${hanyaYatim ? "bg-red-600 text-white border-red-600" : "bg-red-50 text-red-700 border-red-200"}`}
+              title="Segmen hasil rintis yang inspeksinya sudah dibatalkan semua dan tidak masuk WO — masih muncul di HP sebagai rintisan terbuka"
+            >
+              Segmen yatim · {jumlahYatim}
+            </button>
           )}
           <input
             value={cari}
@@ -152,7 +178,16 @@ export default function DaftarSegmen({
             </thead>
             <tbody>
               {tampil.map((b) => (
-                <Baris key={b.segmen_id} b={b} onUbahPanjang={onUbahPanjang} onUbahNama={onUbahNama} onUbahTitik={onUbahTitik} onTutupSegmen={onTutupSegmen} />
+                <Baris
+                  key={b.segmen_id}
+                  b={b}
+                  yatim={yatim.get(b.segmen_id)}
+                  onUbahPanjang={onUbahPanjang}
+                  onUbahNama={onUbahNama}
+                  onUbahTitik={onUbahTitik}
+                  onTutupSegmen={onTutupSegmen}
+                  onHapus={() => setHapus(b)}
+                />
               ))}
               {tampil.length === 0 && (
                 <tr>
@@ -164,6 +199,15 @@ export default function DaftarSegmen({
             </tbody>
           </table>
         </div>
+
+        {hapus && (
+          <HapusSegmenYatim
+            segmen={hapus}
+            onPratinjau={() => onPratinjauHapus(hapus.segmen_id)}
+            onHapus={(alasan) => onHapus(hapus.segmen_id, alasan)}
+            onTutup={() => setHapus(null)}
+          />
+        )}
 
         <p className="text-[11px] text-ink-muted mt-3">
           <b>Terakhir dirabas</b> belum ada di sini — sumbernya baru lahir bersama modul WO
@@ -177,16 +221,20 @@ export default function DaftarSegmen({
 
 function Baris({
   b,
+  yatim,
   onUbahPanjang,
   onUbahNama,
   onUbahTitik,
   onTutupSegmen,
+  onHapus,
 }: {
   b: SegmenBaris;
+  yatim: SegmenYatim | undefined;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
   onUbahTitik: UbahTitik;
   onTutupSegmen: TutupSegmen;
+  onHapus: () => void;
 }) {
   const [sunting, setSunting] = useState(false);
   const [titik, setTitik] = useState(false);
@@ -246,6 +294,14 @@ function Baris({
         <span className={`text-[10px] px-1.5 py-0.5 rounded-full border font-semibold ${s.kelas}`}>
           {s.teks}
         </span>
+        {yatim && (
+          <span
+            className="ml-1 text-[10px] px-1.5 py-0.5 rounded-full border font-semibold bg-red-50 text-red-700 border-red-200"
+            title={`Inspeksinya sudah dibatalkan semua${yatim.perintis ? ` (dirintis ${yatim.perintis})` : ""} dan tidak masuk WO`}
+          >
+            yatim
+          </span>
+        )}
       </td>
       <td className="px-3 py-2 whitespace-nowrap">
         {sunting ? (
@@ -311,6 +367,15 @@ function Baris({
         )}
       </td>
       <td className="px-3 py-2">
+        {yatim && (
+          <button
+            onClick={onHapus}
+            className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-600 hover:text-red-700"
+            title="Hapus segmen ini beserta tiangnya"
+          >
+            <Trash2 size={12} /> Hapus
+          </button>
+        )}
         {b.inspeksi_berjalan && (
           <span
             className="inline-flex items-center gap-1 text-[10px] text-navy-600"

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
+import type { PratinjauBatalJtm } from "@/app/admin/jtm/_hooks/useDaftarJtm";
 
 /**
  * Master Segmen — daftar acuan ruas jaringan, melayani inspeksi JTM DAN
@@ -37,6 +38,18 @@ export interface SegmenBaris {
   inspeksi_berjalan: boolean;
 }
 
+/**
+ * Segmen YATIM (`jtm_segmen_yatim`, `jtm-batal-hp.sql`): hasil rintis HP yang
+ * inspeksinya sudah dibatalkan semua dan tidak masuk WO — dulu "Batalkan" di
+ * web hanya membatalkan inspeksinya. Segmennya tetap muncul di HP sebagai
+ * rintisan terbuka, lengkap dengan tiang & nomornya. Dihapus dari sini.
+ */
+export interface SegmenYatim {
+  tiang: number;
+  perintis: string | null;
+  terakhir_dibatalkan: string | null;
+}
+
 export interface BarisImpor {
   awal: string;
   akhir: string;
@@ -61,6 +74,7 @@ export function useMasterSegmen() {
   const toast = useToast();
   const [baris, setBaris] = useState<SegmenBaris[]>([]);
   const [penyulang, setPenyulang] = useState<{ penyulang: string; ulp: string | null }[]>([]);
+  const [yatim, setYatim] = useState<Map<string, SegmenYatim>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
@@ -72,6 +86,13 @@ export function useMasterSegmen() {
         .order("nama");
       if (error) throw new Error(error.message);
       setBaris((data ?? []) as unknown as SegmenBaris[]);
+
+      // View-nya lahir di `jtm-batal-hp.sql`. Belum dijalankan = tidak ada
+      // penanda yatim, bukan halaman yang gagal dimuat.
+      const y = await supabaseBrowser.from("jtm_segmen_yatim").select("segmen_id,tiang,perintis,terakhir_dibatalkan");
+      setYatim(
+        new Map(((y.data ?? []) as (SegmenYatim & { segmen_id: string })[]).map(({ segmen_id, ...r }) => [segmen_id, r])),
+      );
 
       // Daftar penyulang dibaca dari MASTER, bukan dari segmen yang sudah ada.
       // Impor harus bisa menunjuk penyulang yang belum punya satu segmen pun —
@@ -246,10 +267,52 @@ export function useMasterSegmen() {
     [toast, muat],
   );
 
+  /** Apa saja yang ikut terhapus — termasuk segmen lanjutan yang menyambung. */
+  const pratinjauHapus = useCallback(async (segmenId: string, oleh?: string) => {
+    const { data, error } = await supabaseBrowser.rpc("pratinjau_batal_jtm", {
+      p_segmen_id: segmenId,
+      p_tier: "1",
+      p_nama: oleh ?? null,
+    });
+    if (error) {
+      toast.error(
+        error.message.includes("Could not find the function")
+          ? "Fungsi pratinjau_batal_jtm belum ada — jalankan scripts/jtm-batal-hp.sql di Supabase."
+          : error.message,
+      );
+      return null;
+    }
+    return data as PratinjauBatalJtm;
+  }, [toast]);
+
+  /** Fungsi yang sama dengan tombol 🗑 di HP: tiang ditandai batal, segmen dinonaktifkan. */
+  const hapusSegmen = useCallback(
+    async (segmenId: string, alasan: string, oleh?: string) => {
+      const { data, error } = await supabaseBrowser.rpc("batalkan_jtm_hp", {
+        p_segmen_id: segmenId,
+        p_tier: "1",
+        p_alasan: alasan,
+        p_nama: oleh ?? null,
+      });
+      if (error) {
+        toast.error(error.message);
+        return false;
+      }
+      const h = data as { segmen_dibatalkan?: number; tiang_dibatalkan?: number };
+      toast.success(`${h.segmen_dibatalkan ?? 1} segmen & ${h.tiang_dibatalkan ?? 0} tiang dihapus.`);
+      await muat();
+      return true;
+    },
+    [toast, muat],
+  );
+
   const daftarUlp = useMemo(
     () => [...new Set(baris.map((b) => b.ulp))].filter(Boolean).sort(),
     [baris],
   );
 
-  return { baris, penyulang, daftarUlp, loading, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik, tutupSegmen };
+  return {
+    baris, penyulang, daftarUlp, loading, yatim, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik,
+    tutupSegmen, pratinjauHapus, hapusSegmen,
+  };
 }

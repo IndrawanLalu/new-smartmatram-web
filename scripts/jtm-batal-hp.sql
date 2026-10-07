@@ -38,6 +38,14 @@
 --   5. pratinjau_batal_jtm, batalkan_jtm_hp (pintu HP baru)
 --   6. batalkan_segmen_rintisan — tanda tangan lama (lembar Rintis, HP lama),
 --      kini lewat aturan yang sama; satu segmen saja, tanpa rantai.
+--   7. Tiang BATAL keluar dari segmennya (pemicu + bersihkan yang terlanjur).
+--      Penyebab "45/50 tiang dinilai" di persetujuan: `batalkan_tiang` (hapus
+--      tiang salah dititik) membiarkan keanggotaan segmen, sementara
+--      `inspeksi_jtm_ringkas` & `master_segmen` menghitung SEMUA anggota,
+--      termasuk yang batal. Penjaga Selesai hanya menghitung yang aktif, jadi
+--      kirim tetap lolos. Cek dampaknya dulu: `cek-jtm-tiang-batal-segmen.sql`.
+--   8. jtm_segmen_yatim — segmen hasil rintis tanpa inspeksi hidup, tanpa WO
+--      (bekas inspeksi yang dibatalkan dari web). Dihapus dari Master Segmen.
 -- =============================================================================
 
 
@@ -429,3 +437,57 @@ BEGIN
   RETURN public._batalkan_segmen_inti(p_segmen_id, p_alasan, p_nama);
 END $fn$;
 GRANT EXECUTE ON FUNCTION public.batalkan_segmen_rintisan(UUID, TEXT, TEXT) TO authenticated;
+
+
+-- ── 7. Tiang batal keluar dari segmennya ─────────────────────────────────────
+-- Hanya 'batal' (salah dititik / salah input). Tiang 'dibongkar' / 'diganti'
+-- adalah riwayat nyata di lapangan — keanggotaannya tidak disentuh.
+-- Satu pemicu menangkap SEMUA jalan: batalkan_tiang dari HP & web, HP lama,
+-- dan fungsi pembatal segmen di atas.
+CREATE OR REPLACE FUNCTION public.tiang_batal_lepas_segmen()
+RETURNS TRIGGER LANGUAGE plpgsql SET search_path = public AS $fn$
+BEGIN
+  IF NEW.status_hidup = 'batal' AND OLD.status_hidup IS DISTINCT FROM 'batal' THEN
+    DELETE FROM public.segmen_tiang WHERE tiang_id = NEW.id;
+  END IF;
+  RETURN NEW;
+END $fn$;
+DROP TRIGGER IF EXISTS trg_tiang_batal_lepas_segmen ON public.tiang;
+CREATE TRIGGER trg_tiang_batal_lepas_segmen AFTER UPDATE OF status_hidup ON public.tiang
+  FOR EACH ROW EXECUTE FUNCTION public.tiang_batal_lepas_segmen();
+
+-- Yang sudah terlanjur (sekali; menjalankan ulang tidak mengubah apa pun).
+-- ⚠ Jumlah tiang & KMS hitungan segmen yang punya tiang batal ikut TURUN ke
+-- angka yang benar — termasuk realisasi KMS bulan-bulan lalu di rekap.
+DELETE FROM public.segmen_tiang st
+ USING public.tiang t
+ WHERE t.id = st.tiang_id AND t.status_hidup = 'batal';
+
+
+-- ── 8. Segmen yatim ──────────────────────────────────────────────────────────
+-- Hasil rintis, masih aktif, tetapi tidak punya inspeksi yang hidup dan tidak
+-- masuk WO — biasanya karena inspeksinya dibatalkan dari web, yang dulu hanya
+-- membatalkan inspeksinya. Di HP ia muncul lagi sebagai "rintisan terbuka".
+-- Dihapus lewat batalkan_jtm_hp (aturan & jejak audit yang sama).
+CREATE OR REPLACE VIEW public.jtm_segmen_yatim AS
+SELECT
+  s.id AS segmen_id,
+  s.ulp,
+  s.penyulang,
+  s.nama,
+  s.created_at,
+  (SELECT count(*) FROM public.segmen_tiang st JOIN public.tiang t ON t.id = st.tiang_id AND t.status_hidup = 'aktif'
+    WHERE st.segmen_id = s.id) AS tiang,
+  (SELECT m.petugas_nama FROM public.inspeksi_jtm m WHERE m.segmen_id = s.id ORDER BY m.created_at LIMIT 1) AS perintis,
+  (SELECT max(m.updated_at) FROM public.inspeksi_jtm m WHERE m.segmen_id = s.id) AS terakhir_dibatalkan
+FROM public.segmen s
+WHERE s.status = 'aktif' AND s.sumber = 'lapangan'
+  AND NOT EXISTS (SELECT 1 FROM public.inspeksi_jtm m WHERE m.segmen_id = s.id AND m.status <> 'Dibatalkan')
+  AND NOT EXISTS (SELECT 1 FROM public.wo_inspeksi_item i WHERE i.segmen_id = s.id AND i.status <> 'Dibatalkan')
+  AND NOT EXISTS (SELECT 1 FROM public.wo_perabasan_item i WHERE i.segmen_id = s.id AND i.status <> 'Dibatalkan');
+GRANT SELECT ON public.jtm_segmen_yatim TO authenticated;
+
+
+-- ── Periksa ──────────────────────────────────────────────────────────────────
+--   SELECT count(*) FROM segmen_tiang st JOIN tiang t ON t.id = st.tiang_id WHERE t.status_hidup = 'batal';  -- 0
+--   SELECT * FROM jtm_segmen_yatim ORDER BY ulp, penyulang;
