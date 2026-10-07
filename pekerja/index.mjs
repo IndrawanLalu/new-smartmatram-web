@@ -69,7 +69,8 @@ function tanganiPerubahan(payload) {
   const penting = ATURAN[table];
   if (!penting || !penting(baru)) return;
   // Tugas dari "Tugaskan" temuan JTM: WA-nya sudah terkirim saat regu menilai.
-  if (table === "inspeksi" && baru.source === "inspeksi_jtm") return;
+  // Tugas manual Pemeliharaan Jaringan (dibuat admin di web) bukan temuan.
+  if (table === "inspeksi" && (baru.source === "inspeksi_jtm" || baru.source === "tugas_manual")) return;
   // UPDATE yang memang sudah penting sebelumnya (ditugaskan, diproses, …) bukan berita baru.
   if (eventType === "UPDATE" && penting(lama)) return;
   if (sudah(`${table}:${baru.id}`)) return;

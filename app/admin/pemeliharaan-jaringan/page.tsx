@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Download, LayoutDashboard, ListChecks, Loader2, Search, Settings2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Search, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { usePemeliharaanJaringan, BULAN, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
@@ -9,6 +9,7 @@ import TabelPemeliharaan from "./_components/TabelPemeliharaan";
 import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardPemeliharaan from "./_components/DashboardPemeliharaan";
 import PengaturanKategori from "./_components/PengaturanKategori";
+import TugasHarjar from "./_components/TugasHarjar";
 
 /**
  * Pemeliharaan Jaringan JTM/JTR.
@@ -17,14 +18,16 @@ import PengaturanKategori from "./_components/PengaturanKategori";
  * teknisaplikasi.md butir 7): Daftar → Dashboard → Pengaturan. Status
  * verifikasi adalah CHIP penyaring di daftar, bukan tab tersendiri.
  *
- * DICATAT DARI HP, DIPERIKSA DI SINI. Tidak ada tombol "tambah" di web: bukti
- * pekerjaan ini adalah foto sebelum-sesudah dan titiknya, dan ketiganya cuma
- * berarti kalau diambil di tempat kejadian.
+ * DICATAT DARI HP, DIPERIKSA DI SINI. Tidak ada tombol "tambah catatan" di
+ * web: bukti pekerjaan ini adalah foto sebelum-sesudah dan titiknya, dan
+ * ketiganya cuma berarti kalau diambil di tempat kejadian. Yang dibuat di web
+ * hanya PERINTAH kerjanya — tab "Tugas" (6 Okt 2026).
  */
 
 const TABS = [
   { key: "daftar", label: "Daftar Pemeliharaan", icon: ListChecks },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "tugas", label: "Tugas", icon: ClipboardList },
   { key: "pengaturan", label: "Pengaturan Kategori", icon: Settings2 },
 ] as const;
 
@@ -56,6 +59,10 @@ export default function PemeliharaanJaringanPage() {
   };
 
   const dashboard = tab === "dashboard";
+  const tugas = tab === "tugas";
+  // Penyaring khusus catatan pekerjaan (cari, jenis, status) tidak berlaku di
+  // Dashboard maupun Tugas — Tugas punya chip & cari sendiri.
+  const saringCatatan = !dashboard && !tugas;
 
   return (
     <div className="text-ink flex flex-col gap-4">
@@ -97,7 +104,7 @@ export default function PemeliharaanJaringanPage() {
               {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
 
-            {!dashboard && (
+            {saringCatatan && (
               <>
                 <div className="relative">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
@@ -117,7 +124,7 @@ export default function PemeliharaanJaringanPage() {
             )}
           </div>
 
-          {!dashboard && (
+          {saringCatatan && (
             <div className="flex flex-wrap items-center gap-2 -mt-1">
               <button onClick={() => o.setStatus("SEMUA")} className={`${CHIP} ${o.status === "SEMUA" ? CHIP_ON : CHIP_OFF}`}>
                 Semua
@@ -139,7 +146,9 @@ export default function PemeliharaanJaringanPage() {
             </div>
           )}
 
-          {dashboard ? (
+          {tugas ? (
+            <TugasHarjar key={`${o.ulp}`} ulp={o.ulp} tahun={o.tahun} bulan={o.bulan} oleh={oleh} />
+          ) : dashboard ? (
             // key: ganti ULP/tahun = pasang ulang, jadi keadaan "memuat" tidak
             // menampilkan angka periode sebelumnya.
             <DashboardPemeliharaan key={`${o.ulp}-${o.tahun}`} ulp={o.ulp} tahun={o.tahun} kategori={o.kategori} />

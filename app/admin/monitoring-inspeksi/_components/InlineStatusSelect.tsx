@@ -26,8 +26,9 @@ export default function InlineStatusSelect({
 
   const cfg = STATUS_CONFIG[currentStatus as InspeksiStatus];
 
-  // Status "Dalam Proses" dan "Selesai" hanya bisa diubah via modal
-  const isAdvancedStatus = currentStatus === "Dalam Proses" || currentStatus === "Selesai";
+  // Status "Dalam Proses" dan "Selesai" hanya bisa diubah via modal;
+  // "Dibatalkan" (tugas manual Pemeliharaan Jaringan) tidak bisa diubah sama sekali.
+  const isAdvancedStatus = currentStatus === "Dalam Proses" || currentStatus === "Selesai" || currentStatus === "Dibatalkan";
 
   if (!canUpdateStatus(user.role) || isAdvancedStatus) {
     return (

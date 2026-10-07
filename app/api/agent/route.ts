@@ -34,7 +34,7 @@ async function queryInspeksiUrgent(dariTanggal?: string) {
     supabaseAdmin.from("inspeksi")
       .select(INSPEKSI_FIELDS)
       .eq("category", "Urgent")
-      .not("status", "eq", "Selesai")
+      .not("status", "in", "(Selesai,Dibatalkan)")
       .gte("tgl_inspeksi", dariTanggal ?? "1900-01-01")
       .order("tgl_inspeksi", { ascending: false })
       .limit(20),

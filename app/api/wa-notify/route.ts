@@ -134,6 +134,11 @@ export async function POST(req: NextRequest) {
   if (table === "inspeksi" && record.source === "inspeksi_jtm") {
     return NextResponse.json({ skipped: true, reason: "temuan JTM, sudah dikirim saat dinilai" });
   }
+  // Tugas manual Pemeliharaan Jaringan dibuat admin dari web, bukan temuan —
+  // regu sudah mendapat notifikasi HP-nya.
+  if (table === "inspeksi" && record.source === "tugas_manual") {
+    return NextResponse.json({ skipped: true, reason: "tugas manual, bukan temuan" });
+  }
 
   // UPDATE temuan yang SUDAH Urgent / Sangat Tinggi sebelumnya (ditugaskan,
   // diproses, selesai, …) bukan berita baru — tanpa ini tiap perubahan status
