@@ -141,7 +141,7 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
     keadaan: "tanpaWo",
     satuan: "gardu",
     desimal: false,
-    catatan: "WO dari tempelan Excel di Cetak / Kirim WO. Realisasi = tindak lanjut anomali pengukuran.",
+    catatan: "WO = gardu anomali pengukuran yang di-WO-kan ke Pemerataan Beban (Bulan WO). Realisasi = pekerjaan yang sudah disetor regu (status Selesai, termasuk yang menunggu persetujuan), menurut tanggal pekerjaan.",
   },
   {
     kunci: "optimasi",
