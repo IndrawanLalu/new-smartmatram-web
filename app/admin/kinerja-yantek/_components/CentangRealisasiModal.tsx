@@ -10,7 +10,8 @@ import type { CurrentUser } from "@/lib/roles";
 import { fmtAngka, JENIS_SURAT, labelBulan } from "../_lib/woSurat";
 
 /**
- * Realisasi WO tempelan yang modulnya belum ada (JTM Tier 2, Inspeksi Gardu
+ * Realisasi WO tempelan yang tidak dikerjakan lewat modul (tempelan JTM Tier 2 —
+ * WO Tier 2 yang disusun di aplikasi dihitung dari HP —, Inspeksi Gardu
  * Tier 1 & 2) — dicentang per objek di web (keputusan user 29 Sep 2026).
  * Centang = selesai pada tanggal itu; dibatalkan = kosongkan centangnya.
  */

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
  * Rekap kinerja sebelas jenis pekerjaan Pelayanan Teknik (sama dengan surat WO).
@@ -165,11 +166,15 @@ const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove"
   {
     kunci: "jtm2",
     jenis: "Inspeksi JTM Tier 2",
-    href: null,
+    href: "/admin/jtm",
     keadaan: "tanpaWo",
     satuan: "KMS",
     desimal: true,
-    catatan: "WO dari tempelan Excel. Modulnya belum berjalan — realisasi dicentang per segmen di web.",
+    // `rencana-wo-jtm-tier2.md`: dua jalur — WO susun (segmen master, di HP)
+    // dan tempelan Excel (dicentang di web). Rincian asal realisasinya
+    // ditambahkan di bawah supaya hitungan ganda terlihat.
+    catatan:
+      "WO = WO Inspeksi JTM Tier 2 yang disusun di aplikasi + tempelan Excel. Realisasi = panjang segmen yang inspeksi tier 2-nya terkirim dari HP + tempelan yang dicentang di web.",
   },
   {
     kunci: "jtr",
@@ -255,6 +260,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [ulp, gantiUlp] = useState(bolehSemua ? "SEMUA" : (user.unit ?? ""));
   const [data, setData] = useState<BarisRpc[] | null>(null);
   const [woGarduJtr, setWoGarduJtr] = useState<number | null>(null);
+  /** KMS tempelan JTM Tier 2 yang dicentang di web — sisanya dari HP. */
+  const [centangJtm2, setCentangJtm2] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -290,6 +297,24 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       if (hidup) setWoGarduJtr(error ? null : (count ?? 0));
     });
 
+    // Tempelan JTM Tier 2 yang dicentang — aturan sama dengan
+    // `_wo_manual_total(..., 'jtm2', true, true)` di rekap.
+    fetchAllRows<{ km: number | string | null }>(() => {
+      let q = supabaseBrowser
+        .from("wo_manual_item")
+        .select("id, km, wo_manual!inner(jenis, tahun, bulan, ulp)")
+        .eq("wo_manual.jenis", "jtm2")
+        .eq("wo_manual.tahun", tahun)
+        .not("selesai_tgl", "is", null)
+        .order("id");
+      if (bulan !== 0) q = q.eq("wo_manual.bulan", bulan);
+      if (ulp !== "SEMUA") q = q.eq("wo_manual.ulp", ulp);
+      return q;
+    }).then(
+      (rows) => { if (hidup) setCentangJtm2(rows.reduce((n, x) => n + Number(x.km ?? 0), 0)); },
+      () => { if (hidup) setCentangJtm2(null); },
+    );
+
     supabaseBrowser
       .rpc("rekap_kinerja", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
@@ -319,6 +344,12 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         };
       }
       const luar = Number(r.luar_wo ?? 0);
+      const kmTeks = (v: number) => v.toFixed(2).replace(".", ",");
+      // Tier 2: realisasi = dari HP + dari centang — dua-duanya disebut.
+      const rincianJtm2 =
+        m.kunci === "jtm2" && centangJtm2 !== null && r.realisasi !== null
+          ? ` Realisasi: ${kmTeks(Math.max(0, Number(r.realisasi) - centangJtm2))} KMS dari HP · ${kmTeks(centangJtm2)} KMS dari centang tempelan.`
+          : "";
       return {
         ...m,
         woGardu: m.kunci === "jtr" ? woGarduJtr : null,
@@ -329,20 +360,20 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         realisasi: angka(r.realisasi),
         belumApprove: angka(r.belum_disetujui),
         catatan:
-          luar <= 0
+          (luar <= 0
             ? m.catatan
             : m.kunci === "perabasan"
               ? `${m.catatan} Di luar WO: ${luar} pohon dirabas (tidak dihitung KMS).`
               : m.kunci === "harjtm"
                 // Baris ini: `luar_wo` = berapa dari realisasi yang berasal dari tugas temuan.
                 ? `${m.catatan} ${luar} di antaranya dari tugas temuan.`
-                : m.kunci === "jtm" || m.kunci === "jtr"
+                : m.kunci === "jtm" || m.kunci === "jtm2" || m.kunci === "jtr"
                   // Km inspeksi yang selesai tanpa WO (rencana-mobile-jtm-jtr.md keputusan e).
-                  ? `${m.catatan} Di luar WO: ${luar.toFixed(2).replace(".", ",")} KMS.`
-                  : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`,
+                  ? `${m.catatan} Di luar WO: ${kmTeks(luar)} KMS.`
+                  : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`) + rincianJtm2,
       };
     });
-  }, [data, woGarduJtr]);
+  }, [data, woGarduJtr, centangJtm2]);
 
   return {
     baris,

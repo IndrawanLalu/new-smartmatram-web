@@ -4,9 +4,9 @@ import { useState } from "react";
 import { Ban, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
-import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { CurrentUser } from "@/lib/roles";
-import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi } from "@/app/admin/_hooks/useWoInspeksi";
+import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi, type TierWo } from "@/app/admin/_hooks/useWoInspeksi";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 
 /**
@@ -19,7 +19,18 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
  * SUDAH DIINSPEKSI tidak bisa dikeluarkan; beberapa item bisa dikeluarkan
  * sekaligus lewat centang; WO yang salah dibatalkan beserta alasannya — hanya
  * selama belum ada satu item pun yang diinspeksi.
+ *
+ * JTM bertier (`rencana-wo-jtm-tier2.md`): tier WO WAJIB dipilih sebelum
+ * menyusun, tanpa pilihan bawaan — salah tier berarti regu mengisi daftar
+ * isian yang salah. Segmen yang terbuka di WO Tier 1 tetap bisa dipilih untuk
+ * WO Tier 2, dan sebaliknya.
  */
+
+const PILIHAN_TIER: { tier: TierWo; label: string; bantu: string }[] = [
+  { tier: "1", label: "Tier 1 · rutin", bantu: "Pemeriksaan rutin tiap tiang" },
+  { tier: "2", label: "Tier 2 · detail", bantu: "Pemeriksaan detail (suhu sambungan, pentanahan, …)" },
+];
+const BULAN_INI = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
 const reguKosong = (ulp: string) =>
   `ULP ${ulp} belum punya petugas aktif di Manajemen Petugas yang grupnya role inspeksi ini (role bermenu HP JTM/JTR di Kelola Role). WO tetap bisa terbit — semua tim se-ULP melihatnya di HP.`;
@@ -59,10 +70,16 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [keluarkan, setKeluarkan] = useState(false);
   const [batalWo, setBatalWo] = useState<{ id: string; nama: string } | null>(null);
+  const jtm = jenis === "JTM";
+  /** Tier WO yang sedang disusun — kosong sampai admin memilih (JTR selalu 1). */
+  const [tierSusun, setTierSusun] = useState<TierWo | null>(jtm ? null : "1");
+  /** Saringan daftar WO berjalan. */
+  const [saringTier, setSaringTier] = useState<TierWo | "semua">("semua");
 
-  const total = Math.max(1, Math.ceil(w.item.length / PAGE));
+  const daftar = saringTier === "semua" ? w.item : w.item.filter((x) => x.tier === saringTier);
+  const total = Math.max(1, Math.ceil(daftar.length / PAGE));
   const hal = Math.min(halaman, total);
-  const tampil = w.item.slice((hal - 1) * PAGE, hal * PAGE);
+  const tampil = daftar.slice((hal - 1) * PAGE, hal * PAGE);
   const dipilih = w.item.filter((x) => pilih.has(x.id) && belumDiinspeksi(x));
   const bisaDiHal = tampil.filter(belumDiinspeksi).map((x) => x.id);
   const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
@@ -79,7 +96,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   /** WO yang masih berjalan, dari item terbukanya — bahan tombol Batalkan WO. */
   const woBerjalan = [...new Map(w.item.map((x) => [x.wo_id, x.wo_nama])).entries()].map(([id, nama]) => {
     const isi = w.item.filter((x) => x.wo_id === id);
-    return { id, nama, n: isi.length, jalan: isi.filter((x) => !belumDiinspeksi(x)).length };
+    return { id, nama, tier: isi[0]?.tier ?? "1", n: isi.length, jalan: isi.filter((x) => !belumDiinspeksi(x)).length };
   });
 
   if (w.loading) {
@@ -92,16 +109,55 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
 
   return (
     <div className="space-y-4">
-      <SusunWoSegmen
-        user={user}
-        istilah={ISTILAH[jenis]}
-        segmen={w.objek}
-        segmenTerikat={w.objekTerikat}
-        regu={w.regu}
-        woTerbuka={[]}
-        infoSla={(u, tgl) => ({ sla: slaBulan(u, tgl), terbit: w.terbitBulan(u, tgl) })}
-        onTerbitkan={(v) => w.terbitkan({ ...v, oleh })}
-      />
+      {jtm && (
+        <div className={`${CARD} p-5`}>
+          <p className={EYEBROW}>Tier WO</p>
+          <p className="text-xs text-ink-soft mt-1">
+            Pilih dulu tier WO yang akan disusun. Tier menentukan daftar isian regu di HP. Segmen yang
+            sudah ada di WO tier lain tetap bisa dipilih.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {PILIHAN_TIER.map((p) => (
+              <button
+                key={p.tier}
+                onClick={() => setTierSusun(p.tier)}
+                className={`${CHIP} ${tierSusun === p.tier ? CHIP_ON : CHIP_OFF}`}
+                title={p.bantu}
+                aria-pressed={tierSusun === p.tier}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {tierSusun ? (
+        <SusunWoSegmen
+          // Ganti tier = mulai susunan baru: centang segmen tier lain tidak terbawa.
+          key={tierSusun}
+          user={user}
+          istilah={
+            jtm
+              ? {
+                  ...ISTILAH.JTM,
+                  judul: `Susun WO inspeksi JTM Tier ${tierSusun}`,
+                  contohNama: `Inspeksi JTM Tier ${tierSusun} ${BULAN_INI}`,
+                }
+              : ISTILAH[jenis]
+          }
+          segmen={w.objek}
+          segmenTerikat={w.objekTerikat[tierSusun]}
+          regu={w.regu}
+          woTerbuka={[]}
+          infoSla={(u, tgl) => ({ sla: slaBulan(u, tgl), terbit: w.terbitBulan(u, tgl) })}
+          onTerbitkan={(v) => w.terbitkan({ ...v, oleh, tier: tierSusun })}
+        />
+      ) : (
+        <div className={`${CARD} p-6 text-sm text-ink-soft text-center`}>
+          Pilih <b className="text-ink">Tier 1</b> atau <b className="text-ink">Tier 2</b> di atas untuk mulai menyusun WO.
+        </div>
+      )}
 
       <div className={`${CARD} overflow-hidden`}>
         <div className="px-5 py-4">
@@ -110,10 +166,31 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
             {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
             Inspeksi. Yang sudah diinspeksi regu tidak bisa dikeluarkan dari WO.
           </p>
+          {jtm && w.item.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring tier">
+              {(["semua", "1", "2"] as const).map((t) => {
+                const n = t === "semua" ? w.item.length : w.item.filter((x) => x.tier === t).length;
+                return (
+                  <button
+                    key={t}
+                    onClick={() => {
+                      setSaringTier(t);
+                      setHalaman(1);
+                    }}
+                    className={`${CHIP} ${saringTier === t ? CHIP_ON : CHIP_OFF}`}
+                    aria-pressed={saringTier === t}
+                  >
+                    {t === "semua" ? "Semua tier" : `Tier ${t}`} · {n}
+                  </button>
+                );
+              })}
+            </div>
+          )}
           {woBerjalan.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2">
               {woBerjalan.map((b) => (
                 <span key={b.id} className="inline-flex items-center gap-2 h-8 pl-3 pr-1.5 rounded-full border border-line bg-white text-xs text-ink-soft">
+                  {jtm && <TierLencana tier={b.tier} />}
                   <b className="text-ink">{b.nama}</b> {b.n} {satuan}
                   <button
                     onClick={() => setBatalWo({ id: b.id, nama: b.nama })}
@@ -140,8 +217,10 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
             </div>
           )}
         </div>
-        {w.item.length === 0 ? (
-          <p className="text-xs text-ink-muted px-5 pb-6">Belum ada WO inspeksi yang berjalan.</p>
+        {daftar.length === 0 ? (
+          <p className="text-xs text-ink-muted px-5 pb-6">
+            {w.item.length === 0 ? "Belum ada WO inspeksi yang berjalan." : `Belum ada WO Tier ${saringTier} yang berjalan.`}
+          </p>
         ) : (
           <>
             <div className="overflow-x-auto">
@@ -159,6 +238,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                       />
                     </th>
                     <th className={TH}>{Satuan}</th>
+                    {jtm && <th className={TH}>Tier</th>}
                     <th className={TH}>WO</th>
                     <th className={`${TH} text-right`}>KMS</th>
                     <th className={TH}>Tim</th>
@@ -187,6 +267,11 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                           <p className="font-semibold text-ink text-sm">{x.objek_nama}</p>
                           <p className="text-[11px] text-ink-muted">{x.penyulang ?? "—"} · {x.ulp}</p>
                         </td>
+                        {jtm && (
+                          <td className={TD}>
+                            <TierLencana tier={x.tier} />
+                          </td>
+                        )}
                         <td className={`${TD} text-ink-soft`}>
                           <p className="line-clamp-2">{x.wo_nama}</p>
                           <p className="text-[11px] text-ink-muted">{x.tgl_wo}</p>
@@ -229,8 +314,8 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
             </div>
             <div className="flex items-center justify-between gap-2 px-4 py-2.5 text-xs text-ink-soft">
               <span>
-                {(hal - 1) * PAGE + 1}–{Math.min(hal * PAGE, w.item.length)} dari {w.item.length} {satuan} ·{" "}
-                {kms(w.item.reduce((n, x) => n + (x.panjang_km ?? 0), 0))} KMS
+                {(hal - 1) * PAGE + 1}–{Math.min(hal * PAGE, daftar.length)} dari {daftar.length} {satuan} ·{" "}
+                {kms(daftar.reduce((n, x) => n + (x.panjang_km ?? 0), 0))} KMS
               </span>
               <div className="flex items-center gap-1">
                 <button onClick={() => setHalaman(hal - 1)} disabled={hal <= 1} className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-30" aria-label="Halaman sebelumnya">
@@ -279,5 +364,19 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
         />
       )}
     </div>
+  );
+}
+
+/** Lencana tier: Tier 1 navy muda, Tier 2 navy tegas — dibedakan teks DAN isi,
+ *  bukan warna saja. Bukan warna status (tier bukan keadaan pekerjaan). */
+function TierLencana({ tier }: { tier: TierWo }) {
+  return (
+    <span
+      className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
+        tier === "2" ? "bg-navy-600 text-white" : "bg-navy-50 text-navy-700 border border-navy-200"
+      }`}
+    >
+      Tier {tier}
+    </span>
   );
 }
