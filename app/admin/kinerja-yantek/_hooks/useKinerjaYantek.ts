@@ -105,7 +105,7 @@ export const BULAN = [
 
 /** Label & keterangan tiap baris — urutan di sini = urutan di layar, SAMA
  *  dengan urutan surat WO (`_lib/woSurat.ts`, ditetapkan user 29 Sep 2026). */
-const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove">[] = [
+export const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumApprove">[] = [
   {
     kunci: "perabasan",
     jenis: "Perabasan Pohon",

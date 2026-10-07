@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { FileText, RefreshCw, Target, TriangleAlert } from "lucide-react";
+import { CalendarDays, FileText, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
 import AturSlaModal from "./_components/AturSlaModal";
 import CetakWoModal from "./_components/CetakWoModal";
 import CentangRealisasiModal from "./_components/CentangRealisasiModal";
+import RealisasiHarian from "./_components/RealisasiHarian";
 
 /**
  * Rekap Kinerja Pelayanan Teknik.
@@ -22,7 +23,15 @@ import CentangRealisasiModal from "./_components/CentangRealisasiModal";
  * ada: satuannya berbeda-beda, dan separuh barisnya belum punya WO sama sekali.
  * Angka tunggal yang menutupi kenyataan itu akan dikutip di rapat, lalu
  * dipercaya.
+ *
+ * Tab "Realisasi Harian" (6 Okt 2026): pekerjaan yang dikirim regu pada satu
+ * tanggal + teks WA-nya. Tabel bulanan tidak berubah.
  */
+
+const TABS = [
+  { key: "bulanan", label: "Rekap Bulanan", icon: Table2 },
+  { key: "harian", label: "Realisasi Harian", icon: CalendarDays },
+] as const;
 
 export default function KinerjaYantekPage() {
   const user = useCurrentUser();
@@ -37,11 +46,25 @@ export default function KinerjaYantekPage() {
   const [aturSla, setAturSla] = useState(false);
   const [cetakWo, setCetakWo] = useState(false);
   const [centang, setCentang] = useState<string | null>(null);
+  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("bulanan");
   const bulanIni = new Date().getMonth() + 1;
   const periodeCentang = `${tahun}-${String(bulan || bulanIni).padStart(2, "0")}`;
 
   return (
     <div className="text-ink flex flex-col gap-4">
+      <div className="flex flex-wrap gap-2">
+        {TABS.map(({ key, label, icon: Icon }) => (
+          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
+            <Icon size={14} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {tab === "harian" ? (
+        <RealisasiHarian ulpAwal={ulp} daftarUlp={daftarUlp} />
+      ) : (
+      <>
       <div className="flex flex-wrap items-center gap-2">
         <select
           value={tahun}
@@ -114,6 +137,8 @@ export default function KinerjaYantekPage() {
       )}
 
       <TabelKinerja baris={baris} loading={loading} periode={periode} onCentang={bolehSla ? setCentang : undefined} />
+      </>
+      )}
 
       {aturSla && (
         <AturSlaModal
