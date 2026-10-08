@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import Link from "next/link";
+import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
@@ -144,6 +145,15 @@ export default function WoPerabasanPage() {
             )}
           </button>
         ))}
+        {/* Pohon dilihat bersama jaringannya di Peta Jaringan (lapisan Pohon,
+            keputusan user 8 Okt 2026) — bukan peta tersendiri di sini. */}
+        <Link
+          href={`/peta?pohon=1${d.ulp && d.ulp !== "SEMUA" ? `&ulp=${d.ulp}` : ""}`}
+          className={`${BTN_GHOST} ml-auto`}
+          title="Temuan pohon dari inspeksi JTM dan pohon yang sudah dirabas, di atas peta jaringan"
+        >
+          <Map size={14} /> Lihat pohon di peta
+        </Link>
       </div>
 
       {tab === "terbit" ? (

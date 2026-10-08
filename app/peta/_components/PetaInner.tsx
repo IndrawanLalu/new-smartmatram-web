@@ -21,6 +21,8 @@ import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
 import LapisanNama from "./LapisanNama";
 import LapisanPersetujuan from "./LapisanPersetujuan";
+import LapisanPohon from "./LapisanPohon";
+import type { PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { SorotJtm } from "./PersetujuanJtmPeta";
 import type { TiangBanding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
@@ -66,6 +68,10 @@ interface Props {
   bolehSetujuiUjung: boolean;
   oleh: string;
   onUjungDisetujui: (id: string) => void;
+  /** Lapisan pohon (kosong = padam). */
+  pohonTemuan: TemuanPohon[];
+  pohonDirabas: PohonDirabas[];
+  onTugaskanPohon?: (t: TemuanPohon) => void;
   simulasi: HasilSimulasi | null;
   kesehatan: KesehatanGardu[];
   onPilihKesehatan: (g: KesehatanGardu) => void;
@@ -132,7 +138,7 @@ const IKON_GARDU = L.divIcon({
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
-  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, simulasi,
+  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, onTugaskanPohon, simulasi,
   kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm,
 }: Props) {
   return (
@@ -176,6 +182,7 @@ export default function PetaInner({
       <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
+      <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} onTugaskan={onTugaskanPohon} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
       <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />
     </MapContainer>

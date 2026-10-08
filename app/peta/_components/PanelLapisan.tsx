@@ -3,10 +3,11 @@
 import { useMemo, useState } from "react";
 import {
   ChevronDown, ChevronRight, Crosshair, House, Layers, Loader2,
-  PanelLeftClose, Search, Waypoints, X, Zap,
+  PanelLeftClose, Search, TreePine, Waypoints, X, Zap,
 } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import type { Grup, Jaringan, Lapisan } from "../_hooks/usePetaDaftar";
+import { LABEL_SUMBER, type SaringPohon, type SumberPohon } from "../_hooks/usePohonPeta";
 import { GARIS, INPUT, JUDUL_BAGIAN, WARNA } from "../_ui";
 import PengaturanGaya from "./PengaturanGaya";
 import { useGayaPeta } from "../_hooks/useGayaPeta";
@@ -47,6 +48,11 @@ interface Props {
     jumlahJtr: number;
     jumlahGardu: number;
   };
+  /** Folder Pohon: satu baris per penyulang (usePohonPeta). */
+  pohon: Lapisan[];
+  saringPohon: SaringPohon;
+  onSaringPohon: (s: SaringPohon) => void;
+  perSumberPohon: Record<SumberPohon, number>;
   semuaLapisan: Lapisan[];
   loading: boolean;
   error: string | null;
@@ -65,7 +71,7 @@ interface Props {
 const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
-  user, perFolder, semuaLapisan, loading, error, ulp, onUlp,
+  user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
   nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup,
 }: Props) {
   const [cari, setCari] = useState("");
@@ -280,6 +286,20 @@ export default function PanelLapisan({
                 />
               ))}
             </Folder>
+
+            <FolderPohon
+              pohon={pohon}
+              saring={saringPohon}
+              onSaring={onSaringPohon}
+              perSumber={perSumberPohon}
+              terbuka={folderBuka.has("pohon")}
+              onAlihBuka={() => alihFolder("pohon")}
+              nyala={nyala}
+              onAlih={onAlih}
+              onAlihBanyak={onAlihBanyak}
+              onHanya={onHanya}
+              onLompat={onLompat}
+            />
           </>
         )}
         {/* Sekaligus legenda: tiang menumpang, underbuild JTR, kabel belum jelas. */}
@@ -290,6 +310,88 @@ export default function PanelLapisan({
 }
 
 /* ── Bagian-bagian ────────────────────────────────────────────────────────── */
+
+/**
+ * Folder Pohon — per penyulang, sama dengan JTM (keputusan user 8 Okt 2026).
+ * Centang "Semua penyulang" di atasnya; jenis & bulan dirabas diatur di panel
+ * Pohon yang muncul di kanan begitu ada yang dicentang.
+ */
+const SUMBER: SumberPohon[] = ["inspeksi", "perabasan"];
+
+function FolderPohon({
+  pohon, saring, onSaring, perSumber, terbuka, onAlihBuka, nyala, onAlih, onAlihBanyak, onHanya, onLompat,
+}: {
+  pohon: Lapisan[];
+  saring: SaringPohon;
+  onSaring: (s: SaringPohon) => void;
+  perSumber: Record<SumberPohon, number>;
+  terbuka: boolean;
+  onAlihBuka: () => void;
+  nyala: Set<string>;
+  onAlih: (j: Jaringan, k: string) => void;
+  onAlihBanyak: (j: Jaringan, k: string[], nyalakan: boolean) => void;
+  onHanya: (j: Jaringan, k: string | string[]) => void;
+  onLompat: (k: Kotak) => void;
+}) {
+  const kode = pohon.map((l) => l.kode);
+  const semua = kode.length > 0 && kode.every((k) => nyala.has(`pohon:${k}`));
+  const jumlah = pohon.reduce((n, l) => n + l.jumlahTiang, 0);
+
+  return (
+    <Folder judul="Pohon — per penyulang" ikon={TreePine} warna={WARNA.pohon} jumlah={jumlah} terbuka={terbuka} onAlih={onAlihBuka}>
+      {/* Sumber dulu, baru penyulang: jumlah tiap penyulang di bawah ikut
+          sumber yang dipilih di sini. */}
+      <div className="mx-2 mb-1.5 rounded-lg px-1 py-1" style={{ background: "#0d1b2a" }}>
+        {SUMBER.map((k) => (
+          <label key={k} className="flex items-center gap-2 px-2 py-1 cursor-pointer">
+            <Centang
+              nyala={saring.sumber.has(k)}
+              onAlih={() => {
+                const b = new Set(saring.sumber);
+                if (b.has(k)) b.delete(k); else b.add(k);
+                onSaring({ ...saring, sumber: b });
+              }}
+              warna={k === "inspeksi" ? "#F59E0B" : WARNA.pohon}
+              ukuran={13}
+              label={LABEL_SUMBER[k]}
+            />
+            <span className="flex-1 text-[11px] text-gray-300">{LABEL_SUMBER[k]}</span>
+            <span className="text-[10px] font-mono text-gray-500 tabular-nums">{perSumber[k]}</span>
+          </label>
+        ))}
+      </div>
+      {pohon.length === 0 ? (
+        <Kosong>
+          {saring.sumber.size === 0
+            ? "Pilih sumbernya dulu: dari inspeksi JTM, dari perabasan, atau keduanya."
+            : "Belum ada pohon dari sumber yang dipilih (perabasan: bulan yang dipilih di panel Pohon)."}
+        </Kosong>
+      ) : (
+        <>
+          <label className="flex items-center gap-2 px-3 py-1.5 mx-2 mb-1.5 rounded-lg cursor-pointer" style={{ background: "#0d1b2a" }}>
+            <Centang
+              nyala={semua}
+              onAlih={() => onAlihBanyak("pohon", kode, !semua)}
+              warna={WARNA.pohon}
+              label="Semua penyulang"
+            />
+            <span className="text-[11px] text-gray-300 leading-snug">Semua penyulang</span>
+          </label>
+          {pohon.map((l) => (
+            <BarisLapisan
+              key={l.kode}
+              l={l}
+              nyala={nyala.has(`pohon:${l.kode}`)}
+              onAlih={() => onAlih("pohon", l.kode)}
+              onHanya={() => { onHanya("pohon", l.kode); onLompat(l); }}
+              onLompat={() => onLompat(l)}
+            />
+          ))}
+        </>
+      )}
+    </Folder>
+  );
+}
 
 function Kosong({ children }: { children: React.ReactNode }) {
   return <p className="px-3 py-2 text-[11px] text-gray-500 leading-relaxed">{children}</p>;
@@ -439,7 +541,7 @@ function BarisLapisan({
         <span className="block text-[10px] text-gray-500 truncate">
           {tampilJenis ? `${l.jaringan.toUpperCase()} · ` : ""}
           {l.nama !== l.kode ? `${l.nama} · ` : ""}
-          {l.jumlahTiang > 0 ? `${l.jumlahTiang} tiang` : l.ulp}
+          {l.jumlahTiang > 0 ? `${l.jumlahTiang} ${l.jaringan === "pohon" ? "pohon" : "tiang"}` : l.ulp}
         </span>
       </button>
 

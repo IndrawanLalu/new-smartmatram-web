@@ -19,7 +19,8 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
  * digambar, jadi folder Gardu berangkat dari 48 baris, bukan 2.092.
  */
 
-export type Jaringan = "jtm" | "jtr" | "gardu";
+/** "pohon" = lapisan pohon per penyulang (usePohonPeta), tidak lewat peta_daftar. */
+export type Jaringan = "jtm" | "jtr" | "gardu" | "pohon";
 
 export interface Lapisan {
   jaringan: Jaringan;

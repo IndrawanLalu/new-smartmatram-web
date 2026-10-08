@@ -27,6 +27,8 @@ export const WARNA = {
   // benda yang bisa tertukar. Di /admin/peta-gardu warna gardu mengikuti
   // KONDISI, bukan jenisnya, jadi tidak ada warna gardu baku yang dilanggar.
   gardu: "#EF4444",
+  /** Folder Pohon — hijau ikon "sudah dirabas" (usePohonPeta.WARNA_POHON). */
+  pohon: "#16A34A",
   rute: "#F59E0B",
   /** Gawang JTR berkabel ≥2 (underbuild JTR) — ungu, rona yang belum terpakai. */
   jtrUb: "#A855F7",

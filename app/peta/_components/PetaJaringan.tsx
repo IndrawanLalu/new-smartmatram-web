@@ -28,6 +28,9 @@ import PanelLapisan from "./PanelLapisan";
 import PanelObjek from "./PanelObjek";
 import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelUjung from "./PanelUjung";
+import PanelPohon from "./PanelPohon";
+import TugaskanPohonPeta from "./TugaskanPohonPeta";
+import { usePohonPeta, type SaringPohon, type TemuanPohon } from "../_hooks/usePohonPeta";
 
 const PetaInner = dynamic(() => import("./PetaInner"), {
   ssr: false,
@@ -52,6 +55,13 @@ const SARING_AWAL: SaringUjung = {
   jauhDariUjung: null,
 };
 
+const SARING_POHON_AWAL: SaringPohon = {
+  sumber: new Set(["inspeksi", "perabasan"] as const),
+  vegetasi: new Set(["menyentuh", "berpotensi"] as const),
+  tugas: new Set(["belum", "sudah"] as const),
+  sembunyikanTertangani: false,
+};
+
 const SARING_KESEHATAN_AWAL: SaringKesehatan = {
   status: new Set<StatusKesehatan>(["merah", "kuning", "hijau"]),
   hanyaSisip: false,
@@ -73,6 +83,8 @@ interface Batas {
 export interface AwalPeta {
   jtr?: string;
   ulp?: string;
+  /** Dibuka dari WO Perabasan ("Lihat di peta"): lapisan pohon langsung menyala. */
+  pohon?: boolean;
 }
 
 export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?: AwalPeta }) {
@@ -95,12 +107,16 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const { perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
   const penanda = usePenandaJtm();
 
+  // Kunci `pohon:` milik lapisan pohon (usePohonPeta), bukan jaringan yang
+  // tiangnya dimuat — dikeluarkan supaya mencentang pohon tidak memuat ulang peta.
   const pilihan = useMemo(
     () =>
-      [...nyala].map((k) => {
-        const [jaringan, ...sisa] = k.split(":");
-        return { jaringan: jaringan as Jaringan, kode: sisa.join(":") };
-      }),
+      [...nyala]
+        .filter((k) => !k.startsWith("pohon:"))
+        .map((k) => {
+          const [jaringan, ...sisa] = k.split(":");
+          return { jaringan: jaringan as Jaringan, kode: sisa.join(":") };
+        }),
     [nyala],
   );
 
@@ -259,6 +275,22 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [saringUjung, setSaringUjung] = useState<SaringUjung>(SARING_AWAL);
   const ujung = useUjungPeta(ujungAktif, ulp, bulanUjung.tahun, bulanUjung.bulan, saringUjung);
 
+  const [bulanPohon, setBulanPohon] = useState(bulanIni);
+  const [saringPohon, setSaringPohon] = useState<SaringPohon>(SARING_POHON_AWAL);
+  const pohon = usePohonPeta(ulp, bulanPohon.tahun, bulanPohon.bulan, saringPohon, nyala);
+  const pohonAktif = [...nyala].some((k) => k.startsWith("pohon:"));
+  // Menugaskan dari peta: satu pohon (popup) atau semua yang tampil & belum.
+  const [tugasPohon, setTugasPohon] = useState<TemuanPohon[] | null>(null);
+  const bisaTugasPohon = pohon.temuan.filter((t) => t.kunciTugas);
+  const padamkanPohon = () => setNyala((s) => new Set([...s].filter((k) => !k.startsWith("pohon:"))));
+  // Dibuka dari WO Perabasan (/peta?pohon=1): semua penyulang pohon menyala
+  // SEKALI begitu daftarnya terbaca — sesudah itu pilihan sepenuhnya milik pengguna.
+  const [pohonAwalDipasang, setPohonAwalDipasang] = useState(!awal?.pohon);
+  if (!pohonAwalDipasang && pohon.daftar.length > 0) {
+    setPohonAwalDipasang(true);
+    setNyala((s) => new Set([...s, ...pohon.daftar.map((l) => `pohon:${l.kode}`)]));
+  }
+
   const [kesehatanAktif, setKesehatanAktif] = useState(false);
   const [saringKesehatan, setSaringKesehatan] = useState<SaringKesehatan>(SARING_KESEHATAN_AWAL);
   const kesehatan = useKesehatanPeta(kesehatanAktif, ulp, saringKesehatan);
@@ -400,7 +432,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
   const zoom = kotak?.zoom ?? 0;
   const jumlahObjek =
-    rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2 + kesehatan.gardu.length;
+    rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2 + kesehatan.gardu.length
+    + pohon.temuan.length + pohon.dirabas.length;
   const adaGarduPilihan = pilihan.some((p) => p.jaringan === "gardu");
   const adaJaringan = pilihan.some((p) => p.jaringan !== "gardu");
 
@@ -410,7 +443,11 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         <PanelLapisan
           user={user}
           perFolder={perFolder}
-          semuaLapisan={semuaLapisan}
+          pohon={pohon.daftar}
+          saringPohon={saringPohon}
+          onSaringPohon={setSaringPohon}
+          perSumberPohon={pohon.perSumber}
+          semuaLapisan={[...semuaLapisan, ...pohon.daftar]}
           loading={loading}
           error={error}
           ulp={ulp}
@@ -444,6 +481,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           geserBanyak={geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
           ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
+          pohonTemuan={pohon.temuan} pohonDirabas={pohon.dirabas}
+          onTugaskanPohon={boleh ? (t) => setTugasPohon([t]) : undefined}
           simulasi={simulasi.hasil}
           kesehatan={kesehatan.gardu}
           onPilihKesehatan={pilihKesehatan}
@@ -583,7 +622,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
-        {!terpilih && !geserBanyak.aktif && (ujungAktif || kesehatanAktif) && (
+        {!terpilih && !geserBanyak.aktif && (ujungAktif || kesehatanAktif || pohonAktif) && (
           <div className="absolute z-[1050] top-14 right-3 bottom-3 flex flex-col gap-2 overflow-y-auto pointer-events-none [&>*]:pointer-events-auto">
             {kesehatanAktif && (
               <PanelKesehatan
@@ -594,6 +633,23 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
                 sibuk={kesehatan.sibuk}
                 galat={kesehatan.galat}
                 onTutup={() => setKesehatanAktif(false)}
+              />
+            )}
+            {pohonAktif && (
+              <PanelPohon
+                tahun={bulanPohon.tahun}
+                bulan={bulanPohon.bulan}
+                onBulan={(tahun, bulan) => setBulanPohon({ tahun, bulan })}
+                saring={saringPohon}
+                onSaring={setSaringPohon}
+                jumlah={pohon.temuan.length + pohon.dirabas.length}
+                total={pohon.total}
+                tertangani={pohon.tertangani}
+                sibuk={pohon.sibuk}
+                galat={pohon.galat}
+                onTutup={padamkanPohon}
+                bisaDitugaskan={bisaTugasPohon.length}
+                onTugaskanSemua={boleh ? () => setTugasPohon(bisaTugasPohon) : undefined}
               />
             )}
             {ujungAktif && (
@@ -611,6 +667,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
             )}
           </div>
+        )}
+
+        {tugasPohon && (
+          <TugaskanPohonPeta daftar={tugasPohon} oleh={oleh} onTutup={() => setTugasPohon(null)} onSelesai={pohon.muatUlang} />
         )}
 
         {calonGabung && terpilih?.jenis === "tiang" && terpilih.jaringan === "jtr" && (
