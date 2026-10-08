@@ -131,7 +131,9 @@ export async function POST(req: NextRequest) {
 
   // Tugas yang lahir dari "Tugaskan" temuan JTM: WA-nya sudah terkirim saat regu
   // mengirim penilaian (/api/wa-notify-jtm) — jangan dikirim lagi sebagai temuan baru.
-  if (table === "inspeksi" && record.source === "inspeksi_jtm") {
+  // Pohon dari temuan JTM (inspeksi_pohon, sejak 8 Okt 2026) sama: sudah terkirim
+  // saat dinilai; pengingat terjadwal tetap memuatnya.
+  if ((table === "inspeksi" || table === "inspeksi_pohon") && record.source === "inspeksi_jtm") {
     return NextResponse.json({ skipped: true, reason: "temuan JTM, sudah dikirim saat dinilai" });
   }
   // Tugas manual Pemeliharaan Jaringan dibuat admin dari web, bukan temuan —

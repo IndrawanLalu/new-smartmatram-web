@@ -199,7 +199,7 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
                         {tgl(t.ditemukan_pada)}
                         <p className="text-[11px] text-ink-muted">{t.penemu ?? "—"}</p>
                       </td>
-                      <td className={`${TD} text-xs text-ink-soft`}>{t.status_tugas === "Belum ditugaskan" ? "-" : (t.eksekutor ?? "-")}</td>
+                      <td className={`${TD} text-xs text-ink-soft`}>{t.status_tugas === "Belum ditugaskan" ? "-" : ([t.eksekutor, t.team_name].filter(Boolean).join(" · ") || "-")}</td>
                       <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{t.status_tugas === "Belum ditugaskan" ? "-" : tgl(t.assigned_at)}</td>
                       <td className={TD}>
                         <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA_TUGAS[t.status_tugas]}`}>
@@ -239,6 +239,17 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
           }))}
           peringatan={<PeringatanRabas pilih={tugaskan} />}
           prioritasAwal={prioritasAwal(tugaskan)}
+          // Temuan pohon langsung ke regu rabas (8 Okt 2026): PERABASAN terpilih
+          // bila semua yang dipilih ROW; regu dipilih di modal, tidak lewat
+          // Monitoring Inspeksi.
+          eksekutorAwal={tugaskan.every((t) => t.jenis === "ROW") ? "PERABASAN" : undefined}
+          regu={{ ulp: new Set(tugaskan.map((t) => t.ulp)).size === 1 ? tugaskan[0].ulp : null }}
+          keterangan={
+            <p className="text-xs text-ink-soft">
+              Temuan <b>pohon (ROW)</b> masuk <b>Inspeksi Pohon</b>, temuan lain masuk <b>Inspeksi Jaringan</b> — langsung
+              muncul di HP regu / peran yang dipilih, lengkap dengan foto temuan dan titik tiangnya.
+            </p>
+          }
           tugaskan={(p) => o.tugaskan(tugaskan, p)}
           onTutup={() => setTugaskan(null)}
           onSelesai={() => setTerpilih(new Set())}

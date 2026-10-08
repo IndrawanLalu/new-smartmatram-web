@@ -181,6 +181,7 @@ export function useTemuanJtm(ulp: string, oleh: string) {
         p_prioritas: p.prioritas,
         p_catatan: p.catatan || null,
         p_nama: oleh || null,
+        p_regu: p.regu,
       });
       if (error) gagal.push(`${t.tiang_kode} ${t.item_nama}: ${error.message}`);
       else berhasil.add(kunciTemuan(t));
@@ -192,7 +193,7 @@ export function useTemuanJtm(ulp: string, oleh: string) {
       setData((d) =>
         d.map((t) =>
           berhasil.has(kunciTemuan(t))
-            ? { ...t, status_tugas: "Ditugaskan", tugas_status: "Ditugaskan", eksekutor: p.eksekutor, prioritas: p.prioritas, assigned_at: pada }
+            ? { ...t, status_tugas: "Ditugaskan", tugas_status: "Ditugaskan", eksekutor: p.eksekutor, team_name: p.regu, prioritas: p.prioritas, assigned_at: pada }
             : t,
         ),
       );
