@@ -1,7 +1,8 @@
 # Rencana — JTR: jurusan panel, jalur kabel, tiang bersama
 
-*Disusun 8 Oktober 2026. Status: RENCANA, belum ada kode. Keputusan yang sudah
-diambil user ditandai ✅; yang masih ditanyakan ada di bagian 9.*
+*Disusun 8 Oktober 2026. Status: F1 ✅ jalan (8 Okt, putus = 3); F2 ✅ SQL
+ditulis & diuji (`scripts/jtr-jurusan-kabel.sql`), menunggu dijalankan; F3–F5
+belum. Keputusan user ditandai ✅.*
 
 ---
 
@@ -109,7 +110,7 @@ Satu batang tetap satu awalan gardu: `AM104-A4/B5`, bukan `AM104-A4/AM104-B5`.
 
 ## 7. Tahapan
 
-### F1 — Aturan sambung (cepat, aman, tanpa ubah skema)
+### F1 — Aturan sambung (cepat, aman, tanpa ubah skema) ✅ jalan 8 Okt
 - `tiang_gawang_kabel.tersambung` + `usul_asal_kabel_jtr`: bila hulu membawa
   **tepat satu** kabel gardu yang sama → tersambung, berapa pun nomornya.
 - Hasil yang diharapkan: **9 dari 12** bentang langsung beres; KMS naik
@@ -118,19 +119,53 @@ Satu batang tetap satu awalan gardu: `AM104-A4/B5`, bukan `AM104-A4/AM104-B5`.
 - Uji: PGlite dengan salinan data nyata — KMS per gardu sebelum/sesudah; hanya
   gardu yang punya 9 bentang itu yang berubah.
 
-### F2 — Kabel membawa jurusan (server)
-- Kolom `tiang_konduktor.jurusan` (NULL = jurusan tiangnya, supaya HP lama
-  tetap jalan).
-- `tiang_gawang_kabel`, `gardu_jtr_penghantar`, `gardu_jtr_panjang`,
-  `jtr_gawang_terputus`, `usul_asal_kabel_jtr`, `tiang_label`,
-  `inspeksi_jtr_temuan` membaca jurusan per kabel (P2, P4 menggantikan F1).
-- `simpan_konduktor_tiang` / `ubah_kabel_jtr` / `kirim_tiang_jtr` menerima
-  jurusan per kabel; penjaga: jurusan kabel harus jurusan yang ada di gardu itu.
-- Tabel `tiang_kode_jurusan` (pola `tiang_kode_penyulang` JTM): nama + induk
-  per jurusan di batang yang sama; nama tampil = gabungan per posisi kabel.
-- `jtr_kode_baru` per deret jurusan; ✅ jalur kedua dari gardu → `C2-2 …`.
-- Penjaga nomor kabel unik per batang (P3) **hanya untuk data baru**.
-- Uji PGlite: seluruh gardu tanpa tiang bersama → KMS identik dengan sekarang.
+### F2 — Kabel membawa jurusan (server) ✅ `scripts/jtr-jurusan-kabel.sql`
+Yang dibangun (8 Okt):
+- `tiang_konduktor.jurusan` (KOSONG = jurusan tiangnya). `jtr_kabel` + kolom
+  `jurusan` (efektif) dan `dari_gardu` di belakang.
+- `tiang_kode_jurusan` + view `jtr_tiang_jurusan` (satu baris per tiang,
+  gardu, jurusan). `jtr_tiang` tetap satu baris per (tiang, gardu); `kode`
+  = nama gabungan bila tiangnya dilewati jurusan lain.
+- `jtr_kode_baru` per deret jurusan; pangkal kedua `C2-2` (jalur ke-3 `C2-3`),
+  akhiran diwarisi (`C3-2`). **Tambahan dari contoh user**: di tiang bersama,
+  jurusan yang berpisah/bertemu MELANJUTKAN nomor (A4/B4 → B5; bertemu di
+  tengah → A4/B5), bukan cabang `B4B1`. Cabang sungguhan tetap aturan lama.
+- `tiang_gawang` (rute: bentang fisik sekali, lewat jurusan mana pun; +kolom
+  `utama`), `tiang_gawang_kabel` (jurusan = jurusan KABEL, hulu di deret
+  jurusan kabel, aturan sambung P4 ditambahkan — tidak ada yang jadi putus),
+  `gardu_jtr_panjang` (penghantar per jurusan kabel; `jumlah_kabel` = kabel
+  sejajar terbanyak, bukan nomor terbesar), `inspeksi_jtr_temuan` (label
+  kabel = nama di deret jurusannya, `.2` hanya kabel ke-2 jurusan yang sama),
+  `usul_asal_kabel_jtr` (calon sejurusan kabel, terdekat), `jtr_ujung_terjauh`
+  (per deret jurusan).
+- `lewatkan_jurusan_jtr` / `lepas_jurusan_jtr`; `simpan_konduktor_tiang`
+  menerima `jurusan` per kabel (tanpa kunci = yang tercatat; HP lama aman);
+  `kirim_tiang_jtr` menerima `jurusan_lain` per tiang.
+- Batal / lepas pinjaman / gabung kembar / pindah & ubah jurusan / ubah nama
+  ikut membawa keanggotaan jurusan.
+- `jtr_kabel_perlu_dipastikan` — 74 kabel (8 Okt) di 74 tiang.
+- Penjaga posisi kabel unik per batang (P3): hanya kabel BARU dari kiriman
+  yang membawa `jurusan` (HP F3) — HP lama & data lama tidak terhalang.
+
+Uji PGlite, data asli 8 Okt (4.185 tiang, 2.011 kabel): nama tiang, rute,
+bentang per kabel, KMS (76,528 km), bentang putus (3), ujung terjauh IDENTIK.
+Yang berubah memang dimaksud: `jumlah_kabel` 4 gardu (AM104 A, AM275 D, AM012
+D, AM003 D), 1 label temuan (GS047-B2_C15.2 → .2 dibuang: kabel tunggal),
+2 usulan asal AM003 (kini tiang sejurusan terdekat), dan nama pangkal kedua
+(`C2a` → `C2-2`). Nama tiang lanjutan: 0 beda dari 3.951 percobaan.
+Waktu (PGlite): `gardu_jtr_panjang` ±8 → ±140 ms.
+
+Tidak diubah (dikerjakan di F4 bila perlu): `ubah_kabel_jtr` (masih per
+nomor), `tiang_label` (tidak dipakai aplikasi), induk/nama jurusan tambahan
+dari web.
+
+**Kontrak HP F3** (`kirim_tiang_jtr`):
+- per tiang: `jurusan_lain: [{ jurusan, induk_id | induk_lokal (kosong =
+  langsung dari gardu), id_lokal }]` — dicatat di putaran yang sama dengan
+  lahirnya tiang, sebelum kabel;
+- per kabel: `jurusan` (A–D) — harus jurusan utama tiangnya atau jurusan yang
+  tercatat lewat tiang itu;
+- jawaban `tiang[].kode` = nama gabungan.
 
 ### F3 — HP (OTA)
 - Pilihan jurusan: **"Jurusan (huruf di panel gardu)"**, tanpa arah mata
@@ -145,6 +180,9 @@ Satu batang tetap satu awalan gardu: `AM104-A4/B5`, bukan `AM104-A4/AM104-B5`.
   tidak hilang saat ada kiriman menunggu.
 
 ### F4 — Web
+- ⚠ Kunci tugas temuan JTR = label tiang (`sumber_bagian`). Label tiang bersama
+  berubah saat jurusan ditambah/dilepas atau F5 → tugas terlepas. 8 Okt: belum
+  ada satu pun tugas temuan JTR. Ganti kunci ke tiang + kabel sebelum F5.
 - Panjang per jurusan dari kabel; peta JTR berwarna per jurusan kabel.
 - Koreksi per kabel: ubah jurusan kabel (admin).
 - Daftar "perlu dipastikan" (bagian 8) dengan tombol Terapkan.
@@ -159,7 +197,8 @@ Satu batang tetap satu awalan gardu: `AM104-A4/B5`, bukan `AM104-A4/AM104-B5`.
 - **Jurusan tiang yang ada dianggap jurusan panel.** Tidak ada cara mengetahui
   huruf panel dari data; regu membetulkannya saat inspeksi berikutnya dengan
   "Pindah jurusan" yang sudah ada (nama ikut berubah A→B).
-- **72 tiang dengan 2 kabel gardu yang sama**: kabel ke-1 = jurusan tiangnya;
+- **72 tiang dengan 2 kabel gardu yang sama** (74 per 8 Okt, view
+  `jtr_kabel_perlu_dipastikan`): kabel ke-1 = jurusan tiangnya;
   kabel ke-2 **ditandai "jurusan belum dipastikan"** → daftar di web untuk
   admin, dan muncul di HP saat tiangnya diinspeksi. Tidak ditebak.
 - **34 batang dengan nomor kabel kembar lintas gardu**: dibiarkan, ditandai;
@@ -167,18 +206,12 @@ Satu batang tetap satu awalan gardu: `AM104-A4/B5`, bukan `AM104-A4/AM104-B5`.
 - **Nama tiang lama tidak berubah** sampai F5 dijalankan admin.
 - Tidak ada data yang dihapus.
 
-## 9. Pertanyaan untuk user
+## 9. Pertanyaan untuk user — semua terjawab 8 Okt
 
-1. ✅ Model & nama tiang bersama: nama per jurusan, gabungan per posisi kabel
-   (bagian 5–6).
-2. **Jurusan K (khusus)** masih dipakai? Di panel hanya A–D.
-3. **Kata di layar** (aturan: tanya dulu):
-   - pilihan jurusan: "Jurusan (huruf di panel gardu)"?
-   - tombol tiang bersama: "Dilewati jurusan B juga"?
-   - **dua kabel dari jurusan yang SAMA di satu tiang** (jarang): tetap `.2`?
-   - `underbuild_tm` di layar: "Ada JTM di atasnya" (supaya tidak tertukar
-     dengan tiang bersama jurusan)?
-4. **Urutan**: F1 dulu (cepat, 9 bentang beres), baru F2–F4?
+1. ✅ Model & nama tiang bersama: nama per jurusan, gabungan per posisi kabel.
+2. ✅ Jurusan K tidak dipakai (penjaga baru hanya A–D; data K lama dibiarkan).
+3. ✅ Kata di layar disetujui; dua kabel jurusan yang sama → tetap `.2`.
+4. ✅ F1 dulu, lalu F2.
 
 ## 10. Di luar rencana ini
 
