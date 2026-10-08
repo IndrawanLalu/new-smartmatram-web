@@ -16,6 +16,7 @@ import DashboardJtr from "./_components/DashboardJtr";
 import PetaJaringan from "./_components/PetaJaringan";
 import HasilInspeksi from "./_components/HasilInspeksi";
 import JaringanPerGardu from "./_components/JaringanPerGardu";
+import JurusanKabelBelumPasti from "./_components/JurusanKabelBelumPasti";
 import TiangBaik from "./_components/TiangBaik";
 import PengaturanJtr from "./_components/PengaturanJtr";
 import TemuanJtr from "./_components/TemuanJtr";
@@ -187,7 +188,17 @@ export default function JtrPage() {
         </div>
       )}
       {tab === "hasil" && <HasilInspeksi user={user} />}
-      {tab === "jaringan" && <JaringanPerGardu key={o.ulp} ulp={o.ulp} cari={cariGardu} />}
+      {tab === "jaringan" && (
+        <>
+          <JurusanKabelBelumPasti
+            key={`jk-${o.ulp}`}
+            ulp={o.ulp === "SEMUA" ? null : o.ulp}
+            oleh={oleh}
+            boleh={user.role === "UP3" || user.role === "admin"}
+          />
+          <JaringanPerGardu key={o.ulp} ulp={o.ulp} cari={cariGardu} />
+        </>
+      )}
       {tab === "baik" && bolehSetel && <TiangBaik />}
       {tab === "pengaturan" && bolehSetel && <PengaturanJtr />}
 

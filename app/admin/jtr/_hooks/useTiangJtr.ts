@@ -19,6 +19,8 @@ const KOLOM =
 
 export interface KonduktorBaris {
   nomor: number;
+  /** Jurusan yang dibawa kabel ini (`jtr_tiang_lengkap`, F4). */
+  jurusan?: string | null;
   jenis: string | null;
   ukuran: string | null;
   kondisi: string | null;

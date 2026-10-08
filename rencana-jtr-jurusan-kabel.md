@@ -190,7 +190,16 @@ Rencana semula:
   "belum tersambung"), "Dari gardu" memeriksa jarak, tombol mulai dari ujung
   tidak hilang saat ada kiriman menunggu.
 
-### F4 — Web
+### F4 — Web ✅ ditulis 8 Okt (belum commit) — SQL `scripts/jtr-jurusan-kabel-web.sql`
+Yang dibangun: `atur_jurusan_kabel_jtr`; panel "Jurusan kabel belum dipastikan"
+(modal persetujuan per gardu + tab Jaringan per Gardu, tombol per jurusan yang
+lewat tiang itu); panel tiang di Peta: jurusan per kabel + ubah jurusan kabel,
+pindah jurusan hanya A–D; Hasil Inspeksi & Excel: jurusan per kabel; kunci
+tugas temuan 'tiang' / 'kabel:<id>' (tugas tetap menempel saat nama tiang jadi
+A4/B5). Ditunda: peta JTR berwarna per jurusan kabel. Urutan: SQL F2 → SQL F4
+→ build web.
+
+Rencana semula:
 - ⚠ Kunci tugas temuan JTR = label tiang (`sumber_bagian`). Label tiang bersama
   berubah saat jurusan ditambah/dilepas atau F5 → tugas terlepas. 8 Okt: belum
   ada satu pun tugas temuan JTR. Ganti kunci ke tiang + kabel sebelum F5.

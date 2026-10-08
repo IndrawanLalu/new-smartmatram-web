@@ -15,7 +15,8 @@ import { Baris, TOMBOL_PANEL } from "./InfoTiang";
  * Nomor kabel = urutan kabel JTR gardu ini di tiang; JTM TIDAK dihitung.
  */
 
-const JURUSAN = ["A", "B", "C", "D", "K"];
+/** Jurusan = huruf di panel gardu (keputusan user 8 Okt 2026); K tidak dipakai lagi. */
+const JURUSAN = ["A", "B", "C", "D"];
 const namaKabel = (n: number) => (n === 1 ? "Kabel utama" : `Underbuild ${n}`);
 
 interface Props {
@@ -27,6 +28,8 @@ interface Props {
   onKabel: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
   /** Asal kabel: tiang lain, atau langsung dari gardu. */
   onAsal: (nomor: number, huluId: string | null, dariGardu: boolean) => Promise<boolean>;
+  /** Jurusan satu kabel — hanya jurusan yang tercatat lewat tiang ini. */
+  onJurusanKabel: (nomor: number, jurusan: string) => Promise<boolean>;
   onJurusan: (jurusan: string, hilir: boolean) => Promise<boolean>;
   /** Tiang milik sendiri: jadikan pinjaman batang lain (tiang kembar). */
   onGabung: () => void;
@@ -34,7 +37,8 @@ interface Props {
   onLepas: () => void;
 }
 
-export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onAsal, onJurusan, onGabung, onLepas }: Props) {
+export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, onKabel, onAsal, onJurusanKabel, onJurusan, onGabung, onLepas }: Props) {
+  const banyakJurusan = j.jurusanLewat.length > 1;
   const [mode, setMode] = useState<"nama" | "jurusan" | number | null>(null);
   const [nama, setNama] = useState(j.kode);
   const [jurusan, setJurusan] = useState(j.jurusan ?? "A");
@@ -81,7 +85,14 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
       <p className={JUDUL_BAGIAN}>JTR gardu {j.gardu}{j.menumpang ? " · menumpang" : ""}</p>
       <div>
         <Baris label="Nama di gardu ini" nilai={j.kode} />
-        <Baris label="Jurusan" nilai={j.jurusan} />
+        <Baris
+          label="Jurusan"
+          nilai={
+            banyakJurusan
+              ? j.jurusanLewat.map((x) => `${x.jurusan}${x.utama ? " (utama)" : ""} · ${x.kode}`).join("  ·  ")
+              : j.jurusan
+          }
+        />
         <Baris label="Induk JTR" nilai={j.indukKode ?? "pangkal — dari gardu"} />
         {(j.garduLain.length > 0 || j.dinyatakanLain.ada) && (
           <Baris
@@ -106,9 +117,17 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
               <li key={k.nomor} className="text-xs">
               <div className="flex items-center gap-2">
                 <span className={k.nomor > 1 ? "text-[#c084fc] font-semibold" : "text-[#e2e8f0]"}>{namaKabel(k.nomor)}</span>
+                {(banyakJurusan || k.belumPasti) && (
+                  <span
+                    className={`px-1 rounded text-[10px] font-bold ${k.belumPasti ? "bg-violet-500/30 text-violet-200" : "bg-[#00897B]/30 text-[#5eead4]"}`}
+                    title={k.belumPasti ? "Jurusan kabel ini belum dipastikan — sementara ikut jurusan tiangnya" : `Jurusan ${k.jurusan}`}
+                  >
+                    {k.jurusan ?? "?"}{k.belumPasti ? "?" : ""}
+                  </span>
+                )}
                 <span className="text-gray-400 flex-1 min-w-0 truncate">{[k.jenis, k.ukuran, k.kondisi].filter(Boolean).join(" · ") || "—"}</span>
                 {k.putus && (
-                  <span title="Tiang induk tidak punya kabel bernomor sama — bentang ini belum terhitung" className="text-[#FB7185]">
+                  <span title="Kabel ini belum jelas lanjutan kabel mana di tiang induk — bentang ini belum terhitung" className="text-[#FB7185]">
                     <TriangleAlert size={13} />
                   </span>
                 )}
@@ -138,6 +157,29 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
                   </>
                 )}
               </div>
+              {/* Jurusan kabel: dipastikan bila belum, atau dipindah ke jurusan lain
+                  yang tercatat lewat tiang ini. */}
+              {boleh && mode === null && (k.belumPasti || banyakJurusan) && (
+                <div className="mt-1 ml-1 flex flex-wrap items-center gap-1.5 text-[11px]">
+                  <span className={k.belumPasti ? "text-violet-300" : "text-gray-500"}>
+                    {k.belumPasti ? "Jurusan belum dipastikan:" : "Jurusan kabel:"}
+                  </span>
+                  {j.jurusanLewat.map((x) => (
+                    <button
+                      key={x.jurusan}
+                      onClick={() => void jalankan(() => onJurusanKabel(k.nomor, x.jurusan))}
+                      disabled={sibuk || (!k.belumPasti && x.jurusan === k.jurusan)}
+                      className={`px-1.5 py-0.5 rounded border ${
+                        x.jurusan === k.jurusan
+                          ? "border-[#00897B] text-[#5eead4] bg-[#00897B]/20"
+                          : "border-[#1e3552] text-gray-300 hover:text-white"
+                      }`}
+                    >
+                      {x.jurusan}
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Asal kabel: ikut induk (bawaan), ditunjuk, atau belum jelas + usulan. */}
               {k.putus ? (
                 <div className="mt-1 ml-1 flex flex-wrap items-center gap-1.5 text-[11px]">
@@ -196,9 +238,9 @@ export default function KoreksiJtr({ j, pilihan, boleh, onGantiInduk, onNama, on
         )}
         {j.kabel.some((k) => k.putus) && (
           <p className="text-[11px] text-[#FB7185] mt-1.5 leading-relaxed">
-            Induk tiang ini tidak membawa kabel bernomor sama, jadi bentangnya belum terhitung. Biasanya dua jalur
-            berdampingan yang berbagi tiang: pilih asalnya (usulan = tiang terdekat sejurusan yang membawa kabel itu,
-            atau gardu). Kalau nomornya yang salah, samakan nomornya.
+            Induk tiang ini membawa beberapa kabel gardu ini dan tidak satu pun cocok nomor maupun jurusannya, jadi
+            bentangnya belum terhitung. Biasanya dua jalur berdampingan yang berbagi tiang: pilih asalnya (usulan =
+            tiang terdekat yang membawa kabel sejurusan, atau gardu). Kalau nomor atau jurusannya yang salah, betulkan itu.
           </p>
         )}
       </div>

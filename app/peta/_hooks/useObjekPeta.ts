@@ -65,6 +65,10 @@ export interface KabelJtr {
   asal: string | null;
   /** Usulan asal dari server untuk kabel yang belum jelas (`usul_asal_kabel_jtr`). */
   usulan: UsulanAsalKabel | null;
+  /** Jurusan (huruf panel) yang dibawa kabel ini (`jtr-jurusan-kabel.sql`). */
+  jurusan: string | null;
+  /** Kabel ke-2 dst. yang jurusannya belum pernah dicatat — dianggap jurusan tiangnya. */
+  belumPasti: boolean;
 }
 
 export interface RincianJtr {
@@ -76,6 +80,9 @@ export interface RincianJtr {
   tumpangId: string | null;
   indukKode: string | null;
   kabel: KabelJtr[];
+  /** Jurusan gardu ini yang lewat tiang ini — utama lebih dulu — beserta nama
+   *  tiang di deret itu (AM104-A4 / AM104-B5). */
+  jurusanLewat: { jurusan: string; kode: string; utama: boolean }[];
   /** Gardu JTR lain di batang ini (tercatat), dan yang dinyatakan regu. */
   garduLain: string[];
   dinyatakanLain: { ada: boolean; kode: string | null };
@@ -109,7 +116,7 @@ async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJ
   const [j, k, p, gk] = await Promise.all([
     supabaseBrowser.from("jtr_tiang").select("kode,jurusan,induk_id,menumpang,tumpang_id")
       .eq("id", id).ilike("gardu_kode", gardu).eq("status_hidup", "aktif").maybeSingle(),
-    supabaseBrowser.from("jtr_kabel").select("nomor,jenis,ukuran,kondisi").eq("tiang_id", id).eq("gardu", gardu.toUpperCase()).order("nomor"),
+    supabaseBrowser.from("jtr_kabel").select("nomor,jenis,ukuran,kondisi,jurusan").eq("tiang_id", id).eq("gardu", gardu.toUpperCase()).order("nomor"),
     supabaseBrowser.from("jtr_gawang_terputus").select("nomor_kabel").eq("tiang_id", id).ilike("gardu_kode", gardu),
     // hulu_ditunjuk & hulu_id: asal per kabel (ditunjuk tanpa hulu = langsung dari gardu).
     supabaseBrowser.from("tiang_gawang_kabel").select("nomor_kabel,hulu_id,hulu_ditunjuk").eq("tiang_id", id).ilike("gardu_kode", gardu),
@@ -133,10 +140,15 @@ async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJ
     ditunjuk.map((x) => [Number(x.nomor_kabel), x.hulu_id ? (kodeHulu.get(x.hulu_id as string) ?? "tiang lain") : "gardu"]),
   );
   const usulan = putus.size ? (await muatUsulanAsalKabel(gardu, ulp)).filter((u) => u.tiangId === id) : [];
-  const [lain, nyata] = await Promise.all([
+  const [lain, nyata, lewat, belum] = await Promise.all([
     supabaseBrowser.from("jtr_tiang").select("gardu_kode").eq("id", id).eq("status_hidup", "aktif"),
     supabaseBrowser.from("tiang").select("jtr_gardu_lain,jtr_gardu_lain_kode").eq("id", id).maybeSingle(),
+    supabaseBrowser.from("jtr_tiang_jurusan").select("jurusan,kode,utama")
+      .eq("id", id).eq("gardu_kode", gardu.toUpperCase()).eq("status_hidup", "aktif"),
+    supabaseBrowser.from("jtr_kabel_perlu_dipastikan").select("nomor_kabel")
+      .eq("tiang_id", id).eq("gardu_kode", gardu.toUpperCase()),
   ]);
+  const belumPasti = new Set((belum.data ?? []).map((x) => Number(x.nomor_kabel)));
   return {
     gardu: gardu.toUpperCase(),
     kode: j.data.kode as string,
@@ -159,7 +171,12 @@ async function muatJtr(id: string, gardu: string, ulp: string): Promise<RincianJ
       putus: putus.has(Number(x.nomor)),
       asal: asalKabel.get(Number(x.nomor)) ?? null,
       usulan: usulan.find((u) => u.nomor === Number(x.nomor)) ?? null,
+      jurusan: (x.jurusan as string) ?? null,
+      belumPasti: belumPasti.has(Number(x.nomor)),
     })),
+    jurusanLewat: (lewat.data ?? [])
+      .map((x) => ({ jurusan: x.jurusan as string, kode: x.kode as string, utama: !!x.utama }))
+      .sort((a, b) => Number(b.utama) - Number(a.utama) || a.jurusan.localeCompare(b.jurusan)),
   };
 }
 

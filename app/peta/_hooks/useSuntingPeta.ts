@@ -112,6 +112,14 @@ export function useSuntingPeta(oleh: string) {
       (b) => `Digabung — gardu ${gardu} kini menumpang di batang ${b}.`,
     );
 
+  /** Jurusan satu kabel JTR (`jtr-jurusan-kabel-web.sql`). */
+  const jurusanKabelJtr = (id: string, gardu: string, nomor: number, jurusan: string) =>
+    jalankan<{ kode: string; nomor: number; jurusan: string }>(
+      "atur_jurusan_kabel_jtr",
+      { p_tiang_id: id, p_gardu: gardu, p_nomor: nomor, p_jurusan: jurusan, p_oleh: oleh },
+      (d) => `${d.kode} kabel ke-${d.nomor}: jurusan ${d.jurusan}.`,
+    );
+
   /** Asal satu kabel JTR: tiang lain, atau langsung dari gardu (`jtr-asal-kabel.sql`). */
   const asalKabelJtr = (id: string, gardu: string, nomor: number, huluId: string | null, dariGardu: boolean) =>
     jalankan<{ kode: string; nomor: number; asal: string }>(
@@ -127,6 +135,6 @@ export function useSuntingPeta(oleh: string) {
 
   return {
     geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, ubahInduk, batalkan, buatPasanganPortal,
-    indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr,
+    indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
 }

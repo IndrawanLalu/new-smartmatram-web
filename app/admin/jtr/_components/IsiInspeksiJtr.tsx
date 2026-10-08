@@ -9,6 +9,7 @@ import type { TitikTiang } from "./PetaUsulan";
 import UsulanTitikJtr from "./UsulanTitikJtr";
 import DaftarTemuanJtr from "./DaftarTemuanJtr";
 import AsalKabelBelumJelas from "./AsalKabelBelumJelas";
+import JurusanKabelBelumPasti from "./JurusanKabelBelumPasti";
 import { km, rentangKerja } from "../_lib/tampilan";
 
 const PetaPerbandingan = dynamic(() => import("./PetaPerbandingan"), {
@@ -187,6 +188,8 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh, onB
           onBerubah={() => onBandingBerubah?.()}
         />
       )}
+
+      <JurusanKabelBelumPasti gardu={aktif.gardu_kode} ulp={aktif.ulp} oleh={oleh} onBerubah={() => onBandingBerubah?.()} />
 
       {banding && <DaftarTemuanJtr temuan={banding.temuan} />}
 

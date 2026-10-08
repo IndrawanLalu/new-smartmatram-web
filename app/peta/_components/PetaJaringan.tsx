@@ -597,6 +597,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               koreksiJtr((id, g) => sunting.kabelJtr(id, g, lama, baru, jenis, ukuran, hilir))}
             onAsalJtr={(nomor, huluId, dariGardu) =>
               koreksiJtr((id, g) => sunting.asalKabelJtr(id, g, nomor, huluId, dariGardu))}
+            onJurusanKabelJtr={(nomor, jurusan) => koreksiJtr((id, g) => sunting.jurusanKabelJtr(id, g, nomor, jurusan))}
             onJurusanJtr={(jurusan, hilir) => koreksiJtr((id, g) => sunting.jurusanJtr(id, g, jurusan, hilir))}
             inspeksiJtr={inspeksiTerpilih}
             oleh={oleh}

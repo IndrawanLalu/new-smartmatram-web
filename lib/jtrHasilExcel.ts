@@ -12,6 +12,8 @@ import { susunHasilInspeksi, type BarisHasil, type KolomHasil, type SelHasil, ty
 
 export interface KabelJtr {
   nomor: number;
+  /** Jurusan yang dibawa kabel ini (huruf panel gardu). */
+  jurusan?: string | null;
   jenis: string | null;
   ukuran: string | null;
   kondisi: string | null;
@@ -72,6 +74,7 @@ const BELAKANG: KolomHasil[] = [
 ];
 
 const ISIAN_KABEL: { judul: string; kategori: string | null; ambil: (k: KabelJtr) => string }[] = [
+  { judul: "Jurusan", kategori: null, ambil: (k) => k.jurusan ?? "" },
   { judul: "Jenis & ukuran", kategori: null, ambil: (k) => [k.jenis, k.ukuran].filter(Boolean).join(" ") },
   { judul: "Kondisi", kategori: "kondisi_kabel", ambil: (k) => k.kondisi ?? "" },
   { judul: "Suspension", kategori: "kondisi_aksesoris", ambil: (k) => k.aks_suspension ?? "" },
@@ -93,7 +96,7 @@ export function susunHasilJtr(tiang: TiangJtrExcel[], adalahTemuan: TemuanJtr, j
     { judul: "Kondisi", lebar: 10, kelompok: "Tiang" },
     { judul: "Digantung tiang TM", lebar: 11, kelompok: "Tiang" },
     ...Array.from({ length: nKabel }, (_, i) =>
-      ISIAN_KABEL.map((x) => ({ judul: x.judul, lebar: x.kategori ? 11 : 16, kelompok: `Kabel ${i + 1}` })),
+      ISIAN_KABEL.map((x) => ({ judul: x.judul, lebar: x.judul === "Jurusan" ? 8 : x.kategori ? 11 : 16, kelompok: `Kabel ${i + 1}` })),
     ).flat(),
     { judul: "Jenis", lebar: 10, kelompok: "Jamperan" },
     { judul: "Kondisi", lebar: 10, kelompok: "Jamperan" },

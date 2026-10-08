@@ -25,7 +25,8 @@ const kabelRingkas = (t: TiangBaris) =>
   t.tiang_konduktor?.length
     ? t.tiang_konduktor
         .sort((a, b) => a.nomor - b.nomor)
-        .map((k) => `${k.ukuran ?? "?"}${k.kondisi && k.kondisi !== "Baik" ? ` (${k.kondisi})` : ""}`)
+        // Kabel jurusan lain yang lewat tiang ini disebut jurusannya ("B: 3x50+35").
+        .map((k) => `${k.jurusan && k.jurusan !== t.jurusan ? `${k.jurusan}: ` : ""}${k.ukuran ?? "?"}${k.kondisi && k.kondisi !== "Baik" ? ` (${k.kondisi})` : ""}`)
         .join(" · ")
     : "—";
 

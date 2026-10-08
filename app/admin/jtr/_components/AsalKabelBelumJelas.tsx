@@ -73,8 +73,9 @@ export default function AsalKabelBelumJelas({ gardu, ulp, oleh, kunci, onBerubah
         <div className="flex-1">
           <p className={EYEBROW}>Asal kabel belum dipilih ({daftar.length})</p>
           <p className="text-xs text-orange-900 mt-0.5 leading-relaxed">
-            Tiang induknya tidak membawa kabel bernomor sama — biasanya dua jalur berdampingan yang berbagi tiang,
-            jadi kabelnya datang dari tiang lain atau langsung dari gardu. Panjangnya belum terhitung sampai asalnya dipilih.
+            Tiang induknya membawa beberapa kabel gardu ini, dan tidak satu pun cocok nomor maupun jurusannya — biasanya
+            dua jalur berdampingan yang berbagi tiang, jadi kabelnya datang dari tiang lain atau langsung dari gardu.
+            Panjangnya belum terhitung sampai asalnya dipilih.
           </p>
         </div>
         {adaUsulan && (

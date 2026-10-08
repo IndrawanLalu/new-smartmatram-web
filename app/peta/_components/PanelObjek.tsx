@@ -58,6 +58,7 @@ interface Props {
   onNamaJtr: (kode: string) => Promise<boolean>;
   onKabelJtr: (lama: number, baru: number, jenis: string, ukuran: string, hilir: boolean) => Promise<boolean>;
   onAsalJtr: (nomor: number, huluId: string | null, dariGardu: boolean) => Promise<boolean>;
+  onJurusanKabelJtr: (nomor: number, jurusan: string) => Promise<boolean>;
   onJurusanJtr: (jurusan: string, hilir: boolean) => Promise<boolean>;
   /** Inspeksi JTR gardu ini yang menunggu persetujuan (null = tidak ada). */
   inspeksiJtr: AntreanJtr | null;
@@ -206,6 +207,7 @@ export default function PanelObjek(p: Props) {
             onNama={p.onNamaJtr}
             onKabel={p.onKabelJtr}
             onAsal={p.onAsalJtr}
+            onJurusanKabel={p.onJurusanKabelJtr}
             onJurusan={p.onJurusanJtr}
             onGabung={p.onMulaiGabung}
             onLepas={() => setTanyaLepas(true)}
