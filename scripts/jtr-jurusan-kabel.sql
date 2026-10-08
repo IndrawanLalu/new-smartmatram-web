@@ -1093,9 +1093,9 @@ GRANT EXECUTE ON FUNCTION public.lepas_jurusan_jtr(UUID, TEXT, TEXT) TO authenti
 -- kabel (HP F3 / web). HP lama tidak mengirimnya → jurusan yang sudah
 -- tercatat dipertahankan (pola yang sama dengan `dari_gardu`). Jurusan kabel
 -- harus jurusan utama tiangnya, atau jurusan yang tercatat lewat tiang itu.
--- ★ Penjaga posisi kabel unik per BATANG (lintas gardu) hanya untuk kabel BARU
---   dari kiriman yang membawa jurusan (HP F3 menampilkan kabel gardu lain) —
---   data lama dan HP lama tidak terhalang.
+-- Nomor kabel TETAP dihitung per gardu (formulir HP sejak 1 Okt, kasus AM263:
+-- "JTM & JTR gardu lain tidak dihitung") — identitas jalur kini dibawa jurusan
+-- kabel, jadi nomor lintas gardu tidak perlu dijaga.
 CREATE OR REPLACE FUNCTION public.simpan_konduktor_tiang(p_tiang_id uuid, p_daftar jsonb, p_nama text DEFAULT NULL::text, p_gardu text DEFAULT NULL::text)
  RETURNS void
  LANGUAGE plpgsql
@@ -1116,7 +1116,6 @@ DECLARE
   dari    BOOLEAN;
   jur     TEXT;   -- ★
   jur_utama TEXT; -- ★
-  lain    TEXT;   -- ★
 BEGIN
   SELECT kode, ulp, gardu_kode INTO t FROM public.tiang WHERE id = p_tiang_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'Tiang tidak ditemukan'; END IF;
@@ -1158,19 +1157,6 @@ BEGIN
          WHERE x.tiang_id = p_tiang_id AND upper(x.gardu_kode) = v_gardu AND x.jurusan = jur AND x.status = 'aktif') THEN
       RAISE EXCEPTION 'Kabel ke-% jurusan %, tapi tiang % belum dicatat dilewati jurusan % — tandai dulu "Dilewati jurusan % juga".',
         no_kabel, jur, t.kode, jur, jur;
-    END IF;
-
-    -- ★ Posisi kabel unik per batang, hanya untuk kabel baru dari HP baru.
-    IF lama.tiang_id IS NULL AND k ? 'jurusan' THEN
-      SELECT upper(COALESCE(x.pemilik_gardu_kode, t.gardu_kode)) INTO lain
-      FROM public.tiang_konduktor x
-      WHERE x.tiang_id = p_tiang_id AND x.nomor = no_kabel
-        AND COALESCE(x.pemilik_gardu_kode, '') <> COALESCE(pemilik, '')
-      LIMIT 1;
-      IF lain IS NOT NULL THEN
-        RAISE EXCEPTION 'Posisi kabel ke-% di tiang % sudah dipakai kabel gardu %. Kabel dihitung bersama kabel gardu lain di batang yang sama — pakai nomor posisi berikutnya.',
-          no_kabel, t.kode, lain;
-      END IF;
     END IF;
 
     IF hulu IS NOT NULL THEN

@@ -144,8 +144,8 @@ Yang dibangun (8 Okt):
 - Batal / lepas pinjaman / gabung kembar / pindah & ubah jurusan / ubah nama
   ikut membawa keanggotaan jurusan.
 - `jtr_kabel_perlu_dipastikan` — 74 kabel (8 Okt) di 74 tiang.
-- Penjaga posisi kabel unik per batang (P3): hanya kabel BARU dari kiriman
-  yang membawa `jurusan` (HP F3) — HP lama & data lama tidak terhalang.
+- P3 (nomor unik per batang lintas gardu) DIBATALKAN 8 Okt: formulir HP sejak
+  1 Okt (AM263) menomori kabel PER GARDU; identitas jalur kini = jurusan kabel.
 
 Uji PGlite, data asli 8 Okt (4.185 tiang, 2.011 kabel): nama tiang, rute,
 bentang per kabel, KMS (76,528 km), bentang putus (3), ujung terjauh IDENTIK.
@@ -167,7 +167,18 @@ dari web.
   tercatat lewat tiang itu;
 - jawaban `tiang[].kode` = nama gabungan.
 
-### F3 — HP (OTA)
+### F3 — HP (OTA) ✅ ditulis 8 Okt (repo HP, belum commit/OTA)
+Yang dibangun: pilihan "Jurusan (huruf di panel gardu)" A–D (K hanya bila
+datanya ada), pemeriksa "jalur menuju TIMUR" dihapus; tiang jurusan lain tampil
+kelabu di peta — diketuk (atau "Tambah tiang" tepat di bawahnya) → "Dilewati
+jurusan B juga" → lembar Ubah tiang itu dengan kabel jurusan B; lembar tiang
+baru punya "Juga dilewati jurusan" (diwariskan ke tiang berikutnya, induk tiap
+jurusan ditampilkan); tiap kabel menyebut jurusannya (kabel ke-2 lama tanpa
+jurusan = wajib dipastikan); "Lepas B" di tiang bersama melepas jurusannya saja;
+kiriman diurutkan induk lebih dulu. ⚠ OTA hanya SESUDAH jtr-jurusan-kabel.sql
+dijalankan (HP baru membaca `tiang_kode_jurusan` & `tiang_konduktor.jurusan`).
+
+Rencana semula:
 - Pilihan jurusan: **"Jurusan (huruf di panel gardu)"**, tanpa arah mata
   angin. Peringatan "jalur menuju TIMUR tapi Anda memilih A" **dihapus**.
 - Di tiang milik jurusan lain: tombol **"Dilewati jurusan B juga"** → menambah
