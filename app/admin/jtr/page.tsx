@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import {
-  CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search,
+  BookOpen, CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search,
   SearchCheck, Send, SlidersHorizontal, TriangleAlert,
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -21,6 +21,7 @@ import TiangBaik from "./_components/TiangBaik";
 import PengaturanJtr from "./_components/PengaturanJtr";
 import TemuanJtr from "./_components/TemuanJtr";
 import WoInspeksi from "@/app/admin/_components/WoInspeksi";
+import PanduanModul from "@/app/admin/_components/PanduanModul";
 
 /**
  * Inspeksi JTR — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
@@ -43,6 +44,8 @@ const TABS = [
   { key: "peta", label: "Peta", icon: Map, setelan: false },
   { key: "hasil", label: "Hasil Inspeksi", icon: ClipboardList, setelan: false },
   { key: "jaringan", label: "Jaringan per Gardu", icon: Network, setelan: false },
+  // Istilah & kapan dipakai — dibaca semua; disunting UP3/admin (sama dengan HP).
+  { key: "panduan", label: "Panduan", icon: BookOpen, setelan: false },
   // Dua tab terakhir berlaku untuk SEMUA ULP sekaligus — satu perubahan di sini
   // mengubah formulir tiap regu di lapangan, jadi dibatasi ke pengelola setelan.
   { key: "baik", label: "Tiang Baik", icon: CheckCheck, setelan: true },
@@ -201,6 +204,7 @@ export default function JtrPage() {
       )}
       {tab === "baik" && bolehSetel && <TiangBaik />}
       {tab === "pengaturan" && bolehSetel && <PengaturanJtr />}
+      {tab === "panduan" && <PanduanModul modul="jtr" oleh={oleh} bolehUbah={bolehSetel} />}
 
       {detail && (
         <DetailInspeksiJtrModal
