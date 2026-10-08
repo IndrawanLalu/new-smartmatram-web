@@ -265,7 +265,9 @@ export function useDaftarJtm(user: CurrentUser) {
     return error ? null : (h as PratinjauBatalJtm);
   };
 
-  /** Batalkan inspeksi + segmen rintisannya (+ segmen sambungannya). */
+  /** Pintu `batalkan_jtm_hp` — server yang memilih: segmen rintisan → inspeksi +
+   *  segmennya (+ sambungannya); segmen impor/WO → inspeksi + tiang yang
+   *  dititik di inspeksi itu ("ulangi"). */
   const batalkanSegmen = async (d: BarisJtm, alasan: string) => {
     await rpc(d.id, "batalkan_jtm_hp", { p_segmen_id: d.segmen_id, p_tier: d.tier, p_alasan: alasan, p_nama: oleh });
     await segarkanSatu(d.id);

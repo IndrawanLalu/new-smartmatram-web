@@ -61,7 +61,7 @@ export default function DetailInspeksiJtmModal({
   const [isi, setIsi] = useState<JawabanTiang[] | null>(null);
   const [galatIsi, setGalatIsi] = useState<string | null>(null);
   const [hanyaTemuan, setHanyaTemuan] = useState(false);
-  const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | "batalSegmen" | "buang" | "satukan" | null>(null);
+  const [dialog, setDialog] = useState<"kembalikan" | "batalkan" | "batalSegmen" | "batalUlangi" | "buang" | "satukan" | null>(null);
   const [pratinjau, setPratinjau] = useState<PratinjauBatalJtm | null>(null);
   const [memeriksa, setMemeriksa] = useState(false);
   const [ubahNama, setUbahNama] = useState(false);
@@ -90,15 +90,22 @@ export default function DetailInspeksiJtmModal({
     }
   };
 
-  // Batalkan: tanya dulu ke server apakah segmen rintisannya ikut bisa
-  // dibatalkan (`jtm-batal-hp.sql`). Kalau ya, itu pilihan utamanya — kalau
-  // tidak, segmen & tiangnya tertinggal jadi "rintisan terbuka" di HP.
+  // Batalkan: tanya dulu ke server (`jtm-batal-hp.sql`) apa yang ikut batal.
+  //   segmen rintisan → segmen + tiangnya; kalau tidak, tertinggal jadi
+  //                     "rintisan terbuka" di HP.
+  //   segmen impor/WO → tiang yang DITITIK di inspeksi ini (aturan "ulangi").
+  //                     Tanpa itu tiangnya tetap aktif dan muncul lagi saat
+  //                     regu menginspeksi ulang (LEMBAR GR041–GR042, 8 Okt 2026).
   const mulaiBatal = async () => {
     setMemeriksa(true);
     const p = await pratinjauBatalSegmen(d);
     setMemeriksa(false);
     setPratinjau(p);
-    setDialog(p?.mode === "segmen" && p.boleh ? "batalSegmen" : "batalkan");
+    setDialog(
+      p?.boleh && p.mode === "segmen" ? "batalSegmen"
+      : p?.boleh && p.mode === "ulangi" && (p.tiang ?? 0) > 0 ? "batalUlangi"
+      : "batalkan",
+    );
   };
 
   const menunggu = d.status === "Selesai";
@@ -257,6 +264,19 @@ export default function DetailInspeksiJtmModal({
           labelTombol="Batalkan inspeksi"
           onTutup={() => setDialog(null)}
           onBatalkan={(alasan) => jalankan(() => batalkan(d.id, alasan), "Inspeksi dibatalkan.")}
+        />
+      )}
+      {dialog === "batalUlangi" && pratinjau && (
+        <BatalkanModal
+          judul={`Batalkan inspeksi + ${pratinjau.tiang} tiang yang dititik di inspeksi ini?`}
+          keterangan={`${pratinjau.tiang} tiang yang dititik regu selama inspeksi ini ikut dibatalkan — nomornya tidak dipakai lagi dan tidak muncul lagi di HP. Segmennya TETAP, dan bisa diinspeksi ulang dari awal. Tiang yang sudah ada sebelum inspeksi ini, atau juga milik segmen lain, tidak disentuh.`}
+          peringatan={'Tidak bisa dikembalikan. Kalau tiang yang dititik itu benar dan hanya catatan inspeksinya yang salah, pilih "Inspeksinya saja".'}
+          labelTombol={`Batalkan inspeksi + ${pratinjau.tiang} tiang`}
+          aksiLain={{ label: "Inspeksinya saja", onClick: () => setDialog("batalkan") }}
+          onTutup={() => setDialog(null)}
+          onBatalkan={(alasan) =>
+            jalankan(() => batalkanSegmen(d, alasan), `Inspeksi dibatalkan — ${pratinjau.tiang} tiangnya ikut dibatalkan, segmen siap diinspeksi ulang.`)
+          }
         />
       )}
       {dialog === "batalSegmen" && pratinjau && (
