@@ -22,6 +22,7 @@ import { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
 import { useIsianPeta } from "../_hooks/useIsianPeta";
 import { useIndukLoncat } from "../_hooks/useIndukLoncat";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
+import MenuKelompok from "./MenuKelompok";
 import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useKesehatanPeta, type KesehatanGardu, type SaringKesehatan, type StatusKesehatan } from "../_hooks/useKesehatanPeta";
@@ -171,6 +172,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [namaTiang, setNamaTiang] = useState(false);
   // Nomor kabel JTR di tiap tiang — yang paling sering dicek admin (1/2/3).
   const [nomorKabel, setNomorKabel] = useState(false);
+  // Tombol di atas peta dikelompokkan JTM / JTR / Gardu; satu yang terbuka.
+  const [menuBuka, setMenuBuka] = useState<"jtm" | "jtr" | "gardu" | null>(null);
+  const bukaMenu = (m: "jtm" | "jtr" | "gardu") => setMenuBuka((x) => (x === m ? null : m));
+  const bolehSetujui = user.role === "UP3" || user.role === "admin";
 
   // ── Persetujuan inspeksi JTR dari peta ─────────────────────────────────────
   const antreanJtr = useAntreanJtr(ulp);
@@ -920,69 +925,146 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         )}
 
         <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
-          {boleh && (
-            <button
-              onClick={() => {
-                const nyalakan = !portalAktif;
-                setPortalAktif(nyalakan);
-                if (nyalakan && portal.daftar.length > 0) {
-                  setPosPortal(0);
-                  bukaPortal(portal.daftar[0]);
-                }
-              }}
-              className={`${TOMBOL_ATAS} ${portalAktif ? "ring-1 ring-[#c084fc]" : ""}`}
-              style={{ background: portalAktif ? "rgba(192,132,252,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-              title="Gardu portal yang baru tercatat satu tiang — buatkan tiang keduanya"
-            >
-              <Columns2 size={15} /> Portal
-              {portal.daftar.length > 0 && (
-                <span className="ml-0.5 px-1.5 rounded-full bg-[#c084fc] text-[#0b1220] text-[11px] font-bold">{portal.daftar.length}</span>
+          <MenuKelompok
+            label="JTM"
+            terbuka={menuBuka === "jtm"}
+            onBuka={() => bukaMenu("jtm")}
+            angka={(bolehSetujui ? antreanJtm.antrean.length : 0) + (boleh ? portal.daftar.length : 0)}
+            warnaAngka="#60A5FA"
+            menyala={jtmAktif || koreksi.aktif || isianTampil || portalAktif}
+            kelas={TOMBOL_ATAS}
+          >
+              {bolehSetujui ? (
+                <button
+                  onClick={() => {
+                    const nyalakan = !jtmAktif;
+                    setJtmAktif(nyalakan);
+                    if (nyalakan) setAntreanAktif(false);
+                    if (!nyalakan) setBukaJtm(null);
+                    if (nyalakan && antreanJtm.antrean.length > 0) {
+                      setPosJtm(0);
+                      bukaAntreanJtm(antreanJtm.antrean[0]);
+                    }
+                  }}
+                  className={`${TOMBOL_ATAS} ${jtmAktif ? "ring-1 ring-[#60A5FA]" : ""}`}
+                  style={{ background: jtmAktif ? "rgba(96,165,250,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                  title="Antrean inspeksi JTM yang menunggu persetujuan"
+                >
+                  <ClipboardCheck size={15} /> Persetujuan JTM
+                  {antreanJtm.antrean.length > 0 && (
+                    <span className="ml-0.5 px-1.5 rounded-full bg-[#60A5FA] text-[#0b1220] text-[11px] font-bold">{antreanJtm.antrean.length}</span>
+                  )}
+                </button>
+              ) : null}
+              {boleh && (
+                <button
+                  onClick={() => {
+                    tutupObjek();
+                    if (koreksi.aktif) koreksi.keluar();
+                    else koreksi.mulai();
+                  }}
+                  className={`${TOMBOL_ATAS} ${koreksi.aktif ? "ring-1 ring-[#5eead4]" : ""}`}
+                  style={{ background: koreksi.aktif ? "rgba(94,234,212,0.2)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                  title="Betulkan isian inspeksi JTM (mis. ukuran kabel) per rentang tiang, atau yang janggal"
+                >
+                  <ListChecks size={15} /> Koreksi isian
+                </button>
               )}
-            </button>
-          )}
-          {user.role === "UP3" || user.role === "admin" ? (
-            <button
-              onClick={() => {
-                const nyalakan = !antreanAktif;
-                setAntreanAktif(nyalakan);
-                if (nyalakan) { setJtmAktif(false); setBukaJtm(null); }
-                if (nyalakan && antreanJtr.antrean.length > 0) {
-                  setPosAntrean(0);
-                  bukaAntrean(antreanJtr.antrean[0]);
-                }
-              }}
-              className={`${TOMBOL_ATAS} ${antreanAktif ? "ring-1 ring-[#FACC15]" : ""}`}
-              style={{ background: antreanAktif ? "rgba(250,204,21,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-              title="Antrean inspeksi JTR yang menunggu persetujuan"
-            >
-              <ClipboardCheck size={15} /> Persetujuan JTR
-              {antreanJtr.antrean.length > 0 && (
-                <span className="ml-0.5 px-1.5 rounded-full bg-[#FACC15] text-[#0b1220] text-[11px] font-bold">{antreanJtr.antrean.length}</span>
+              <button
+                onClick={() => setIsianTampil((v) => !v)}
+                className={`${TOMBOL_ATAS} ${isianTampil ? "ring-1 ring-[#00897B]" : ""}`}
+                style={{ background: isianTampil ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                title="Tulis ukuran konduktor JTM di tiap tiang, berwarna per ukuran — yang beda sendiri langsung terlihat"
+              >
+                <Ruler size={15} /> {namaItemTampil}
+              </button>
+              {boleh && (
+                <button
+                  onClick={() => {
+                    const nyalakan = !portalAktif;
+                    setPortalAktif(nyalakan);
+                    if (nyalakan && portal.daftar.length > 0) {
+                      setPosPortal(0);
+                      bukaPortal(portal.daftar[0]);
+                    }
+                  }}
+                  className={`${TOMBOL_ATAS} ${portalAktif ? "ring-1 ring-[#c084fc]" : ""}`}
+                  style={{ background: portalAktif ? "rgba(192,132,252,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                  title="Gardu portal yang baru tercatat satu tiang — buatkan tiang keduanya"
+                >
+                  <Columns2 size={15} /> Portal
+                  {portal.daftar.length > 0 && (
+                    <span className="ml-0.5 px-1.5 rounded-full bg-[#c084fc] text-[#0b1220] text-[11px] font-bold">{portal.daftar.length}</span>
+                  )}
+                </button>
               )}
-            </button>
-          ) : null}
-          {user.role === "UP3" || user.role === "admin" ? (
-            <button
-              onClick={() => {
-                const nyalakan = !jtmAktif;
-                setJtmAktif(nyalakan);
-                if (nyalakan) setAntreanAktif(false);
-                if (!nyalakan) setBukaJtm(null);
-                if (nyalakan && antreanJtm.antrean.length > 0) {
-                  setPosJtm(0);
-                  bukaAntreanJtm(antreanJtm.antrean[0]);
-                }
-              }}
-              className={`${TOMBOL_ATAS} ${jtmAktif ? "ring-1 ring-[#60A5FA]" : ""}`}
-              style={{ background: jtmAktif ? "rgba(96,165,250,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-              title="Antrean inspeksi JTM yang menunggu persetujuan"
-            >
-              <ClipboardCheck size={15} /> Persetujuan JTM
-              {antreanJtm.antrean.length > 0 && (
-                <span className="ml-0.5 px-1.5 rounded-full bg-[#60A5FA] text-[#0b1220] text-[11px] font-bold">{antreanJtm.antrean.length}</span>
-              )}
-            </button>
-          ) : null}
+          </MenuKelompok>
+          <MenuKelompok
+            label="JTR"
+            terbuka={menuBuka === "jtr"}
+            onBuka={() => bukaMenu("jtr")}
+            angka={bolehSetujui ? antreanJtr.antrean.length : 0}
+            warnaAngka="#FACC15"
+            menyala={antreanAktif || nomorKabel}
+            kelas={TOMBOL_ATAS}
+          >
+              {bolehSetujui ? (
+                <button
+                  onClick={() => {
+                    const nyalakan = !antreanAktif;
+                    setAntreanAktif(nyalakan);
+                    if (nyalakan) { setJtmAktif(false); setBukaJtm(null); }
+                    if (nyalakan && antreanJtr.antrean.length > 0) {
+                      setPosAntrean(0);
+                      bukaAntrean(antreanJtr.antrean[0]);
+                    }
+                  }}
+                  className={`${TOMBOL_ATAS} ${antreanAktif ? "ring-1 ring-[#FACC15]" : ""}`}
+                  style={{ background: antreanAktif ? "rgba(250,204,21,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                  title="Antrean inspeksi JTR yang menunggu persetujuan"
+                >
+                  <ClipboardCheck size={15} /> Persetujuan JTR
+                  {antreanJtr.antrean.length > 0 && (
+                    <span className="ml-0.5 px-1.5 rounded-full bg-[#FACC15] text-[#0b1220] text-[11px] font-bold">{antreanJtr.antrean.length}</span>
+                  )}
+                </button>
+              ) : null}
+              <button
+                onClick={() => setNomorKabel((v) => !v)}
+                className={`${TOMBOL_ATAS} ${nomorKabel ? "ring-1 ring-[#00897B]" : ""}`}
+                style={{ background: nomorKabel ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                title="Tulis nomor kabel JTR tiap tiang — merah = satu kabel bernomor selain 1 (hampir pasti salah catat)"
+              >
+                <Hash size={15} /> Nomor kabel
+              </button>
+          </MenuKelompok>
+          <MenuKelompok
+            label="Gardu"
+            terbuka={menuBuka === "gardu"}
+            onBuka={() => bukaMenu("gardu")}
+            angka={0}
+            warnaAngka="#5eead4"
+            menyala={kesehatanAktif || ujungAktif}
+            kelas={TOMBOL_ATAS}
+          >
+              <button
+                onClick={() => setKesehatanAktif((v) => !v)}
+                className={`${TOMBOL_ATAS} ${kesehatanAktif ? "ring-1 ring-[#00897B]" : ""}`}
+                style={{ background: kesehatanAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                title="Warnai gardu menurut beban, jatuh tegangan, dan tegangan ujung"
+              >
+                <Activity size={15} /> Kesehatan gardu
+              </button>
+              <button
+                onClick={() => setUjungAktif((v) => !v)}
+                className={`${TOMBOL_ATAS} ${ujungAktif ? "ring-1 ring-[#00897B]" : ""}`}
+                style={{ background: ujungAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                title="Tampilkan titik ukur tegangan ujung"
+              >
+                <Gauge size={15} /> Tegangan ujung
+              </button>
+          </MenuKelompok>
+          <span className="w-px h-6 bg-white/15" aria-hidden />
           {boleh && (
             <button
               onClick={() => {
@@ -997,29 +1079,6 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               <Move size={15} /> Geser titik
             </button>
           )}
-          {boleh && (
-            <button
-              onClick={() => {
-                tutupObjek();
-                if (koreksi.aktif) koreksi.keluar();
-                else koreksi.mulai();
-              }}
-              className={`${TOMBOL_ATAS} ${koreksi.aktif ? "ring-1 ring-[#5eead4]" : ""}`}
-              style={{ background: koreksi.aktif ? "rgba(94,234,212,0.2)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-              title="Betulkan isian inspeksi JTM (mis. ukuran kabel) per rentang tiang, atau yang janggal"
-            >
-              <ListChecks size={15} /> Koreksi isian
-            </button>
-          )}
-          <button
-            onClick={() => void muatUlangSemua()}
-            disabled={memuatUlang}
-            className={TOMBOL_ATAS}
-            style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}
-            title="Muat ulang isi peta sesudah menyunting — pilihan lapisan & posisi tetap"
-          >
-            <RefreshCw size={15} className={memuatUlang ? "animate-spin" : ""} /> Muat ulang
-          </button>
           <button
             onClick={() => setNamaTiang((v) => !v)}
             className={`${TOMBOL_ATAS} ${namaTiang ? "ring-1 ring-[#00897B]" : ""}`}
@@ -1029,36 +1088,13 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             <Tags size={15} /> Nama tiang
           </button>
           <button
-            onClick={() => setNomorKabel((v) => !v)}
-            className={`${TOMBOL_ATAS} ${nomorKabel ? "ring-1 ring-[#00897B]" : ""}`}
-            style={{ background: nomorKabel ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-            title="Tulis nomor kabel JTR tiap tiang — merah = satu kabel bernomor selain 1 (hampir pasti salah catat)"
+            onClick={() => void muatUlangSemua()}
+            disabled={memuatUlang}
+            className={TOMBOL_ATAS}
+            style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Muat ulang isi peta sesudah menyunting — pilihan lapisan & posisi tetap"
           >
-            <Hash size={15} /> Nomor kabel
-          </button>
-          <button
-            onClick={() => setIsianTampil((v) => !v)}
-            className={`${TOMBOL_ATAS} ${isianTampil ? "ring-1 ring-[#00897B]" : ""}`}
-            style={{ background: isianTampil ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-            title="Tulis ukuran konduktor JTM di tiap tiang, berwarna per ukuran — yang beda sendiri langsung terlihat"
-          >
-            <Ruler size={15} /> {namaItemTampil}
-          </button>
-          <button
-            onClick={() => setKesehatanAktif((v) => !v)}
-            className={`${TOMBOL_ATAS} ${kesehatanAktif ? "ring-1 ring-[#00897B]" : ""}`}
-            style={{ background: kesehatanAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-            title="Warnai gardu menurut beban, jatuh tegangan, dan tegangan ujung"
-          >
-            <Activity size={15} /> Kesehatan gardu
-          </button>
-          <button
-            onClick={() => setUjungAktif((v) => !v)}
-            className={`${TOMBOL_ATAS} ${ujungAktif ? "ring-1 ring-[#00897B]" : ""}`}
-            style={{ background: ujungAktif ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-            title="Tampilkan titik ukur tegangan ujung"
-          >
-            <Gauge size={15} /> Tegangan ujung
+            <RefreshCw size={15} className={memuatUlang ? "animate-spin" : ""} /> Muat ulang
           </button>
           <Link href="/admin/dashboard" className={TOMBOL_ATAS} style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}>
             <ArrowLeft size={15} /> Kembali
