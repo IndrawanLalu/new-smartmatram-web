@@ -19,6 +19,11 @@ import PenggeserBanyak from "./PenggeserBanyak";
 import type { GeserTiang } from "../_hooks/useGeserBanyak";
 import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
+import LapisanKoreksi from "./LapisanKoreksi";
+import LapisanIsian from "./LapisanIsian";
+import type { NilaiIsian } from "../_hooks/useIsianPeta";
+import { kunciLoncat, type IndukLoncat } from "../_hooks/useIndukLoncat";
+import type { SorotKoreksi } from "../_hooks/useKoreksiIsian";
 import LapisanNama from "./LapisanNama";
 import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
@@ -85,6 +90,13 @@ interface Props {
   sorotPerubahan: TiangBanding[] | null;
   /** Tiang segmen inspeksi JTM yang sedang dibuka persetujuannya. */
   sorotJtm: SorotJtm[] | null;
+  /** Koreksi isian JTM: ujung rentang & tiang janggal. */
+  sorotKoreksi: SorotKoreksi[];
+  /** Nilai isian JTM tertulis di tiang (mis. ukuran konduktor); null = padam. */
+  isian: { nilaiDi: (t: TiangPeta) => NilaiIsian | null; warna: Map<string, string> } | null;
+  /** JTM: tiang yang induk penyulangnya melompati tiang sebelumnya — garis
+   *  putus-putus + "?" (selalu tampil, seperti kabel JTR yang belum jelas). */
+  loncat: Map<string, IndukLoncat>;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -105,12 +117,12 @@ const gayaGaris = (j: JenisGaris, g: GayaPeta) =>
   : j === "ub" ? { color: g.jtrUb, weight: 4, opacity: 1 }
   : { color: g.jtr, weight: 2, opacity: 0.9 };
 
-const ikonPutus = (warna: string) =>
+const ikonPutus = (warna: string, huruf = "!") =>
   L.divIcon({
     className: "",
     iconSize: [16, 16],
     iconAnchor: [8, 8],
-    html: `<div style="width:16px;height:16px;border-radius:50%;background:${warna};border:2px solid #fff;color:#fff;font:700 11px/12px sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.6)">!</div>`,
+    html: `<div style="width:16px;height:16px;border-radius:50%;background:${warna};border:2px solid #fff;color:#fff;font:700 11px/12px sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.6)">${huruf}</div>`,
   });
 
 /**
@@ -139,7 +151,7 @@ const IKON_GARDU = L.divIcon({
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat,
 }: Props) {
   return (
     <MapContainer
@@ -175,11 +187,13 @@ export default function PetaInner({
 
       <Isi
         rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
-        onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu}
+        onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu} loncat={loncat}
       />
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       <LapisanPersetujuan antrean={antrean} onPilih={onPilihAntrean} sorot={sorotPerubahan} sorotJtm={sorotJtm} />
       <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
+      <LapisanKoreksi sorot={sorotKoreksi} />
+      {isian && <LapisanIsian tiang={tiang} nilaiDi={isian.nilaiDi} warna={isian.warna} />}
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
       <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} onTugaskan={onTugaskanPohon} />
@@ -230,7 +244,7 @@ function Fokus({ batas }: { batas: [[number, number], [number, number]] | null }
 /** Dipisah dan di-`memo` supaya menggeser peta tanpa perubahan data tidak
  *  menggambar ulang ribuan objek. */
 const Isi = memo(function Isi({
-  rute, tiang, gardu, penanda, onPilihTiang, onPilihGardu,
+  rute, tiang, gardu, penanda, onPilihTiang, onPilihGardu, loncat,
 }: {
   rute: RuteBaris[];
   tiang: TiangPeta[];
@@ -238,9 +252,11 @@ const Isi = memo(function Isi({
   penanda: Map<string, Penanda>;
   onPilihTiang: (t: TiangPeta) => void;
   onPilihGardu: (g: GarduPeta) => void;
+  loncat: Map<string, IndukLoncat>;
 }) {
   const gaya = useGayaPeta();
   const ikonTandaPutus = useMemo(() => ikonPutus(gaya.putus), [gaya.putus]);
+  const ikonTandaLoncat = useMemo(() => ikonPutus(gaya.putus, "?"), [gaya.putus]);
   const garisRute = useMemo(
     () =>
       rute.flatMap((r) =>
@@ -303,7 +319,8 @@ const Isi = memo(function Isi({
 
       {tiang.map((t) => {
         if (t.indukLat === null || t.indukLng === null) return null;
-        const j = jenisGaris(t);
+        const lompat = t.jaringan === "jtm" ? loncat.get(kunciLoncat(t.id, t.kelompok)) : undefined;
+        const j = lompat ? "putus" : jenisGaris(t);
         const posisi: [number, number][] = [
           [t.indukLat, t.indukLng],
           [t.lat, t.lng],
@@ -320,12 +337,29 @@ const Isi = memo(function Isi({
               <Tooltip sticky>
                 <span className="text-[11px]">{t.kelompok}</span>
                 {j === "ub" && <span className="block text-[10px]">underbuild JTR · {t.jumlahKabel} kabel</span>}
-                {j === "putus" && (
+                {j === "putus" && !lompat && (
                   <span className="block text-[10px]">{t.kode}: kabel belum jelas datang dari tiang mana</span>
+                )}
+                {lompat && (
+                  <span className="block text-[10px]">{lompat.kode} disambung dari {lompat.induk}, melompati {lompat.batang}</span>
                 )}
               </Tooltip>
             </Polyline>
-            {j === "putus" && gaya.tandaPutus && (
+            {lompat && (
+              <Marker
+                position={[(t.indukLat + t.lat) / 2, (t.indukLng + t.lng) / 2]}
+                icon={ikonTandaLoncat}
+                eventHandlers={{ click: () => onPilihTiang(t) }}
+              >
+                <Tooltip direction="top" offset={[0, -8]}>
+                  <span className="text-[11px] block">
+                    {lompat.kode} disambung dari {lompat.induk}, padahal sebelumnya ada {lompat.batang} — {lompat.batang} jadi buntu.
+                  </span>
+                  <span className="text-[10px] block">Klik → Induk di {t.kelompok} → Ikut induk batang</span>
+                </Tooltip>
+              </Marker>
+            )}
+            {j === "putus" && !lompat && gaya.tandaPutus && (
               <Marker
                 position={[(t.indukLat + t.lat) / 2, (t.indukLng + t.lng) / 2]}
                 icon={ikonTandaPutus}

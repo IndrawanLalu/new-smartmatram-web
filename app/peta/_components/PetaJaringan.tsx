@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, Loader2, Move, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
+import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Loader2, Move, Ruler, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
 import { useAntreanJtr, type AntreanJtr } from "../_hooks/useAntreanJtr";
 import { useAntreanJtm, type AntreanJtm } from "../_hooks/useAntreanJtm";
 import PersetujuanJtmPeta, { type SorotJtm } from "./PersetujuanJtmPeta";
@@ -18,6 +18,10 @@ import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta, type Terpilih } from "../_hooks/useObjekPeta";
 import { useSuntingPeta } from "../_hooks/useSuntingPeta";
 import { useGeserBanyak } from "../_hooks/useGeserBanyak";
+import { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
+import { useIsianPeta } from "../_hooks/useIsianPeta";
+import { useIndukLoncat } from "../_hooks/useIndukLoncat";
+import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useKesehatanPeta, type KesehatanGardu, type SaringKesehatan, type StatusKesehatan } from "../_hooks/useKesehatanPeta";
@@ -121,6 +125,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   );
 
   const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } = usePetaIsi(kotak, pilihan, tampilGardu);
+  const indukLoncat = useIndukLoncat();
 
   // ── Tahap 2: pilih, sunting, tegangan ujung ────────────────────────────────
   const oleh = user.name ?? user.email ?? "";
@@ -140,6 +145,15 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const objek = useObjekPeta(terpilih);
   const sunting = useSuntingPeta(oleh);
   const geserBanyak = useGeserBanyak(oleh);
+  const koreksi = useKoreksiIsian(oleh);
+  // Nilai isian JTM di tiap tiang: ukuran konduktor, atau isian yang sedang
+  // dikoreksi selama mode Koreksi isian aktif (10 Okt 2026).
+  const [isianTampil, setIsianTampil] = useState(false);
+  const itemTampil = koreksi.aktif ? koreksi.item : "ukuran_konduktor";
+  const namaItemTampil = koreksi.aktif
+    ? (koreksi.daftarItem.find((x) => x.kode === koreksi.item)?.nama ?? "Isian")
+    : "Ukuran kabel";
+  const isianPeta = useIsianPeta(isianTampil, itemTampil, tiang);
   const simulasi = useSimulasiBuka();
 
   const jalankanSimulasi = async () => {
@@ -264,6 +278,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     try {
       antreanJtr.muatUlang();
       antreanJtm.muatUlang();
+      indukLoncat.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -304,17 +319,24 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
   const segarkan = () => {
     objek.muatUlang();
+    indukLoncat.muatUlang();
     void muatUlangPeta();
   };
 
   // Stabil — `Isi` di peta di-memo, dan ribuan objeknya tidak boleh digambar
   // ulang hanya karena panel berubah.
   const { aktif: geserBanyakAktif, pilih: pilihGeserBanyak } = geserBanyak;
+  const { aktif: koreksiAktif, pilih: pilihKoreksi } = koreksi;
   const pilihTiang = useCallback(
     (t: TiangPeta) => {
       if (geser) return;
       if (geserBanyakAktif) {
         pilihGeserBanyak(t);
+        return;
+      }
+      // Koreksi isian JTM: klik = tiang awal / akhir rentang.
+      if (koreksiAktif) {
+        pilihKoreksi(t);
         return;
       }
       if (modeGabung) {
@@ -335,14 +357,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
-    [geser, modeInduk, modeGabung, terpilih, geserBanyakAktif, pilihGeserBanyak, indukPenyulang],
+    [geser, modeInduk, modeGabung, terpilih, geserBanyakAktif, pilihGeserBanyak, koreksiAktif, pilihKoreksi, indukPenyulang],
   );
   const pilihGardu = useCallback(
     (g: GarduPeta) => {
-      if (geser || modeInduk || geserBanyakAktif) return;
+      if (geser || modeInduk || geserBanyakAktif || koreksiAktif) return;
       setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
     },
-    [geser, modeInduk, geserBanyakAktif],
+    [geser, modeInduk, geserBanyakAktif, koreksiAktif],
   );
   const aturGeser = useCallback((lat: number, lng: number) => setGeser({ lat, lng }), []);
   const tutupObjek = () => {
@@ -492,7 +514,36 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onPilihAntrean={pilihAntrean}
           sorotPerubahan={sorotBanding?.tiang ?? null}
           sorotJtm={sorotJtm}
+          sorotKoreksi={koreksi.sorot}
+          isian={isianTampil ? { nilaiDi: isianPeta.nilaiDi, warna: isianPeta.warna } : null}
+          loncat={indukLoncat.loncat}
         />
+
+        {isianTampil && isianPeta.legenda.length > 0 && (
+          <div
+            className="absolute z-[1000] left-3 bottom-8 rounded-lg border px-3 py-2 text-[11px] text-[#e2e8f0] space-y-1 shadow-lg"
+            style={{ background: PANEL, borderColor: GARIS }}
+          >
+            <p className="font-semibold">{namaItemTampil} · tiang di layar</p>
+            {isianPeta.legenda.map((l) => (
+              <p key={l.kode} className="flex items-center gap-2">
+                <span className="inline-block w-3 h-3 rounded-sm" style={{ background: l.warna }} />
+                <span className="flex-1">{l.label}</span>
+                <span className="tabular-nums text-gray-400">{l.jumlah}</span>
+              </p>
+            ))}
+          </div>
+        )}
+
+        {koreksi.aktif && (
+          <PanelKoreksiIsian
+            k={koreksi}
+            ulp={ulp || null}
+            onLompat={(lat, lng) => setFokus([[lat - 0.0008, lng - 0.0008], [lat + 0.0008, lng + 0.0008]])}
+            tampil={isianTampil}
+            onTampil={setIsianTampil}
+          />
+        )}
 
         {geserBanyak.aktif && (
           <PanelGeserBanyak
@@ -788,7 +839,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               Terlalu banyak tiang di layar — sebagian tidak digambar
             </div>
           )}
-          {(namaTiang || nomorKabel) && tiang.length > BATAS_NAMA && (
+          {(namaTiang || nomorKabel || isianTampil) && tiang.length > BATAS_NAMA && (
             <div className="rounded-lg bg-[#0b1220]/85 text-[#e2e8f0] px-2.5 py-1.5 border" style={{ borderColor: GARIS }}>
               Label tiang tampil setelah diperbesar ({tiang.length} tiang di layar, maks {BATAS_NAMA})
             </div>
@@ -946,6 +997,20 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               <Move size={15} /> Geser titik
             </button>
           )}
+          {boleh && (
+            <button
+              onClick={() => {
+                tutupObjek();
+                if (koreksi.aktif) koreksi.keluar();
+                else koreksi.mulai();
+              }}
+              className={`${TOMBOL_ATAS} ${koreksi.aktif ? "ring-1 ring-[#5eead4]" : ""}`}
+              style={{ background: koreksi.aktif ? "rgba(94,234,212,0.2)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+              title="Betulkan isian inspeksi JTM (mis. ukuran kabel) per rentang tiang, atau yang janggal"
+            >
+              <ListChecks size={15} /> Koreksi isian
+            </button>
+          )}
           <button
             onClick={() => void muatUlangSemua()}
             disabled={memuatUlang}
@@ -970,6 +1035,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             title="Tulis nomor kabel JTR tiap tiang — merah = satu kabel bernomor selain 1 (hampir pasti salah catat)"
           >
             <Hash size={15} /> Nomor kabel
+          </button>
+          <button
+            onClick={() => setIsianTampil((v) => !v)}
+            className={`${TOMBOL_ATAS} ${isianTampil ? "ring-1 ring-[#00897B]" : ""}`}
+            style={{ background: isianTampil ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+            title="Tulis ukuran konduktor JTM di tiap tiang, berwarna per ukuran — yang beda sendiri langsung terlihat"
+          >
+            <Ruler size={15} /> {namaItemTampil}
           </button>
           <button
             onClick={() => setKesehatanAktif((v) => !v)}
