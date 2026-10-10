@@ -1,5 +1,6 @@
 "use client";
 
+import type { MilikPenanda } from "@/lib/milikPenanda";
 import { useState } from "react";
 import { Loader2, Move, Navigation, TriangleAlert, X } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
@@ -45,6 +46,9 @@ interface Props {
   onPercabangan: (nyala: boolean) => Promise<boolean>;
   onBuatPasangan: () => Promise<boolean>;
   onNamaBerubah: () => void;
+  /** Tiang bersama berpenanda: pemilik peralatannya (null = bukan tiang bersama). */
+  milikPenanda: MilikPenanda | null;
+  onPemilikPeralatan: (penyulang: string | null) => Promise<boolean>;
   onBatalkan: (alasan: string) => Promise<boolean>;
   onTutup: () => void;
   simulasi: HasilSimulasi | null;
@@ -228,6 +232,8 @@ export default function PanelObjek(p: Props) {
             onBuatPasangan={p.onBuatPasangan}
             oleh={p.oleh}
             onNamaBerubah={p.onNamaBerubah}
+            milik={p.milikPenanda}
+            onPemilikPeralatan={p.onPemilikPeralatan}
             onBatalkan={() => setTanyaBatal(true)}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}

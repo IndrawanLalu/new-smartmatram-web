@@ -16,6 +16,8 @@
 --              penyulang lain yang ditumpangi = 'menumpang'
 --   peralatan  jumlah tiang per penanda (recloser, LBS, FCO, …) selain gardu
 --   gardu      gardu yang berdiri di tiang terinspeksi + total kVA
+--   Peralatan & gardu di tiang bersama masuk SATU penyulang menurut view
+--   jtm_pemilik_penanda — jalankan scripts/jtm-peralatan-tiang-bersama.sql DULU.
 --
 -- Baris penyulang (segmen_id NULL) dihitung ulang dari tiangnya, BUKAN
 -- dijumlah dari baris segmen: tiang batas dua segmen tidak terhitung dua kali.
@@ -52,7 +54,10 @@ WITH m AS (
          m.segmen_id, m.p, m.u, t.tiang_id, t.id AS titik_id
   FROM inspeksi_jtm_titik t
   JOIN m ON m.id = t.inspeksi_id
-  WHERE t.tiang_id IS NOT NULL
+  -- Hanya tiang yang masih aktif DAN masih anggota segmen itu: tiang yang
+  -- sudah dibatalkan tetap tercatat di inspeksi lamanya.
+  JOIN tiang ta ON ta.id = t.tiang_id AND ta.status_hidup = 'aktif'
+  JOIN segmen_tiang sx ON sx.segmen_id = m.segmen_id AND sx.tiang_id = t.tiang_id
   ORDER BY m.segmen_id, t.tiang_id, m.w DESC NULLS LAST
 ), nilai AS (
   -- Kabel penyulang ini dulu, lalu isian tanpa kabel (tiang satu sirkit),
@@ -67,7 +72,7 @@ WITH m AS (
   ORDER BY tk.segmen_id, tk.tiang_id, pr.item_kode,
            CASE WHEN upper(ss.penyulang) = tk.p THEN 0 WHEN ss.id IS NULL THEN 1 ELSE 2 END,
            pr.updated_at DESC
-), dasar AS (
+), dasar0 AS (
   SELECT tk.segmen_id, tk.p, tk.u, tk.tiang_id,
          g.panjang_m, n.ukuran, n.jenis,
          -- Tiang milik penyulang lain yang cuma ditumpangi kabel penyulang ini:
@@ -90,6 +95,17 @@ WITH m AS (
            max(nilai) FILTER (WHERE item_kode = 'jenis_tiang')      AS jenis_tiang
     FROM nilai GROUP BY segmen_id, tiang_id
   ) n ON n.segmen_id = tk.segmen_id AND n.tiang_id = tk.tiang_id
+), milik AS MATERIALIZED (
+  -- Dibaca SEKALI (beberapa baris saja), bukan per tiang.
+  SELECT v.tiang_id, upper(v.penyulang) AS p, v.hitung FROM jtm_pemilik_penanda v
+), dasar AS (
+  -- Peralatan & gardu di tiang bersama dihitung di SATU penyulang
+  -- (jtm_pemilik_penanda — scripts/jtm-peralatan-tiang-bersama.sql).
+  SELECT d.segmen_id, d.p, d.u, d.tiang_id, d.panjang_m, d.ukuran, d.jenis, d.jenis_tiang,
+         CASE WHEN COALESCE(v.hitung, true) THEN d.penanda END AS penanda,
+         CASE WHEN COALESCE(v.hitung, true) THEN d.gardu_kode END AS gardu_kode
+  FROM dasar0 d
+  LEFT JOIN milik v ON v.tiang_id = d.tiang_id AND v.p = d.p
 ), semua AS (
   -- Tingkat segmen, lalu tingkat penyulang (segmen_id NULL) — satu tiang
   -- sekali per penyulang; yang punya gawang didahulukan.
@@ -109,7 +125,7 @@ WITH m AS (
   SELECT * FROM (
     SELECT DISTINCT ON (d.tiang_id)
            NULL::uuid, '', '', d.tiang_id, d.panjang_m, d.ukuran, d.jenis, d.jenis_tiang, d.penanda, d.gardu_kode
-    FROM dasar d
+    FROM dasar0 d  -- gardu belum dipilah per penyulang: tiap gardu fisik ikut sekali
     ORDER BY d.tiang_id, (d.jenis_tiang = 'menumpang') NULLS FIRST, d.panjang_m DESC NULLS LAST
   ) y
 ), pokok AS (

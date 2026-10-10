@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import { bacaMilikPenanda, penandaTampil } from "@/lib/milikPenanda";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { useToast } from "@/app/admin/_components/Toast";
 import { susunSld, type GarduInfo, type GrafSld, type TiangSld } from "@/lib/sld";
@@ -111,19 +112,24 @@ export function usePetaSld(unit: string | null) {
       if (graf.has(penyulang) || memuat.has(penyulang)) return;
       setMemuat((m) => new Set(m).add(penyulang));
       try {
-        const rows = await fetchAllRows<Record<string, unknown>>(() =>
-          supabaseBrowser
-            .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,induk_id,pasangan_portal_dari,gardu_di_tiang")
-            .eq("jaringan", "jtm")
-            .eq("induk_kelompok", penyulang),
-        );
+        const [rows, milik] = await Promise.all([
+          fetchAllRows<Record<string, unknown>>(() =>
+            supabaseBrowser
+              .from("peta_tiang")
+              .select("id,kode,lat,lng,penanda,induk_id,pasangan_portal_dari,gardu_di_tiang")
+              .eq("jaringan", "jtm")
+              .eq("induk_kelompok", penyulang),
+          ),
+          bacaMilikPenanda(),
+        ]);
         const tiang: TiangSld[] = rows.map((r) => ({
           id: r.id as string,
           kode: r.kode as string,
           lat: Number(r.lat),
           lng: Number(r.lng),
-          penanda: (r.penanda as string) ?? null,
+          // Gardu/peralatan di tiang bersama hanya milik satu penyulang; titik
+          // pertemuan tetap di kedua SLD (jtm-peralatan-tiang-bersama.sql).
+          penanda: penandaTampil(milik, r.id as string, penyulang) ? ((r.penanda as string) ?? null) : null,
           indukId: (r.induk_id as string) ?? null,
           pasanganPortalDari: (r.pasangan_portal_dari as string) ?? null,
           garduDiTiang: (r.gardu_di_tiang as string) ?? null,

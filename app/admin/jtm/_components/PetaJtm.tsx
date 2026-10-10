@@ -1,5 +1,6 @@
 "use client";
 
+import { penandaTampil, useMilikPenanda } from "@/lib/milikPenanda";
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2, MapPinOff, MousePointerSquareDashed, Plus, TriangleAlert, X } from "lucide-react";
@@ -38,6 +39,7 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
   const [sibuk, setSibuk] = useState(false);
 
   const { tiang, penyulangList, loading, error, muat } = useTiangJtm(user, ulp);
+  const { milik } = useMilikPenanda();
   const { per: pilihanRef, penanda } = useJtmRef();
   const {
     baris: segmenList,
@@ -63,10 +65,15 @@ export default function PetaJtm({ user }: { user: CurrentUser }) {
             .filter(
               (t) => t.penyulang === penyulang || t.penyulangLewat.includes(penyulang),
             )
-            // Namanya disebut sebagaimana penyulang INI menyebutnya.
-            .map((t) => ({ ...t, kode: t.namaPer[penyulang] ?? t.kode }))
+            // Namanya disebut sebagaimana penyulang INI menyebutnya. Gardu &
+            // peralatan di tiang bersama hanya di lapisan pemiliknya.
+            .map((t) => ({
+              ...t,
+              kode: t.namaPer[penyulang] ?? t.kode,
+              ...(penandaTampil(milik, t.id, penyulang) ? {} : { penanda: null, gardu_di_tiang: null, nama_peralatan: null }),
+            }))
         : [],
-    [tiang, penyulang],
+    [tiang, penyulang, milik],
   );
   const bertitik = useMemo(
     () => tersaring.filter((t) => t.lat !== null && t.lng !== null),

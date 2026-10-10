@@ -97,6 +97,8 @@ interface Props {
   /** JTM: tiang yang induk penyulangnya melompati tiang sebelumnya — garis
    *  putus-putus + "?" (selalu tampil, seperti kabel JTR yang belum jelas). */
   loncat: Map<string, IndukLoncat>;
+  /** Peralatan di tiang bersama yang belum dipilih pemiliknya — tanda "?". */
+  tandaMilik: TiangPeta[];
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -116,6 +118,14 @@ const gayaGaris = (j: JenisGaris, g: GayaPeta) =>
   : j === "putus" ? { color: g.putus, weight: 3, opacity: 1, dashArray: "6 5" }
   : j === "ub" ? { color: g.jtrUb, weight: 4, opacity: 1 }
   : { color: g.jtr, weight: 2, opacity: 0.9 };
+
+/** "?" kecil di pojok kanan atas ikon peralatan yang belum dipilih pemiliknya. */
+const IKON_MILIK = L.divIcon({
+  className: "",
+  iconSize: [14, 14],
+  iconAnchor: [-4, 20],
+  html: `<div style="width:14px;height:14px;border-radius:50%;background:#F59E0B;border:2px solid #fff;color:#fff;font:700 9px/10px sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.6)">?</div>`,
+});
 
 const ikonPutus = (warna: string, huruf = "!") =>
   L.divIcon({
@@ -151,7 +161,7 @@ const IKON_GARDU = L.divIcon({
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik,
 }: Props) {
   return (
     <MapContainer
@@ -190,6 +200,13 @@ export default function PetaInner({
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu} loncat={loncat}
       />
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
+      {tandaMilik.map((t) => (
+        <Marker key={`milik-${t.id}`} position={[t.lat, t.lng]} icon={IKON_MILIK} eventHandlers={{ click: () => onPilihTiang(t) }}>
+          <Tooltip direction="top" offset={[8, -14]}>
+            <span className="text-[11px]">{t.kode}: peralatan ini milik penyulang mana? Klik untuk memilih.</span>
+          </Tooltip>
+        </Marker>
+      ))}
       <LapisanPersetujuan antrean={antrean} onPilih={onPilihAntrean} sorot={sorotPerubahan} sorotJtm={sorotJtm} />
       <LapisanKesehatan gardu={kesehatan} onPilih={onPilihKesehatan} />
       <LapisanKoreksi sorot={sorotKoreksi} />

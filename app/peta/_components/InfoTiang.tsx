@@ -8,6 +8,8 @@ import type { Penanda } from "../_hooks/usePenandaJtm";
 import { INPUT, JUDUL_BAGIAN } from "../_ui";
 import NamaTiangJtm from "./NamaTiangJtm";
 import PenandaTiang from "./PenandaTiang";
+import PemilikPeralatan from "./PemilikPeralatan";
+import type { MilikPenanda } from "@/lib/milikPenanda";
 
 /**
  * Rincian satu tiang di panel kanan peta, dan suntingan yang boleh dari meja:
@@ -49,11 +51,14 @@ interface Props {
   oleh: string;
   /** Nama tiang (dan hilirnya) baru saja diganti — muat ulang peta. */
   onNamaBerubah: () => void;
+  /** Tiang dipakai beberapa penyulang & berpenanda: pemilik peralatannya. */
+  milik?: MilikPenanda | null;
+  onPemilikPeralatan?: (penyulang: string | null) => Promise<boolean>;
 }
 
 export default function InfoTiang({
   t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onIndukPenyulang, onPercabangan, onBatalkan, onSimulasi, simulasiSibuk,
-  tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah,
+  tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah, milik, onPemilikPeralatan,
 }: Props) {
   const jtr = !!t.gardu_kode;
   const [sunting, setSunting] = useState(false);
@@ -115,6 +120,9 @@ export default function InfoTiang({
         {jtr ? <Baris label="Tinggi" nilai={t.tinggi === null ? null : `${t.tinggi} m`} /> : <Baris label="Konstruksi" nilai={t.konstruksi} />}
         {!jtr && <Baris label="Nomor lama" nilai={t.nomor_lama} />}
         {!jtr && <PenandaTiang t={t} penanda={penanda} boleh={boleh} onUbahAtribut={onUbahAtribut} />}
+        {!jtr && milik && onPemilikPeralatan && (
+          <PemilikPeralatan milik={milik} penyulang={t.nama.map((n) => n.penyulang)} boleh={boleh} onPilih={onPemilikPeralatan} />
+        )}
         {!jtr && <Baris label="Percabangan" nilai={t.percabangan ? "ya" : "tidak"} />}
         {!jtr && (t.portal.pasangan || t.portal.dari || t.portal.tanpaPasangan) && (
           <Baris

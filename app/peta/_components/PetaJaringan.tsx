@@ -21,6 +21,7 @@ import { useGeserBanyak } from "../_hooks/useGeserBanyak";
 import { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
 import { useIsianPeta } from "../_hooks/useIsianPeta";
 import { useIndukLoncat } from "../_hooks/useIndukLoncat";
+import { kunciMilik, useMilikPenanda } from "@/lib/milikPenanda";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import MenuKelompok from "./MenuKelompok";
 import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
@@ -127,6 +128,30 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
   const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } = usePetaIsi(kotak, pilihan, tampilGardu);
   const indukLoncat = useIndukLoncat();
+  // Gardu & peralatan di tiang yang dipakai beberapa penyulang hanya digambar di
+  // lapisan pemiliknya; titik pertemuan & yang belum dipilih di semua (10 Okt 2026).
+  const milikPenanda = useMilikPenanda();
+  const tiangPeta = useMemo(
+    () =>
+      milikPenanda.milik.size === 0
+        ? tiang
+        : tiang.map((t) =>
+            t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.tampil === false
+              ? { ...t, penanda: null, garduDiTiang: null, namaPeralatan: null }
+              : t,
+          ),
+    [tiang, milikPenanda.milik],
+  );
+  const tandaMilik = useMemo(
+    () => [
+      ...new Map(
+        tiangPeta
+          .filter((t) => t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.status === "belum")
+          .map((t) => [t.id, t]),
+      ).values(),
+    ],
+    [tiangPeta, milikPenanda.milik],
+  );
 
   // ── Tahap 2: pilih, sunting, tegangan ujung ────────────────────────────────
   const oleh = user.name ?? user.email ?? "";
@@ -284,6 +309,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       antreanJtr.muatUlang();
       antreanJtm.muatUlang();
       indukLoncat.muatUlang();
+      milikPenanda.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -325,6 +351,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const segarkan = () => {
     objek.muatUlang();
     indukLoncat.muatUlang();
+    milikPenanda.muatUlang();
     void muatUlangPeta();
   };
 
@@ -500,7 +527,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
       <div className="flex-1 min-w-0 relative">
         <PetaInner
-          rute={rute} tiang={tiang} gardu={gardu}
+          rute={rute} tiang={tiangPeta} gardu={gardu}
           fokus={fokus} onKotak={setKotak} penanda={penanda}
           onPilihTiang={pilihTiang} onPilihGardu={pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
@@ -522,6 +549,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           sorotKoreksi={koreksi.sorot}
           isian={isianTampil ? { nilaiDi: isianPeta.nilaiDi, warna: isianPeta.warna } : null}
           loncat={indukLoncat.loncat}
+          tandaMilik={tandaMilik}
         />
 
         {isianTampil && isianPeta.legenda.length > 0 && (
@@ -627,6 +655,17 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               return ok;
             }}
             onNamaBerubah={segarkan}
+            milikPenanda={
+              terpilih.jenis === "tiang"
+                ? ([...milikPenanda.milik].find(([k]) => k.startsWith(`${terpilih.id}|`))?.[1] ?? null)
+                : null
+            }
+            onPemilikPeralatan={async (p) => {
+              if (terpilih.jenis !== "tiang") return false;
+              const ok = await sunting.pemilikPeralatan(terpilih.id, p);
+              if (ok) segarkan();
+              return ok;
+            }}
             onBatalkan={async (alasan) => {
               if (terpilih.jenis !== "tiang") return false;
               const ok = await sunting.batalkan(terpilih.id, alasan);

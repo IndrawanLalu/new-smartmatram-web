@@ -59,6 +59,14 @@ export function useSuntingPeta(oleh: string) {
           : `${d.kode} di ${d.penyulang} kembali ikut induk batangnya.`,
     );
 
+  /** Tiang bersama: penyulang pemilik peralatannya (jtm-peralatan-tiang-bersama.sql). */
+  const pemilikPeralatan = (id: string, penyulang: string | null) =>
+    jalankan<{ kode: string; penyulang: string | null }>(
+      "atur_pemilik_peralatan",
+      { p_tiang_id: id, p_penyulang: penyulang, p_oleh: oleh },
+      (d) => (d.penyulang ? `Peralatan ${d.kode} kini milik ${d.penyulang}.` : `Pemilik peralatan ${d.kode} dikosongkan.`),
+    );
+
   const tandaiPercabangan = (id: string, nyala: boolean) =>
     jalankan<unknown>("tandai_percabangan_jtm", { p_tiang_id: id, p_nyala: nyala, p_oleh: oleh }, () =>
       nyala ? "Ditandai percabangan." : "Tanda percabangan dilepas.",
@@ -134,7 +142,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, ubahInduk, batalkan, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, batalkan, buatPasanganPortal,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
 }
