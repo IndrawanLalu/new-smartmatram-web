@@ -36,10 +36,17 @@ export default function PenandaTiang({ t, penanda, boleh, onUbahAtribut }: Props
   const simpan = async () => {
     setSibuk(true);
     // Nama peralatan hanya untuk peralatan; gardu memakai kode gardunya.
+    // Bukan gardu lagi → kode gardunya ikut dikosongkan: tanpa itu kodenya
+    // tertinggal di tiang dan terbaca sebagai gardu ganda (BTW-010/AM286,
+    // 10 Okt 2026). Kosong = NULL di ubah_atribut_tiang.
     const ok = await onUbahAtribut(
       gardu
         ? { penanda: isi.penanda, gardu_di_tiang: isi.gardu_di_tiang }
-        : { penanda: isi.penanda, nama_peralatan: isi.penanda ? isi.nama_peralatan : "" },
+        : {
+            penanda: isi.penanda,
+            nama_peralatan: isi.penanda ? isi.nama_peralatan : "",
+            ...(t.gardu_di_tiang ? { gardu_di_tiang: "" } : {}),
+          },
     );
     setSibuk(false);
     if (ok) setSunting(false);

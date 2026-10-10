@@ -23,6 +23,8 @@ import { useIsianPeta } from "../_hooks/useIsianPeta";
 import { useIndukLoncat } from "../_hooks/useIndukLoncat";
 import { kunciMilik, useMilikPenanda } from "@/lib/milikPenanda";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
+import PanelGarduJanggal from "./PanelGarduJanggal";
+import { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import MenuKelompok from "./MenuKelompok";
 import { usePortalTanpaPasangan, type PortalTanpaPasangan } from "../_hooks/usePortalTanpaPasangan";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
@@ -172,6 +174,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const sunting = useSuntingPeta(oleh);
   const geserBanyak = useGeserBanyak(oleh);
   const koreksi = useKoreksiIsian(oleh);
+  // Gardu janggal: kode gardu di tiang vs master gardu (kelompok Gardu, 10 Okt 2026).
+  const garduJanggal = useGarduJanggal(ulp, oleh);
   // Nilai isian JTM di tiap tiang: ukuran konduktor, atau isian yang sedang
   // dikoreksi selama mode Koreksi isian aktif (10 Okt 2026).
   const [isianTampil, setIsianTampil] = useState(false);
@@ -310,6 +314,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       antreanJtm.muatUlang();
       indukLoncat.muatUlang();
       milikPenanda.muatUlang();
+      garduJanggal.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -352,6 +357,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     objek.muatUlang();
     indukLoncat.muatUlang();
     milikPenanda.muatUlang();
+    garduJanggal.muatUlang();
     void muatUlangPeta();
   };
 
@@ -546,7 +552,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onPilihAntrean={pilihAntrean}
           sorotPerubahan={sorotBanding?.tiang ?? null}
           sorotJtm={sorotJtm}
-          sorotKoreksi={koreksi.sorot}
+          sorotKoreksi={garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
           isian={isianTampil ? { nilaiDi: isianPeta.nilaiDi, warna: isianPeta.warna } : null}
           loncat={indukLoncat.loncat}
           tandaMilik={tandaMilik}
@@ -566,6 +572,19 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               </p>
             ))}
           </div>
+        )}
+
+        {garduJanggal.aktif && (
+          <PanelGarduJanggal
+            g={garduJanggal}
+            boleh={boleh}
+            onLompat={(lat, lng) => setFokus([[lat - 0.0008, lng - 0.0008], [lat + 0.0008, lng + 0.0008]])}
+            onBuka={(r) => {
+              garduJanggal.setAktif(false);
+              setTerpilih({ jenis: "tiang", id: r.tiang_id, kelompok: r.penyulang_tiang ?? "", lat: r.lat, lng: r.lng, kode: r.tiang_kode, jaringan: "jtm" });
+              setFokus([[r.lat - 0.0008, r.lng - 0.0008], [r.lat + 0.0008, r.lng + 0.0008]]);
+            }}
+          />
         )}
 
         {koreksi.aktif && (
@@ -1000,7 +1019,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
                   onClick={() => {
                     tutupObjek();
                     if (koreksi.aktif) koreksi.keluar();
-                    else koreksi.mulai();
+                    else {
+                      garduJanggal.setAktif(false);
+                      koreksi.mulai();
+                    }
                   }}
                   className={`${TOMBOL_ATAS} ${koreksi.aktif ? "ring-1 ring-[#5eead4]" : ""}`}
                   style={{ background: koreksi.aktif ? "rgba(94,234,212,0.2)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
@@ -1081,11 +1103,26 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             label="Gardu"
             terbuka={menuBuka === "gardu"}
             onBuka={() => bukaMenu("gardu")}
-            angka={0}
-            warnaAngka="#5eead4"
-            menyala={kesehatanAktif || ujungAktif}
+            angka={garduJanggal.jumlah}
+            warnaAngka="#F59E0B"
+            menyala={kesehatanAktif || ujungAktif || garduJanggal.aktif}
             kelas={TOMBOL_ATAS}
           >
+              <button
+                onClick={() => {
+                  tutupObjek();
+                  if (koreksi.aktif) koreksi.keluar();
+                  garduJanggal.setAktif(!garduJanggal.aktif);
+                }}
+                className={`${TOMBOL_ATAS} ${garduJanggal.aktif ? "ring-1 ring-[#F59E0B]" : ""}`}
+                style={{ background: garduJanggal.aktif ? "rgba(245,158,11,0.25)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                title="Kode gardu di tiang yang penyulangnya beda dengan master gardu, atau dipakai lebih dari satu tiang"
+              >
+                <TriangleAlert size={15} /> Gardu janggal
+                {garduJanggal.jumlah > 0 && (
+                  <span className="ml-0.5 px-1.5 rounded-full bg-[#F59E0B] text-[#0b1220] text-[11px] font-bold">{garduJanggal.jumlah}</span>
+                )}
+              </button>
               <button
                 onClick={() => setKesehatanAktif((v) => !v)}
                 className={`${TOMBOL_ATAS} ${kesehatanAktif ? "ring-1 ring-[#00897B]" : ""}`}
