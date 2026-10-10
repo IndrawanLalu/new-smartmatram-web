@@ -325,7 +325,6 @@ export default function WoPerabasanPage() {
           onTugaskan={(id, regu) => w.tugaskanRegu(id, regu, oleh).then(lalu(id))}
           onPutuskan={(id, terima, catatan) => w.putuskan(id, terima, catatan, oleh).then(lalu(id))}
           onBatalkan={(id, alasan) => w.batalkanItem(id, alasan, oleh).then(lalu(id))}
-          ambilRealisasi={w.ambilRealisasi}
         />
       )}
 

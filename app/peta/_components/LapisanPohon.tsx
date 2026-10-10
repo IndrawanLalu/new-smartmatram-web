@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { fotoKecil } from "@/lib/fotoKecil";
-import { WARNA_POHON, type JenisPohon, type PohonDirabas, type TemuanPohon } from "../_hooks/usePohonPeta";
+import { WARNA_CEK, WARNA_POHON, type JenisPohon, type PohonCek, type PohonDirabas, type TemuanPohon } from "../_hooks/usePohonPeta";
 
 /**
  * Lapisan pohon — ikon pohon (permintaan user 8 Okt 2026, bukan lingkaran).
@@ -44,6 +44,19 @@ const IKON = {
   berpotensi: { setuju: ikon("berpotensi", false, true), belum: ikon("berpotensi", true, true) },
   dirabas: ikon("dirabas", false, false),
 };
+
+/** Pohon hasil pengecekan: segitiga merah berisi "!" — bentuk yang sama
+ *  dengan di HP pengecek & regu, supaya tidak tertukar dengan pohon inspeksi. */
+const IKON_CEK = L.divIcon({
+  className: "",
+  iconSize: [20, 18],
+  iconAnchor: [10, 16],
+  popupAnchor: [0, -16],
+  html: `<svg viewBox="0 0 20 18" width="20" height="18" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.7))">
+    <path d="M10 1.2 L19 16.8 L1 16.8 Z" fill="${WARNA_CEK}" stroke="#fff" stroke-width="1.4" stroke-linejoin="round"/>
+    <rect x="9.1" y="6" width="1.8" height="5.6" rx="0.9" fill="#fff"/><circle cx="10" cy="13.9" r="1.1" fill="#fff"/>
+  </svg>`,
+});
 
 const tglId = (s: string | null) =>
   s ? new Date(s.length === 10 ? `${s}T00:00:00+08:00` : s).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Makassar" }) : "—";
@@ -113,11 +126,29 @@ function IsiDirabas({ p }: { p: PohonDirabas }) {
   );
 }
 
+function IsiCek({ p }: { p: PohonCek }) {
+  return (
+    <div className="text-xs w-[240px]">
+      <p className="font-semibold text-sm" style={{ color: WARNA_CEK }}>
+        Belum dirabas · hasil pengecekan{p.jenisPohon ? ` · ${p.jenisPohon}` : ""}
+      </p>
+      <p className="mt-1">{p.penyulang}</p>
+      {p.segmen && <p className="text-gray-500">{p.segmen}</p>}
+      <p className="text-gray-500 mt-0.5">Dicek {jamId(p.waktu)} · {p.pengecek ?? "—"} · putaran {p.putaran}</p>
+      {p.catatan && <p className="mt-1 italic text-gray-600">“{p.catatan}”</p>}
+      <div className="mt-2 grid grid-cols-3 gap-1.5">
+        {p.foto.map((u, i) => <Foto key={u} url={u} label={i === 0 ? "Utama" : `Foto ${i + 1}`} />)}
+      </div>
+    </div>
+  );
+}
+
 function LapisanPohon({
-  temuan, dirabas, onTugaskan,
+  temuan, dirabas, cek, onTugaskan,
 }: {
   temuan: TemuanPohon[];
   dirabas: PohonDirabas[];
+  cek: PohonCek[];
   /** Ada = pengguna boleh menugaskan (admin/UP3). */
   onTugaskan?: (t: TemuanPohon) => void;
 }) {
@@ -131,6 +162,11 @@ function LapisanPohon({
       {dirabas.map((p) => (
         <Marker key={`pd-${p.id}`} position={[p.lat, p.lng]} icon={IKON.dirabas}>
           <Popup><IsiDirabas p={p} /></Popup>
+        </Marker>
+      ))}
+      {cek.map((p) => (
+        <Marker key={`pc-${p.id}`} position={[p.lat, p.lng]} icon={IKON_CEK}>
+          <Popup><IsiCek p={p} /></Popup>
         </Marker>
       ))}
     </>

@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Send, X } from "lucide-react";
-import { LABEL_SUMBER, WARNA_POHON, type SaringPohon, type TemuanPohon } from "../_hooks/usePohonPeta";
+import { LABEL_SUMBER, WARNA_CEK, WARNA_POHON, type SaringPohon, type TemuanPohon } from "../_hooks/usePohonPeta";
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 
 /**
@@ -122,6 +122,18 @@ export default function PanelPohon({
             </select>
           </div>
           <p className="text-[10.5px] text-gray-500">WO dan di luar WO, menurut tanggal dirabas.</p>
+        </div>
+      )}
+
+      {saring.sumber.has("pengecekan") && (
+        <div className="space-y-1">
+          <p className={JUDUL_BAGIAN}>
+            {LABEL_SUMBER.pengecekan}
+            <span className="inline-block w-2 h-2 ml-1.5" style={{ background: WARNA_CEK, clipPath: "polygon(50% 0, 100% 100%, 0 100%)" }} />
+          </p>
+          <p className="text-[10.5px] text-gray-500">
+            Pohon yang dititik pengecek dan belum dirabas regu — tetap tampil sampai dirabas, tidak per bulan.
+          </p>
         </div>
       )}
 

@@ -27,7 +27,7 @@ import type { SorotKoreksi } from "../_hooks/useKoreksiIsian";
 import LapisanNama from "./LapisanNama";
 import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
-import type { PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
+import type { PohonCek, PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { SorotJtm } from "./PersetujuanJtmPeta";
 import type { TiangBanding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
@@ -76,6 +76,7 @@ interface Props {
   /** Lapisan pohon (kosong = padam). */
   pohonTemuan: TemuanPohon[];
   pohonDirabas: PohonDirabas[];
+  pohonCek: PohonCek[];
   onTugaskanPohon?: (t: TemuanPohon) => void;
   simulasi: HasilSimulasi | null;
   kesehatan: KesehatanGardu[];
@@ -160,7 +161,7 @@ const IKON_GARDU = L.divIcon({
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
-  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, onTugaskanPohon, simulasi,
+  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
   kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik,
 }: Props) {
   return (
@@ -213,7 +214,7 @@ export default function PetaInner({
       {isian && <LapisanIsian tiang={tiang} nilaiDi={isian.nilaiDi} warna={isian.warna} />}
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
-      <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} onTugaskan={onTugaskanPohon} />
+      <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} cek={pohonCek} onTugaskan={onTugaskanPohon} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
       <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />
     </MapContainer>

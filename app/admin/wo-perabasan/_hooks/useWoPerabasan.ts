@@ -357,18 +357,6 @@ export function useWoPerabasan() {
     [item],
   );
 
-  /** Bukti pohon satu segmen — dimuat saat modalnya dibuka, bukan seluruh
-   *  tabel realisasi di setiap kunjungan. */
-  const ambilRealisasi = useCallback(async (itemId: string): Promise<Realisasi[]> => {
-    const { data, error } = await supabaseBrowser
-      .from("perabasan_realisasi")
-      .select("*")
-      .eq("item_id", itemId)
-      .order("dikerjakan_at");
-    if (error) throw new Error(error.message);
-    return (data ?? []) as unknown as Realisasi[];
-  }, []);
-
   /** Seluruh segmen SATU WO (semua status) — untuk modal Daftar WO. */
   const ambilItemWo = useCallback(async (woId: string): Promise<WoItem[]> => {
     const { data, error } = await supabaseBrowser
@@ -406,7 +394,7 @@ export function useWoPerabasan() {
 
   return {
     wo, item, segmen, regu, loading, muat,
-    terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu, ambilRealisasi,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu,
     ambilItemWo, ubahWo,
     segmenTerikat,
   };

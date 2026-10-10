@@ -159,6 +159,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "jtm",             label: "Inspeksi JTM" },
   { id: "hargardu",        label: "Pemeliharaan Gardu" },
   { id: "perabasan",       label: "Perabasan Pohon" },
+  { id: "cekPerabasan",    label: "Cek Perabasan" },
   { id: "harjar",          label: "Pemeliharaan Jaringan" },
   { id: "optimasiTrafo",   label: "Optimasi Trafo" },
 ];

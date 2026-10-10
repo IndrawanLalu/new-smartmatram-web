@@ -64,7 +64,7 @@ const SARING_AWAL: SaringUjung = {
 };
 
 const SARING_POHON_AWAL: SaringPohon = {
-  sumber: new Set(["inspeksi", "perabasan"] as const),
+  sumber: new Set(["inspeksi", "perabasan", "pengecekan"] as const),
   vegetasi: new Set(["menyentuh", "berpotensi"] as const),
   tugas: new Set(["belum", "sudah"] as const),
   sembunyikanTertangani: false,
@@ -493,7 +493,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const zoom = kotak?.zoom ?? 0;
   const jumlahObjek =
     rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2 + kesehatan.gardu.length
-    + pohon.temuan.length + pohon.dirabas.length;
+    + pohon.temuan.length + pohon.dirabas.length + pohon.cek.length;
   const adaGarduPilihan = pilihan.some((p) => p.jaringan === "gardu");
   const adaJaringan = pilihan.some((p) => p.jaringan !== "gardu");
 
@@ -541,7 +541,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           geserBanyak={geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
           ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
-          pohonTemuan={pohon.temuan} pohonDirabas={pohon.dirabas}
+          pohonTemuan={pohon.temuan} pohonDirabas={pohon.dirabas} pohonCek={pohon.cek}
           onTugaskanPohon={boleh ? (t) => setTugasPohon([t]) : undefined}
           simulasi={simulasi.hasil}
           kesehatan={kesehatan.gardu}
@@ -757,7 +757,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
                 onBulan={(tahun, bulan) => setBulanPohon({ tahun, bulan })}
                 saring={saringPohon}
                 onSaring={setSaringPohon}
-                jumlah={pohon.temuan.length + pohon.dirabas.length}
+                jumlah={pohon.temuan.length + pohon.dirabas.length + pohon.cek.length}
                 total={pohon.total}
                 tertangani={pohon.tertangani}
                 sibuk={pohon.sibuk}

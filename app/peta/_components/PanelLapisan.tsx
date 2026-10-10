@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import type { Grup, Jaringan, Lapisan } from "../_hooks/usePetaDaftar";
-import { LABEL_SUMBER, type SaringPohon, type SumberPohon } from "../_hooks/usePohonPeta";
+import { LABEL_SUMBER, WARNA_CEK, type SaringPohon, type SumberPohon } from "../_hooks/usePohonPeta";
 import { GARIS, INPUT, JUDUL_BAGIAN, WARNA } from "../_ui";
 import PengaturanGaya from "./PengaturanGaya";
 import { useGayaPeta } from "../_hooks/useGayaPeta";
@@ -316,7 +316,7 @@ export default function PanelLapisan({
  * Centang "Semua penyulang" di atasnya; jenis & bulan dirabas diatur di panel
  * Pohon yang muncul di kanan begitu ada yang dicentang.
  */
-const SUMBER: SumberPohon[] = ["inspeksi", "perabasan"];
+const SUMBER: SumberPohon[] = ["inspeksi", "perabasan", "pengecekan"];
 
 function FolderPohon({
   pohon, saring, onSaring, perSumber, terbuka, onAlihBuka, nyala, onAlih, onAlihBanyak, onHanya, onLompat,
@@ -351,7 +351,7 @@ function FolderPohon({
                 if (b.has(k)) b.delete(k); else b.add(k);
                 onSaring({ ...saring, sumber: b });
               }}
-              warna={k === "inspeksi" ? "#F59E0B" : WARNA.pohon}
+              warna={k === "inspeksi" ? "#F59E0B" : k === "pengecekan" ? WARNA_CEK : WARNA.pohon}
               ukuran={13}
               label={LABEL_SUMBER[k]}
             />
@@ -363,7 +363,7 @@ function FolderPohon({
       {pohon.length === 0 ? (
         <Kosong>
           {saring.sumber.size === 0
-            ? "Pilih sumbernya dulu: dari inspeksi JTM, dari perabasan, atau keduanya."
+            ? "Pilih sumbernya dulu: dari inspeksi JTM, dari perabasan, dari hasil pengecekan — boleh lebih dari satu."
             : "Belum ada pohon dari sumber yang dipilih (perabasan: bulan yang dipilih di panel Pohon)."}
         </Kosong>
       ) : (

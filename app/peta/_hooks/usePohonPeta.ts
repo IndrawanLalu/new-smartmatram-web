@@ -13,6 +13,10 @@ import type { Lapisan } from "./usePetaDaftar";
  *            Bukan per bulan — temuan menunggu sampai dirabas.
  *   DIRABAS  `perabasan_realisasi` (WO) + `perabasan_luar_wo`, di koordinat
  *            GPS pohonnya, satu bulan tanggal kerja.
+ *   CEK      `perabasan_cek_pohon_status`: pohon hasil pengecekan (Cek
+ *            Perabasan, 10 Okt 2026) yang BELUM dirabas regu — menunggu,
+ *            seperti temuan, bukan per bulan. Yang sudah dirabas tampil
+ *            sebagai pohon dirabas.
  *
  * "Tertangani" per SEGMEN: item WO perabasan segmen itu Selesai/Diverifikasi
  * pada atau sesudah tanggal inspeksinya. Pohon dirabas tidak menyimpan
@@ -63,6 +67,22 @@ export interface TemuanPohon {
   kunciTugas: KunciTugas | null;
 }
 
+/** Pohon hasil pengecekan yang belum dirabas regu. */
+export interface PohonCek {
+  id: string;
+  lat: number;
+  lng: number;
+  jenisPohon: string;
+  waktu: string;
+  pengecek: string | null;
+  putaran: number;
+  catatan: string | null;
+  foto: string[];
+  penyulang: string;
+  segmen: string | null;
+  ulp: string;
+}
+
 export interface PohonDirabas {
   id: string;
   lat: number;
@@ -79,11 +99,13 @@ export interface PohonDirabas {
 }
 
 /** Sumber pohon (arahan user 8 Okt 2026: penyaring sumber WAJIB ada). */
-export type SumberPohon = "inspeksi" | "perabasan";
+export type SumberPohon = "inspeksi" | "perabasan" | "pengecekan";
 export const LABEL_SUMBER: Record<SumberPohon, string> = {
   inspeksi: "Dari inspeksi JTM",
   perabasan: "Dari perabasan",
+  pengecekan: "Dari hasil pengecekan",
 };
+export const WARNA_CEK = "#DC2626";
 
 export interface SaringPohon {
   sumber: Set<SumberPohon>;
@@ -107,6 +129,7 @@ const kunciPenyulang = (s: unknown) => String(s ?? "").trim().toUpperCase() || "
 export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: SaringPohon, nyala: Set<string>) {
   const [temuan, setTemuan] = useState<TemuanPohon[]>([]);
   const [dirabas, setDirabas] = useState<PohonDirabas[]>([]);
+  const [cek, setCek] = useState<PohonCek[]>([]);
   const [galat, setGalat] = useState<string | null>(null);
   const [nonce, setNonce] = useState(0);
   const kunci = `${ulp}|${tahun}|${bulan}|${nonce}`;
@@ -119,7 +142,7 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
     const akhir = bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${dua(bulan + 1)}-01`;
     const kerja = async () => {
       try {
-        const [pohon, selesai, rabas, luar, tugas] = await Promise.all([
+        const [pohon, selesai, rabas, luar, tugas, cekBaris] = await Promise.all([
           fetchAllRows<Baris>(() =>
             supabaseBrowser
               .from("perabasan_pohon")
@@ -159,7 +182,26 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
             if (ulp) q = q.eq("ulp", ulp);
             return q.order("tiang_id").order("bagian").order("sirkit_segmen_id");
           }),
+          fetchAllRows<Baris>(() => {
+            let q = supabaseBrowser
+              .from("perabasan_cek_pohon_status")
+              .select("id,item_id,ulp,lat,lng,jenis_pohon,dicek_at,dicek_oleh,putaran,catatan,foto_url,foto_url_2,foto_url_3")
+              .eq("dirabas", false);
+            if (ulp) q = q.eq("ulp", ulp);
+            return q.order("id");
+          }),
         ]);
+        // Penyulang & segmen pohon hasil pengecekan dari item WO-nya.
+        const idItem = [...new Set(cekBaris.map((r) => String(r.item_id)))];
+        const itemCek = new Map<string, Baris>();
+        for (let i = 0; i < idItem.length; i += 200) {
+          const { data, error } = await supabaseBrowser
+            .from("wo_perabasan_item")
+            .select("id,penyulang,segmen_nama")
+            .in("id", idItem.slice(i, i + 200));
+          if (error) throw new Error(error.message);
+          for (const r of (data ?? []) as Baris[]) itemCek.set(String(r.id), r);
+        }
         if (!hidup) return;
 
         // Segmen → tanggal perabasan selesai paling akhir.
@@ -258,12 +300,33 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
           luarWo: true,
         }));
         setDirabas([...dariWo, ...diLuar].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)));
+        setCek(
+          cekBaris
+            .map((r) => {
+              const it = itemCek.get(String(r.item_id));
+              return {
+                id: String(r.id),
+                lat: angka(r.lat), lng: angka(r.lng),
+                jenisPohon: String(r.jenis_pohon ?? ""),
+                waktu: String(r.dicek_at),
+                pengecek: (r.dicek_oleh as string | null) ?? null,
+                putaran: Number(r.putaran ?? 1),
+                catatan: (r.catatan as string | null) ?? null,
+                foto: [r.foto_url, r.foto_url_2, r.foto_url_3].filter(Boolean) as string[],
+                penyulang: kunciPenyulang(it?.penyulang),
+                segmen: (it?.segmen_nama as string | null) ?? null,
+                ulp: String(r.ulp ?? "").toUpperCase(),
+              };
+            })
+            .filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng)),
+        );
         setGalat(null);
       } catch (e) {
         // Gagal ≠ kosong (teknisaplikasi butir 6): yang lama dibuang, panel menyebut galatnya.
         if (hidup) {
           setTemuan([]);
           setDirabas([]);
+          setCek([]);
           setGalat(e instanceof Error ? e.message : String(e));
         }
       } finally {
@@ -281,6 +344,7 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
     const ikut = [
       ...(saring.sumber.has("inspeksi") ? temuan : []),
       ...(saring.sumber.has("perabasan") ? dirabas : []),
+      ...(saring.sumber.has("pengecekan") ? cek : []),
     ];
     for (const x of ikut) {
       const a = per.get(x.penyulang) ?? { n: 0, ulp: x.ulp, lat: [], lng: [] };
@@ -298,11 +362,12 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
         lngMin: Math.min(...a.lng), lngMaks: Math.max(...a.lng),
       }))
       .sort((x, y) => x.kode.localeCompare(y.kode, "id"));
-  }, [temuan, dirabas, saring.sumber]);
+  }, [temuan, dirabas, cek, saring.sumber]);
 
   // Hanya penyulang yang dicentang di folder Pohon yang digambar.
   const temuanPilih = useMemo(() => temuan.filter((t) => nyala.has(`pohon:${t.penyulang}`)), [temuan, nyala]);
   const dirabasPilih = useMemo(() => dirabas.filter((p) => nyala.has(`pohon:${p.penyulang}`)), [dirabas, nyala]);
+  const cekPilih = useMemo(() => cek.filter((p) => nyala.has(`pohon:${p.penyulang}`)), [cek, nyala]);
   const temuanTampil = useMemo(
     () =>
       saring.sumber.has("inspeksi")
@@ -317,14 +382,16 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
     [temuanPilih, saring],
   );
   const dirabasTampil = saring.sumber.has("perabasan") ? dirabasPilih : [];
+  const cekTampil = saring.sumber.has("pengecekan") ? cekPilih : [];
 
   return {
     daftar,
     temuan: temuanTampil,
     dirabas: dirabasTampil,
-    total: temuanPilih.length + dirabasPilih.length,
+    cek: cekTampil,
+    total: temuanPilih.length + dirabasPilih.length + cekPilih.length,
     /** Jumlah per sumber se-ULP (untuk penyaring sumber di panel kiri). */
-    perSumber: { inspeksi: temuan.length, perabasan: dirabas.length } as Record<SumberPohon, number>,
+    perSumber: { inspeksi: temuan.length, perabasan: dirabas.length, pengecekan: cek.length } as Record<SumberPohon, number>,
     tertangani: temuanPilih.filter((t) => t.tertangani).length,
     sibuk,
     galat,

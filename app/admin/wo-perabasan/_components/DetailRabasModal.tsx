@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { BadgeCheck, Ban, Loader2, MapPin, Undo2 } from "lucide-react";
+import { useState } from "react";
+import { BadgeCheck, Ban, Loader2, Undo2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { BarisRabas } from "../_hooks/useDaftarPerabasan";
-import type { Realisasi, Regu } from "../_hooks/useWoPerabasan";
+import type { Regu } from "../_hooks/useWoPerabasan";
+import { usePohonSegmenRabas } from "../_hooks/usePohonSegmenRabas";
+import PohonSegmenRabas from "./PohonSegmenRabas";
 import { NADA_STATUS, km, rentangKerja, tanggal } from "../_lib/tampilan";
 
 /**
  * Detail satu segmen perabasan — pola sama dengan Optimasi Trafo.
  *
- * Bukti pohon (foto sebelum–sesudah) tampil langsung, bukan di balik tombol:
+ * Pohon tampil langsung dalam tiga kelompok — hasil pengecekan, perabasan
+ * (foto sebelum–sesudah), inspeksi — bukan di balik tombol:
  * itulah satu-satunya yang benar-benar diperiksa sebelum Terima. Penugasan
  * regu juga di sini — selama regu kosong, segmen ini tidak muncul di HP siapa
  * pun.
@@ -25,7 +28,6 @@ interface Props {
   onTugaskan: (id: string, regu: string) => Promise<boolean>;
   onPutuskan: (id: string, terima: boolean, catatan: string) => Promise<boolean>;
   onBatalkan: (id: string, alasan: string) => Promise<boolean>;
-  ambilRealisasi: (id: string) => Promise<Realisasi[]>;
 }
 
 function Nilai({ label, children }: { label: string; children: React.ReactNode }) {
@@ -37,32 +39,12 @@ function Nilai({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function Bukti({ url, label }: { url: string; label: string }) {
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className="block" title={`Buka foto ${label.toLowerCase()}`}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage / Firebase lama */}
-      <img src={url} alt={label} className="w-28 h-28 object-cover rounded-lg border border-line bg-surface" />
-      <span className="block text-[10px] text-ink-muted text-center mt-0.5">{label}</span>
-    </a>
-  );
-}
-
 export default function DetailRabasModal({
-  b, regu, onTutup, onTugaskan, onPutuskan, onBatalkan, ambilRealisasi,
+  b, regu, onTutup, onTugaskan, onPutuskan, onBatalkan,
 }: Props) {
-  const [pohon, setPohon] = useState<Realisasi[] | null>(null);
-  const [galatPohon, setGalatPohon] = useState<string | null>(null);
+  const pohon = usePohonSegmenRabas(b.id, b.segmenId);
   const [dialog, setDialog] = useState<"kembalikan" | "keluarkan" | null>(null);
   const [sibuk, setSibuk] = useState(false);
-
-  useEffect(() => {
-    let hidup = true;
-    ambilRealisasi(b.id).then(
-      (r) => { if (hidup) setPohon(r); },
-      (e: Error) => { if (hidup) setGalatPohon(e.message); },
-    );
-    return () => { hidup = false; };
-  }, [b.id, ambilRealisasi]);
 
   const jalankan = async (kerja: () => Promise<boolean>) => {
     setSibuk(true);
@@ -80,7 +62,6 @@ export default function DetailRabasModal({
   // mengerjakan akan berbeda dari yang tertulis di WO (dijaga database juga).
   const bisaPindahRegu = ["Dijadwalkan", "Dalam Proses", "Ditolak"].includes(b.statusDb);
   const reguUlp = regu.filter((g) => g.ulp === b.ulp);
-  const luarDaftar = (pohon ?? []).filter((p) => !p.tiang_id).length;
 
   const footer = (
     <>
@@ -167,53 +148,7 @@ export default function DetailRabasModal({
           </p>
         )}
 
-        <div>
-          <p className={`${EYEBROW} mb-2`}>
-            Bukti pohon{pohon ? ` · ${pohon.length} dilaporkan` : ""}
-            {luarDaftar > 0 && <span className="normal-case text-violet-700"> · {luarDaftar} di luar daftar inspeksi</span>}
-          </p>
-          {galatPohon ? (
-            <p className="text-xs text-amber-700">Bukti gagal dimuat: {galatPohon}</p>
-          ) : pohon === null ? (
-            <p className="text-xs text-ink-muted flex items-center gap-1.5"><Loader2 size={12} className="animate-spin" /> Memuat…</p>
-          ) : pohon.length === 0 ? (
-            <p className="text-xs rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-900">
-              Tidak ada pohon dilaporkan.
-              {b.statusDb === "Selesai" && (
-                <> Keterangan regu: {b.catatan ? <i>“{b.catatan}”</i> : "— tidak ada —"}</>
-              )}
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {pohon.map((p) => (
-                <div key={p.id} className="flex flex-wrap items-start gap-3 pb-3 border-b border-line last:border-0">
-                  <div className="flex gap-2">
-                    <Bukti url={p.foto_sebelum_url} label="Sebelum" />
-                    <Bukti url={p.foto_sesudah_url} label="Sesudah" />
-                  </div>
-                  <div className="flex-1 min-w-[160px] text-xs">
-                    <p className="font-medium text-ink">{p.jenis_pohon || "Jenis tidak dicatat"}</p>
-                    <p className="text-ink-muted mt-0.5">
-                      {p.tiang_id ? "dari inspeksi JTM" : "temuan lapangan"}
-                      {p.petugas_nama && ` · ${p.petugas_nama}`}
-                    </p>
-                    {p.catatan && <p className="text-ink-soft mt-0.5">{p.catatan}</p>}
-                    {p.lat !== null && p.lng !== null && (
-                      <a
-                        href={`https://www.google.com/maps?q=${p.lat},${p.lng}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-navy-600 hover:underline mt-0.5"
-                      >
-                        <MapPin size={11} /> {Number(p.lat).toFixed(5)}, {Number(p.lng).toFixed(5)}
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <PohonSegmenRabas isi={pohon.isi} galat={pohon.galat} catatanRegu={b.catatan} />
       </ModalShell>
 
       {dialog === "kembalikan" && (
