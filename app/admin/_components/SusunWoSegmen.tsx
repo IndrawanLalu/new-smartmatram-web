@@ -4,6 +4,9 @@ import { useMemo, useState } from "react";
 import { FileWarning, Loader2, Send, TriangleAlert, Users } from "lucide-react";
 import { BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
+import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import { bulanTahun, useGaransiObjek, type KunciGaransi } from "@/app/admin/_hooks/useGaransi";
 /** Segmen yang bisa dipilih — baris `master_segmen`. */
 export interface SegmenPilihan {
   segmen_id: string;
@@ -48,6 +51,8 @@ export interface IstilahWo {
   reguKosong: (ulp: string) => string;
   /** Satuan objek WO — "segmen" (bawaan) atau "gardu" (inspeksi JTR). */
   satuan?: string;
+  /** Nama WO gardu yang tak bernama (lencana garansi) — "WO Pemeliharaan". */
+  woGardu?: string;
 }
 
 /** SLA bulan WO & KMS yang sudah terbit di bulan itu (permintaan user
@@ -107,8 +112,11 @@ export default function SusunWoSegmen({
   onTambah,
   infoSla,
   woAwal,
+  garansi,
 }: {
   user: CurrentUser;
+  /** Jenis pekerjaan untuk peringatan masa garansi (wo-daftar-garansi.sql). */
+  garansi?: KunciGaransi;
   istilah: IstilahWo;
   /** SLA ULP di bulan WO + yang sudah terbit bulan itu. */
   infoSla?: (ulp: string, tglWo: string) => InfoSla;
@@ -151,6 +159,8 @@ export default function SusunWoSegmen({
   const [cari, setCari] = useState("");
   const [batasTampil, setBatasTampil] = useState(LANGKAH_TAMPIL);
   const [sibuk, setSibuk] = useState(false);
+  /** Konfirmasi terbit saat ada pilihan yang masih bergaransi. */
+  const [tanyaGaransi, setTanyaGaransi] = useState(false);
   const satuan = istilah.satuan ?? "segmen";
 
   /**
@@ -227,6 +237,9 @@ export default function SusunWoSegmen({
   // Tanggal acuan SLA: tanggal WO baru, atau tanggal WO tujuan saat menambah.
   const tglAcuan = mode === "baru" ? tgl : (woDipilih?.tgl_wo ?? tgl);
   const sla = ulp && infoSla ? infoSla(ulp, tglAcuan) : null;
+  // Masa garansi di bulan WO (baru) atau bulan WO tujuan (tambah).
+  const bergaransi = useGaransiObjek(garansi ?? null, ulp, tglAcuan);
+  const dipilihGaransi = dipilih.filter((s) => bergaransi.has(s.segmen_id));
   const bulanAcuan = `${NAMA_BULAN[Number(tglAcuan.slice(5, 7)) - 1]} ${tglAcuan.slice(0, 4)}`;
   const siap =
     !!ulp &&
@@ -436,6 +449,26 @@ export default function SusunWoSegmen({
 
       {/* Angka berjalan, menempel di atas daftar supaya terbaca saat mencentang
           — bukan setelah menggulir ke bawah. */}
+      {tanyaGaransi && (
+        <ConfirmDialog
+          title={`${dipilihGaransi.length} ${satuan} masih dalam masa garansi — tetap ${mode === "baru" ? "terbitkan" : "tambahkan"}?`}
+          message={
+            <span className="block space-y-1">
+              {dipilihGaransi.slice(0, 5).map((s) => (
+                <span key={s.segmen_id} className="block">
+                  <b className="text-ink">{s.nama}</b> · masa garansi s.d. {bulanTahun(bergaransi.get(s.segmen_id)!.garansi_sampai)}
+                </span>
+              ))}
+              {dipilihGaransi.length > 5 && <span className="block">… dan {dipilihGaransi.length - 5} lainnya</span>}
+              <span className="block pt-1">Boleh tetap di-WO-kan; tandanya ikut tampil di tabel WO.</span>
+            </span>
+          }
+          confirmLabel={mode === "baru" ? "Tetap terbitkan" : "Tetap tambahkan"}
+          onConfirm={() => void kirim()}
+          onClose={() => setTanyaGaransi(false)}
+        />
+      )}
+
       <div className={`${CARD} p-4 sticky top-2 z-10`}>
         <div className="flex flex-wrap items-baseline gap-x-5 gap-y-1">
           <span className="text-sm">
@@ -462,6 +495,12 @@ export default function SusunWoSegmen({
               {tanpaPanjang} {satuan} belum punya panjang — menyumbang 0 km ke rencana
             </span>
           )}
+          {dipilihGaransi.length > 0 && (
+            <span className="inline-flex items-center gap-1 text-xs text-amber-700">
+              <TriangleAlert size={13} />
+              {dipilihGaransi.length} {satuan} masih dalam masa garansi
+            </span>
+          )}
           {tanpaRegu > 0 && istilah.reguWajib && (
             <span className="inline-flex items-center gap-1 text-xs text-red-700">
               <Users size={13} />
@@ -469,7 +508,7 @@ export default function SusunWoSegmen({
             </span>
           )}
           <button
-            onClick={() => void kirim()}
+            onClick={() => (dipilihGaransi.length > 0 ? setTanyaGaransi(true) : void kirim())}
             disabled={!siap || sibuk}
             className={`${BTN_PRIMARY} ml-auto`}
           >
@@ -651,6 +690,7 @@ export default function SusunWoSegmen({
                     {s.panjang_pakai_km !== null ? s.panjang_pakai_km.toFixed(2) : "—"}
                     {s.panjang_dari === "ketikan" && <span className="text-amber-600"> ✎</span>}
                   </span>
+                  {bergaransi.has(s.segmen_id) && <LencanaGaransi g={bergaransi.get(s.segmen_id)!} namaWoGardu={istilah.woGardu} />}
                   <span className="w-[110px] text-right text-[11px]">
                     {s.umur_inspeksi_bulan === null ? (
                       <span className="inline-flex items-center gap-1 text-amber-700 font-semibold">

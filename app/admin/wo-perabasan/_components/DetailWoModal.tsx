@@ -8,6 +8,8 @@ import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { WoItem, WoRingkas } from "../_hooks/useWoPerabasan";
 import { statusTampil } from "../_hooks/useDaftarPerabasan";
 import { NADA_STATUS, tanggal } from "../_lib/tampilan";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 
 /**
  * Isi & ubah satu WO perabasan. Yang bisa diubah di sini: nama, target, dan
@@ -39,6 +41,7 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
   const [tgl, setTgl] = useState(w.tgl_wo);
   const [sibuk, setSibuk] = useState(false);
   const [batal, setBatal] = useState(false);
+  const garansi = useGaransiItem("perabasan", w.ulp);
 
   useEffect(() => {
     let hidup = true;
@@ -169,7 +172,10 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
                       <tr key={x.id} className="border-b border-line last:border-0">
                         <td className={`px-3 py-2 ${x.regu ? "text-ink-soft" : "text-red-700 font-semibold"}`}>{x.regu ?? "belum dibagi"}</td>
                         <td className="px-3 py-2 text-ink-soft">{x.penyulang}</td>
-                        <td className="px-3 py-2 text-ink">{x.segmen_nama}</td>
+                        <td className="px-3 py-2 text-ink">
+                          {x.segmen_nama}
+                          {garansi.get(x.id) && <div className="mt-1"><LencanaGaransi g={garansi.get(x.id)!} ringkas /></div>}
+                        </td>
                         <td className="px-3 py-2 text-right tabular-nums">{kms(x.panjang_km)}</td>
                         <td className="px-3 py-2">
                           <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA_STATUS[st]}`}>{st}</span>

@@ -161,6 +161,7 @@ export default function WoPerabasanPage() {
           key={woAwal?.id ?? "baru"}
           user={user}
           istilah={ISTILAH}
+          garansi="perabasan"
           infoSla={infoSla}
           woAwal={woAwal}
           segmen={w.segmen}

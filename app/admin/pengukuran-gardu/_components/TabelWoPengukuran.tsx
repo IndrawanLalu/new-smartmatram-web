@@ -3,6 +3,8 @@
 import { useState, useMemo } from "react";
 import { ChevronLeft, ChevronRight, CircleDashed, CheckCircle2 } from "lucide-react";
 import { LABEL_ALASAN, type AlasanWo } from "../_lib/kandidatWo";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 
 // ── Bentuk baris ──────────────────────────────────────────────────────────────
 
@@ -63,6 +65,8 @@ const bisaPilih = (r: BarisTampil) => !!r.id && !r.dikerjakan;
 
 export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }: TabelWoPengukuranProps) {
   const [page, setPage] = useState(1);
+  // Gardu yang di-WO-kan selagi pengukuran sebelumnya masih bergaransi.
+  const garansi = useGaransiItem("pengukuran", "");
   const [rowsTerakhir, setRowsTerakhir] = useState(rows);
 
   // Daftar berganti saat periode/ULP/saringan berubah, dan halaman 7 dari daftar
@@ -145,7 +149,10 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
                   </td>
                 )}
                 <td className={`${TD} text-center text-ink-muted`}>{(page - 1) * PAGE_SIZE + i + 1}</td>
-                <td className={`${TD} font-semibold whitespace-nowrap`}>{r.kode_gardu}</td>
+                <td className={`${TD} font-semibold whitespace-nowrap`}>
+                  {r.kode_gardu}
+                  {r.id && garansi.get(r.id) && <div className="mt-1 font-normal"><LencanaGaransi g={garansi.get(r.id)!} namaWoGardu="WO Pengukuran" /></div>}
+                </td>
                 <td className={`${TD} max-w-[260px]`}>
                   <p className="truncate">{r.nama || r.alamat || KOSONG}</p>
                   {r.nama && r.alamat && r.alamat !== r.nama && (

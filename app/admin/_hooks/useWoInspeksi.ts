@@ -39,6 +39,22 @@ export interface ItemWoInspeksi {
   tier: TierWo;
 }
 
+/** Satu WO inspeksi beserta ringkasannya (`wo_inspeksi_capaian`, wo-daftar-garansi.sql). */
+export interface WoInspeksiRingkas {
+  wo_id: string;
+  jenis: JenisWoInspeksi;
+  tier: TierWo;
+  ulp: string;
+  nama: string;
+  tgl_wo: string;
+  target_km: number;
+  status: "Terbit" | "Selesai" | "Dibatalkan";
+  item: number;
+  item_selesai: number;
+  rencana_km: number;
+  capaian_km: number;
+}
+
 const kunciGardu = (ulp: string, kode: string) => `${ulp.toUpperCase()}|${kode.toUpperCase()}`;
 const kodeDariKunci = (k: string) => k.split("|")[1] ?? k;
 
@@ -112,7 +128,8 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
   const [item, setItem] = useState<ItemWoInspeksi[]>([]);
   const [tim, setTim] = useState<{ regu: string; ulp: string }[]>([]);
   /** Semua item yang tidak dibatalkan — bahan "sudah terbit bulan ini" di info SLA. */
-  const [terbitan, setTerbitan] = useState<{ ulp: string; tgl_wo: string; panjang_km: number | null }[]>([]);
+  const [terbitan, setTerbitan] = useState<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>([]);
+  const [wo, setWo] = useState<WoInspeksiRingkas[]>([]);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -128,12 +145,26 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
       // Hanya petugas yang rolenya boleh jenis inspeksi ini (menu HP jtm / jtr,
       // `scripts/regu-inspeksi-dari-roles.sql`).
       supabaseBrowser.from("regu_inspeksi").select("regu,ulp").eq(jenis === "JTR" ? "jtr" : "jtm", true).order("ulp").order("regu"),
-      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null }>(() =>
-        supabaseBrowser.from(src.view).select("id,ulp,tgl_wo,panjang_km").neq("status", "Dibatalkan").order("id"),
+      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }>(() =>
+        supabaseBrowser.from(src.view).select((jenis === "JTM" ? "id,ulp,tgl_wo,panjang_km,tier" : "id,ulp,tgl_wo,panjang_km") as string).neq("status", "Dibatalkan").order("id")
+          .returns<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>(),
       ),
+      // Daftar WO. Gagal (SQL belum dijalankan) = daftar kosong, Susun WO tetap jalan.
+      supabaseBrowser.from("wo_inspeksi_capaian").select("*").eq("jenis", jenis).order("tgl_wo", { ascending: false }).order("created_at", { ascending: false }),
     ]).then(
-      ([o, i, g, t]) => {
+      ([o, i, g, t, d]) => {
         if (!hidup) return;
+        setWo(
+          ((d.data ?? []) as WoInspeksiRingkas[]).map((x) => ({
+            ...x,
+            tier: x.tier === "2" ? "2" : "1",
+            target_km: Number(x.target_km ?? 0),
+            item: Number(x.item),
+            item_selesai: Number(x.item_selesai),
+            rencana_km: Number(x.rencana_km),
+            capaian_km: Number(x.capaian_km),
+          })),
+        );
         setObjek(o);
         setItem(i.map(keItem(jenis)));
         setTerbitan(t);
@@ -206,6 +237,33 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
     return { item: h.item, dilewati: (h.dilewati ?? []).map((d) => ({ segmen: d.segmen ?? d.gardu ?? "", sebab: d.sebab })) };
   };
 
+  /** Tambah segmen/gardu ke WO yang masih berjalan (`tambah_wo_inspeksi`). */
+  const tambah = async (v: { woId: string; segmen: string[]; regu: Record<string, string>; targetKm: number | null; oleh: string }) => {
+    const { data, error } = await supabaseBrowser.rpc("tambah_wo_inspeksi", {
+      p_wo_id: v.woId,
+      p_objek: v.segmen,
+      p_regu: v.regu,
+      p_target_km: v.targetKm,
+      p_oleh: v.oleh,
+    });
+    if (error) {
+      toast.error(
+        error.message.includes("tambah_wo_inspeksi") && error.message.includes("schema cache")
+          ? "Fungsi tambah WO belum ada — jalankan scripts/wo-daftar-garansi.sql di Supabase."
+          : error.message,
+      );
+      return null;
+    }
+    const h = data as { nama: string; item: number; rencana_km: number; dilewati: { segmen?: string; gardu?: string; sebab: string }[] };
+    toast.success(
+      `${h.item} ${jenis === "JTM" ? "segmen" : "gardu"} ditambahkan ke ${h.nama} · rencana ${Number(h.rencana_km ?? 0).toFixed(2).replace(".", ",")} KMS` +
+        (h.dilewati?.length ? ` · ${h.dilewati.length} dilewati` : ""),
+    );
+    if (h.dilewati?.length) toast.error(h.dilewati.map((d) => `${d.segmen ?? d.gardu}: ${d.sebab}`).join(" · "));
+    muat();
+    return { item: h.item };
+  };
+
   const tugaskan = async (itemId: string, reguBaru: string, oleh: string) => {
     const { error } = await supabaseBrowser.rpc("tugaskan_regu_inspeksi", {
       p_item_id: itemId,
@@ -266,10 +324,10 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
   };
 
   /** KMS WO inspeksi yang sudah terbit untuk ULP itu di bulan tanggal itu. */
-  const terbitBulan = (u: string, tgl: string) =>
+  const terbitBulan = (u: string, tgl: string, tier?: TierWo) =>
     terbitan
-      .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7))
+      .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7) && (!tier || (x.tier ?? "1") === tier))
       .reduce((n, x) => n + Number(x.panjang_km ?? 0), 0);
 
-  return { objek, item, regu, objekTerikat, loading, terbitkan, tugaskan, batalkan, keluarkanBanyak, batalkanWo, muat, terbitBulan };
+  return { objek, item, wo, regu, objekTerikat, loading, terbitkan, tambah, tugaskan, batalkan, keluarkanBanyak, batalkanWo, muat, terbitBulan, nonce };
 }

@@ -5,6 +5,8 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import type { BarisRabas } from "../_hooks/useDaftarPerabasan";
 import { NADA_STATUS, km, rentangKerja, tanggal } from "../_lib/tampilan";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 
 /**
  * Daftar segmen perabasan — satu baris satu segmen, urut per penyulang
@@ -29,6 +31,8 @@ interface Props {
 }
 
 export default function TabelRabas({ baris, loading, onDetail, dipilih, onPilih, bisaPilih }: Props) {
+  // Segmen yang di-WO-kan selagi perabasan sebelumnya masih bergaransi.
+  const garansi = useGaransiItem("perabasan", "");
   const [halaman, setHalaman] = useState(1);
   const total = Math.max(1, Math.ceil(baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
@@ -105,7 +109,10 @@ export default function TabelRabas({ baris, loading, onDetail, dipilih, onPilih,
                   <p className="font-semibold text-ink">{b.penyulang}</p>
                   <p className="text-[11px] text-ink-muted">{b.ulp}</p>
                 </td>
-                <td className={`${TD} text-xs text-ink max-w-56`}>{b.segmenNama}</td>
+                <td className={`${TD} text-xs text-ink max-w-56`}>
+                  {b.segmenNama}
+                  {garansi.get(b.id) && <div className="mt-1"><LencanaGaransi g={garansi.get(b.id)!} /></div>}
+                </td>
                 <td className={`${TD} text-xs text-ink whitespace-nowrap tabular-nums`}>
                   {km(b.panjangKm)}
                   {b.panjangDari === "ketikan" && <span className="text-amber-600" title="Panjang masih angka ketikan"> ✎</span>}

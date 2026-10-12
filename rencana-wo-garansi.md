@@ -11,7 +11,7 @@ Keputusan user:
   "WO … Okt 2026, selesai 20 Okt"; saat terbit **"3 segmen masih dalam masa
   garansi — tetap terbitkan?"**. Boleh, hanya peringatan.
 
-## F1 — Bug & loading (SELESAI 12 Okt, belum commit)
+## F1 — Bug & loading (SELESAI 12 Okt, a00148d)
 - WO ULP lain tampil: tabel "WO inspeksi berjalan" JTM/JTR menampilkan semua
   ULP. Kini hanya ULP sendiri; UP3 memilih ULP (bawaan semua).
   (Data dicek: belum ada objek yang ter-WO dua kali di bulan yang sama —
@@ -24,7 +24,8 @@ Keputusan user:
 - Catatan, belum diubah: middleware memanggil `auth.getUser()` (ke server
   Supabase) di SETIAP perpindahan halaman — sumber jeda tambahan.
 
-## F2 — Daftar WO + Tambah ke WO untuk Inspeksi JTM & JTR
+## F2 — Daftar WO + Tambah ke WO untuk Inspeksi JTM & JTR (SELESAI 12 Okt, SQL `scripts/wo-daftar-garansi.sql` SUDAH JALAN)
+Daftar WO jadi bagian di tab Susun WO (bukan tab baru): tombol "Tambah item" membuka Susun WO mode tambah pada WO itu.
 Sepola Perabasan (tab Daftar WO → modal detail → "Tambah segmen" → Susun WO
 mode tambah).
 - SQL: view `wo_inspeksi_capaian` (per WO: ulp, jenis, tier, nama, tgl_wo,
@@ -35,7 +36,8 @@ mode tambah).
 - Web: tab "Daftar WO" di /admin/jtm & /admin/jtr; `woTerbuka` + `onTambah`
   diisi di WoInspeksi.
 
-## F3 — Masa garansi (kelima jenis)
+## F3 — Masa garansi (kelima jenis) (SELESAI 12 Okt, SQL yang sama SUDAH JALAN; uji PGlite)
+Susun WO berperingatan baru di Perabasan/JTM/JTR; WO gardu & pengukuran baru berlencana di tabelnya (pemberitahuan saat terbit manual menyusul di F4).
 - SQL: `sla_kinerja.garansi_bulan INT NULL` (NULL = 1) + simpan_sla ikut
   menyimpannya; fungsi `wo_garansi(p_jenis, p_ulp)` → per objek: pekerjaan
   terakhir (tanggal selesai, atau bulan WO kalau belum selesai), nama WO,

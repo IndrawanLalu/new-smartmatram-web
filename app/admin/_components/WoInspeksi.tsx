@@ -1,13 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { useRef, useState } from "react";
+import { Ban, ChevronLeft, ChevronRight, Loader2, PlusCircle } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
-import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi, type TierWo } from "@/app/admin/_hooks/useWoInspeksi";
+import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi, type TierWo, type WoInspeksiRingkas } from "@/app/admin/_hooks/useWoInspeksi";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
+import { bulanTahun, useGaransiItem } from "@/app/admin/_hooks/useGaransi";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 
 /**
  * Tab Susun WO inspeksi JTM / JTR (J4, J5c `rencana-mobile-jtm-jtr.md`):
@@ -24,6 +26,9 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
  * menyusun, tanpa pilihan bawaan — salah tier berarti regu mengisi daftar
  * isian yang salah. Segmen yang terbuka di WO Tier 1 tetap bisa dipilih untuk
  * WO Tier 2, dan sebaliknya.
+ *
+ * Daftar WO + "Tambah item" ke WO yang masih berjalan, dan peringatan masa
+ * garansi (wo-daftar-garansi.sql, 12 Okt 2026).
  */
 
 const PILIHAN_TIER: { tier: TierWo; label: string; bantu: string }[] = [
@@ -41,6 +46,12 @@ const ISTILAH: Record<JenisWoInspeksi, IstilahWo> = {
 };
 
 const PAGE = 20;
+const PAGE_WO = 10;
+const NADA_WO: Record<string, string> = {
+  Terbit: "bg-sky-50 text-sky-700 border-sky-200",
+  Selesai: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  Dibatalkan: "bg-gray-100 text-gray-500 border-gray-200",
+};
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
 const TD = "px-3 py-2.5 border-b border-line align-top text-xs";
 const kms = (v: number | null) => (v === null ? "—" : v.toFixed(2).replace(".", ","));
@@ -62,6 +73,8 @@ const tahap = (x: ItemWoInspeksi) => {
 export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: JenisWoInspeksi }) {
   const w = useWoInspeksi(jenis);
   const slaBulan = useSlaBulanan(jenis === "JTM" ? "jtm" : "jtr");
+  // SLA Tier 2 punya kuncinya sendiri di Atur SLA.
+  const slaBulan2 = useSlaBulanan("jtm2");
   const satuan = jenis === "JTM" ? "segmen" : "gardu";
   const Satuan = jenis === "JTM" ? "Segmen" : "Gardu";
   const oleh = user.name ?? user.email;
@@ -80,6 +93,30 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const bolehSemua = canSeeAllUnits(user.role);
   const [ulpLihat, setUlpLihat] = useState(bolehSemua ? "" : (user.unit ?? "").toUpperCase());
   const itemUlp = ulpLihat ? w.item.filter((x) => x.ulp.toUpperCase() === ulpLihat) : w.item;
+  /** Dibuka dari Daftar WO: Susun WO langsung pada "Tambah ke WO" ini. */
+  const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
+  const [halWo, setHalWo] = useState(1);
+  const atasRef = useRef<HTMLDivElement>(null);
+  // Item WO yang di-WO-kan dalam masa garansi pekerjaan sebelumnya.
+  const garansi1 = useGaransiItem(jtm ? "jtm" : "jtr", ulpLihat, w.nonce);
+  const garansi2 = useGaransiItem(jtm ? "jtm2" : null, ulpLihat, w.nonce);
+  const garansiDi = (x: ItemWoInspeksi) => (x.tier === "2" ? garansi2 : garansi1).get(x.id);
+
+  const daftarWo = w.wo
+    .filter((x) => (!ulpLihat || x.ulp.toUpperCase() === ulpLihat) && (saringTier === "semua" || x.tier === saringTier))
+    // Yang masih berjalan di atas.
+    .sort((a, b) => Number(b.status === "Terbit") - Number(a.status === "Terbit") || b.tgl_wo.localeCompare(a.tgl_wo));
+  const totalWo = Math.max(1, Math.ceil(daftarWo.length / PAGE_WO));
+  const hWo = Math.min(halWo, totalWo);
+  const tampilWo = daftarWo.slice((hWo - 1) * PAGE_WO, hWo * PAGE_WO);
+  const bolehUlp = (u: string) => bolehSemua || (user.unit ?? "").toUpperCase() === u.toUpperCase();
+  /** Objek WO ini yang sudah diinspeksi: WO tidak bisa dibatalkan. */
+  const jalanDi = (x: WoInspeksiRingkas) => x.item_selesai + itemUlp.filter((i) => i.wo_id === x.wo_id && !belumDiinspeksi(i)).length;
+  const tambahKe = (x: WoInspeksiRingkas) => {
+    setTierSusun(x.tier);
+    setWoAwal({ id: x.wo_id, ulp: x.ulp });
+    atasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
 
   const daftar = saringTier === "semua" ? itemUlp : itemUlp.filter((x) => x.tier === saringTier);
   const total = Math.max(1, Math.ceil(daftar.length / PAGE));
@@ -98,12 +135,6 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
       return n;
     });
 
-  /** WO yang masih berjalan, dari item terbukanya — bahan tombol Batalkan WO. */
-  const woBerjalan = [...new Map(itemUlp.map((x) => [x.wo_id, x.wo_nama])).entries()].map(([id, nama]) => {
-    const isi = itemUlp.filter((x) => x.wo_id === id);
-    return { id, nama, tier: isi[0]?.tier ?? "1", n: isi.length, jalan: isi.filter((x) => !belumDiinspeksi(x)).length };
-  });
-
   if (w.loading) {
     return (
       <div className={`${CARD} p-8 flex items-center justify-center gap-2 text-sm text-ink-soft`}>
@@ -113,7 +144,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" ref={atasRef}>
       {jtm && (
         <div className={`${CARD} p-5`}>
           <p className={EYEBROW}>Tier WO</p>
@@ -125,7 +156,10 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
             {PILIHAN_TIER.map((p) => (
               <button
                 key={p.tier}
-                onClick={() => setTierSusun(p.tier)}
+                onClick={() => {
+                  setTierSusun(p.tier);
+                  setWoAwal(null);
+                }}
                 className={`${CHIP} ${tierSusun === p.tier ? CHIP_ON : CHIP_OFF}`}
                 title={p.bantu}
                 aria-pressed={tierSusun === p.tier}
@@ -139,8 +173,8 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
 
       {tierSusun ? (
         <SusunWoSegmen
-          // Ganti tier = mulai susunan baru: centang segmen tier lain tidak terbawa.
-          key={tierSusun}
+          // Ganti tier / WO tujuan = mulai susunan baru: centang tier lain tidak terbawa.
+          key={`${tierSusun}-${woAwal?.id ?? "baru"}`}
           user={user}
           istilah={
             jtm
@@ -154,9 +188,21 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           segmen={w.objek}
           segmenTerikat={w.objekTerikat[tierSusun]}
           regu={w.regu}
-          woTerbuka={[]}
-          infoSla={(u, tgl) => ({ sla: slaBulan(u, tgl), terbit: w.terbitBulan(u, tgl) })}
+          woAwal={woAwal}
+          woTerbuka={w.wo
+            .filter((x) => x.status === "Terbit" && x.tier === tierSusun)
+            .map((x) => ({ wo_id: x.wo_id, ulp: x.ulp, nama: x.nama, tgl_wo: x.tgl_wo, target_km: x.target_km, item: x.item, rencana_km: x.rencana_km }))}
+          garansi={jtm ? (tierSusun === "2" ? "jtm2" : "jtm") : "jtr"}
+          infoSla={(u, tgl) => ({
+            sla: (tierSusun === "2" ? slaBulan2 : slaBulan)(u, tgl),
+            terbit: w.terbitBulan(u, tgl, jtm ? tierSusun : undefined),
+          })}
           onTerbitkan={(v) => w.terbitkan({ ...v, oleh, tier: tierSusun })}
+          onTambah={async (v) => {
+            const h = await w.tambah({ ...v, oleh });
+            if (h) setWoAwal(null);
+            return h;
+          }}
         />
       ) : (
         <div className={`${CARD} p-6 text-sm text-ink-soft text-center`}>
@@ -164,16 +210,31 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
         </div>
       )}
 
+      <DaftarWoInspeksi
+        baris={tampilWo}
+        total={daftarWo.length}
+        hal={hWo}
+        totalHal={totalWo}
+        onHal={setHalWo}
+        jtm={jtm}
+        satuan={satuan}
+        bolehUlp={bolehUlp}
+        jalanDi={jalanDi}
+        onTambah={tambahKe}
+        onBatalkan={(x) => setBatalWo({ id: x.wo_id, nama: x.nama })}
+      />
+
       <div className={`${CARD} overflow-hidden`}>
         <div className="px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={EYEBROW}>WO inspeksi berjalan</p>
+            <p className={EYEBROW}>{Satuan} WO berjalan</p>
             {bolehSemua && (
               <select
                 value={ulpLihat}
                 onChange={(e) => {
                   setUlpLihat(e.target.value);
                   setHalaman(1);
+                  setHalWo(1);
                   setPilih(new Set());
                 }}
                 className={`${FIELD} h-8 w-[170px] text-xs`}
@@ -198,6 +259,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                     onClick={() => {
                       setSaringTier(t);
                       setHalaman(1);
+                      setHalWo(1);
                     }}
                     className={`${CHIP} ${saringTier === t ? CHIP_ON : CHIP_OFF}`}
                     aria-pressed={saringTier === t}
@@ -206,24 +268,6 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                   </button>
                 );
               })}
-            </div>
-          )}
-          {woBerjalan.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {woBerjalan.map((b) => (
-                <span key={b.id} className="inline-flex items-center gap-2 h-8 pl-3 pr-1.5 rounded-full border border-line bg-white text-xs text-ink-soft">
-                  {jtm && <TierLencana tier={b.tier} />}
-                  <b className="text-ink">{b.nama}</b> {b.n} {satuan}
-                  <button
-                    onClick={() => setBatalWo({ id: b.id, nama: b.nama })}
-                    disabled={b.jalan > 0}
-                    title={b.jalan > 0 ? `${b.jalan} ${satuan} sudah diinspeksi — WO tidak bisa dibatalkan` : "Batalkan WO ini"}
-                    className="h-6 px-2 rounded-full text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40 disabled:hover:bg-transparent"
-                  >
-                    Batalkan WO
-                  </button>
-                </span>
-              ))}
             </div>
           )}
           {dipilih.length > 0 && (
@@ -288,6 +332,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                         <td className={TD}>
                           <p className="font-semibold text-ink text-sm">{x.objek_nama}</p>
                           <p className="text-[11px] text-ink-muted">{x.penyulang ?? "—"} · {x.ulp}</p>
+                          {garansiDi(x) && <div className="mt-1"><LencanaGaransi g={garansiDi(x)!} /></div>}
                         </td>
                         {jtm && (
                           <td className={TD}>
@@ -384,6 +429,114 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           onTutup={() => setBatalWo(null)}
           onBatalkan={(alasan) => w.batalkanWo(batalWo.id, alasan, oleh)}
         />
+      )}
+    </div>
+  );
+}
+
+/** Daftar WO inspeksi (12 Okt 2026). WO yang masih berjalan bisa ditambah
+ *  item-nya, atau dibatalkan selama belum ada yang diinspeksi. */
+function DaftarWoInspeksi({
+  baris, total, hal, totalHal, onHal, jtm, satuan, bolehUlp, jalanDi, onTambah, onBatalkan,
+}: {
+  baris: WoInspeksiRingkas[];
+  total: number;
+  hal: number;
+  totalHal: number;
+  onHal: (n: number) => void;
+  jtm: boolean;
+  satuan: string;
+  bolehUlp: (ulp: string) => boolean;
+  jalanDi: (x: WoInspeksiRingkas) => number;
+  onTambah: (x: WoInspeksiRingkas) => void;
+  onBatalkan: (x: WoInspeksiRingkas) => void;
+}) {
+  return (
+    <div className={`${CARD} overflow-hidden`}>
+      <div className="px-5 py-4">
+        <p className={EYEBROW}>Daftar WO</p>
+        <p className="text-xs text-ink-soft mt-1">
+          WO yang masih berjalan bisa ditambah {satuan}nya lewat <b className="text-ink">Tambah item</b>. Pembatalan WO
+          hanya selama belum ada {satuan} yang diinspeksi.
+        </p>
+      </div>
+      {baris.length === 0 ? (
+        <p className="text-xs text-ink-muted px-5 pb-6">Belum ada WO.</p>
+      ) : (
+        <>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-surface">
+                <tr>
+                  <th className={TH}>WO</th>
+                  <th className={TH}>Bulan</th>
+                  <th className={`${TH} text-right`}>Target</th>
+                  <th className={`${TH} text-right`}>Rencana</th>
+                  <th className={`${TH} text-right`}>{satuan === "gardu" ? "Gardu" : "Segmen"} selesai</th>
+                  <th className={TH}>Status</th>
+                  <th className={TH} />
+                </tr>
+              </thead>
+              <tbody>
+                {baris.map((x) => {
+                  const bisa = x.status === "Terbit" && bolehUlp(x.ulp);
+                  const jalan = jalanDi(x);
+                  return (
+                    <tr key={x.wo_id} className="hover:bg-navy-50/40">
+                      <td className={TD}>
+                        <p className="font-semibold text-ink text-sm flex flex-wrap items-center gap-1.5">
+                          {jtm && <TierLencana tier={x.tier} />} {x.nama}
+                        </p>
+                        <p className="text-[11px] text-ink-muted">{x.ulp}</p>
+                      </td>
+                      <td className={`${TD} text-ink-soft whitespace-nowrap`}>{bulanTahun(x.tgl_wo)}</td>
+                      <td className={`${TD} text-right tabular-nums`}>{kms(x.target_km)}</td>
+                      <td className={`${TD} text-right tabular-nums`}>{kms(x.rencana_km)}</td>
+                      <td className={`${TD} text-right tabular-nums`}>{x.item_selesai}/{x.item}</td>
+                      <td className={TD}>
+                        <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold ${NADA_WO[x.status] ?? NADA_WO.Terbit}`}>
+                          {x.status === "Terbit" ? "Berjalan" : x.status}
+                        </span>
+                      </td>
+                      <td className={`${TD} text-right whitespace-nowrap`}>
+                        {bisa && (
+                          <span className="inline-flex items-center gap-3">
+                            <button
+                              onClick={() => onTambah(x)}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-navy-600 hover:underline"
+                            >
+                              <PlusCircle size={12} /> Tambah item
+                            </button>
+                            <button
+                              onClick={() => onBatalkan(x)}
+                              disabled={jalan > 0}
+                              title={jalan > 0 ? `${jalan} ${satuan} sudah diinspeksi, WO tidak bisa dibatalkan` : "Batalkan WO ini"}
+                              className="inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 hover:underline disabled:opacity-40 disabled:no-underline"
+                            >
+                              <Ban size={12} /> Batalkan
+                            </button>
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          <div className="flex items-center justify-between gap-2 px-4 py-2.5 text-xs text-ink-soft">
+            <span>{total} WO</span>
+            <div className="flex items-center gap-1">
+              <button onClick={() => onHal(hal - 1)} disabled={hal <= 1} className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-30" aria-label="Halaman sebelumnya">
+                <ChevronLeft size={15} />
+              </button>
+              <span>{hal} / {totalHal}</span>
+              <button onClick={() => onHal(hal + 1)} disabled={hal >= totalHal} className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-30" aria-label="Halaman berikutnya">
+                <ChevronRight size={15} />
+              </button>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

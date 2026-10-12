@@ -7,6 +7,8 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { LABEL_ALASAN } from "../_lib/kandidatWo";
 import { STATUS_WO_HAR, statusWo, type BarisWoHar, type StatusWoHar } from "../_hooks/useWoHargardu";
+import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 
 const PAGE_SIZE = 20;
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
@@ -40,6 +42,8 @@ interface Props {
 export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
   const toast = useToast();
   const [status, setStatus] = useState<"SEMUA" | StatusWoHar>("SEMUA");
+  // Gardu yang di-WO-kan selagi pemeliharaan sebelumnya masih bergaransi.
+  const garansi = useGaransiItem("hargardu", "");
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [keluarkan, setKeluarkan] = useState(false);
   const bisaPilih = (r: BarisWoHar) => bolehKelola && statusWo(r) === "Belum dikerjakan";
@@ -171,6 +175,7 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
                           )}
                         </p>
                         <p className="text-[11px] text-ink-muted max-w-56 truncate">{r.nama ?? "—"} · {r.ulp}</p>
+                        {garansi.get(r.id) && <div className="mt-1"><LencanaGaransi g={garansi.get(r.id)!} namaWoGardu="WO Pemeliharaan" /></div>}
                       </td>
                       <td className={`${TD} text-xs text-ink-soft`}>{r.penyulang ?? "—"}</td>
                       <td className={`${TD} text-xs text-ink-soft`}>
