@@ -175,7 +175,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const namaItemTampil = koreksi.aktif
     ? (koreksi.daftarItem.find((x) => x.kode === koreksi.item)?.nama ?? "Isian")
     : (TULIS_ISIAN.find((x) => x.kode === itemTampil)?.nama ?? "Isian");
-  const isianPeta = useIsianPeta(isianTampil, itemTampil, tiang);
+  const isianPeta = useIsianPeta(isianTampil, itemTampil, tiang, koreksi.versi);
   const simulasi = useSimulasiBuka();
 
   const jalankanSimulasi = async () => {
@@ -341,6 +341,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const muatUlangSemua = async () => {
     setMemuatUlang(true);
     objek.muatUlang();
+    isianPeta.muatUlang();
     try {
       antreanJtr.muatUlang();
       antreanJtm.muatUlang();
@@ -387,6 +388,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
   const segarkan = () => {
     objek.muatUlang();
+    isianPeta.muatUlang();
     indukLoncat.muatUlang();
     milikPenanda.muatUlang();
     garduJanggal.muatUlang();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { TiangPeta } from "./usePetaIsi";
 
@@ -10,7 +10,9 @@ import type { TiangPeta } from "./usePetaIsi";
  * (10 Okt 2026). Sumber: `jtm_isian_terkini`.
  *
  * Disimpan per item; yang diambil hanya tiang yang belum pernah diambil, jadi
- * menggeser peta tidak mengambil ulang semuanya.
+ * menggeser peta tidak mengambil ulang semuanya. Simpanan dibuang (diambil
+ * ulang) saat `versi` berubah — sesudah koreksi diterapkan — atau `muatUlang`
+ * (12 Okt 2026: dulu nilai lama menetap sampai halaman dibuka ulang).
  */
 
 export interface NilaiIsian { nilai: string; label: string }
@@ -25,10 +27,13 @@ const POTONG = 200;
 
 interface Baris { tiang_id: string; sirkit_penyulang: string | null; nilai: string }
 
-export function useIsianPeta(aktif: boolean, item: string, tiang: TiangPeta[]) {
+export function useIsianPeta(aktif: boolean, item: string, tiang: TiangPeta[], versi: number) {
   const [opsi, setOpsi] = useState<{ kode: string; label: string }[]>([]);
-  // item → tiang_id → baris (bisa lebih dari satu kabel per tiang).
-  const [simpanan, setSimpanan] = useState<Record<string, Map<string, Baris[]>>>({});
+  const [nonce, setNonce] = useState(0);
+  const kunci = `${versi}-${nonce}`;
+  // item → tiang_id → baris (bisa lebih dari satu kabel per tiang), untuk `kunci`.
+  const [simpan, setSimpan] = useState<{ kunci: string; isi: Record<string, Map<string, Baris[]>> }>({ kunci, isi: {} });
+  const simpanan = useMemo(() => (simpan.kunci === kunci ? simpan.isi : {}), [simpan, kunci]);
   const [galat, setGalat] = useState<string | null>(null);
 
   useEffect(() => {
@@ -68,10 +73,13 @@ export function useIsianPeta(aktif: boolean, item: string, tiang: TiangPeta[]) {
         for (const r of (data ?? []) as Baris[]) baru.get(r.tiang_id)?.push(r);
       }
       setGalat(null);
-      setSimpanan((s) => ({ ...s, [item]: new Map([...(s[item] ?? new Map()), ...baru]) }));
+      setSimpan((s) => {
+        const isi = s.kunci === kunci ? s.isi : {};
+        return { kunci, isi: { ...isi, [item]: new Map([...(isi[item] ?? new Map()), ...baru]) } };
+      });
     })();
     return () => { hidup = false; };
-  }, [aktif, item, idJtm, simpanan]);
+  }, [aktif, item, idJtm, simpanan, kunci]);
 
   const label = useMemo(() => new Map(opsi.map((o) => [o.kode, o.label])), [opsi]);
   const warna = useMemo(() => new Map(opsi.map((o, i) => [o.kode, PALET[i % PALET.length]])), [opsi]);
@@ -98,5 +106,6 @@ export function useIsianPeta(aktif: boolean, item: string, tiang: TiangPeta[]) {
     return opsi.filter((o) => n.has(o.kode)).map((o) => ({ kode: o.kode, label: o.label, jumlah: n.get(o.kode) ?? 0, warna: warna.get(o.kode) ?? "#64748B" }));
   }, [simpanan, item, tiang, opsi, warna]);
 
-  return { nilaiDi, warna, legenda, galat };
+  const muatUlang = useCallback(() => setNonce((n) => n + 1), []);
+  return { nilaiDi, warna, legenda, galat, muatUlang };
 }

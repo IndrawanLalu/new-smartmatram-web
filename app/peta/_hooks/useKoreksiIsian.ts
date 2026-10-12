@@ -40,6 +40,8 @@ export function useKoreksiIsian(oleh: string) {
   const [janggal, setJanggal] = useState<Janggal[] | null>(null);
   const [sibuk, setSibuk] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
+  /** Naik tiap koreksi tersimpan — tulisan isian di peta diambil ulang. */
+  const [versi, setVersi] = useState(0);
 
   // Daftar isian yang bisa dikoreksi (pilihan, sekali per tiang / per kabel).
   useEffect(() => {
@@ -137,6 +139,7 @@ export function useKoreksiIsian(oleh: string) {
         (h.sudah_sama ? ` · ${h.sudah_sama} sudah benar` : "") +
         (h.belum_dinilai ? ` · ${h.belum_dinilai} belum pernah dinilai` : ""),
     );
+    setVersi((v) => v + 1);
     void muatPratinjau(dari, ke, item);
     return true;
   };
@@ -164,7 +167,10 @@ export function useKoreksiIsian(oleh: string) {
       return false;
     }
     setJanggal((d) => (d ?? []).filter((x) => x.tiang_id !== j.tiang_id));
-    if (!diam) toast.success(`${j.tiang_kode} disamakan jadi ${j.label_usulan ?? j.usulan}.`);
+    if (!diam) {
+      setVersi((v) => v + 1);
+      toast.success(`${j.tiang_kode} disamakan jadi ${j.label_usulan ?? j.usulan}.`);
+    }
     return true;
   };
 
@@ -176,7 +182,10 @@ export function useKoreksiIsian(oleh: string) {
       n += 1;
     }
     setSibuk(false);
-    if (n) toast.success(`${n} tiang disamakan dengan tiang sebelum & sesudahnya.`);
+    if (n) {
+      setVersi((v) => v + 1);
+      toast.success(`${n} tiang disamakan dengan tiang sebelum & sesudahnya.`);
+    }
   };
 
   const mulai = () => setAktif(true);
@@ -201,6 +210,6 @@ export function useKoreksiIsian(oleh: string) {
 
   return {
     aktif, mulai, keluar, item, gantiItem, daftarItem, opsi, nilai, setNilai,
-    dari, ke, pilih, pratinjau, terapkan, janggal, cariJanggal, samakan, samakanSemua, sibuk, galat, sorot,
+    dari, ke, pilih, pratinjau, terapkan, janggal, cariJanggal, samakan, samakanSemua, sibuk, galat, sorot, versi,
   };
 }
