@@ -43,9 +43,10 @@ function Rincian({ isi, label, satuan }: { isi: Record<string, number>; label: M
   );
 }
 
-function HasilInspeksi({ r, label }: { r: RekapSegmen | null; label: LabelIsian | null }) {
+/** Hasil inspeksi terkirim — satu segmen, atau gabungan satu penyulang. */
+export function HasilInspeksi({ r, label, kosong }: { r: RekapSegmen | null; label: LabelIsian | null; kosong: string }) {
   if (!r || r.tiang === 0) {
-    return <p className="text-xs text-gray-500 mt-1">Belum ada hasil inspeksi yang dikirim untuk segmen ini.</p>;
+    return <p className="text-xs text-gray-500 mt-1">{kosong}</p>;
   }
   return (
     <div className="mt-0.5">
@@ -113,7 +114,7 @@ export function IsiRincianSegmen({ s, tanpaJudul }: { s: SegmenPeta; tanpaJudul?
 
       <div>
         <p className={JUDUL_BAGIAN}>Hasil inspeksi</p>
-        <HasilInspeksi r={s.rekap} label={s.label} />
+        <HasilInspeksi r={s.rekap} label={s.label} kosong="Belum ada hasil inspeksi yang dikirim untuk segmen ini." />
       </div>
 
       <div>

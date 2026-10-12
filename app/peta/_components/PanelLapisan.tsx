@@ -71,13 +71,15 @@ interface Props {
   /** "Segmen ini saja" yang sedang tampil (id segmen). */
   segmenAktif: string | null;
   onSegmen: (s: SegmenSimpul) => void;
+  /** Klik nama penyulang JTM: selain "ini saja", buka kartu rinciannya. */
+  onPenyulang: (l: Lapisan) => void;
 }
 
 const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
   user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
-  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen,
+  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, onPenyulang,
 }: Props) {
   const [cari, setCari] = useState("");
   const [folderBuka, setFolderBuka] = useState<Set<Jaringan>>(new Set(["jtm"]));
@@ -227,7 +229,7 @@ export default function PanelLapisan({
                             l={l}
                             nyala={nyala.has(`jtm:${l.kode}`)}
                             onAlih={() => onAlih("jtm", l.kode)}
-                            onHanya={() => { onHanya("jtm", l.kode); onLompat(l); }}
+                            onHanya={() => { onHanya("jtm", l.kode); onLompat(l); onPenyulang(l); }}
                             onLompat={() => onLompat(l)}
                             rapat
                           />

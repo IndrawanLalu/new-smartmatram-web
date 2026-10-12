@@ -63,8 +63,8 @@ export interface InspeksiTerakhir {
 export type LabelIsian = Record<"ukuran" | "jenis" | "jenis_tiang" | "peralatan", Map<string, string>>;
 
 let labelJanji: Promise<LabelIsian> | null = null;
-/** Sekali per halaman — daftar pilihan jarang berubah. */
-function muatLabel(): Promise<LabelIsian> {
+/** Sekali per halaman — daftar pilihan jarang berubah. Dipakai juga rincian penyulang. */
+export function muatLabel(): Promise<LabelIsian> {
   labelJanji ??= (async () => {
     const [opsi, penanda] = await Promise.all([
       supabaseBrowser

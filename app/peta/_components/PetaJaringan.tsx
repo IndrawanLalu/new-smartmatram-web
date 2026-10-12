@@ -33,6 +33,8 @@ import PanelKesehatan from "./PanelKesehatan";
 import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
+import RincianPenyulang from "./RincianPenyulang";
+import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import RincianSegmen from "./RincianSegmen";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
 import PanelObjek from "./PanelObjek";
@@ -260,6 +262,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // lapisan lain disembunyikan (pilihan user), bukan dipadamkan: kembali ke
   // semua jaringan memunculkan lagi pilihan lapisan yang tadi.
   const [segmenTampil, setSegmenTampil] = useState<string | null>(null);
+  // Kartu penyulang (12 Okt 2026): klik nama penyulang JTM = gabungan semua
+  // segmennya. Tertutup sendiri begitu penyulang itu tidak lagi menyala.
+  const [kartuPenyulang, setKartuPenyulang] = useState<{ kode: string; ulp: string } | null>(null);
+  const rincianPenyulang = useRincianPenyulang(kartuPenyulang);
   const segmenId = bukaJtm ? bukaJtm.segmen_id : segmenTampil;
   const segmenPeta = useSegmenPeta(segmenId);
   const satuSegmen = segmenId !== null;
@@ -555,7 +561,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onLompat={lompat}
           onTutup={() => setPanel(false)}
           segmenAktif={segmenId}
-          onSegmen={(x) => { setBukaJtm(null); setTerpilih(null); setSegmenTampil(x.id); }}
+          onSegmen={(x) => { setBukaJtm(null); setTerpilih(null); setKartuPenyulang(null); setSegmenTampil(x.id); }}
+          onPenyulang={(l) => { setBukaJtm(null); setTerpilih(null); setSegmenTampil(null); setKartuPenyulang({ kode: l.kode, ulp: l.ulp }); }}
         />
       ) : (
         <button
@@ -667,6 +674,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
         {segmenTampil && !bukaJtm && !terpilih && !geserBanyak.aktif && (
           <RincianSegmen s={segmenPeta} onSemua={() => setSegmenTampil(null)} />
+        )}
+
+        {kartuPenyulang && nyala.has(`jtm:${kartuPenyulang.kode}`) && !segmenTampil && !bukaJtm && !terpilih && !geserBanyak.aktif && (
+          <RincianPenyulang p={rincianPenyulang} onTutup={() => setKartuPenyulang(null)} />
         )}
 
         {terpilih && !geserBanyak.aktif && (
