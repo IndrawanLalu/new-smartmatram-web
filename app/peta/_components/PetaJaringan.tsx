@@ -81,6 +81,12 @@ const SARING_KESEHATAN_AWAL: SaringKesehatan = {
 const TOMBOL_ATAS =
   "h-9 px-3 rounded-xl text-[#e2e8f0] text-sm font-medium backdrop-blur-sm flex items-center gap-2 border hover:bg-white/5";
 
+/** Isian JTM yang bisa ditulis di tiap tiang dari menu JTM. */
+const TULIS_ISIAN = [
+  { kode: "ukuran_konduktor", nama: "Ukuran kabel", judul: "Tulis ukuran konduktor JTM di tiap tiang, berwarna per ukuran — yang beda sendiri langsung terlihat" },
+  { kode: "jenis_konduktor", nama: "Jenis kabel", judul: "Tulis jenis konduktor JTM (MVTIC, A3C …) di tiap tiang, berwarna per jenis" },
+];
+
 interface Batas {
   latMin: number | null;
   latMaks: number | null;
@@ -161,13 +167,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const koreksi = useKoreksiIsian(oleh);
   // Gardu janggal: kode gardu di tiang vs master gardu (kelompok Gardu, 10 Okt 2026).
   const garduJanggal = useGarduJanggal(ulp, oleh);
-  // Nilai isian JTM di tiap tiang: ukuran konduktor, atau isian yang sedang
-  // dikoreksi selama mode Koreksi isian aktif (10 Okt 2026).
-  const [isianTampil, setIsianTampil] = useState(false);
-  const itemTampil = koreksi.aktif ? koreksi.item : "ukuran_konduktor";
+  // Nilai isian JTM di tiap tiang: ukuran atau jenis kabel (12 Okt 2026), atau
+  // isian yang sedang dikoreksi selama mode Koreksi isian aktif (10 Okt 2026).
+  const [tulisIsian, setTulisIsian] = useState<string | null>(null);
+  const isianTampil = tulisIsian !== null;
+  const itemTampil = koreksi.aktif ? koreksi.item : (tulisIsian ?? "ukuran_konduktor");
   const namaItemTampil = koreksi.aktif
     ? (koreksi.daftarItem.find((x) => x.kode === koreksi.item)?.nama ?? "Isian")
-    : "Ukuran kabel";
+    : (TULIS_ISIAN.find((x) => x.kode === itemTampil)?.nama ?? "Isian");
   const isianPeta = useIsianPeta(isianTampil, itemTampil, tiang);
   const simulasi = useSimulasiBuka();
 
@@ -622,7 +629,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             ulp={ulp || null}
             onLompat={(lat, lng) => setFokus([[lat - 0.0008, lng - 0.0008], [lat + 0.0008, lng + 0.0008]])}
             tampil={isianTampil}
-            onTampil={setIsianTampil}
+            onTampil={(v) => setTulisIsian(v ? "ukuran_konduktor" : null)}
           />
         )}
 
@@ -1065,14 +1072,31 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
                   <ListChecks size={15} /> Koreksi isian
                 </button>
               )}
-              <button
-                onClick={() => setIsianTampil((v) => !v)}
-                className={`${TOMBOL_ATAS} ${isianTampil ? "ring-1 ring-[#00897B]" : ""}`}
-                style={{ background: isianTampil ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
-                title="Tulis ukuran konduktor JTM di tiap tiang, berwarna per ukuran — yang beda sendiri langsung terlihat"
-              >
-                <Ruler size={15} /> {namaItemTampil}
-              </button>
+              {koreksi.aktif ? (
+                <button
+                  onClick={() => setTulisIsian((v) => (v ? null : "ukuran_konduktor"))}
+                  className={`${TOMBOL_ATAS} ${isianTampil ? "ring-1 ring-[#00897B]" : ""}`}
+                  style={{ background: isianTampil ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                  title="Tulis isian yang sedang dikoreksi di tiap tiang"
+                >
+                  <Ruler size={15} /> {namaItemTampil}
+                </button>
+              ) : (
+                TULIS_ISIAN.map((x) => {
+                  const nyala = tulisIsian === x.kode;
+                  return (
+                    <button
+                      key={x.kode}
+                      onClick={() => setTulisIsian(nyala ? null : x.kode)}
+                      className={`${TOMBOL_ATAS} ${nyala ? "ring-1 ring-[#00897B]" : ""}`}
+                      style={{ background: nyala ? "rgba(0,137,123,0.35)" : "rgba(10,22,40,0.85)", borderColor: GARIS }}
+                      title={x.judul}
+                    >
+                      <Ruler size={15} /> {x.nama}
+                    </button>
+                  );
+                })
+              )}
               {boleh && (
                 <button
                   onClick={() => {

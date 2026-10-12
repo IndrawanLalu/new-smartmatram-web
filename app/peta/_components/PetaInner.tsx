@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, memo, useEffect, useMemo } from "react";
+import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import {
   MapContainer, TileLayer, LayersControl, CircleMarker, Marker, Polyline, Tooltip,
   useMap, useMapEvents,
@@ -25,6 +25,7 @@ import type { NilaiIsian } from "../_hooks/useIsianPeta";
 import { kunciLoncat, type IndukLoncat } from "../_hooks/useIndukLoncat";
 import type { SorotKoreksi } from "../_hooks/useKoreksiIsian";
 import LapisanNama from "./LapisanNama";
+import PemilihTiang, { type CalonTiang, type PilihanTiang } from "./PemilihTiang";
 import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
 import type { PohonCek, PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
@@ -147,6 +148,14 @@ const ikonPutus = (warna: string, huruf = "!") =>
  * di koordinat, bukan titik tengahnya.
  */
 const SISI_PENANDA = 16;
+
+/** Tiang lain sedekat ini (piksel layar) dari titik klik → tampilkan pilihan. */
+const JARAK_PILIH = 15;
+
+/** Perbesaran: gambar peta dasar berhenti di 19, sesudahnya hanya diperbesar.
+ *  Di 19 dua tiang portal (±2 m) baru terpisah ±7 piksel; di 22 ±50 piksel. */
+const ZOOM_MAKS = 22;
+const ZOOM_PETAK = 19;
 const UKURAN_GARDU = 16;
 const IKON_GARDU = L.divIcon({
   className: "",
@@ -164,10 +173,12 @@ export default function PetaInner({
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
   kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik,
 }: Props) {
+  const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
     <MapContainer
       center={[-8.58, 116.1]}
       zoom={12}
+      maxZoom={ZOOM_MAKS}
       preferCanvas
       zoomControl={false}
       attributionControl
@@ -181,14 +192,16 @@ export default function PetaInner({
           <TileLayer
             url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
             attribution="Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
-            maxZoom={19}
+            maxZoom={ZOOM_MAKS}
+            maxNativeZoom={ZOOM_PETAK}
           />
         </LayersControl.BaseLayer>
         <LayersControl.BaseLayer checked name="Peta jalan">
           <TileLayer
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             attribution="&copy; OpenStreetMap"
-            maxZoom={19}
+            maxZoom={ZOOM_MAKS}
+            maxNativeZoom={ZOOM_PETAK}
           />
         </LayersControl.BaseLayer>
       </LayersControl>
@@ -199,6 +212,15 @@ export default function PetaInner({
       <Isi
         rute={rute} tiang={tiang} gardu={gardu} penanda={penanda}
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu} loncat={loncat}
+        onBerdesakan={setPilihan}
+      />
+      <PemilihTiang
+        pilihan={pilihan}
+        onPilih={(t) => {
+          setPilihan(null);
+          onPilihTiang(t);
+        }}
+        onTutup={() => setPilihan(null)}
       />
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       {tandaMilik.map((t) => (
@@ -262,7 +284,7 @@ function Fokus({ batas }: { batas: [[number, number], [number, number]] | null }
 /** Dipisah dan di-`memo` supaya menggeser peta tanpa perubahan data tidak
  *  menggambar ulang ribuan objek. */
 const Isi = memo(function Isi({
-  rute, tiang, gardu, penanda, onPilihTiang, onPilihGardu, loncat,
+  rute, tiang, gardu, penanda, onPilihTiang, onPilihGardu, loncat, onBerdesakan,
 }: {
   rute: RuteBaris[];
   tiang: TiangPeta[];
@@ -271,7 +293,9 @@ const Isi = memo(function Isi({
   onPilihTiang: (t: TiangPeta) => void;
   onPilihGardu: (g: GarduPeta) => void;
   loncat: Map<string, IndukLoncat>;
+  onBerdesakan: (p: PilihanTiang) => void;
 }) {
+  const peta = useMap();
   const gaya = useGayaPeta();
   const ikonTandaPutus = useMemo(() => ikonPutus(gaya.putus), [gaya.putus]);
   const ikonTandaLoncat = useMemo(() => ikonPutus(gaya.putus, "?"), [gaya.putus]);
@@ -317,6 +341,29 @@ const Isi = memo(function Isi({
     }
     return { biasa: b, bertanda: p };
   }, [tiang, penanda]);
+
+  /** Klik tiang: ada tiang lain sedekat JARAK_PILIH piksel → daftar pilihan;
+   *  hanya satu → langsung dipilih seperti biasa. Diukur dari posisi yang
+   *  DIGAMBAR (gardu portal di tengah kedua tiangnya), satu baris per tiang. */
+  const klikTiang = (t: TiangPeta, e: L.LeafletMouseEvent) => {
+    const titik = peta.mouseEventToContainerPoint(e.originalEvent);
+    const dekat = new Map<string, CalonTiang & { jarak: number }>();
+    const cek = (x: TiangPeta, posisi: [number, number], label: string) => {
+      const jarak = peta.latLngToContainerPoint(posisi).distanceTo(titik);
+      if (jarak > JARAK_PILIH) return;
+      const k = `${x.kelompok}-${x.id}`;
+      const ada = dekat.get(k);
+      if (!ada || jarak < ada.jarak) dekat.set(k, { t: x, label: ada?.label ?? label, jarak });
+    };
+    for (const p of bertanda) cek(p.t, p.posisi, p.label);
+    for (const x of biasa) cek(x, [x.lat, x.lng], x.pasanganPortalDari ? "tiang kedua" : "tiang");
+    if (dekat.size <= 1) return onPilihTiang(t);
+    onBerdesakan({
+      lat: e.latlng.lat,
+      lng: e.latlng.lng,
+      daftar: [...dekat.values()].sort((a, b) => a.jarak - b.jarak).map(({ t: x, label }) => ({ t: x, label })),
+    });
+  };
 
   return (
     <>
@@ -421,7 +468,7 @@ const Isi = memo(function Isi({
             key={`${t.kelompok}-${t.id}`}
             center={[t.lat, t.lng]}
             radius={t.percabangan ? 6 : 5}
-            eventHandlers={{ click: () => onPilihTiang(t) }}
+            eventHandlers={{ click: (e) => klikTiang(t, e) }}
             pathOptions={
               t.diJtm
                 ? { color: warna, weight: 2.5, fillColor: gaya.jtrDiJtm, fillOpacity: 1 }
@@ -451,7 +498,7 @@ const Isi = memo(function Isi({
           key={`${t.kelompok}-${t.id}`}
           position={posisi}
           icon={ikon}
-          eventHandlers={{ click: () => onPilihTiang(t) }}
+          eventHandlers={{ click: (e) => klikTiang(t, e) }}
         >
           <Tooltip direction="top" offset={[0, -10]} sticky>
             <span className="text-[11px] font-semibold">{t.kode}</span>

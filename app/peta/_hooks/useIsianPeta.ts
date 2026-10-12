@@ -16,7 +16,11 @@ import type { TiangPeta } from "./usePetaIsi";
 export interface NilaiIsian { nilai: string; label: string }
 
 /** Warna per nilai, urut pilihan di Pengaturan JTM. */
-const PALET = ["#2563EB", "#16A34A", "#F59E0B", "#DC2626", "#9333EA", "#0891B2", "#DB2777", "#65A30D"];
+// 12 warna: jenis konduktor punya 12 pilihan (AAAC, A3C, MVTIC …), jangan ada yang kembar.
+const PALET = [
+  "#2563EB", "#16A34A", "#F59E0B", "#DC2626", "#9333EA", "#0891B2",
+  "#DB2777", "#65A30D", "#EA580C", "#4F46E5", "#0D9488", "#A16207",
+];
 const POTONG = 200;
 
 interface Baris { tiang_id: string; sirkit_penyulang: string | null; nilai: string }
