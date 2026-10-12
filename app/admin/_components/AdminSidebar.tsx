@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronDown, Loader2 } from "lucide-react";
 import { NAV_GROUPS } from "@/app/admin/_nav";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -34,6 +34,19 @@ const ICON_STROKE = 1.75;
  *  bukan rel ikon yang jadi pita gelap. Saat aktif ikut putih. */
 const iconCls = (active: boolean) =>
   `shrink-0 ${active ? "" : "text-ink-soft group-hover:text-navy-600"}`;
+
+/** Putaran kecil di menu yang baru diklik selama halamannya dimuat — tanda
+ *  bahwa klik sudah diterima (12 Okt 2026: tanpa ini orang mengklik berkali-kali).
+ *  `useLinkStatus` hanya berlaku di dalam `<Link>`. */
+function TandaMuat({ ringkas }: { ringkas?: boolean }) {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return ringkas ? (
+    <Loader2 size={12} className="absolute top-1 right-1 animate-spin text-navy-600" aria-label="Memuat" />
+  ) : (
+    <Loader2 size={14} className="ml-auto shrink-0 animate-spin" aria-label="Memuat" />
+  );
+}
 
 // ── Component ────────────────────────────────────────────────────────────────
 
@@ -113,9 +126,10 @@ export default function AdminSidebar({ userUnit }: AdminSidebarProps) {
                       key={href}
                       href={href}
                       title={label}
-                      className={`${ITEM_BASE} justify-center h-10 ${active ? ITEM_ON : ITEM_OFF}`}
+                      className={`${ITEM_BASE} relative justify-center h-10 ${active ? ITEM_ON : ITEM_OFF}`}
                     >
                       <Icon size={18} strokeWidth={ICON_STROKE} className={iconCls(active)} />
+                      <TandaMuat ringkas />
                     </Link>
                   );
                 })}
@@ -154,6 +168,7 @@ export default function AdminSidebar({ userUnit }: AdminSidebarProps) {
                       >
                         <Icon size={16} strokeWidth={ICON_STROKE} className={iconCls(active)} />
                         <span className="truncate">{label}</span>
+                        <TandaMuat />
                       </Link>
                     );
                   })}

@@ -5,7 +5,7 @@ import { Ban, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
-import type { CurrentUser } from "@/lib/roles";
+import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
 import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi, type TierWo } from "@/app/admin/_hooks/useWoInspeksi";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 
@@ -75,12 +75,17 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const [tierSusun, setTierSusun] = useState<TierWo | null>(jtm ? null : "1");
   /** Saringan daftar WO berjalan. */
   const [saringTier, setSaringTier] = useState<TierWo | "semua">("semua");
+  // WO berjalan hanya ULP sendiri — dulu semua ULP ikut tampil (bug 12 Okt
+  // 2026). UP3 memilih ULP-nya; kosong = semua.
+  const bolehSemua = canSeeAllUnits(user.role);
+  const [ulpLihat, setUlpLihat] = useState(bolehSemua ? "" : (user.unit ?? "").toUpperCase());
+  const itemUlp = ulpLihat ? w.item.filter((x) => x.ulp.toUpperCase() === ulpLihat) : w.item;
 
-  const daftar = saringTier === "semua" ? w.item : w.item.filter((x) => x.tier === saringTier);
+  const daftar = saringTier === "semua" ? itemUlp : itemUlp.filter((x) => x.tier === saringTier);
   const total = Math.max(1, Math.ceil(daftar.length / PAGE));
   const hal = Math.min(halaman, total);
   const tampil = daftar.slice((hal - 1) * PAGE, hal * PAGE);
-  const dipilih = w.item.filter((x) => pilih.has(x.id) && belumDiinspeksi(x));
+  const dipilih = itemUlp.filter((x) => pilih.has(x.id) && belumDiinspeksi(x));
   const bisaDiHal = tampil.filter(belumDiinspeksi).map((x) => x.id);
   const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
   const ubahPilih = (id: string[], aktif: boolean) =>
@@ -94,8 +99,8 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
     });
 
   /** WO yang masih berjalan, dari item terbukanya — bahan tombol Batalkan WO. */
-  const woBerjalan = [...new Map(w.item.map((x) => [x.wo_id, x.wo_nama])).entries()].map(([id, nama]) => {
-    const isi = w.item.filter((x) => x.wo_id === id);
+  const woBerjalan = [...new Map(itemUlp.map((x) => [x.wo_id, x.wo_nama])).entries()].map(([id, nama]) => {
+    const isi = itemUlp.filter((x) => x.wo_id === id);
     return { id, nama, tier: isi[0]?.tier ?? "1", n: isi.length, jalan: isi.filter((x) => !belumDiinspeksi(x)).length };
   });
 
@@ -161,15 +166,32 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
 
       <div className={`${CARD} overflow-hidden`}>
         <div className="px-5 py-4">
-          <p className={EYEBROW}>WO inspeksi berjalan</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className={EYEBROW}>WO inspeksi berjalan</p>
+            {bolehSemua && (
+              <select
+                value={ulpLihat}
+                onChange={(e) => {
+                  setUlpLihat(e.target.value);
+                  setHalaman(1);
+                  setPilih(new Set());
+                }}
+                className={`${FIELD} h-8 w-[170px] text-xs`}
+                aria-label="ULP"
+              >
+                <option value="">Semua ULP</option>
+                {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+              </select>
+            )}
+          </div>
           <p className="text-xs text-ink-soft mt-1">
             {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
             Inspeksi. Yang sudah diinspeksi regu tidak bisa dikeluarkan dari WO.
           </p>
-          {jtm && w.item.length > 0 && (
+          {jtm && itemUlp.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring tier">
               {(["semua", "1", "2"] as const).map((t) => {
-                const n = t === "semua" ? w.item.length : w.item.filter((x) => x.tier === t).length;
+                const n = t === "semua" ? itemUlp.length : itemUlp.filter((x) => x.tier === t).length;
                 return (
                   <button
                     key={t}
@@ -219,7 +241,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
         </div>
         {daftar.length === 0 ? (
           <p className="text-xs text-ink-muted px-5 pb-6">
-            {w.item.length === 0 ? "Belum ada WO inspeksi yang berjalan." : `Belum ada WO Tier ${saringTier} yang berjalan.`}
+            {itemUlp.length === 0 ? "Belum ada WO inspeksi yang berjalan." : `Belum ada WO Tier ${saringTier} yang berjalan.`}
           </p>
         ) : (
           <>
