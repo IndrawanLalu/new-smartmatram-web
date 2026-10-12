@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Search, X } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
@@ -14,6 +15,10 @@ import { fmtAngka, JENIS_SURAT, labelBulan } from "../_lib/woSurat";
  * WO Tier 2 yang disusun di aplikasi dihitung dari HP —, Inspeksi Gardu
  * Tier 1 & 2) — dicentang per objek di web (keputusan user 29 Sep 2026).
  * Centang = selesai pada tanggal itu; dibatalkan = kosongkan centangnya.
+ *
+ * Kotak cari (12 Okt 2026): WO sebulan bisa ratusan gardu/segmen — mencari
+ * satu nama dengan menggulir tidak masuk akal. Pencarian hanya menyaring
+ * tampilan; angka "x dari y selesai" tetap untuk seluruh WO.
  */
 
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
@@ -46,6 +51,7 @@ export default function CentangRealisasiModal({ user, kunci, ulpAwal, periodeAwa
   const [periode, setPeriode] = useState(periodeAwal);
   const [tahun, bulan] = periode.split("-").map(Number);
   const [muat, setMuat] = useState<{ kunci: string; item: Item[] } | null>(null);
+  const [cari, setCari] = useState("");
   const kini = `${ulp}|${periode}`;
 
   useEffect(() => {
@@ -74,6 +80,14 @@ export default function CentangRealisasiModal({ user, kunci, ulpAwal, periodeAwa
 
   const item = useMemo(() => (muat?.kunci === kini ? muat.item : null), [muat, kini]);
   const selesai = (item ?? []).filter((i) => i.selesai_tgl);
+  const q = cari.trim().toUpperCase();
+  const tampil = useMemo(
+    () =>
+      !item || !q
+        ? item
+        : item.filter((i) => [i.objek, i.alamat, i.pelaksana].some((t) => (t ?? "").toUpperCase().includes(q))),
+    [item, q],
+  );
 
   const centang = async (it: Item, tgl: string | null) => {
     const { error } = await supabaseBrowser.rpc("centang_wo_manual", { p_id: it.id, p_tgl: tgl, p_oleh: user.name ?? user.email });
@@ -97,9 +111,29 @@ export default function CentangRealisasiModal({ user, kunci, ulpAwal, periodeAwa
           {(up3 ? UNIT : [ulp]).map((u) => <option key={u} value={u}>{u}</option>)}
         </select>
         <input type="month" value={periode} onChange={(e) => e.target.value && setPeriode(e.target.value)} className={`${FIELD} w-[170px]`} aria-label="Bulan WO" />
+        <div className="relative flex-1 min-w-[200px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
+          <input
+            value={cari}
+            onChange={(e) => setCari(e.target.value)}
+            placeholder={`Cari ${jenis.kolomObjek.toLowerCase()}, alamat, pelaksana…`}
+            className={`${FIELD} w-full pl-9 pr-8`}
+            aria-label="Cari"
+          />
+          {cari && (
+            <button
+              onClick={() => setCari("")}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink"
+              aria-label="Hapus pencarian"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
         {item && item.length > 0 && (
           <p className="text-sm text-ink ml-auto">
             <b>{fmtAngka(total(selesai), jenis.km)}</b> dari {fmtAngka(total(item), jenis.km)} {jenis.satuan} selesai
+            {q && tampil && <span className="block text-[11px] text-ink-muted text-right">{tampil.length} dari {item.length} cocok</span>}
           </p>
         )}
       </div>
@@ -110,11 +144,13 @@ export default function CentangRealisasiModal({ user, kunci, ulpAwal, periodeAwa
         <p className="text-xs text-ink-muted">
           Belum ada WO {jenis.nama.replace(/^WO /, "")} {labelBulan(tahun, bulan)} ULP {ulp}. Tempel dulu lewat Cetak / Kirim WO.
         </p>
+      ) : tampil && tampil.length === 0 ? (
+        <p className="text-xs text-ink-muted">Tidak ada yang cocok dengan &ldquo;{cari.trim()}&rdquo;.</p>
       ) : (
         <div className="rounded-xl border border-line overflow-auto max-h-[55vh]">
           <table className="w-full text-sm">
             <tbody>
-              {item.map((it) => (
+              {(tampil ?? []).map((it) => (
                 <tr key={it.id} className="border-b border-line last:border-0">
                   <td className="px-3 py-2 w-8">
                     <input
