@@ -12,6 +12,8 @@ import { GARIS, INPUT, JUDUL_BAGIAN, WARNA } from "../_ui";
 import PengaturanGaya from "./PengaturanGaya";
 import { useGayaPeta } from "../_hooks/useGayaPeta";
 import Centang from "./Centang";
+import PohonSegmenJtm from "./PohonSegmenJtm";
+import { useSegmenDaftar, type SegmenSimpul } from "../_hooks/useSegmenDaftar";
 
 /**
  * Panel lapisan — pohon folder, saringan, dan pencarian.
@@ -66,13 +68,16 @@ interface Props {
   onTampilGardu: (v: boolean) => void;
   onLompat: (k: Kotak) => void;
   onTutup: () => void;
+  /** "Segmen ini saja" yang sedang tampil (id segmen). */
+  segmenAktif: string | null;
+  onSegmen: (s: SegmenSimpul) => void;
 }
 
 const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
   user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
-  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup,
+  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen,
 }: Props) {
   const [cari, setCari] = useState("");
   const [folderBuka, setFolderBuka] = useState<Set<Jaringan>>(new Set(["jtm"]));
@@ -82,6 +87,8 @@ export default function PanelLapisan({
   const gaya = useGayaPeta();
 
   const q = cari.trim().toUpperCase();
+  // Segmen baru dibaca saat penyulang JTM pertama kali dibuka.
+  const segmen = useSegmenDaftar(ulp, [...grupBuka].some((k) => k.startsWith("jtm:")));
 
   const hasil = useMemo(() => {
     if (!q) return [];
@@ -203,16 +210,41 @@ export default function PanelLapisan({
                   sendiri setelah inspeksi JTM pertama pada sebuah penyulang.
                 </Kosong>
               ) : (
-                perFolder.jtm.map((l) => (
-                  <BarisLapisan
-                    key={l.kode}
-                    l={l}
-                    nyala={nyala.has(`jtm:${l.kode}`)}
-                    onAlih={() => onAlih("jtm", l.kode)}
-                    onHanya={() => { onHanya("jtm", l.kode); onLompat(l); }}
-                    onLompat={() => onLompat(l)}
-                  />
-                ))
+                perFolder.jtm.map((l) => {
+                  const buka = grupBuka.has(`jtm:${l.kode}`);
+                  return (
+                    <div key={l.kode}>
+                      <div className="flex items-center">
+                        <button
+                          onClick={() => alihGrup(`jtm:${l.kode}`)}
+                          className="shrink-0 pl-2.5 text-gray-500 hover:text-gray-300"
+                          title={buka ? "Tutup segmen" : "Lihat segmen"}
+                        >
+                          {buka ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                        </button>
+                        <div className="flex-1 min-w-0">
+                          <BarisLapisan
+                            l={l}
+                            nyala={nyala.has(`jtm:${l.kode}`)}
+                            onAlih={() => onAlih("jtm", l.kode)}
+                            onHanya={() => { onHanya("jtm", l.kode); onLompat(l); }}
+                            onLompat={() => onLompat(l)}
+                            rapat
+                          />
+                        </div>
+                      </div>
+                      {buka && (
+                        <PohonSegmenJtm
+                          daftar={segmen.perPenyulang?.get(l.kode)}
+                          memuat={!segmen.perPenyulang && !segmen.galat}
+                          galat={segmen.galat}
+                          aktif={segmenAktif}
+                          onSegmen={onSegmen}
+                        />
+                      )}
+                    </div>
+                  );
+                })
               )}
             </Folder>
 

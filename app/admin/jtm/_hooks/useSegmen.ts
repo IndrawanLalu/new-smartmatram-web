@@ -54,8 +54,9 @@ export const namaSegmen = (
   awalNama: string,
   akhirJenis: string,
   akhirNama: string,
+  pangkal?: Set<string>,
 ) => {
-  return `${labelTitik(awalJenis, awalNama)} - ${labelTitik(akhirJenis, akhirNama)}`;
+  return `${labelTitik(awalJenis, awalNama, pangkal)} - ${labelTitik(akhirJenis, akhirNama, pangkal)}`;
 };
 
 /** Tiang yang belum masuk segmen mana pun — tidak terlihat regu saat inspeksi. */

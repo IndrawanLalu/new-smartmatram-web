@@ -6,7 +6,7 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useJtmRef } from "@/app/admin/jtm/_hooks/useJtmRef";
-import { kodeTitik, labelTitik, penandaDariTitik, susunJenisTitik } from "@/lib/jenisTitikJtm";
+import { kodePangkal, kodeTitik, labelTitik, penandaDariTitik, susunJenisTitik } from "@/lib/jenisTitikJtm";
 
 /**
  * Membetulkan titik ujung segmen lapangan. Nama segmennya tidak diketik —
@@ -43,11 +43,13 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
   const [sibuk, setSibuk] = useState(false);
   const [tiangSegmen, setTiangSegmen] = useState<TiangSegmen[]>([]);
   const [penutup, setPenutup] = useState<string>("");
-  // Pilihan = Penanda tiang di Pengaturan JTM. UJUNG bukan pilihan di sini:
-  // itu keadaan "masih dirintis", bukan tempat.
+  // Pilihan = Pangkal segmen + Penanda tiang di Pengaturan JTM. UJUNG bukan
+  // pilihan di sini: itu keadaan "masih dirintis", bukan tempat.
   const { per } = useJtmRef();
   const penandaRef = per("penanda");
-  const JENIS = useMemo(() => susunJenisTitik(penandaRef), [penandaRef]);
+  const pangkalRef = per("pangkal");
+  const JENIS = useMemo(() => susunJenisTitik(penandaRef, pangkalRef), [penandaRef, pangkalRef]);
+  const pangkal = useMemo(() => kodePangkal(pangkalRef), [pangkalRef]);
 
   useEffect(() => {
     let hidup = true;
@@ -187,7 +189,7 @@ export default function UbahTitikSegmen({ segmenId, namaSegmen, onSimpan, onTutu
           <div className="rounded-lg bg-surface px-3 py-2 text-sm">
             <span className="text-ink-muted">Nama segmen menjadi </span>
             <b className="text-ink">
-              {labelTitik(awal.jenis, awal.nama)} - {masihDirintis && !penutup ? "UJUNG" : labelTitik(akhir.jenis, akhir.nama)}
+              {labelTitik(awal.jenis, awal.nama, pangkal)} - {masihDirintis && !penutup ? "UJUNG" : labelTitik(akhir.jenis, akhir.nama, pangkal)}
             </b>
           </div>
           <p className="text-xs text-ink-muted leading-relaxed">

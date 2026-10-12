@@ -116,6 +116,31 @@ const keGardu = (x: Record<string, unknown>): GarduPeta => ({
   jumlahTiang: Number(x.jumlah_tiang ?? 0),
 });
 
+/** Kolom `peta_tiang` yang digambar — dipakai juga tampilan satu segmen. */
+export const KOLOM_TIANG =
+  "id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang,nama_peralatan";
+
+export const keTiang = (x: Record<string, unknown>): TiangPeta => ({
+  id: x.id as string,
+  kode: x.kode as string,
+  lat: Number(x.lat), lng: Number(x.lng),
+  penanda: (x.penanda as string) ?? null,
+  percabangan: !!x.percabangan,
+  jaringan: x.jaringan as Jaringan,
+  kelompok: (x.induk_kelompok as string) ?? "",
+  indukLat: x.induk_lat !== null ? Number(x.induk_lat) : null,
+  indukLng: x.induk_lng !== null ? Number(x.induk_lng) : null,
+  menumpang: !!x.menumpang,
+  jumlahKabel: x.jumlah_kabel === null || x.jumlah_kabel === undefined ? null : Number(x.jumlah_kabel),
+  kabelPutus: !!x.kabel_putus,
+  diJtm: !!x.di_jtm,
+  garduBersama: (x.gardu_bersama as string) ?? null,
+  nomorKabel: (x.nomor_kabel as string) ?? null,
+  pasanganPortalDari: (x.pasangan_portal_dari as string) ?? null,
+  garduDiTiang: (x.gardu_di_tiang as string) ?? null,
+  namaPeralatan: (x.nama_peralatan as string) ?? null,
+});
+
 export function usePetaIsi(
   kotak: Kotak | null,
   pilihan: { jaringan: Jaringan; kode: string }[],
@@ -214,32 +239,13 @@ export function usePetaIsi(
         const data = await fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser
             .from("peta_tiang")
-            .select("id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang,nama_peralatan")
+            .select(KOLOM_TIANG)
             .in("induk_kelompok", kelompok)
             .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
             .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
         );
         potong = data.length > BATAS_TIANG;
-        t = data.slice(0, BATAS_TIANG).map((x) => ({
-          id: x.id as string,
-          kode: x.kode as string,
-          lat: Number(x.lat), lng: Number(x.lng),
-          penanda: (x.penanda as string) ?? null,
-          percabangan: !!x.percabangan,
-          jaringan: x.jaringan as Jaringan,
-          kelompok: (x.induk_kelompok as string) ?? "",
-          indukLat: x.induk_lat !== null ? Number(x.induk_lat) : null,
-          indukLng: x.induk_lng !== null ? Number(x.induk_lng) : null,
-          menumpang: !!x.menumpang,
-          jumlahKabel: x.jumlah_kabel === null || x.jumlah_kabel === undefined ? null : Number(x.jumlah_kabel),
-          kabelPutus: !!x.kabel_putus,
-          diJtm: !!x.di_jtm,
-          garduBersama: (x.gardu_bersama as string) ?? null,
-          nomorKabel: (x.nomor_kabel as string) ?? null,
-          pasanganPortalDari: (x.pasangan_portal_dari as string) ?? null,
-          garduDiTiang: (x.gardu_di_tiang as string) ?? null,
-          namaPeralatan: (x.nama_peralatan as string) ?? null,
-        }));
+        t = data.slice(0, BATAS_TIANG).map(keTiang);
       }
 
       if (urut !== urutRef.current) return;   // kotak pandang sudah berpindah

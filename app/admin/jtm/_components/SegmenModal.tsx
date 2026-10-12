@@ -11,7 +11,7 @@ import {
   type SegmenBaru,
 } from "../_hooks/useSegmen";
 import { useJtmRef } from "../_hooks/useJtmRef";
-import { susunJenisTitik, type JenisTitik } from "@/lib/jenisTitikJtm";
+import { kodePangkal, susunJenisTitik, type JenisTitik } from "@/lib/jenisTitikJtm";
 
 interface Props {
   penyulangList: string[];
@@ -45,8 +45,12 @@ export default function SegmenModal({
   const [menyimpan, setMenyimpan] = useState(false);
   const [sambungDari, setSambungDari] = useState("");
   const { per: pilihanRef } = useJtmRef();
-  // Pilihan pangkal/ujung = Penanda tiang di Pengaturan JTM (koreksi user 6 Okt 2026).
-  const jenisTitik = useMemo(() => susunJenisTitik(pilihanRef("penanda"), { denganUjung: true }), [pilihanRef]);
+  // Pilihan pangkal/ujung = Pangkal segmen + Penanda tiang di Pengaturan JTM.
+  const jenisTitik = useMemo(
+    () => susunJenisTitik(pilihanRef("penanda"), pilihanRef("pangkal"), { denganUjung: true }),
+    [pilihanRef],
+  );
+  const pangkal = useMemo(() => kodePangkal(pilihanRef("pangkal")), [pilihanRef]);
 
   const ubah = (patch: Partial<typeof KOSONG>) => setV((s) => ({ ...s, ...patch }));
 
@@ -100,6 +104,7 @@ export default function SegmenModal({
     v.titik_awal_nama,
     v.titik_akhir_jenis,
     v.titik_akhir_nama,
+    pangkal,
   );
 
   const siap =

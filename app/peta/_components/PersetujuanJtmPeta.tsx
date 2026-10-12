@@ -11,6 +11,8 @@ import { ambilIsiInspeksi } from "@/app/admin/jtm/_hooks/useDaftarJtm";
 import type { AntreanJtm } from "../_hooks/useAntreanJtm";
 import { GARIS, JUDUL_BAGIAN, PANEL } from "../_ui";
 import { Baris, TOMBOL_PANEL } from "./InfoTiang";
+import { IsiRincianSegmen } from "./RincianSegmen";
+import type { SegmenPeta } from "../_hooks/useSegmenPeta";
 
 /**
  * Persetujuan inspeksi JTM dari peta — fungsi yang SAMA dengan tabel
@@ -20,6 +22,10 @@ import { Baris, TOMBOL_PANEL } from "./InfoTiang";
  * disorot — hijau dinilai normal, oranye ada temuan, merah putus-putus belum
  * dinilai. Setujui hanya aktif bila daftar periksa BERSIH; temuan dilaporkan
  * tapi tidak menghalangi (ditindaklanjuti di tab Temuan).
+ *
+ * Selama panel ini terbuka peta hanya menggambar segmen yang dinilai
+ * ("Segmen ini saja", 12 Okt 2026) — dulu seluruh penyulang ikut tergambar
+ * dan admin bingung tiang mana yang sedang diperiksa.
  */
 
 export type KeadaanTiangJtm = "normal" | "temuan" | "belum";
@@ -33,6 +39,8 @@ interface Props {
   onDiputuskan: () => void;
   /** Tiang segmen untuk disorot & dibingkai di peta (null = lepas). */
   onSorot: (t: SorotJtm[] | null) => void;
+  /** Rincian segmen yang dinilai (master + hasil inspeksi). */
+  segmen: SegmenPeta;
 }
 
 async function muatTiangSegmen(inspeksiId: string, segmenId: string): Promise<SorotJtm[]> {
@@ -61,7 +69,7 @@ async function muatTiangSegmen(inspeksiId: string, segmenId: string): Promise<So
     }));
 }
 
-export default function PersetujuanJtmPeta({ d, oleh, onTutup, onDiputuskan, onSorot }: Props) {
+export default function PersetujuanJtmPeta({ d, oleh, onTutup, onDiputuskan, onSorot, segmen }: Props) {
   const toast = useToast();
   const [tiang, setTiang] = useState<SorotJtm[] | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
@@ -181,6 +189,13 @@ export default function PersetujuanJtmPeta({ d, oleh, onTutup, onDiputuskan, onS
       <button onClick={() => setDialog("batalkan")} disabled={sibuk} className="text-[11px] text-gray-500 hover:text-red-300">
         Batalkan inspeksi (salah segmen / uji coba)…
       </button>
+
+      {d.segmen_id && (
+        <div className="border-t pt-3" style={{ borderColor: GARIS }}>
+          <p className={`${JUDUL_BAGIAN} mb-1.5`}>Rincian segmen</p>
+          <IsiRincianSegmen s={segmen} tanpaJudul />
+        </div>
+      )}
 
       {dialog === "kembalikan" && (
         <BatalkanModal

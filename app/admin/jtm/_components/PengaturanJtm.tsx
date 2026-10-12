@@ -4,9 +4,17 @@ import { useState } from "react";
 import { Loader2, Plus, Trash2 } from "lucide-react";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { useJtmRef, BENTUK, type Bentuk, type Kategori, type RefBaris } from "../_hooks/useJtmRef";
+import { kodeTitik } from "@/lib/jenisTitikJtm";
 import IsianJtm from "./IsianJtm";
 
 const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boolean }[] = [
+  {
+    kategori: "pangkal",
+    judul: "Pangkal segmen",
+    bantu:
+      "Sumber jaringan seperti GI, PLTD, GH — boleh juga jadi ujung segmen. Ditulis berspasi di nama segmen (\"GH GOMONG\"). Kodenya satu kata tanpa spasi; yang dinonaktifkan hilang dari pilihan, tapi segmen lama tetap terbaca.",
+    pakaiIkon: false,
+  },
   {
     kategori: "penanda",
     judul: "Penanda tiang",
@@ -27,6 +35,9 @@ const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boo
     pakaiIkon: false,
   },
 ];
+
+/** Jenis titik yang sudah punya arti tetap — tidak boleh dipakai pangkal baru. */
+const TITIK_TETAP = ["tiang", "gardu", "ujung", "akhir", "rec", "lbs", "peng", "pmt"];
 
 /** Pratinjau bentuk, digambar sama persis dengan ikonnya di peta. */
 export function Ikon({ bentuk, warna, ukuran = 16 }: { bentuk: Bentuk | null; warna: string | null; ukuran?: number }) {
@@ -55,6 +66,16 @@ export function Ikon({ bentuk, warna, ukuran = 16 }: { bentuk: Bentuk | null; wa
 export default function PengaturanJtm() {
   const { per, loading, simpan, hapus } = useJtmRef();
 
+  // Kode pangkal menjadi awalan nama segmen ("GH GOMONG") dan dibaca ulang
+  // saat impor — jadi satu kata, dan tidak boleh sama dengan jenis titik lain.
+  const periksaPangkal = (kode: string) => {
+    const k = kode.trim().toLowerCase();
+    if (!/^[a-z0-9]+$/.test(k)) return "Kode satu kata huruf/angka, tanpa spasi atau titik (mis. gh).";
+    const terpakai = [...TITIK_TETAP, ...per("penanda").map((p) => kodeTitik(p.kode).toLowerCase())];
+    if (terpakai.includes(k)) return `Kode "${k}" sudah dipakai jenis titik lain.`;
+    return null;
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-24 gap-2 text-ink-soft text-sm">
@@ -68,7 +89,7 @@ export default function PengaturanJtm() {
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>Pengaturan JTM</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
-          Isian formulir dan tiga daftar di bawah ini <b>data, bukan kode</b>. Penghantar baru muncul tiap kali ada
+          Isian formulir dan daftar di bawah ini <b>data, bukan kode</b>. Penghantar baru muncul tiap kali ada
           pembangunan, dan penanda menyusul tiap kali ada jenis peralatan baru — kalau daftarnya
           ditulis di kode, tiap tambahan berarti menunggu rilis.
         </p>
@@ -84,6 +105,7 @@ export default function PengaturanJtm() {
           pakaiIkon={d.pakaiIkon}
           isi={per(d.kategori)}
           kategori={d.kategori}
+          periksa={d.kategori === "pangkal" ? periksaPangkal : undefined}
           onSimpan={simpan}
           onHapus={hapus}
         />
@@ -98,6 +120,7 @@ function Bagian({
   pakaiIkon,
   isi,
   kategori,
+  periksa,
   onSimpan,
   onHapus,
 }: {
@@ -106,6 +129,8 @@ function Bagian({
   pakaiIkon: boolean;
   isi: RefBaris[];
   kategori: Kategori;
+  /** Penjaga kode sebelum ditambahkan — pesan galat, atau null bila boleh. */
+  periksa?: (kode: string) => string | null;
   onSimpan: (v: RefBaris) => Promise<boolean>;
   onHapus: (k: Kategori, kode: string) => Promise<boolean>;
 }) {
@@ -114,6 +139,7 @@ function Bagian({
   const [bentuk, setBentuk] = useState<Bentuk>("kotak");
   const [warna, setWarna] = useState("#1D3573");
   const [sibuk, setSibuk] = useState(false);
+  const galatKode = kode.trim() && periksa ? periksa(kode) : null;
 
   const tambah = async () => {
     setSibuk(true);
@@ -150,13 +176,13 @@ function Bagian({
         <input
           value={kode}
           onChange={(e) => setKode(e.target.value)}
-          placeholder={kategori === "ukuran" ? "kode (185)" : "kode (recloser)"}
+          placeholder={kategori === "ukuran" ? "kode (185)" : kategori === "pangkal" ? "kode (gh)" : "kode (recloser)"}
           className={`${FIELD} font-mono w-[150px]`}
         />
         <input
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder={kategori === "ukuran" ? "Label (185 mm²)" : "Label tampilan"}
+          placeholder={kategori === "ukuran" ? "Label (185 mm²)" : kategori === "pangkal" ? "Label (Gardu Hubung)" : "Label tampilan"}
           className={`${FIELD} w-[200px]`}
         />
         {pakaiIkon && (
@@ -182,9 +208,14 @@ function Bagian({
             <Ikon bentuk={bentuk} warna={warna} />
           </>
         )}
-        <button onClick={() => void tambah()} disabled={!kode.trim() || !label.trim() || sibuk} className={BTN_GHOST}>
+        <button
+          onClick={() => void tambah()}
+          disabled={!kode.trim() || !label.trim() || !!galatKode || sibuk}
+          className={BTN_GHOST}
+        >
           <Plus size={15} /> Tambah
         </button>
+        {galatKode && <p className="basis-full text-[11px] text-danger">{galatKode}</p>}
       </div>
     </div>
   );

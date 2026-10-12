@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Activity, ArrowLeft, ChevronLeft, ChevronRight, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Loader2, Move, Ruler, PanelLeftOpen, RefreshCw, Tags, TriangleAlert, X } from "lucide-react";
@@ -33,6 +33,8 @@ import PanelKesehatan from "./PanelKesehatan";
 import { STATUS_UJUNG_PETA, useUjungPeta, type NadaUjung, type SaringUjung } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 import PanelLapisan from "./PanelLapisan";
+import RincianSegmen from "./RincianSegmen";
+import { useSegmenPeta } from "../_hooks/useSegmenPeta";
 import PanelObjek from "./PanelObjek";
 import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelUjung from "./PanelUjung";
@@ -95,6 +97,10 @@ export interface AwalPeta {
   pohon?: boolean;
 }
 
+/** Lapisan yang disembunyikan selama "Segmen ini saja" — satu larik tetap,
+ *  supaya peta tidak menggambar ulang lapisan kosong di tiap render. */
+const TANPA: never[] = [];
+
 export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?: AwalPeta }) {
   const [ulp, setUlp] = useState(
     canSeeAllUnits(user.role) ? (awal?.ulp?.toUpperCase() ?? "") : (user.unit ?? ""),
@@ -133,27 +139,6 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // Gardu & peralatan di tiang yang dipakai beberapa penyulang hanya digambar di
   // lapisan pemiliknya; titik pertemuan & yang belum dipilih di semua (10 Okt 2026).
   const milikPenanda = useMilikPenanda();
-  const tiangPeta = useMemo(
-    () =>
-      milikPenanda.milik.size === 0
-        ? tiang
-        : tiang.map((t) =>
-            t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.tampil === false
-              ? { ...t, penanda: null, garduDiTiang: null, namaPeralatan: null }
-              : t,
-          ),
-    [tiang, milikPenanda.milik],
-  );
-  const tandaMilik = useMemo(
-    () => [
-      ...new Map(
-        tiangPeta
-          .filter((t) => t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.status === "belum")
-          .map((t) => [t.id, t]),
-      ).values(),
-    ],
-    [tiangPeta, milikPenanda.milik],
-  );
 
   // ── Tahap 2: pilih, sunting, tegangan ujung ────────────────────────────────
   const oleh = user.name ?? user.email ?? "";
@@ -242,6 +227,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const bukaAntreanJtm = useCallback((d: AntreanJtm) => {
     setNyala((s) => new Set(s).add(`jtm:${d.penyulang}`));
     setTerpilih(null);
+    setSegmenTampil(null);
     setBukaJtm(d);
   }, []);
   const geserJtm = (arah: 1 | -1) => {
@@ -260,6 +246,45 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     const pad = 0.0004;
     setFokus([[Math.min(...lat) - pad, Math.min(...lng) - pad], [Math.max(...lat) + pad, Math.max(...lng) + pad]]);
   }, []);
+
+  // ── "Segmen ini saja" (12 Okt 2026) ────────────────────────────────────────
+  // Dari pohon segmen di folder JTM, atau otomatis selama satu inspeksi JTM
+  // dibuka persetujuannya. Selama aktif peta HANYA menggambar segmen itu —
+  // lapisan lain disembunyikan (pilihan user), bukan dipadamkan: kembali ke
+  // semua jaringan memunculkan lagi pilihan lapisan yang tadi.
+  const [segmenTampil, setSegmenTampil] = useState<string | null>(null);
+  const segmenId = bukaJtm ? bukaJtm.segmen_id : segmenTampil;
+  const segmenPeta = useSegmenPeta(segmenId);
+  const satuSegmen = segmenId !== null;
+  // Persetujuan membingkai peta sendiri (sorot tiang, termasuk tiang dinilai
+  // di luar anggota segmen); pohon segmen dibingkai di sini.
+  const batasSegmen = segmenPeta.batas;
+  useEffect(() => {
+    if (batasSegmen && !bukaJtm) setFokus(batasSegmen);
+  }, [batasSegmen, bukaJtm]);
+
+  const tiangSumber = satuSegmen ? segmenPeta.tiang : tiang;
+  const tiangPeta = useMemo(
+    () =>
+      milikPenanda.milik.size === 0
+        ? tiangSumber
+        : tiangSumber.map((t) =>
+            t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.tampil === false
+              ? { ...t, penanda: null, garduDiTiang: null, namaPeralatan: null }
+              : t,
+          ),
+    [tiangSumber, milikPenanda.milik],
+  );
+  const tandaMilik = useMemo(
+    () => [
+      ...new Map(
+        tiangPeta
+          .filter((t) => t.jaringan === "jtm" && t.penanda && milikPenanda.milik.get(kunciMilik(t.id, t.kelompok))?.status === "belum")
+          .map((t) => [t.id, t]),
+      ).values(),
+    ],
+    [tiangPeta, milikPenanda.milik],
+  );
 
   // ── Gardu portal yang masih satu tiang (admin) ─────────────────────────────
   const [portalAktif, setPortalAktif] = useState(false);
@@ -511,7 +536,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           loading={loading}
           error={error}
           ulp={ulp}
-          onUlp={(v) => { setUlp(v); setNyala(new Set()); }}
+          onUlp={(v) => { setUlp(v); setNyala(new Set()); setSegmenTampil(null); }}
           nyala={nyala}
           onAlih={alih}
           onAlihBanyak={alihBanyak}
@@ -520,6 +545,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onTampilGardu={setTampilGardu}
           onLompat={lompat}
           onTutup={() => setPanel(false)}
+          segmenAktif={segmenId}
+          onSegmen={(x) => { setBukaJtm(null); setTerpilih(null); setSegmenTampil(x.id); }}
         />
       ) : (
         <button
@@ -533,27 +560,29 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
 
       <div className="flex-1 min-w-0 relative">
         <PetaInner
-          rute={rute} tiang={tiangPeta} gardu={gardu}
+          rute={satuSegmen ? TANPA : rute} tiang={tiangPeta} gardu={satuSegmen ? TANPA : gardu}
           fokus={fokus} onKotak={setKotak} penanda={penanda}
           onPilihTiang={pilihTiang} onPilihGardu={pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={geser} onGeser={aturGeser}
           geserBanyak={geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
-          ujung={ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
+          ujung={satuSegmen ? TANPA : ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
-          pohonTemuan={pohon.temuan} pohonDirabas={pohon.dirabas} pohonCek={pohon.cek}
+          pohonTemuan={satuSegmen ? TANPA : pohon.temuan}
+          pohonDirabas={satuSegmen ? TANPA : pohon.dirabas}
+          pohonCek={satuSegmen ? TANPA : pohon.cek}
           onTugaskanPohon={boleh ? (t) => setTugasPohon([t]) : undefined}
           simulasi={simulasi.hasil}
-          kesehatan={kesehatan.gardu}
+          kesehatan={satuSegmen ? TANPA : kesehatan.gardu}
           onPilihKesehatan={pilihKesehatan}
           namaTiang={namaTiang}
           nomorKabel={nomorKabel}
-          antrean={antreanAktif ? antreanJtr.antrean : null}
+          antrean={antreanAktif && !satuSegmen ? antreanJtr.antrean : null}
           onPilihAntrean={pilihAntrean}
-          sorotPerubahan={sorotBanding?.tiang ?? null}
+          sorotPerubahan={satuSegmen ? null : (sorotBanding?.tiang ?? null)}
           sorotJtm={sorotJtm}
-          sorotKoreksi={garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
-          isian={isianTampil ? { nilaiDi: isianPeta.nilaiDi, warna: isianPeta.warna } : null}
+          sorotKoreksi={satuSegmen ? TANPA : garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
+          isian={isianTampil && !satuSegmen ? { nilaiDi: isianPeta.nilaiDi, warna: isianPeta.warna } : null}
           loncat={indukLoncat.loncat}
           tandaMilik={tandaMilik}
         />
@@ -623,7 +652,12 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
               segarkan();
             }}
             onSorot={sorotSegmenJtm}
+            segmen={segmenPeta}
           />
+        )}
+
+        {segmenTampil && !bukaJtm && !terpilih && !geserBanyak.aktif && (
+          <RincianSegmen s={segmenPeta} onSemua={() => setSegmenTampil(null)} />
         )}
 
         {terpilih && !geserBanyak.aktif && (
@@ -874,11 +908,11 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             <span>zoom {zoom}</span>
             <span className="text-gray-600">|</span>
             <span>{jumlahObjek.toLocaleString("id-ID")} objek</span>
-            {tiang.length > 0 && <span className="text-gray-500">{tiang.length} tiang</span>}
+            {tiangPeta.length > 0 && <span className="text-gray-500">{tiangPeta.length} tiang</span>}
             {gardu.length > 0 && <span className="text-gray-500">{gardu.length} gardu</span>}
           </div>
 
-          {adaJaringan && zoom < ZOOM_TIANG && (
+          {adaJaringan && !satuSegmen && zoom < ZOOM_TIANG && (
             <div
               className="rounded-lg px-2.5 py-1.5 backdrop-blur-sm text-gray-400 border"
               style={{ background: "rgba(10,22,40,0.85)", borderColor: GARIS }}
@@ -896,7 +930,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             </div>
           )}
 
-          {terpotong && (
+          {terpotong && !satuSegmen && (
             <div className="rounded-lg bg-amber-500/90 text-white px-2.5 py-1.5 flex items-center gap-1.5">
               <TriangleAlert size={12} />
               Terlalu banyak tiang di layar — sebagian tidak digambar
@@ -1177,7 +1211,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           </Link>
         </div>
 
-        {nyala.size === 0 && !loading && (
+        {nyala.size === 0 && !satuSegmen && !loading && (
           <div className="absolute z-[1000] inset-x-0 top-1/2 -translate-y-1/2 grid place-items-center pointer-events-none px-4">
             <p
               className="rounded-xl text-gray-300 text-sm px-4 py-3 max-w-sm text-center leading-relaxed backdrop-blur-sm border"

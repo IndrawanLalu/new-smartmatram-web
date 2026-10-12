@@ -5,15 +5,15 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 
 /**
- * Tiga daftar pilihan JTM dalam satu tabel: penanda tiang, jenis penghantar,
- * ukuran penghantar.
+ * Daftar pilihan JTM dalam satu tabel: pangkal segmen (GI, PLTD, GH …),
+ * penanda tiang, jenis penghantar, ukuran penghantar.
  *
  * Bentuknya sama persis — kode, label, urutan, aktif — jadi memisahkannya jadi
  * tiga tabel berarti menulis tiga kali kode yang sama. Yang membedakan cuma dua
  * kolom milik penanda: bentuk ikon dan warnanya di peta.
  */
 
-export type Kategori = "penanda" | "penghantar" | "ukuran";
+export type Kategori = "pangkal" | "penanda" | "penghantar" | "ukuran";
 export type Bentuk = "kotak" | "segitiga" | "belah" | "bulat";
 
 export interface RefBaris {
