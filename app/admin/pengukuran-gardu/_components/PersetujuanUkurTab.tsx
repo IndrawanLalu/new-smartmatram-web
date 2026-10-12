@@ -3,17 +3,16 @@
 import { useMemo, useState } from "react";
 import {
   BadgeCheck,
-  ExternalLink,
   Gauge,
   Loader2,
   MapPin,
   TriangleAlert,
-  Undo2,
 } from "lucide-react";
-import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { CARD, CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import type { CurrentUser } from "@/lib/roles";
 import { usePersetujuanUkur, type UsulanUkur } from "../_hooks/usePersetujuanUkur";
-import PetaSebelumSesudah from "./PetaSebelumSesudah";
+import BuktiTitikGardu from "@/app/admin/_components/BuktiTitikGardu";
+import PutusanUsulan from "@/app/admin/_components/PutusanUsulan";
 import RadiusTitikPanel from "./RadiusTitikPanel";
 import { detectAnomali, type AnomalySettings } from "@/lib/anomaliGardu";
 import type { PengukuranGardu } from "../_hooks/usePengukuranGardu";
@@ -227,102 +226,6 @@ function Kepala({ u, ikon }: { u: UsulanUkur; ikon: React.ReactNode }) {
   );
 }
 
-/** Tombol putusan — alasan wajib saat menolak. */
-function Putusan({
-  labelTolak,
-  onPutuskan,
-}: {
-  labelTolak: string;
-  onPutuskan: (setuju: boolean, alasan: string) => Promise<boolean>;
-}) {
-  const [alasan, setAlasan] = useState("");
-  const [sibuk, setSibuk] = useState<"ya" | "tidak" | null>(null);
-
-  const tekan = async (setuju: boolean) => {
-    setSibuk(setuju ? "ya" : "tidak");
-    await onPutuskan(setuju, alasan.trim());
-    setSibuk(null);
-  };
-
-  return (
-    <div className="mt-4 flex flex-wrap items-center gap-2">
-      <input
-        value={alasan}
-        onChange={(e) => setAlasan(e.target.value)}
-        placeholder="Catatan — wajib kalau ditolak"
-        className={`${FIELD} flex-1 min-w-[220px]`}
-      />
-      <button
-        onClick={() => void tekan(false)}
-        disabled={sibuk !== null || !alasan.trim()}
-        title={alasan.trim() ? labelTolak : "Tulis alasannya dulu"}
-        className={`${BTN_GHOST} border-red-200 text-red-700 hover:bg-red-50`}
-      >
-        {sibuk === "tidak" ? <Loader2 size={15} className="animate-spin" /> : <Undo2 size={15} />}
-        {labelTolak}
-      </button>
-      <button onClick={() => void tekan(true)} disabled={sibuk !== null} className={BTN_PRIMARY}>
-        {sibuk === "ya" ? (
-          <Loader2 size={15} className="animate-spin" />
-        ) : (
-          <BadgeCheck size={15} />
-        )}
-        Setujui
-      </button>
-    </div>
-  );
-}
-
-/**
- * Verifikasi lewat Google Maps — citra satelit dan Street View di sana sering
- * lebih meyakinkan daripada peta dasar di sini untuk memastikan gardunya
- * memang berdiri di titik baru.
- */
-const gmaps = (lat: number, lng: number) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-const TAUTAN =
-  "inline-flex items-center gap-1.5 h-8 px-3 rounded-lg border border-line bg-white text-xs font-semibold text-navy-600 hover:border-navy-300 hover:bg-navy-50 transition-colors";
-
-function TautanGmaps({
-  lamaLat, lamaLng, baruLat, baruLng,
-}: { lamaLat: number | null; lamaLng: number | null; baruLat: number; baruLng: number }) {
-  const adaLama = lamaLat !== null && lamaLng !== null;
-  return (
-    <div>
-      <p className={EYEBROW}>Buka di Google Maps</p>
-      <div className="mt-1.5 flex flex-wrap gap-2">
-        {adaLama ? (
-          <a href={gmaps(lamaLat, lamaLng)} target="_blank" rel="noreferrer" className={TAUTAN}>
-            <MapPin size={13} className="text-slate-500" /> Titik sebelum <ExternalLink size={11} />
-          </a>
-        ) : (
-          <span className="inline-flex items-center h-8 px-3 rounded-lg border border-dashed border-line text-xs text-ink-muted">
-            Titik sebelum kosong
-          </span>
-        )}
-        <a href={gmaps(baruLat, baruLng)} target="_blank" rel="noreferrer" className={TAUTAN}>
-          <MapPin size={13} className="text-emerald-600" /> Titik sesudah <ExternalLink size={11} />
-        </a>
-        {/* Rute dari titik lama ke baru: dua titik tampil bersamaan di satu
-            peta, lengkap dengan jaraknya. */}
-        {adaLama && (
-          <a
-            href={`https://www.google.com/maps/dir/?api=1&origin=${lamaLat},${lamaLng}&destination=${baruLat},${baruLng}&travelmode=walking`}
-            target="_blank"
-            rel="noreferrer"
-            className={TAUTAN}
-          >
-            Sebelum → sesudah <ExternalLink size={11} />
-          </a>
-        )}
-      </div>
-      <p className="text-[11px] text-ink-muted mt-1 tabular-nums">
-        {adaLama ? `${lamaLat.toFixed(6)}, ${lamaLng.toFixed(6)} → ` : ""}
-        {baruLat.toFixed(6)}, {baruLng.toFixed(6)}
-      </p>
-    </div>
-  );
-}
-
 function KartuTitik({
   u,
   onPutuskan,
@@ -334,62 +237,21 @@ function KartuTitik({
     <div className={`${CARD} p-5`}>
       <Kepala u={u} ikon={<MapPin size={18} className="text-navy-600" />} />
 
-      <div className="mt-4 grid gap-4 md:grid-cols-2">
-        <PetaSebelumSesudah
-          titik={{
-            lamaLat: u.nilai_lama?.lat ?? null,
-            lamaLng: u.nilai_lama?.lng ?? null,
-            baruLat: u.nilai_baru.lat as number,
-            baruLng: u.nilai_baru.lng as number,
-            akurasiM: u.bukti_akurasi,
-            selisihM: u.bukti_selisih,
-          }}
+      <div className="mt-4">
+        <BuktiTitikGardu
+          lamaLat={u.nilai_lama?.lat ?? null}
+          lamaLng={u.nilai_lama?.lng ?? null}
+          baruLat={u.nilai_baru.lat as number}
+          baruLng={u.nilai_baru.lng as number}
+          akurasiM={u.bukti_akurasi}
+          selisihM={u.bukti_selisih}
+          catatan={u.catatan}
+          foto={u.bukti_foto}
+          keterangan={<>Titik master <b>sudah</b> memakai nilai baru. Menolak akan mengembalikannya ke nilai sebelumnya.</>}
         />
-
-        <div>
-          <TautanGmaps
-            lamaLat={u.nilai_lama?.lat ?? null}
-            lamaLng={u.nilai_lama?.lng ?? null}
-            baruLat={u.nilai_baru.lat as number}
-            baruLng={u.nilai_baru.lng as number}
-          />
-
-          {u.catatan && (
-            <p className="text-xs text-ink-soft mt-3">
-              Keterangan petugas: <i>“{u.catatan}”</i>
-            </p>
-          )}
-
-          {/* Foto papan nama gardu — satu-satunya yang membedakan koreksi dari
-              petugas yang salah gardu. Ditampilkan, bukan di balik tombol. */}
-          {u.bukti_foto.length > 0 ? (
-            <div className="mt-2 flex flex-wrap gap-2">
-              {u.bukti_foto.map((f) => (
-                <a key={f} href={f} target="_blank" rel="noreferrer">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={f}
-                    alt="Bukti"
-                    className="w-28 h-28 object-cover rounded-lg border border-line bg-surface"
-                  />
-                </a>
-              ))}
-            </div>
-          ) : (
-            <p className="text-xs text-amber-700 mt-2">
-              Tidak ada foto bukti. Tanpa papan nama gardunya, perpindahan ini tidak bisa
-              dibedakan dari petugas yang salah gardu.
-            </p>
-          )}
-
-          <p className="text-[11px] text-ink-muted mt-3">
-            Titik master <b>sudah</b> memakai nilai baru. Menolak akan mengembalikannya ke nilai
-            sebelumnya.
-          </p>
-        </div>
       </div>
 
-      <Putusan labelTolak="Tolak & kembalikan titik" onPutuskan={onPutuskan} />
+      <PutusanUsulan labelTolak="Tolak & kembalikan titik" onPutuskan={onPutuskan} />
     </div>
   );
 }
@@ -446,7 +308,7 @@ function KartuKva({
         gardu ini dihitung ulang memakai angka baru.
       </p>
 
-      <Putusan labelTolak="Tolak" onPutuskan={onPutuskan} />
+      <PutusanUsulan labelTolak="Tolak" onPutuskan={onPutuskan} />
     </div>
   );
 }

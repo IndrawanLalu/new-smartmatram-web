@@ -3,17 +3,20 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   Loader2, CheckCircle2, XCircle, TriangleAlert, User, Calendar,
-  Camera, ShieldCheck, Wrench, ClipboardList,
+  Camera, ShieldCheck, Wrench, ClipboardList, MapPin,
 } from "lucide-react";
 import { BTN_PRIMARY, BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
 import { useToast } from "@/app/admin/_components/Toast";
 import { fotoKecil } from "@/lib/fotoKecil";
+import BuktiTitikGardu from "@/app/admin/_components/BuktiTitikGardu";
+import PutusanUsulan from "@/app/admin/_components/PutusanUsulan";
 import {
   ambilRincian,
   ketidakseimbangan,
   type PemeliharaanMenunggu,
   type Rincian,
   type UsulanSpek,
+  type UsulanTitik,
 } from "../_hooks/useHargarduApproval";
 
 const tgl = (iso: string | null) =>
@@ -95,6 +98,26 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
     [rincian, sudahDiputus],
   );
 
+  const titikMenunggu = useMemo(
+    () => (rincian?.titik ?? []).filter((u) => u.status === "menunggu" && !sudahDiputus[u.id]),
+    [rincian, sudahDiputus],
+  );
+
+  /** Titik gardu — sama dengan Persetujuan Pengukuran: menolak wajib beralasan. */
+  async function putusTitik(u: UsulanTitik, setuju: boolean, alasan: string) {
+    try {
+      await putuskanUsulan(u.id, setuju, alasan || (setuju ? "Titik gardu dari pemeliharaan" : "Ditolak admin"));
+      setSudahDiputus((s) => ({ ...s, [u.id]: setuju ? "disetujui" : "ditolak" }));
+      toast.success(
+        setuju
+          ? u.diterapkanLangsung ? "Titik gardu disahkan." : "Titik master gardu dipindah."
+          : u.diterapkanLangsung ? "Titik ditolak — master dikembalikan." : "Usulan titik ditolak — master tetap.",
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Gagal memutuskan usulan titik.");
+    }
+  }
+
   async function putusUsulan(u: UsulanSpek, setuju: boolean) {
     try {
       await putuskanUsulan(u.id, setuju, setuju ? "Nama plat terbaca saat pemeliharaan" : "Ditolak admin");
@@ -135,6 +158,46 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
 
       {rincian && (
         <>
+          {/* ── Titik gardu (12 Okt 2026) — sama dengan Persetujuan Pengukuran ── */}
+          {titikMenunggu.map((u) => (
+            <section key={u.id} className="rounded-xl border-2 border-amber-300 bg-amber-50/40 p-4">
+              <div className="flex items-center gap-2">
+                <MapPin size={16} className="text-amber-700" />
+                <p className="text-sm font-semibold text-amber-800">
+                  {u.lama ? "Titik gardu berbeda dari master" : "Gardu ini belum punya titik di master"}
+                  {u.selisih !== null && ` — ${u.selisih >= 1000 ? `${(u.selisih / 1000).toFixed(2)} km` : `${Math.round(u.selisih)} m`}`}
+                </p>
+              </div>
+              <p className="text-xs text-ink-soft mt-1 mb-3">
+                {u.diterapkanLangsung
+                  ? "Regu menyatakan titik masternya salah dan memotret papan nama gardu. Pemeliharaan ini belum dihitung realisasi sampai titiknya diputuskan."
+                  : "Titik GPS regu dari pemeliharaan yang sudah masuk, dimunculkan ulang karena berbeda dari master. Regu tidak menyatakan apa pun — pastikan dari foto gardunya."}
+                {u.pengusulNama && ` Regu: ${u.pengusulNama}.`}
+              </p>
+              <BuktiTitikGardu
+                lamaLat={u.lama?.lat ?? null}
+                lamaLng={u.lama?.lng ?? null}
+                baruLat={u.baru.lat}
+                baruLng={u.baru.lng}
+                akurasiM={u.akurasi}
+                selisihM={u.selisih}
+                catatan={u.catatan}
+                foto={u.foto}
+                keterangan={
+                  u.diterapkanLangsung ? (
+                    <>Titik master <b>sudah</b> memakai nilai baru. Menolak akan mengembalikannya ke nilai sebelumnya.</>
+                  ) : (
+                    <>Titik master <b>belum</b> berubah. Menyetujui akan memindahkannya ke titik pemeliharaan ini.</>
+                  )
+                }
+              />
+              <PutusanUsulan
+                labelTolak={u.diterapkanLangsung ? "Tolak & kembalikan titik" : "Tolak, titik master tetap"}
+                onPutuskan={(setuju, alasan) => putusTitik(u, setuju, alasan)}
+              />
+            </section>
+          ))}
+
           {/* ── Koreksi master: paling atas, karena inilah alasan modul ini ada ── */}
           {usulanMenunggu.length > 0 && (
             <section className="rounded-xl border-2 border-navy-300 bg-navy-50/50 p-4">

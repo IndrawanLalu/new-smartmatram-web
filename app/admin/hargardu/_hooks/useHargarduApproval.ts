@@ -105,6 +105,22 @@ export interface FotoBukti {
   url: string;
 }
 
+/** Baris `master_usulan` apa adanya — nilai lama/baru JSONB ({nilai} atau {lat,lng}). */
+interface BarisUsulan {
+  id: string;
+  field: string;
+  nilai_lama: Record<string, unknown> | null;
+  nilai_baru: Record<string, unknown> | null;
+  bukti_foto: string[] | null;
+  bukti_akurasi: number | string | null;
+  bukti_selisih: number | string | null;
+  catatan: string | null;
+  diterapkan_langsung: boolean;
+  status: string;
+  diusulkan_at: string;
+  pengusul_nama: string | null;
+}
+
 /** Usulan koreksi master yang lahir dari pekerjaan ini. */
 export interface UsulanSpek {
   id: string;
@@ -117,11 +133,31 @@ export interface UsulanSpek {
   pengusul_nama: string | null;
 }
 
+/**
+ * Usulan titik gardu dari pekerjaan ini (hargardu-koreksi-titik.sql, 12 Okt
+ * 2026). `diterapkan_langsung` = dari HP, master SUDAH pindah dan pekerjaannya
+ * tertahan; false = titik pemeliharaan lama yang dimunculkan ulang, master
+ * BELUM pindah.
+ */
+export interface UsulanTitik {
+  id: string;
+  lama: { lat: number; lng: number } | null;
+  baru: { lat: number; lng: number };
+  akurasi: number | null;
+  selisih: number | null;
+  foto: string[];
+  catatan: string | null;
+  status: string;
+  diterapkanLangsung: boolean;
+  pengusulNama: string | null;
+}
+
 export interface Rincian {
   periksa: Periksa[];
   ukur: Ukuran[];
   foto: FotoBukti[];
   usulan: UsulanSpek[];
+  titik: UsulanTitik[];
   spek: Record<string, string>;
   retingFuse: Record<string, Record<string, string>>;
 }
@@ -153,7 +189,8 @@ export const statusTampil = (s: string): StatusHargardu => STATUS_DB[s] ?? "Seda
 
 const AKTIF = ["Dijadwalkan", "Dalam Proses", "Selesai", "Ditolak"];
 
-export type SaringStatus = "SEMUA" | StatusHargardu;
+/** "USULAN" = ada usulan koreksi master (titik / nama plat) yang menunggu. */
+export type SaringStatus = "SEMUA" | "USULAN" | StatusHargardu;
 
 export const BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -234,8 +271,26 @@ export function useHargarduApproval(user: CurrentUser) {
           .lte("tgl_acuan", `${akhir}T23:59:59`)
           .order("id"),
       );
-    const [a, t] = await Promise.all([fetchAllRows<PemeliharaanMenunggu>(aktif), fetchAllRows<PemeliharaanMenunggu>(tertutup)]);
-    return tempelWo([...a, ...t]);
+    // Yang sudah disetujui tetapi masih punya usulan koreksi master menunggu
+    // (mis. titik pemeliharaan lama yang dimunculkan ulang 12 Okt 2026) ikut
+    // dimuat di periode mana pun — sama seperti tunggakan, tidak boleh hilang
+    // karena bulan berganti.
+    const berUsulan = () =>
+      saringUlp(
+        supabaseBrowser
+          .from("pemeliharaan_gardu_ringkas")
+          .select("*")
+          .not("status", "in", `(${AKTIF.map((x) => `"${x}"`).join(",")})`)
+          .gt("usulan_menunggu", 0)
+          .order("id"),
+      );
+    const [a, t, u] = await Promise.all([
+      fetchAllRows<PemeliharaanMenunggu>(aktif),
+      fetchAllRows<PemeliharaanMenunggu>(tertutup),
+      fetchAllRows<PemeliharaanMenunggu>(berUsulan),
+    ]);
+    const ada = new Set([...a, ...t].map((x) => x.id));
+    return tempelWo([...a, ...t, ...u.filter((x) => !ada.has(x.id))]);
   }, [ulp, bulan, tahun, kataCari]);
 
   useEffect(() => {
@@ -261,9 +316,14 @@ export function useHargarduApproval(user: CurrentUser) {
   }, [tarik, nonce, kataCari]);
 
   const baris = useMemo(
-    () => semua.filter((d) => status === "SEMUA" || statusTampil(d.status) === status),
+    () =>
+      semua.filter((d) =>
+        status === "SEMUA" ? true : status === "USULAN" ? d.usulan_menunggu > 0 : statusTampil(d.status) === status,
+      ),
     [semua, status],
   );
+
+  const jumlahUsulan = useMemo(() => semua.filter((d) => d.usulan_menunggu > 0).length, [semua]);
 
   const hitung = useMemo(() => {
     const h = Object.fromEntries(STATUS_HARGARDU.map((x) => [x, 0])) as Record<StatusHargardu, number>;
@@ -315,7 +375,7 @@ export function useHargarduApproval(user: CurrentUser) {
     rpc(idUsulan, "putuskan_usulan", { p_id: idUsulan, p_setuju: setuju, p_nama: oleh, p_alasan: alasan ?? null }, idPekerjaan);
 
   return {
-    semua, baris, hitung, loading, galat, memproses,
+    semua, baris, hitung, jumlahUsulan, loading, galat, memproses,
     ulp, setUlp, daftarUlp, bulan, setBulan, tahun, setTahun, daftarTahun, cari, setCari, status, setStatus,
     muat, putuskan, batalkan, putuskanUsulan,
   };
@@ -353,7 +413,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
       supabaseBrowser.from("hargardu_foto_ref").select("kode,nama,kelompok,wajib,urutan"),
       supabaseBrowser
         .from("master_usulan")
-        .select("id,field,nilai_lama,nilai_baru,bukti_foto,status,diusulkan_at,pengusul_nama")
+        .select("id,field,nilai_lama,nilai_baru,bukti_foto,bukti_akurasi,bukti_selisih,catatan,diterapkan_langsung,status,diusulkan_at,pengusul_nama")
         .eq("sumber_modul", "pemeliharaan_gardu")
         .eq("sumber_id", id)
         .order("field"),
@@ -405,22 +465,46 @@ export async function ambilRincian(id: string): Promise<Rincian> {
     .sort((a: any, b: any) => a._urutan - b._urutan)
     .map(({ _urutan, ...r }: any) => r as FotoBukti);
 
-  const usulan: UsulanSpek[] = (usulanRes.data ?? []).map((u: any) => ({
-    id: u.id,
-    field: u.field,
-    nilai_lama: u.nilai_lama?.nilai ?? null,
-    nilai_baru: String(u.nilai_baru?.nilai ?? ""),
-    bukti_foto: u.bukti_foto ?? [],
-    status: u.status,
-    diusulkan_at: u.diusulkan_at,
-    pengusul_nama: u.pengusul_nama ?? null,
-  }));
+  const barisUsulan = (usulanRes.data ?? []) as unknown as BarisUsulan[];
+  const angka = (v: unknown) => (v === null || v === undefined ? null : Number(v));
+
+  const titik: UsulanTitik[] = barisUsulan
+    .filter((u) => u.field === "koordinat")
+    .map((u) => ({
+      id: u.id,
+      lama:
+        u.nilai_lama?.lat != null && u.nilai_lama?.lng != null
+          ? { lat: Number(u.nilai_lama.lat), lng: Number(u.nilai_lama.lng) }
+          : null,
+      baru: { lat: Number(u.nilai_baru?.lat), lng: Number(u.nilai_baru?.lng) },
+      akurasi: angka(u.bukti_akurasi),
+      selisih: angka(u.bukti_selisih),
+      foto: u.bukti_foto ?? [],
+      catatan: u.catatan ?? null,
+      status: u.status,
+      diterapkanLangsung: !!u.diterapkan_langsung,
+      pengusulNama: u.pengusul_nama ?? null,
+    }));
+
+  const usulan: UsulanSpek[] = barisUsulan
+    .filter((u) => u.field !== "koordinat")
+    .map((u) => ({
+      id: u.id,
+      field: u.field,
+      nilai_lama: u.nilai_lama?.nilai == null ? null : String(u.nilai_lama.nilai),
+      nilai_baru: String(u.nilai_baru?.nilai ?? ""),
+      bukti_foto: u.bukti_foto ?? [],
+      status: u.status,
+      diusulkan_at: u.diusulkan_at,
+      pengusul_nama: u.pengusul_nama ?? null,
+    }));
 
   return {
     periksa,
     ukur: (ukurRes.data ?? []) as unknown as Ukuran[],
     foto,
     usulan,
+    titik,
     spek: (indukRes.data as any)?.spek ?? {},
     retingFuse: (indukRes.data as any)?.reting_fuse ?? {},
   };

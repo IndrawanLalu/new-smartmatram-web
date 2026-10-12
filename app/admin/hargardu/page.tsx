@@ -152,6 +152,16 @@ export default function HargarduPage() {
                 {s} <span className="opacity-70">{o.loading ? "" : o.hitung[s]}</span>
               </button>
             ))}
+            {/* Usulan koreksi master (titik gardu / nama plat) yang menunggu —
+                termasuk pekerjaan lama yang sudah disetujui. */}
+            {!o.loading && o.jumlahUsulan > 0 && (
+              <button
+                onClick={() => o.setStatus("USULAN")}
+                className={`${CHIP} ${o.status === "USULAN" ? CHIP_ON : "border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100"}`}
+              >
+                Usulan master menunggu <span className="opacity-70">{o.jumlahUsulan}</span>
+              </button>
+            )}
             <button
               onClick={() => void unduh()}
               disabled={o.loading || !!o.galat || o.baris.length === 0 || mengunduh}
