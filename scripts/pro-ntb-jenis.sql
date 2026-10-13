@@ -6,8 +6,14 @@
 --   NAMA TIM · TIM PELAKSANA · JENIS KONTRAK · KELOMPOK PEKERJAAN · SATUAN ·
 --   WORK ORDER · REALISASI
 -- Barisnya disusun di web dari `realisasi_rentang` (Rekap Kinerja → Realisasi
--- → Copy to PRO NTB). Tabel ini menyimpan lima kolom yang TETAP per jenis
+-- → Copy to PRO NTB). Tabel ini menyimpan JENIS PEKERJAAN per jenis
 -- (kunci = kunci baris Rekap Kinerja). NAMA TIM diketik di layar, tidak disimpan.
+--
+-- Revisi 13 Okt: NO, UIW, UP3, ULP, TIM PELAKSANA, JENIS KONTRAK, KELOMPOK dan
+-- SATUAN diisi ARRAYFORMULA spreadsheet, jadi tidak disalin. Kolom
+-- tim_pelaksana/jenis_kontrak/kelompok/satuan tidak dipakai layar lagi
+-- (dibiarkan supaya skrip ini tetap aman dijalankan ulang).
+
 --
 -- Dibaca semua akun; diubah UP3 dan admin. Aman dijalankan ulang.
 -- ═══════════════════════════════════════════════════════════════════════════

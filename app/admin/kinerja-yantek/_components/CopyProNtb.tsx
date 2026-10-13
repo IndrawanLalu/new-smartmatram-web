@@ -15,6 +15,9 @@ import AturProNtbModal from "./AturProNtbModal";
  * laporan harian UIW, lalu disalin (tempel ke spreadsheet) atau diunduh Excel.
  * NAMA TIM diketik di layar — yang diketik untuk satu petugas ikut mengisi
  * baris lain petugas itu di jenis yang sama, selama layar ini terbuka.
+ * Disalin per pekerjaan (13 Okt): pilihan Pekerjaan menyaring barisnya.
+ * Salinan mulai kolom TANGGAL; kolom yang diisi ARRAYFORMULA spreadsheet
+ * (NO, UIW, UP3, ULP, TIM PELAKSANA, KONTRAK, KELOMPOK, SATUAN) tersalin kosong.
  */
 
 interface Props {
@@ -25,19 +28,31 @@ interface Props {
 }
 
 const kunciPetugas = (b: BarisPro) => (b.item.petugas ? `${b.item.kunci}|${b.item.petugas}` : null);
+/** Jenis yang nama regunya di SMART sudah sama dengan NAMA TIM PRO NTB
+ *  (RABAS 1, RABAS 2 …) — terisi otomatis, tetap boleh diketik ulang. */
+const TIM_DARI_SMART = new Set(["perabasan"]);
 
 export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
   const o = useProNtb(ulpAwal);
   const toast = useToast();
-  const [noAwal, setNoAwal] = useState(1);
+
   const [timBaris, setTimBaris] = useState<Record<string, string>>({});
   const [timPetugas, setTimPetugas] = useState<Record<string, string>>({});
   const [atur, setAtur] = useState(false);
   const [unduh, setUnduh] = useState(false);
+  const [pilihKerja, setPilihKerja] = useState("SEMUA");
+
+  const adaKerja = META.map((m) => ({ ...m, n: o.baris.filter((b) => b.item.kunci === m.kunci).length })).filter((m) => m.n > 0);
+  // Pekerjaan yang dipilih hilang sesudah ganti tanggal/ULP → kembali ke semua.
+  const kerja = adaKerja.some((m) => m.kunci === pilihKerja) ? pilihKerja : "SEMUA";
+  const baris = kerja === "SEMUA" ? o.baris : o.baris.filter((b) => b.item.kunci === kerja);
+  const namaKerja = META.find((m) => m.kunci === kerja)?.jenis;
 
   const timDari = (b: BarisPro) => {
     const kp = kunciPetugas(b);
-    return timBaris[b.id] ?? (kp ? timPetugas[kp] : undefined) ?? "";
+    return timBaris[b.id] ?? (kp ? timPetugas[kp] : undefined) ??
+      (TIM_DARI_SMART.has(b.item.kunci) ? b.item.petugas ?? "" : "");
+
   };
   const onTim = (b: BarisPro, v: string) => {
     setTimBaris((x) => ({ ...x, [b.id]: v }));
@@ -45,13 +60,13 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
     if (kp) setTimPetugas((x) => ({ ...x, [kp]: v }));
   };
 
-  const timKosong = o.baris.filter((b) => !timDari(b).trim()).length;
-  const belumDiatur = META.filter((m) => !o.jenis.has(m.kunci) && o.baris.some((b) => b.item.kunci === m.kunci));
+  const timKosong = baris.filter((b) => !timDari(b).trim()).length;
+  const belumDiatur = META.filter((m) => !o.jenis.get(m.kunci)?.jenis_pekerjaan && baris.some((b) => b.item.kunci === m.kunci));
 
   const salin = async () => {
     try {
-      await navigator.clipboard.writeText(teksTempel(o.baris, noAwal, timDari));
-      toast.success(`${o.baris.length} baris tersalin — tempel di kolom NO spreadsheet PRO NTB.`);
+      await navigator.clipboard.writeText(teksTempel(baris, timDari));
+      toast.success(`${baris.length} baris tersalin — tempel di sel TANGGAL baris kosong pertama spreadsheet PRO NTB.`);
     } catch {
       toast.error("Gagal menyalin — izinkan akses papan klip di peramban.");
     }
@@ -62,13 +77,14 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
     try {
       const { unduhProNtb } = await import("../_lib/unduhProNtb");
       const rentang = o.dari === o.sampai ? o.dari : `${o.dari} sd ${o.sampai}`;
-      await unduhProNtb(o.baris, noAwal, timDari, `PRO NTB ${o.ulp === "SEMUA" ? "UP3" : o.ulp} ${rentang}.xlsx`);
+      const nama = ["PRO NTB", namaKerja, o.ulp === "SEMUA" ? "UP3" : o.ulp, rentang].filter(Boolean).join(" ");
+      await unduhProNtb(baris, timDari, `${nama}.xlsx`);
     } finally {
       setUnduh(false);
     }
   };
 
-  const siap = !o.loading && !o.galat && o.baris.length > 0;
+  const siap = !o.loading && !o.galat && baris.length > 0;
 
   return (
     <>
@@ -88,21 +104,24 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
           </select>
         </label>
         <label className="text-xs text-ink-soft">
-          NO mulai
-          <input
-            type="number"
-            min={1}
-            value={noAwal}
-            onChange={(e) => setNoAwal(Math.max(1, Math.floor(Number(e.target.value) || 1)))}
-            className={`${FIELD} w-[90px] mt-1 block`}
-          />
+          Pekerjaan
+          <select
+            value={kerja}
+            onChange={(e) => setPilihKerja(e.target.value)}
+            className={`${FIELD} w-[260px] mt-1 block`}
+            disabled={o.loading || adaKerja.length === 0}
+          >
+            <option value="SEMUA">Semua pekerjaan ({o.baris.length})</option>
+            {adaKerja.map((m) => <option key={m.kunci} value={m.kunci}>{m.jenis} ({m.n})</option>)}
+          </select>
         </label>
+
         <button onClick={o.muat} className={BTN_GHOST} disabled={o.loading}>
           <RefreshCw size={14} className={o.loading ? "animate-spin" : ""} /> Muat ulang
         </button>
         {pengatur && (
           <button onClick={() => setAtur(true)} className={BTN_GHOST}>
-            <Settings2 size={14} /> Kolom per jenis
+            <Settings2 size={14} /> Jenis pekerjaan
           </button>
         )}
         <div className="ml-auto flex gap-2">
@@ -116,9 +135,10 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
       </div>
 
       <p className="text-xs text-ink-soft -mt-1">
-        Pekerjaan yang dikirim regu, <b>termasuk yang belum disetujui</b>, dalam 14 kolom laporan harian UIW.
-        <b> Salin</b> menyalin barisnya tanpa judul kolom — tempel di sel NO baris kosong pertama spreadsheet.
-        NAMA TIM tidak disimpan.
+        Pekerjaan yang dikirim regu, <b>termasuk yang belum disetujui</b>, untuk laporan harian UIW.
+        <b> Salin</b> menyalin mulai kolom TANGGAL tanpa judul kolom — tempel di sel <b>TANGGAL</b> baris kosong
+        pertama spreadsheet. Kolom yang diisi formula di spreadsheet (UIW, UP3, ULP, TIM PELAKSANA, KONTRAK,
+        KELOMPOK, SATUAN) tersalin kosong supaya formulanya tidak rusak. NAMA TIM tidak disimpan.
       </p>
 
       {o.galat && !o.loading && (
@@ -130,7 +150,8 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
       {siap && (belumDiatur.length > 0 || timKosong > 0) && (
         <p className="text-xs text-amber-700 -mt-1">
           {[
-            belumDiatur.length > 0 && `Kolom jenis belum diatur: ${belumDiatur.map((m) => m.jenis).join(", ")}.`,
+            belumDiatur.length > 0 && `Jenis pekerjaan belum diatur: ${
+belumDiatur.map((m) => m.jenis).join(", ")}.`,
             timKosong > 0 && `${timKosong} baris NAMA TIM masih kosong.`,
           ].filter(Boolean).join(" ")}
         </p>
@@ -140,8 +161,8 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
         <div className="p-8 flex items-center justify-center gap-2 text-sm text-ink-soft">
           <Loader2 size={16} className="animate-spin" /> Memuat realisasi…
         </div>
-      ) : o.baris.length > 0 ? (
-        <TabelProNtb key={`${o.ulp}-${o.dari}-${o.sampai}`} baris={o.baris} noAwal={noAwal} timDari={timDari} onTim={onTim} />
+      ) : baris.length > 0 ? (
+        <TabelProNtb key={`${o.ulp}-${o.dari}-${o.sampai}-${kerja}`} baris={baris} timDari={timDari} onTim={onTim} />
       ) : (
         !o.galat && <p className="text-xs text-ink-muted">Belum ada pekerjaan yang dikirim regu pada rentang ini.</p>
       )}

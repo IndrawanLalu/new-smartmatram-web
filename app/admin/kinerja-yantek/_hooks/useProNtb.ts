@@ -51,7 +51,7 @@ export function useProNtb(ulpAwal: string) {
           fetchAllRows<Record<string, unknown>>(() =>
             supabaseBrowser.rpc("realisasi_rentang", { p_ulp: ulp, p_dari: dari, p_sampai: sampai }),
           ),
-          supabaseBrowser.from("pro_ntb_jenis").select("kunci,jenis_pekerjaan,tim_pelaksana,jenis_kontrak,kelompok,satuan"),
+          supabaseBrowser.from("pro_ntb_jenis").select("kunci,jenis_pekerjaan"),
         ]);
         if (kolom.error) throw new Error(`Kolom per jenis gagal dibaca: ${kolom.error.message}`);
         const isi: ItemPro[] = rows.map((r) => ({

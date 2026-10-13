@@ -6,18 +6,26 @@
  * ULP "ULP AMPENAN", lokasi gardu "4415_AM077_ALAMAT", segmen = nama segmen.
  * WORK ORDER = REALISASI (keputusan user). Tegangan ujung tidak ikut —
  * sama dengan Rekap Kinerja, ia bukan realisasi pengukuran.
+ *
+ * Revisi 13 Okt: spreadsheet UIW mengisi NO, UIW NTB, UP3, ULP, TIM
+ * PELAKSANA, JENIS KONTRAK, KELOMPOK dan SATUAN dengan ARRAYFORMULA. Salinan
+ * dimulai dari kolom TANGGAL (kolom B) dan kolom berformula dibiarkan KOSONG —
+ * sel kosong tidak menghalangi ARRAYFORMULA meluber, nilai apa pun akan
+ * membuatnya #REF!. WORK ORDER bersatuan GARDU juga diisi rumus (1 per
+ * gardu) → kosong; WORK ORDER KMS tetap disalin = REALISASI.
  */
 
 import { BULAN, META } from "./kinerjaMeta";
 import type { ItemHarian } from "./realisasiHarian";
 
+/** Kolom yang disalin: TANGGAL (kolom B) sampai REALISASI (kolom N). */
 export const KOLOM_PRO_NTB = [
-  "NO", "TANGGAL", "UIW NTB", "UP3", "ULP", "JENIS PEKERJAAN", "LOKASI PEKERJAAN", "NAMA TIM",
+  "TANGGAL", "UIW NTB", "UP3", "ULP", "JENIS PEKERJAAN", "LOKASI PEKERJAAN", "NAMA TIM",
   "TIM PELAKSANA", "JENIS KONTRAK", "KELOMPOK PEKERJAAN", "SATUAN", "WORK ORDER", "REALISASI",
 ];
 
-const UIW = "UIW NTB";
-const UP3 = "UP3 MATARAM";
+/** Indeks (dalam KOLOM_PRO_NTB) kolom yang diisi formula spreadsheet. */
+export const KOLOM_FORMULA = new Set([1, 2, 3, 7, 8, 9, 10]);
 /** Awalan lokasi gardu di laporan UIW (kode UP3 Mataram). */
 const KODE_UP3 = "4415";
 /** Jenis yang objeknya gardu → lokasi "4415_KODE_ALAMAT". */
@@ -33,28 +41,13 @@ export interface ItemPro extends ItemHarian {
 export interface KolomJenis {
   kunci: string;
   jenis_pekerjaan: string | null;
-  tim_pelaksana: string | null;
-  jenis_kontrak: string | null;
-  kelompok: string | null;
-  satuan: string | null;
 }
-
-export const ISIAN_JENIS = [
-  { kolom: "jenis_pekerjaan", label: "Jenis pekerjaan" },
-  { kolom: "tim_pelaksana", label: "Tim pelaksana" },
-  { kolom: "jenis_kontrak", label: "Jenis kontrak" },
-  { kolom: "kelompok", label: "Kelompok pekerjaan" },
-  { kolom: "satuan", label: "Satuan" },
-] as const;
-
-export type KolomIsian = (typeof ISIAN_JENIS)[number]["kolom"];
 
 export interface BarisPro {
   /** Kunci baris di layar (tidak ikut laporan). */
   id: string;
   item: ItemPro;
   tanggal: string;
-  ulp: string;
   lokasi: string;
   /** null = jenis ini belum diatur. */
   jenis: KolomJenis | null;
@@ -104,7 +97,6 @@ export function susunBaris(
       id: `${x.tgl}|${x.ulp}|${x.kunci}|${x.bagian}|${x.objek}|${i}`,
       item: x,
       tanggal: tanggalPro(x.tgl),
-      ulp: `ULP ${x.ulp}`,
       lokasi,
       jenis: jenis.get(x.kunci) ?? null,
       nilai: desimal ? (x.km === null ? null : Math.round(x.km * 100) / 100) : 1,
@@ -113,18 +105,16 @@ export function susunBaris(
   });
 }
 
-/** Satu baris laporan sebagai daftar sel (14 kolom). */
-export function selPro(b: BarisPro, no: number, tim: string): string[] {
-  const j = b.jenis;
+/** Satu baris laporan sebagai daftar sel (13 kolom, kolom formula kosong). */
+export function selPro(b: BarisPro, tim: string): string[] {
   const n = angkaPro(b.nilai, b.desimal);
-  return [
-    String(no), b.tanggal, UIW, UP3, b.ulp, j?.jenis_pekerjaan ?? "", b.lokasi, tim,
-    j?.tim_pelaksana ?? "", j?.jenis_kontrak ?? "", j?.kelompok ?? "", j?.satuan ?? "", n, n,
-  ];
+  return [b.tanggal, "", "", "", b.jenis?.jenis_pekerjaan ?? "", b.lokasi, tim, "", "", "", "", b.desimal ? n : "", n];
+
 }
 
-/** Teks bertab untuk ditempel ke spreadsheet (tanpa judul kolom). */
-export function teksTempel(baris: BarisPro[], noAwal: number, timDari: (b: BarisPro) => string) {
+/** Teks bertab untuk ditempel di sel TANGGAL spreadsheet (tanpa judul kolom). */
+export function teksTempel(baris: BarisPro[], timDari: (b: BarisPro) => string) {
   const bersih = (s: string) => s.replace(/[\t\r\n]+/g, " ").trim();
-  return baris.map((b, i) => selPro(b, noAwal + i, timDari(b)).map(bersih).join("\t")).join("\n");
+  return baris.map((b) => selPro(b, timDari(b)).map(bersih).join("\t")).join("\n");
 }
+
