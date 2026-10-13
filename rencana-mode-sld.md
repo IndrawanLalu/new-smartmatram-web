@@ -77,13 +77,25 @@ perubahan berikutnya makin rawan merusak mode lain → **S1 dikerjakan dulu**.
 
 ---
 
-## S2 — Bagian reusable (dipakai mode biasa DAN Mode SLD)
+## S2 — Bagian reusable (dipakai mode biasa DAN Mode SLD) — DIKERJAKAN 13 Okt (belum commit)
 
-| Bagian | Sekarang | Jadi |
+| Bagian | Dulu | Kini |
 |---|---|---|
+| **Ikon gardu (rumah)** | ditulis dua kali: `PetaInner` (merah) & `PetaSldInner` (4 warna beban, tanpa pintu) | `app/peta/_lib/ikonPeta.ts` `ikonGardu(warna)`, di-cache per warna — Peta SLD kini memakai rumah yang sama |
+| **Ikon keypoint** | `PetaInner` membuat divIcon **per tiang**; `PetaSldInner` membangun sendiri | `useIkonPenanda(penanda, sisi)` — satu ikon per kode penanda |
+| **Latar peta** | `LayersControl` Leaflet (citra / jalan) | `useLatarPeta(mode)` (diingat per mode, pola useSyncExternalStore), `LapisanLatar` (ubin), `PilihLatar` (tombol kanan bawah): Kosong gelap · Kosong terang · Peta jalan pudar · Peta jalan · Citra satelit |
+| **Kartu angka** | petak di `RingkasSimulasi` | `KartuAngka.tsx` (nada jingga/merah/netral) |
+| **Format angka** | `angka()` di `DaftarPenyulang` | `app/peta/_lib/angka.ts` |
+| **Hook data SLD** | `app/admin/peta-gardu/_hooks/usePetaSld.ts` | `app/peta/_hooks/useSld.ts` + `muatUlang(menyala)` |
+| **Mesin SLD** | `lib/sld.ts` | tetap; fungsi baru di S4 |
+
+Satu-satunya yang berubah di layar mode biasa: pemilih latar kini tombol
+"Latar" di kanan bawah (dulu ikon lapisan Leaflet), dengan dua pilihan baru.
+
+---|---|---|
 | **Ikon gardu (rumah)** | ditulis dua kali: `PetaInner` (merah) & `PetaSldInner` (4 warna beban) | `app/peta/_lib/ikonPeta.ts`: `ikonGardu(warna)` di-cache per warna |
 | **Ikon keypoint** | dua kali membangun `divIcon` dari `htmlPenandaJtm` | `useIkonPenanda(penanda, ukuran)` di berkas yang sama |
-| **Latar peta** | `LayersControl` tetap di `PetaInner` (citra / jalan) | `LatarPeta.tsx`: Kosong · Peta jalan pudar · Peta jalan · Citra satelit; pilihan diingat **per mode** (localStorage, dibungkus try/catch) |
+| **Latar peta** | `LayersControl` tetap di `PetaInner` (citra / jalan) | `LatarPeta.tsx`: Kosong gelap · Kosong terang · Peta jalan pudar · Peta jalan · Citra satelit; pilihan diingat **per mode** (localStorage, dibungkus try/catch) |
 | **Kartu angka** | `Angka` di `HasilLepasPanel` + petak di `RingkasSimulasi` | `KartuAngka.tsx` (gaya gelap peta) |
 | **Format angka** | `angka()` di `DaftarPenyulang` | pindah ke `app/peta/_lib/angka.ts` |
 | **Hook data SLD** | `app/admin/peta-gardu/_hooks/usePetaSld.ts` | `app/peta/_hooks/useSld.ts` (isi sama, + `muatUlang`) |

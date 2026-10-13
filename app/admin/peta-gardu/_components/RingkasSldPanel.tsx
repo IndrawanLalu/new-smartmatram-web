@@ -4,8 +4,8 @@ import { TriangleAlert, Zap } from "lucide-react";
 import { EYEBROW } from "@/app/admin/_ui";
 import { hitungBeban, type GarduInfo, type GrafSld } from "@/lib/sld";
 import type { Penanda } from "@/app/peta/_hooks/usePenandaJtm";
-import type { RingkasPenyulang } from "../_hooks/usePetaSld";
-import { angka } from "./DaftarPenyulang";
+import type { RingkasPenyulang } from "@/app/peta/_hooks/useSld";
+import { angka } from "@/app/peta/_lib/angka";
 
 /**
  * Ringkasan SLD satu penyulang yang sedang menyala + peringatan data. Angka

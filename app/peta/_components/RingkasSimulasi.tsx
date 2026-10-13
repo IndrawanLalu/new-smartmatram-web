@@ -3,6 +3,7 @@
 import { TriangleAlert, X } from "lucide-react";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 import { JUDUL_BAGIAN } from "../_ui";
+import KartuAngka from "./KartuAngka";
 
 /** Ringkasan simulasi buka alat hubung, di panel kanan peta. */
 export default function RingkasSimulasi({ h, onTutup }: { h: HasilSimulasi; onTutup: () => void }) {
@@ -27,12 +28,7 @@ export default function RingkasSimulasi({ h, onTutup }: { h: HasilSimulasi; onTu
               { n: h.jumlah_tiang.toLocaleString("id-ID"), l: "tiang" },
               { n: h.panjang_km.toFixed(2).replace(".", ","), l: "km" },
               { n: h.gardu.length.toString(), l: "gardu" },
-            ].map((x) => (
-              <div key={x.l} className="rounded-md bg-orange-500/10 py-1.5">
-                <p className="text-base font-bold text-orange-300 tabular-nums">{x.n}</p>
-                <p className="text-[10px] text-gray-400">{x.l}</p>
-              </div>
-            ))}
+            ].map((x) => <KartuAngka key={x.l} nilai={x.n} label={x.l} nada="jingga" />)}
           </div>
           {h.gardu.length > 0 && (
             <p className="text-xs text-[#e2e8f0]">

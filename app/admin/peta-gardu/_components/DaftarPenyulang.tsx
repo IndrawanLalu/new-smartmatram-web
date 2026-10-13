@@ -3,7 +3,8 @@
 import { useMemo, useState } from "react";
 import { Loader2, Search } from "lucide-react";
 import { FIELD } from "@/app/admin/_ui";
-import type { RingkasPenyulang } from "../_hooks/usePetaSld";
+import type { RingkasPenyulang } from "@/app/peta/_hooks/useSld";
+import { angka } from "@/app/peta/_lib/angka";
 
 /**
  * Daftar penyulang + kartunya. Yang sudah punya data tiang bisa dinyalakan di
@@ -19,8 +20,6 @@ interface Props {
   warna: Map<string, string>;
   onAlih: (penyulang: string) => void;
 }
-
-export const angka = (n: number, d = 0) => n.toLocaleString("id-ID", { maximumFractionDigits: d, minimumFractionDigits: d });
 
 export default function DaftarPenyulang({ ringkas, memuatDaftar, dipilih, memuat, warna, onAlih }: Props) {
   const [cari, setCari] = useState("");

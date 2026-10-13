@@ -1,10 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect } from "react";
 import { CircleMarker, MapContainer, Marker, Polyline, TileLayer, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { htmlPenandaJtm } from "@/lib/penandaJtm";
+import { ikonGardu, useIkonPenanda } from "@/app/peta/_lib/ikonPeta";
 import type { GarduInfo, GrafSld, Simpul } from "@/lib/sld";
 import type { Penanda } from "@/app/peta/_hooks/usePenandaJtm";
 
@@ -26,21 +26,11 @@ interface Props {
 
 const MERAH = "#DC2626";
 
-/** Ikon dibuat sekali, dipakai ulang semua penanda (lihat app/peta/PetaInner). */
-const ikonRumah = (warna: string) =>
-  L.divIcon({
-    className: "",
-    iconSize: [16, 16],
-    iconAnchor: [8, 14],
-    html: `<svg viewBox="0 0 16 16" width="16" height="16" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.5))">
-      <polygon points="8,1 15,7 1,7" fill="${warna}" stroke="#fff" stroke-width="0.8"/>
-      <rect x="3" y="7" width="10" height="8" fill="${warna}" stroke="#fff" stroke-width="0.8"/></svg>`,
-  });
 const IKON_GARDU = {
-  hijau: ikonRumah("#16A34A"),
-  kuning: ikonRumah("#F59E0B"),
-  merah: ikonRumah(MERAH),
-  abu: ikonRumah("#94A3B8"),
+  hijau: ikonGardu("#16A34A"),
+  kuning: ikonGardu("#F59E0B"),
+  merah: ikonGardu(MERAH),
+  abu: ikonGardu("#94A3B8"),
 };
 const IKON_PANGKAL = L.divIcon({
   className: "",
@@ -65,18 +55,7 @@ function Fokus({ graf }: { graf: GrafSld[] }) {
 }
 
 export default function PetaSldInner({ graf, warna, gardu, penanda, padam, terpilih, label, onPilih }: Props) {
-  const ikonKeypoint = useMemo(() => {
-    const m = new Map<string, L.DivIcon>();
-    for (const [kode, p] of penanda) {
-      m.set(kode, L.divIcon({
-        className: "",
-        html: htmlPenandaJtm(p.bentuk, p.warna, 16),
-        iconSize: [20, 20],
-        iconAnchor: [10, 10],
-      }));
-    }
-    return m;
-  }, [penanda]);
+  const ikonKeypoint = useIkonPenanda(penanda);
 
   const tanda = (s: Simpul) => (s.penanda ? penanda.get(s.penanda)?.label ?? s.penanda : "");
 

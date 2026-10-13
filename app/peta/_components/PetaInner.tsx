@@ -2,7 +2,7 @@
 
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
 import {
-  MapContainer, TileLayer, LayersControl, CircleMarker, Marker, Polyline, Tooltip,
+  MapContainer, CircleMarker, Marker, Polyline, Tooltip,
   useMap, useMapEvents,
 } from "react-leaflet";
 import L from "leaflet";
@@ -10,10 +10,13 @@ import "leaflet/dist/leaflet.css";
 import type { Kotak, GarduPeta, RuteBaris, TiangPeta } from "../_hooks/usePetaIsi";
 import { WARNA } from "../_ui";
 import { useGayaPeta, type GayaPeta } from "../_hooks/useGayaPeta";
-import { htmlPenandaJtm, titikTengahPortal } from "@/lib/penandaJtm";
+import { titikTengahPortal } from "@/lib/penandaJtm";
+import { ikonGardu, UKURAN_GARDU, useIkonPenanda } from "../_lib/ikonPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
 import LapisanUjung from "./LapisanUjung";
+import LapisanLatar from "./LapisanLatar";
+import { warnaDasar, type Latar } from "../_hooks/useLatarPeta";
 import PenggeserTitik from "./PenggeserTitik";
 import PenggeserBanyak from "./PenggeserBanyak";
 import type { GeserTiang } from "../_hooks/useGeserBanyak";
@@ -101,6 +104,8 @@ interface Props {
   loncat: Map<string, IndukLoncat>;
   /** Peralatan di tiang bersama yang belum dipilih pemiliknya — tanda "?". */
   tandaMilik: TiangPeta[];
+  /** Ubin latar (pilihan pengguna, diingat per mode). */
+  latar: Latar;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -137,16 +142,9 @@ const ikonPutus = (warna: string, huruf = "!") =>
     html: `<div style="width:16px;height:16px;border-radius:50%;background:${warna};border:2px solid #fff;color:#fff;font:700 11px/12px sans-serif;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.6)">${huruf}</div>`,
   });
 
-/**
- * Ikon rumah untuk gardu — bentuk yang sama dengan `/admin/peta-gardu`, supaya
- * benda yang sama tidak tampil sebagai dua hal berbeda di dua peta.
- *
- * DIBUAT SEKALI, dipakai ulang oleh semua penanda. Leaflet membolehkan satu
- * objek ikon dipakai banyak penanda, dan itu bukan penghematan kecil: membuat
- * divIcon per gardu berarti menyusun dua ribu potong HTML tiap kali peta
- * digambar ulang. Tambatannya di bawah-tengah, jadi kaki rumahnya yang duduk
- * di koordinat, bukan titik tengahnya.
- */
+/** Gardu: rumah merah (ikon dibuat sekali, `_lib/ikonPeta`). Bentuknya sama
+ *  dengan rumah di Mode SLD, supaya benda yang sama tidak tampil sebagai dua
+ *  hal berbeda. */
 const SISI_PENANDA = 16;
 
 /** Tiang lain sedekat ini (piksel layar) dari titik klik → tampilkan pilihan. */
@@ -156,22 +154,12 @@ const JARAK_PILIH = 15;
  *  Di 19 dua tiang portal (±2 m) baru terpisah ±7 piksel; di 22 ±50 piksel. */
 const ZOOM_MAKS = 22;
 const ZOOM_PETAK = 19;
-const UKURAN_GARDU = 16;
-const IKON_GARDU = L.divIcon({
-  className: "",
-  iconSize: [UKURAN_GARDU, UKURAN_GARDU],
-  iconAnchor: [UKURAN_GARDU / 2, UKURAN_GARDU],
-  html: `<svg viewBox="0 0 16 16" width="${UKURAN_GARDU}" height="${UKURAN_GARDU}" xmlns="http://www.w3.org/2000/svg" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,0.75));">
-    <polygon points="8,1 15,7 1,7" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
-    <rect x="3" y="7" width="10" height="8" fill="${WARNA_GARDU}" stroke="rgba(255,255,255,0.6)" stroke-width="0.7"/>
-    <rect x="6" y="10" width="4" height="5" fill="rgba(0,0,0,0.35)"/>
-  </svg>`,
-});
+const IKON_GARDU = ikonGardu(WARNA_GARDU);
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -183,28 +171,9 @@ export default function PetaInner({
       zoomControl={false}
       attributionControl
       className="h-full w-full"
-      style={{ background: "#0b1220" }}
+      style={{ background: warnaDasar(latar) }}
     >
-      <LayersControl position="bottomright">
-        {/* Bawaan peta jalan: petaknya jauh lebih ringan dari citra satelit,
-            jadi halaman terbuka cepat. Citra tinggal dipilih di pojok kanan bawah. */}
-        <LayersControl.BaseLayer name="Citra satelit">
-          <TileLayer
-            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-            attribution="Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics"
-            maxZoom={ZOOM_MAKS}
-            maxNativeZoom={ZOOM_PETAK}
-          />
-        </LayersControl.BaseLayer>
-        <LayersControl.BaseLayer checked name="Peta jalan">
-          <TileLayer
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-            attribution="&copy; OpenStreetMap"
-            maxZoom={ZOOM_MAKS}
-            maxNativeZoom={ZOOM_PETAK}
-          />
-        </LayersControl.BaseLayer>
-      </LayersControl>
+      <LapisanLatar latar={latar} maxZoom={ZOOM_MAKS} maxNativeZoom={ZOOM_PETAK} />
 
       <Pemantau onKotak={onKotak} />
       <Fokus batas={fokus} />
@@ -299,6 +268,7 @@ const Isi = memo(function Isi({
   const gaya = useGayaPeta();
   const ikonTandaPutus = useMemo(() => ikonPutus(gaya.putus), [gaya.putus]);
   const ikonTandaLoncat = useMemo(() => ikonPutus(gaya.putus, "?"), [gaya.putus]);
+  const ikonPenanda = useIkonPenanda(penanda, SISI_PENANDA);
   const garisRute = useMemo(
     () =>
       rute.flatMap((r) =>
@@ -314,8 +284,8 @@ const Isi = memo(function Isi({
     [rute],
   );
 
-  /** Ikon dibuat sekali per (penanda, tiang) dan tidak disusun ulang tiap peta
-   *  digeser. Tiang yang penandanya tidak dikenal jatuh ke lingkaran biasa
+  /** Ikon satu per kode penanda (`useIkonPenanda`), tidak disusun ulang tiap
+   *  peta digeser. Tiang yang penandanya tidak dikenal jatuh ke lingkaran biasa
    *  daripada hilang dari peta. */
   const { biasa, bertanda } = useMemo(() => {
     const b: TiangPeta[] = [];
@@ -323,7 +293,8 @@ const Isi = memo(function Isi({
     const portal = titikTengahPortal(tiang);
     for (const t of tiang) {
       const ref = t.penanda ? penanda.get(t.penanda) : undefined;
-      if (!ref) { b.push(t); continue; }
+      const ikon = t.penanda ? ikonPenanda.get(t.penanda) : undefined;
+      if (!ref || !ikon) { b.push(t); continue; }
       // Gardu portal: kedua tiangnya bulatan biasa, gardunya di tengah.
       const tengah = portal.get(t.id);
       if (tengah) b.push(t);
@@ -331,16 +302,11 @@ const Isi = memo(function Isi({
         t,
         posisi: tengah ?? [t.lat, t.lng],
         label: tengah ? `${ref.label} portal` : ref.label,
-        ikon: L.divIcon({
-          className: "",
-          html: htmlPenandaJtm(ref.bentuk, ref.warna, SISI_PENANDA),
-          iconSize: [SISI_PENANDA + 4, SISI_PENANDA + 4],
-          iconAnchor: [(SISI_PENANDA + 4) / 2, (SISI_PENANDA + 4) / 2],
-        }),
+        ikon,
       });
     }
     return { biasa: b, bertanda: p };
-  }, [tiang, penanda]);
+  }, [tiang, penanda, ikonPenanda]);
 
   /** Klik tiang: ada tiang lain sedekat JARAK_PILIH piksel → daftar pilihan;
    *  hanya satu → langsung dipilih seperti biasa. Diukur dari posisi yang

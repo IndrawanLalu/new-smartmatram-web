@@ -8,10 +8,11 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { susunSld, type GarduInfo, type GrafSld, type TiangSld } from "@/lib/sld";
 
 /**
- * Data Peta SLD: kartu semua penyulang (`peta_sld_penyulang`, satu baris per
+ * Data SLD: kartu semua penyulang (`peta_sld_penyulang`, satu baris per
  * penyulang) dan — hanya untuk penyulang yang DIPILIH — pohon tiangnya, yang
  * diringkas jadi SLD di browser (`lib/sld.ts`). Penyulang yang sudah dimuat
- * disimpan; memilihnya lagi tidak menarik ulang.
+ * disimpan; memilihnya lagi tidak menarik ulang — kecuali lewat `muatUlang`
+ * (sesudah menyunting jaringan).
  */
 
 export interface RingkasPenyulang {
@@ -60,13 +61,14 @@ async function muatGardu(kode: string[]): Promise<Map<string, GarduInfo>> {
   return hasil;
 }
 
-export function usePetaSld(unit: string | null) {
+export function useSld(unit: string | null) {
   const toast = useToast();
   const [ringkas, setRingkas] = useState<RingkasPenyulang[]>([]);
   const [memuatDaftar, setMemuatDaftar] = useState(true);
   const [graf, setGraf] = useState<Map<string, GrafSld>>(new Map());
   const [gardu, setGardu] = useState<Map<string, GarduInfo>>(new Map());
   const [memuat, setMemuat] = useState<Set<string>>(new Set());
+  const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
     let batal = false;
@@ -104,12 +106,11 @@ export function usePetaSld(unit: string | null) {
     return () => {
       batal = true;
     };
-  }, [unit, toast]);
+  }, [unit, toast, nonce]);
 
-  /** Tarik pohon tiang satu penyulang lalu ringkas jadi SLD. */
-  const muat = useCallback(
+  /** Tarik pohon tiang satu penyulang lalu ringkas jadi SLD (menimpa yang lama). */
+  const tarik = useCallback(
     async (penyulang: string) => {
-      if (graf.has(penyulang) || memuat.has(penyulang)) return;
       setMemuat((m) => new Set(m).add(penyulang));
       try {
         const [rows, milik] = await Promise.all([
@@ -149,8 +150,26 @@ export function usePetaSld(unit: string | null) {
         });
       }
     },
-    [graf, memuat, toast],
+    [toast],
   );
 
-  return { ringkas, memuatDaftar, graf, gardu, memuat, muat };
+  /** Muat penyulang yang belum ada di simpanan. */
+  const muat = useCallback(
+    async (penyulang: string) => {
+      if (graf.has(penyulang) || memuat.has(penyulang)) return;
+      await tarik(penyulang);
+    },
+    [graf, memuat, tarik],
+  );
+
+  /** Kartu penyulang + SLD penyulang yang sedang menyala ditarik ulang. */
+  const muatUlang = useCallback(
+    async (menyala: string[]) => {
+      setNonce((n) => n + 1);
+      await Promise.all(menyala.map(tarik));
+    },
+    [tarik],
+  );
+
+  return { ringkas, memuatDaftar, graf, gardu, memuat, muat, muatUlang };
 }

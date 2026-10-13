@@ -7,6 +7,7 @@ import type { CurrentUser } from "@/lib/roles";
 import { useMilikPenanda } from "@/lib/milikPenanda";
 import { bingkaiBatas, bingkaiSekitar, DEKAT, type Bingkai } from "../_lib/bingkai";
 import { useLapisanNyala, type AwalPeta } from "../_hooks/useLapisanNyala";
+import { useLatarPeta } from "../_hooks/useLatarPeta";
 import { usePetaDaftar } from "../_hooks/usePetaDaftar";
 import { usePetaIsi, type Kotak } from "../_hooks/usePetaIsi";
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
@@ -34,6 +35,7 @@ import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelKanan from "./PanelKanan";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
+import PilihLatar from "./PilihLatar";
 import PenelusurPeta from "./PenelusurPeta";
 import PersetujuanJtmPeta from "./PersetujuanJtmPeta";
 import RincianPenyulang from "./RincianPenyulang";
@@ -76,6 +78,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [kotak, setKotak] = useState<Kotak | null>(null);
   const [fokus, setFokus] = useState<Bingkai | null>(null);
   const [panel, setPanel] = useState(true);
+  const [latar, setLatar] = useLatarPeta("biasa");
 
   const { perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
   const penanda = usePenandaJtm();
@@ -261,7 +264,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           isian={isian.tampil && !satuSegmen ? { nilaiDi: isian.peta.nilaiDi, warna: isian.peta.warna } : null}
           loncat={indukLoncat.loncat}
           tandaMilik={tandaMilik}
+          latar={latar}
         />
+
+        <PilihLatar latar={latar} onLatar={setLatar} />
 
         {isian.tampil && <LegendaIsian nama={isian.nama} legenda={isian.peta.legenda} />}
 

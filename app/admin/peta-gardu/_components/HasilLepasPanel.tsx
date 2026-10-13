@@ -3,7 +3,7 @@
 import { Download, X } from "lucide-react";
 import { BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
 import { hitungBeban, type GarduInfo, type HasilLepas, type Simpul } from "@/lib/sld";
-import { angka } from "./DaftarPenyulang";
+import { angka } from "@/app/peta/_lib/angka";
 
 /** Hasil simulasi lepas pangkal/keypoint: angka padam + gardu + keypoint hilir. */
 

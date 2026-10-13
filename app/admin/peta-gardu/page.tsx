@@ -8,8 +8,9 @@ import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { FIELD } from "@/app/admin/_ui";
 import { lepas } from "@/lib/sld";
 import { usePenandaJtm } from "@/app/peta/_hooks/usePenandaJtm";
-import { usePetaSld } from "./_hooks/usePetaSld";
-import DaftarPenyulang, { angka } from "./_components/DaftarPenyulang";
+import { useSld } from "@/app/peta/_hooks/useSld";
+import { angka } from "@/app/peta/_lib/angka";
+import DaftarPenyulang from "./_components/DaftarPenyulang";
 import RingkasSldPanel from "./_components/RingkasSldPanel";
 import HasilLepasPanel from "./_components/HasilLepasPanel";
 
@@ -34,7 +35,7 @@ export default function PetaSldPage() {
   const user = useCurrentUser();
   const semuaUnit = canSeeAllUnits(user.role);
   const [ulp, setUlp] = useState(semuaUnit ? "" : (user.unit ?? ""));
-  const sld = usePetaSld(semuaUnit ? ulp || null : (user.unit ?? null));
+  const sld = useSld(semuaUnit ? ulp || null : (user.unit ?? null));
   const penanda = usePenandaJtm();
   const [dipilih, setDipilih] = useState<Set<string>>(new Set());
   const [sim, setSim] = useState<{ penyulang: string; id: string } | null>(null);
