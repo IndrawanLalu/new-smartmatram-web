@@ -64,7 +64,12 @@ export default function KinerjaYantekPage() {
       </div>
 
       {tab === "harian" ? (
-        <RealisasiHarian ulpAwal={ulp} daftarUlp={daftarUlp} daftarTahun={daftarTahun} />
+        <RealisasiHarian
+          ulpAwal={ulp}
+          daftarUlp={daftarUlp}
+          daftarTahun={daftarTahun}
+          pengatur={bolehSla ? user.name ?? user.email : null}
+        />
       ) : (
       <>
       <div className="flex flex-wrap items-center gap-2">
