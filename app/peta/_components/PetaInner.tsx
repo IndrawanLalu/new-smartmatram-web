@@ -1,6 +1,8 @@
 "use client";
 
 import { Fragment, memo, useEffect, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import type { GarduInfo, GrafSld } from "@/lib/sld";
 import {
   MapContainer, CircleMarker, Marker, Polyline, Tooltip,
   useMap, useMapEvents,
@@ -106,6 +108,8 @@ interface Props {
   tandaMilik: TiangPeta[];
   /** Ubin latar (pilihan pengguna, diingat per mode). */
   latar: Latar;
+  /** Mode SLD menyala: garis ringkas per penyulang (null = mode biasa). */
+  sld: { graf: GrafSld[]; warna: Map<string, string>; gardu: Map<string, GarduInfo>; label: boolean } | null;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -152,6 +156,9 @@ const JARAK_PILIH = 15;
 
 /** Perbesaran: gambar peta dasar berhenti di 19, sesudahnya hanya diperbesar.
  *  Di 19 dua tiang portal (±2 m) baru terpisah ±7 piksel; di 22 ±50 piksel. */
+/** Mode SLD: kodenya baru diunduh saat mode itu dinyalakan. */
+const LapisanSld = dynamic(() => import("./LapisanSld"), { ssr: false });
+
 const ZOOM_MAKS = 22;
 const ZOOM_PETAK = 19;
 const IKON_GARDU = ikonGardu(WARNA_GARDU);
@@ -159,7 +166,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -183,6 +190,7 @@ export default function PetaInner({
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu} loncat={loncat}
         onBerdesakan={setPilihan}
       />
+      {sld && <LapisanSld graf={sld.graf} warna={sld.warna} gardu={sld.gardu} penanda={penanda} label={sld.label} />}
       <PemilihTiang
         pilihan={pilihan}
         onPilih={(t) => {

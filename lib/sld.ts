@@ -21,6 +21,8 @@ export interface TiangSld {
   indukId: string | null;
   pasanganPortalDari: string | null;
   garduDiTiang: string | null;
+  /** Nama peralatan di tiang keypoint (mis. "MALOMBA"). */
+  namaPeralatan?: string | null;
 }
 
 export interface GarduInfo {
@@ -43,6 +45,8 @@ export interface Simpul {
   penanda: string | null;
   /** Kode gardu di tiang ini (gardu portal: di tiang pertamanya). */
   gardu: string | null;
+  /** Nama peralatan keypoint (null = belum diisi). */
+  nama: string | null;
   /** Simpul di hulu (null = pangkal). */
   indukId: string | null;
   /** Panjang jaringan dari simpul hulu sampai simpul ini, km. */
@@ -120,6 +124,7 @@ export function susunSld(penyulang: string, tiang: TiangSld[]): GrafSld {
         simpul.set(t.id, {
           id: t.id, kode: t.kode, lat: t.lat, lng: t.lng, jenis, penanda: t.penanda,
           gardu: t.penanda === "gardu" ? t.garduDiTiang : null,
+          nama: t.namaPeralatan?.trim() || null,
           indukId: hulu, km: kmJalan, jalur, anak: [],
         });
         if (hulu) simpul.get(hulu)!.anak.push(t.id);

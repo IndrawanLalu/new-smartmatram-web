@@ -8,6 +8,7 @@ import { useMilikPenanda } from "@/lib/milikPenanda";
 import { bingkaiBatas, bingkaiSekitar, DEKAT, type Bingkai } from "../_lib/bingkai";
 import { useLapisanNyala, type AwalPeta } from "../_hooks/useLapisanNyala";
 import { useLatarPeta } from "../_hooks/useLatarPeta";
+import { useModeSld } from "../_hooks/useModeSld";
 import { usePetaDaftar } from "../_hooks/usePetaDaftar";
 import { usePetaIsi, type Kotak } from "../_hooks/usePetaIsi";
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
@@ -27,6 +28,7 @@ import { useSegmenPeta } from "../_hooks/useSegmenPeta";
 import { useTiangMilik } from "../_hooks/useTiangMilik";
 import { GARIS, PANEL } from "../_ui";
 import BilahAtas from "./BilahAtas";
+import BilahAtasSld from "./BilahAtasSld";
 import BilahKeadaan from "./BilahKeadaan";
 import LegendaIsian from "./LegendaIsian";
 import ObjekTerpilih from "./ObjekTerpilih";
@@ -35,6 +37,7 @@ import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelKanan from "./PanelKanan";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
+import PanelSld from "./PanelSld";
 import PilihLatar from "./PilihLatar";
 import PenelusurPeta from "./PenelusurPeta";
 import PersetujuanJtmPeta from "./PersetujuanJtmPeta";
@@ -50,6 +53,10 @@ import TugaskanPohonPeta from "./TugaskanPohonPeta";
  * komponennya (BilahAtas, BilahKeadaan, ObjekTerpilih, PanelKanan,
  * PenelusurPeta). Di sini hanya: menyambungkan, dan memutuskan apa yang
  * tampil bersamaan.
+ *
+ * Mode SLD (`useModeSld`): peta hanya menggambar garis ringkas, pangkal,
+ * keypoint, gardu. Lapisan & alat mode biasa DISEMBUNYIKAN, bukan dipadamkan —
+ * keluar dari Mode SLD memunculkan lagi semuanya seperti tadi.
  */
 
 const PetaInner = dynamic(() => import("./PetaInner"), {
@@ -78,11 +85,15 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [kotak, setKotak] = useState<Kotak | null>(null);
   const [fokus, setFokus] = useState<Bingkai | null>(null);
   const [panel, setPanel] = useState(true);
-  const [latar, setLatar] = useLatarPeta("biasa");
 
   const { perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
+  const sld = useModeSld({ ulp, nyala, awal: awal?.sld, daftarJtm: perFolder.jtm });
+  const modeSld = sld.aktif;
+  const [latar, setLatar] = useLatarPeta(modeSld ? "sld" : "biasa");
   const penanda = usePenandaJtm();
-  const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } = usePetaIsi(kotak, pilihan, tampilGardu);
+  // Mode SLD tidak menarik tiang sama sekali — SLD punya datanya sendiri.
+  const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } =
+    usePetaIsi(kotak, modeSld ? TANPA : pilihan, modeSld ? false : tampilGardu);
   const indukLoncat = useIndukLoncat();
   // Gardu & peralatan di tiang yang dipakai beberapa penyulang hanya digambar di
   // lapisan pemiliknya; titik pertemuan & yang belum dipilih di semua (10 Okt 2026).
@@ -162,6 +173,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
    *  terbuka — tanpa memuat ulang halaman (pilihan lapisan & posisi tetap). */
   const muatUlangSemua = async () => {
     setMemuatUlang(true);
+    if (modeSld) {
+      try {
+        await Promise.all([muatDaftar(), sld.muatUlang()]);
+      } finally {
+        setMemuatUlang(false);
+      }
+      return;
+    }
     objek.muatUlang();
     isian.peta.muatUlang();
     try {
@@ -199,6 +218,12 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     + pohon.temuan.length + pohon.dirabas.length + pohon.cek.length;
   /** Panel rincian (segmen / penyulang) hanya saat tidak ada yang lebih mendesak. */
   const bebas = !jtm.buka && !terpilih && !geserBanyak.aktif;
+  /** Lapisan di atas jaringan yang disembunyikan: "Segmen ini saja" & Mode SLD. */
+  const sembunyi = satuSegmen || modeSld;
+  const masukSld = () => {
+    pilih.tutup();
+    sld.alih(true);
+  };
 
   return (
     <div className="h-full flex">
@@ -226,6 +251,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           segmenAktif={segmenId}
           onSegmen={(x) => { jtm.setBuka(null); setTerpilih(null); setKartuPenyulang(null); setSegmenTampil(x.id); }}
           onPenyulang={(l) => { jtm.setBuka(null); setTerpilih(null); setSegmenTampil(null); setKartuPenyulang({ kode: l.kode, ulp: l.ulp }); }}
+          sld={modeSld ? { keterangan: sld.keterangan } : undefined}
         />
       ) : (
         <button
@@ -244,31 +270,45 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onPilihTiang={pilih.pilihTiang} onPilihGardu={pilih.pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={pilih.geser} onGeser={pilih.aturGeser}
-          geserBanyak={geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
-          ujung={satuSegmen ? TANPA : ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
+          geserBanyak={modeSld ? TANPA : geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
+          ujung={sembunyi ? TANPA : ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
-          pohonTemuan={satuSegmen ? TANPA : pohon.temuan}
-          pohonDirabas={satuSegmen ? TANPA : pohon.dirabas}
-          pohonCek={satuSegmen ? TANPA : pohon.cek}
+          pohonTemuan={sembunyi ? TANPA : pohon.temuan}
+          pohonDirabas={sembunyi ? TANPA : pohon.dirabas}
+          pohonCek={sembunyi ? TANPA : pohon.cek}
           onTugaskanPohon={boleh ? (t) => pohon.setTugas([t]) : undefined}
-          simulasi={simulasi.hasil}
-          kesehatan={satuSegmen ? TANPA : kesehatan.gardu}
+          simulasi={modeSld ? null : simulasi.hasil}
+          kesehatan={sembunyi ? TANPA : kesehatan.gardu}
           onPilihKesehatan={pilih.pilihKesehatan}
           namaTiang={namaTiang}
           nomorKabel={nomorKabel}
-          antrean={jtr.aktif && !satuSegmen ? jtr.antrean : null}
+          antrean={jtr.aktif && !sembunyi ? jtr.antrean : null}
           onPilihAntrean={jtr.pilih}
-          sorotPerubahan={satuSegmen ? null : (jtr.sorotBanding?.tiang ?? null)}
-          sorotJtm={jtm.sorot}
-          sorotKoreksi={satuSegmen ? TANPA : garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
-          isian={isian.tampil && !satuSegmen ? { nilaiDi: isian.peta.nilaiDi, warna: isian.peta.warna } : null}
+          sorotPerubahan={sembunyi ? null : (jtr.sorotBanding?.tiang ?? null)}
+          sorotJtm={modeSld ? null : jtm.sorot}
+          sorotKoreksi={sembunyi ? TANPA : garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
+          isian={isian.tampil && !sembunyi ? { nilaiDi: isian.peta.nilaiDi, warna: isian.peta.warna } : null}
           loncat={indukLoncat.loncat}
           tandaMilik={tandaMilik}
           latar={latar}
+          sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
 
+        {modeSld ? (
+          <>
+            <PanelSld graf={sld.graf} memuat={sld.memuat} ringkas={sld.ringkas} warna={sld.warna} gardu={sld.gardu} penanda={penanda} />
+            <BilahAtasSld
+              onKeluar={() => sld.alih(false)}
+              label={sld.label}
+              onLabel={sld.alihLabel}
+              memuatUlang={memuatUlang}
+              onMuatUlang={() => void muatUlangSemua()}
+            />
+          </>
+        ) : (
+          <>
         {isian.tampil && <LegendaIsian nama={isian.nama} legenda={isian.peta.legenda} />}
 
         {garduJanggal.aktif && (
@@ -368,19 +408,6 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           <TugaskanPohonPeta daftar={pohon.tugas} oleh={oleh} onTutup={() => pohon.setTugas(null)} onSelesai={pohon.muatUlang} />
         )}
 
-        <BilahKeadaan
-          sibuk={sibuk}
-          zoom={zoom}
-          jumlahObjek={jumlahObjek}
-          jumlahTiang={tiangPeta.length}
-          tiangDiLayar={tiang.length}
-          jumlahGardu={gardu.length}
-          sebutZoomTiang={lapisan.adaJaringan && !satuSegmen}
-          sebutZoomGardu={!lapisan.adaGarduPilihan && tampilGardu}
-          terpotong={terpotong && !satuSegmen}
-          adaLabel={namaTiang || nomorKabel || isian.tampil}
-        />
-
         <PenelusurPeta antrean={antrean} />
 
         <BilahAtas
@@ -400,19 +427,46 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           memuatUlang={memuatUlang}
           onMuatUlang={() => void muatUlangSemua()}
           tutupObjek={pilih.tutup}
+          onModeSld={masukSld}
+        />
+          </>
+        )}
+
+        <BilahKeadaan
+          sibuk={modeSld ? sld.memuat.length > 0 : sibuk}
+          zoom={zoom}
+          jumlahObjek={modeSld ? sld.jumlahSimpul : jumlahObjek}
+          jumlahTiang={tiangPeta.length}
+          tiangDiLayar={tiang.length}
+          jumlahGardu={gardu.length}
+          sebutZoomTiang={lapisan.adaJaringan && !sembunyi}
+          sebutZoomGardu={!modeSld && !lapisan.adaGarduPilihan && tampilGardu}
+          terpotong={terpotong && !sembunyi}
+          adaLabel={!modeSld && (namaTiang || nomorKabel || isian.tampil)}
         />
 
-        {nyala.size === 0 && !satuSegmen && !loading && (
+        {(modeSld ? sld.graf.length === 0 && sld.memuat.length === 0 : nyala.size === 0 && !satuSegmen) && !loading && (
           <div className="absolute z-[1000] inset-x-0 top-1/2 -translate-y-1/2 grid place-items-center pointer-events-none px-4">
             <p
               className="rounded-xl text-gray-300 text-sm px-4 py-3 max-w-sm text-center leading-relaxed backdrop-blur-sm border"
               style={GAYA_PADAM}
             >
-              Pilih penyulang atau gardu di panel kiri — atau ketik namanya di kotak cari.
-              <span className="block text-gray-500 text-xs mt-1">
-                Peta sengaja dibuka kosong supaya tidak menarik puluhan ribu titik yang belum
-                tentu Anda butuhkan.
-              </span>
+              {modeSld ? (
+                <>
+                  Centang penyulang JTM di panel kiri.
+                  <span className="block text-gray-500 text-xs mt-1">
+                    SLD disusun dari tiang yang sudah dititik — hanya pangkal, keypoint, gardu, dan garis di antaranya.
+                  </span>
+                </>
+              ) : (
+                <>
+                  Pilih penyulang atau gardu di panel kiri — atau ketik namanya di kotak cari.
+                  <span className="block text-gray-500 text-xs mt-1">
+                    Peta sengaja dibuka kosong supaya tidak menarik puluhan ribu titik yang belum
+                    tentu Anda butuhkan.
+                  </span>
+                </>
+              )}
             </p>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Tags, TriangleAlert } from "lucide-react";
+import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Tags, TriangleAlert, Workflow } from "lucide-react";
 import type { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import type { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import type { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
@@ -11,8 +11,8 @@ import MenuKelompok from "./MenuKelompok";
 import TombolAtas, { GAYA_PADAM, TOMBOL_ATAS } from "./TombolAtas";
 
 /**
- * Bilah alat di kanan atas peta: tiga kelompok (JTM / JTR / Gardu) yang
- * meluncur keluar saat diklik — satu terbuka pada satu waktu — lalu Geser
+ * Bilah alat di kanan atas peta: Mode SLD, tiga kelompok (JTM / JTR / Gardu)
+ * yang meluncur keluar saat diklik — satu terbuka pada satu waktu — lalu Geser
  * titik, Nama tiang, Muat ulang, Kembali.
  */
 
@@ -42,11 +42,12 @@ interface Props {
   onMuatUlang: () => void;
   /** Menutup panel benda sebelum mode yang memakai klik peta dinyalakan. */
   tutupObjek: () => void;
+  onModeSld: () => void;
 }
 
 export default function BilahAtas({
   boleh, bolehSetujui, antrean, koreksi, garduJanggal, isian, kesehatan, ujung, geserBanyak,
-  nomorKabel, onNomorKabel, namaTiang, onNamaTiang, memuatUlang, onMuatUlang, tutupObjek,
+  nomorKabel, onNomorKabel, namaTiang, onNamaTiang, memuatUlang, onMuatUlang, tutupObjek, onModeSld,
 }: Props) {
   const [menuBuka, setMenuBuka] = useState<Menu | null>(null);
   const bukaMenu = (m: Menu) => setMenuBuka((x) => (x === m ? null : m));
@@ -54,6 +55,9 @@ export default function BilahAtas({
 
   return (
     <div className="absolute z-[1000] top-3 right-3 flex items-center gap-2">
+      <TombolAtas ikon={<Workflow size={15} />} nada="mint" onClick={onModeSld} title="Hanya garis, pangkal, keypoint, dan gardu — dengan simulasi lepas">
+        Mode SLD
+      </TombolAtas>
       <MenuKelompok
         label="JTM"
         terbuka={menuBuka === "jtm"}

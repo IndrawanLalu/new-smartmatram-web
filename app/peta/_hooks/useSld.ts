@@ -61,7 +61,8 @@ async function muatGardu(kode: string[]): Promise<Map<string, GarduInfo>> {
   return hasil;
 }
 
-export function useSld(unit: string | null) {
+/** `aktif` false = belum dibutuhkan (Mode SLD padam): daftar tidak dibaca. */
+export function useSld(unit: string | null, aktif = true) {
   const toast = useToast();
   const [ringkas, setRingkas] = useState<RingkasPenyulang[]>([]);
   const [memuatDaftar, setMemuatDaftar] = useState(true);
@@ -71,6 +72,7 @@ export function useSld(unit: string | null) {
   const [nonce, setNonce] = useState(0);
 
   useEffect(() => {
+    if (!aktif) return;
     let batal = false;
     setMemuatDaftar(true);
     void (async () => {
@@ -106,7 +108,7 @@ export function useSld(unit: string | null) {
     return () => {
       batal = true;
     };
-  }, [unit, toast, nonce]);
+  }, [unit, toast, nonce, aktif]);
 
   /** Tarik pohon tiang satu penyulang lalu ringkas jadi SLD (menimpa yang lama). */
   const tarik = useCallback(
@@ -117,7 +119,7 @@ export function useSld(unit: string | null) {
           fetchAllRows<Record<string, unknown>>(() =>
             supabaseBrowser
               .from("peta_tiang")
-              .select("id,kode,lat,lng,penanda,induk_id,pasangan_portal_dari,gardu_di_tiang")
+              .select("id,kode,lat,lng,penanda,induk_id,pasangan_portal_dari,gardu_di_tiang,nama_peralatan")
               .eq("jaringan", "jtm")
               .eq("induk_kelompok", penyulang),
           ),
@@ -134,6 +136,7 @@ export function useSld(unit: string | null) {
           indukId: (r.induk_id as string) ?? null,
           pasanganPortalDari: (r.pasangan_portal_dari as string) ?? null,
           garduDiTiang: (r.gardu_di_tiang as string) ?? null,
+          namaPeralatan: (r.nama_peralatan as string) ?? null,
         }));
         const g = susunSld(penyulang, tiang);
         const kode = [...new Set([...g.simpul.values()].map((s) => s.gardu).filter((k): k is string => !!k))];

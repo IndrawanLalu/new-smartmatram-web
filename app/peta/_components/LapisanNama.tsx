@@ -1,8 +1,8 @@
 "use client";
 
-import { CircleMarker, Tooltip } from "react-leaflet";
 import type { TiangPeta } from "../_hooks/usePetaIsi";
 import { titikTengahPortal } from "@/lib/penandaJtm";
+import LabelTetap, { type NadaLabel } from "./LabelTetap";
 
 /**
  * Label tetap di sebelah tiang: NAMA tiang dan/atau NOMOR KABEL JTR-nya.
@@ -22,17 +22,8 @@ import { titikTengahPortal } from "@/lib/penandaJtm";
  */
 export const BATAS_NAMA = 400;
 
-const DASAR = "!border-0 !shadow-none !rounded !px-1 !py-0 !text-[10px] !font-semibold before:!hidden";
-const NADA = {
-  biasa: "!bg-[#0b1220]/80 !text-[#e2e8f0]",
-  ub: "!bg-[#A855F7] !text-white",
-  curiga: "!bg-red-600 !text-white",
-  gardu: "!bg-[#1D3573] !text-white",
-  alat: "!bg-[#B3701A] !text-white",
-};
-
 /** "3" sendirian = curiga; "1,2" = underbuild JTR; "1" = biasa. */
-const nadaNomor = (n: string) => (n.includes(",") ? "ub" : n === "1" ? "biasa" : "curiga");
+const nadaNomor = (n: string): NadaLabel => (n.includes(",") ? "ub" : n === "1" ? "biasa" : "curiga");
 
 export default function LapisanNama({
   tiang,
@@ -46,7 +37,7 @@ export default function LapisanNama({
   if ((!nama && !nomor) || tiang.length > BATAS_NAMA) return null;
   // Satu batang di dua kelompok (underbuild/pinjaman) = satu label berisi
   // keduanya, bukan dua label yang saling menimpa.
-  const perBatang = new Map<string, { t: TiangPeta; bagian: string[]; nada: keyof typeof NADA }>();
+  const perBatang = new Map<string, { t: TiangPeta; bagian: string[]; nada: NadaLabel }>();
   for (const t of tiang) {
     const nomorIni = nomor && t.jaringan === "jtr" && t.nomorKabel ? t.nomorKabel : null;
     const teks = [nama ? t.kode : null, nomorIni ? `kabel ${nomorIni.replace(/,/g, "·")}` : null]
@@ -71,43 +62,13 @@ export default function LapisanNama({
   return (
     <>
       {gardu.map((t) => (
-        <CircleMarker
-          key={`gardu-${t.id}`}
-          center={portal.get(t.id) ?? [t.lat, t.lng]}
-          radius={0}
-          interactive={false}
-          pathOptions={{ opacity: 0, fillOpacity: 0 }}
-        >
-          <Tooltip permanent direction="left" offset={[-8, 0]} className={`${DASAR} ${NADA.gardu}`}>
-            {t.garduDiTiang}
-          </Tooltip>
-        </CircleMarker>
+        <LabelTetap key={`gardu-${t.id}`} posisi={portal.get(t.id) ?? [t.lat, t.lng]} teks={t.garduDiTiang ?? ""} nada="gardu" arah="left" geser={[-8, 0]} />
       ))}
       {alat.map((t) => (
-        <CircleMarker
-          key={`alat-${t.id}`}
-          center={[t.lat, t.lng]}
-          radius={0}
-          interactive={false}
-          pathOptions={{ opacity: 0, fillOpacity: 0 }}
-        >
-          <Tooltip permanent direction="left" offset={[-8, 0]} className={`${DASAR} ${NADA.alat}`}>
-            {t.namaPeralatan}
-          </Tooltip>
-        </CircleMarker>
+        <LabelTetap key={`alat-${t.id}`} posisi={[t.lat, t.lng]} teks={t.namaPeralatan ?? ""} nada="alat" arah="left" geser={[-8, 0]} />
       ))}
       {[...perBatang.values()].map(({ t, bagian, nada }) => (
-        <CircleMarker
-          key={`nama-${t.id}-${nada}`}
-          center={[t.lat, t.lng]}
-          radius={0}
-          interactive={false}
-          pathOptions={{ opacity: 0, fillOpacity: 0 }}
-        >
-          <Tooltip permanent direction="right" offset={[6, 0]} className={`${DASAR} ${NADA[nada]}`}>
-            {bagian.join(" / ")}
-          </Tooltip>
-        </CircleMarker>
+        <LabelTetap key={`nama-${t.id}-${nada}`} posisi={[t.lat, t.lng]} teks={bagian.join(" / ")} nada={nada} />
       ))}
     </>
   );

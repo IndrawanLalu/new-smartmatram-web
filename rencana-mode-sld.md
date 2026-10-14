@@ -29,7 +29,7 @@ yang diunduh**, bukan banyaknya baris kode. Diukur dari data produksi dengan
 | OL. BENTEK | 992 | 134 | 86% |
 | TOHPATI | 554 | 45 | 92% |
 | SANDUBAYA | 390 | 86 | 78% |
-| **44 penyulang bertiang** | **3.943** | **633** | **84%** |
+| **20 penyulang bertiang** | **3.943** | **633** | **84%** |
 
 - Mode SLD menggambar simpul, bukan tiang → **lebih ringan** dari mode biasa.
 - Latar **Kosong** = nol unduhan ubin → **lebih ringan** lagi.
@@ -107,29 +107,23 @@ Satu-satunya yang berubah di layar mode biasa: pemilih latar kini tombol
 
 ---
 
-## S3 — Mode SLD: tampilan
+## S3 — Mode SLD: tampilan — DIKERJAKAN 13 Okt (belum commit)
 
-- Tombol **Mode SLD** di bilah atas (paling kiri, menonjol). Alamat ikut
-  berubah: `/peta?mode=sld` — bisa dibagikan, dan jadi tujuan alamat lama.
-- Selama menyala:
-  - **Disembunyikan** (bukan dipadamkan): tiang, JTR, lapisan gardu, pohon,
-    tegangan ujung, kesehatan, antrean persetujuan, alat sunting. Mematikan
-    Mode SLD memunculkan lagi pilihan lapisan yang tadi — pola "Segmen ini saja".
-  - Menu JTM/JTR/Gardu diganti alat Mode SLD: **Label**, **Beban di keypoint**,
-    **Latar**.
-  - Panel kiri: hanya folder JTM, dan pilihan penyulangnya **sama** dengan
-    mode biasa (satu `nyala`, bukan daftar kedua). Tiap penyulang diberi angka
-    ringkas dari `peta_sld_penyulang`: KMS, gardu, kVA, beban, gangguan 12 bln.
-    Penyulang yang belum dititik tetap tampil, bertanda "belum dititik".
-- Digambar (`LapisanSld.tsx`, dimuat dinamis, di **MapContainer yang sama** —
-  posisi & zoom tidak melompat saat berganti mode):
-  - garis per simpul (warna per penyulang), pangkal **P**, keypoint (bentuk &
-    warna dari Pengaturan JTM), gardu (rumah berwarna menurut % beban), titik
-    ujung. Percabangan tidak digambar (hanya belokan garis).
-- Latar bawaan Mode SLD: **Kosong**; mode biasa tetap **Peta jalan**.
-- Panel kanan: kartu ringkas per penyulang yang menyala + peringatan data
-  (`RingkasSldPanel`, sudah ada) — mis. OL. BENTEK saat ini **5 pangkal** =
-  bagian jaringan yang belum tersambung ke pangkal utama.
+- Tombol **Mode SLD** di depan bilah atas; `/peta?mode=sld` (replaceState).
+- `useModeSld`: penyulang = JTM yang dicentang di panel kiri (satu `nyala`
+  dengan mode biasa); SLD ditarik saat penyulang menyala selama mode aktif
+  (`useSld(ulp, aktif)` — daftar ringkas pun baru dibaca saat mode pertama
+  dinyalakan); warna per penyulang menurut urutan folder JTM (`_lib/warnaSld`).
+- Peta: `LapisanSld` (dimuat dinamis dari PetaInner) — garis, pangkal P,
+  keypoint, gardu berwarna % beban, ujung; `usePetaIsi` diberi pilihan kosong →
+  tidak menarik tiang sama sekali. Lapisan & alat mode biasa disembunyikan.
+- Panel kiri: hanya folder JTM, tanpa pohon segmen, baris ketiga
+  "kms · gardu · kVA" (`PanelLapisan` prop `sld`). Penyulang yang belum
+  bertiang memang tidak ada di folder JTM (24 dari 44 di `penyulang_jtm_panjang`
+  bertiang 0) — tidak bisa digambar.
+- Panel kanan: `PanelSld` — kartu per penyulang + peringatan data.
+- Bilah atas Mode SLD (`BilahAtasSld`): Mode SLD (klik = keluar), Label, Muat
+  ulang, Kembali. Latar bawaan Kosong gelap.
 
 ---
 

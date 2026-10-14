@@ -1,7 +1,8 @@
 "use client";
 
-import { TileLayer } from "react-leaflet";
-import type { Latar } from "../_hooks/useLatarPeta";
+import { useEffect } from "react";
+import { TileLayer, useMap } from "react-leaflet";
+import { warnaDasar, type Latar } from "../_hooks/useLatarPeta";
 
 /**
  * Ubin latar peta (di dalam MapContainer). "Kosong gelap/terang" tidak memuat
@@ -9,6 +10,10 @@ import type { Latar } from "../_hooks/useLatarPeta";
  * tidak ada unduhan.
  * "Peta jalan pudar" = ubin OpenStreetMap yang sama, digelapkan dengan filter
  * CSS: jalan masih terbaca sebagai patokan, tanpa penyedia peta baru.
+ *
+ * Warna dasar dipasang langsung ke wadah peta di sini, bukan lewat `style`
+ * MapContainer: react-leaflet hanya membaca `style` itu SEKALI saat peta
+ * dibuat — Kosong gelap ↔ terang tidak akan berganti.
  */
 
 const OSM = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
@@ -22,6 +27,13 @@ interface Props {
 }
 
 export default function LapisanLatar({ latar, maxZoom, maxNativeZoom }: Props) {
+  const peta = useMap();
+  useEffect(() => {
+    // `important`: globals.css menetapkan latar .leaflet-container dengan
+    // !important — tanpa ini warnanya tidak pernah berganti.
+    peta.getContainer().style.setProperty("background", warnaDasar(latar), "important");
+  }, [peta, latar]);
+
   if (latar === "kosong" || latar === "terang") return null;
   if (latar === "citra") {
     return (

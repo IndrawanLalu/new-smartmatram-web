@@ -16,6 +16,8 @@ export interface AwalPeta {
   ulp?: string;
   /** Dibuka dari WO Perabasan ("Lihat di peta"): lapisan pohon langsung menyala. */
   pohon?: boolean;
+  /** `/peta?mode=sld` (juga tujuan alamat lama Peta SLD): Mode SLD menyala. */
+  sld?: boolean;
 }
 
 export function useLapisanNyala(user: CurrentUser, awal?: AwalPeta) {

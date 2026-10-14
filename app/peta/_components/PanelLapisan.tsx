@@ -73,13 +73,16 @@ interface Props {
   onSegmen: (s: SegmenSimpul) => void;
   /** Klik nama penyulang JTM: selain "ini saja", buka kartu rinciannya. */
   onPenyulang: (l: Lapisan) => void;
+  /** Mode SLD: hanya folder JTM (tanpa pohon segmen), tiap penyulang diberi
+   *  angka ringkas SLD-nya. */
+  sld?: { keterangan: (kode: string) => string | null };
 }
 
 const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
   user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
-  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, onPenyulang,
+  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, onPenyulang, sld,
 }: Props) {
   const [cari, setCari] = useState("");
   const [folderBuka, setFolderBuka] = useState<Set<Jaringan>>(new Set(["jtm"]));
@@ -95,9 +98,10 @@ export default function PanelLapisan({
   const hasil = useMemo(() => {
     if (!q) return [];
     return semuaLapisan
+      .filter((l) => !sld || l.jaringan === "jtm")
       .filter((l) => l.kode.toUpperCase().includes(q) || l.nama.toUpperCase().includes(q))
       .slice(0, BATAS_HASIL);
-  }, [q, semuaLapisan]);
+  }, [q, semuaLapisan, sld]);
 
   const alihFolder = (k: Jaringan) =>
     setFolderBuka((s) => {
@@ -141,7 +145,7 @@ export default function PanelLapisan({
           <input
             value={cari}
             onChange={(e) => setCari(e.target.value)}
-            placeholder="Cari penyulang atau gardu…"
+            placeholder={sld ? "Cari penyulang…" : "Cari penyulang atau gardu…"}
             className={`${INPUT} pl-7 pr-7`}
           />
           {cari && (
@@ -213,24 +217,29 @@ export default function PanelLapisan({
                 </Kosong>
               ) : (
                 perFolder.jtm.map((l) => {
-                  const buka = grupBuka.has(`jtm:${l.kode}`);
+                  const buka = !sld && grupBuka.has(`jtm:${l.kode}`);
                   return (
                     <div key={l.kode}>
                       <div className="flex items-center">
-                        <button
-                          onClick={() => alihGrup(`jtm:${l.kode}`)}
-                          className="shrink-0 pl-2.5 text-gray-500 hover:text-gray-300"
-                          title={buka ? "Tutup segmen" : "Lihat segmen"}
-                        >
-                          {buka ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-                        </button>
+                        {sld ? (
+                          <span className="shrink-0 w-[22px]" />
+                        ) : (
+                          <button
+                            onClick={() => alihGrup(`jtm:${l.kode}`)}
+                            className="shrink-0 pl-2.5 text-gray-500 hover:text-gray-300"
+                            title={buka ? "Tutup segmen" : "Lihat segmen"}
+                          >
+                            {buka ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                          </button>
+                        )}
                         <div className="flex-1 min-w-0">
                           <BarisLapisan
                             l={l}
                             nyala={nyala.has(`jtm:${l.kode}`)}
                             onAlih={() => onAlih("jtm", l.kode)}
-                            onHanya={() => { onHanya("jtm", l.kode); onLompat(l); onPenyulang(l); }}
+                            onHanya={() => { onHanya("jtm", l.kode); onLompat(l); if (!sld) onPenyulang(l); }}
                             onLompat={() => onLompat(l)}
+                            keterangan={sld?.keterangan(l.kode)}
                             rapat
                           />
                         </div>
@@ -250,6 +259,8 @@ export default function PanelLapisan({
               )}
             </Folder>
 
+            {!sld && (
+            <>
             <Folder
               judul="JTR — per gardu"
               ikon={Waypoints}
@@ -334,6 +345,8 @@ export default function PanelLapisan({
               onHanya={onHanya}
               onLompat={onLompat}
             />
+            </>
+            )}
           </>
         )}
         {/* Sekaligus legenda: tiang menumpang, underbuild JTR, kabel belum jelas. */}
@@ -540,7 +553,7 @@ function GrupPenyulang({
 }
 
 function BarisLapisan({
-  l, nyala, onAlih, onHanya, onLompat, tampilJenis, rapat,
+  l, nyala, onAlih, onHanya, onLompat, tampilJenis, rapat, keterangan,
 }: {
   l: Lapisan;
   nyala: boolean;
@@ -549,6 +562,8 @@ function BarisLapisan({
   onLompat: () => void;
   tampilJenis?: boolean;
   rapat?: boolean;
+  /** Baris ketiga (Mode SLD: kms · gardu · beban). */
+  keterangan?: string | null;
 }) {
   const adaTitik = l.latMin !== null;
   const gaya = useGayaPeta();
@@ -577,6 +592,7 @@ function BarisLapisan({
           {l.nama !== l.kode ? `${l.nama} · ` : ""}
           {l.jumlahTiang > 0 ? `${l.jumlahTiang} ${l.jaringan === "pohon" ? "pohon" : "tiang"}` : l.ulp}
         </span>
+        {keterangan && <span className="block text-[10px] text-gray-400 truncate tabular-nums">{keterangan}</span>}
       </button>
 
       {adaTitik && (
