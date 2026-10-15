@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CheckCircle, XCircle, Pencil, Check, X, ChevronDown, Loader2 } from "lucide-react";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 interface WaGroup {
   id: string;
@@ -136,8 +137,8 @@ export default function WaSettingsPage() {
               <thead className="kepala-kit">
                 <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
                   <th className="px-4 py-2 text-left w-48">Nama</th>
-                  <th className="px-4 py-2 text-left">Group ID</th>
-                  <th className="px-4 py-2 text-center w-24">Status</th>
+                  <th className="px-4 py-2 text-left"><IkonKolom teks="Group ID" />Group ID</th>
+                  <th className="px-4 py-2 text-center w-24"><IkonKolom teks="Status" />Status</th>
                   {canEdit && <th className="px-4 py-2 w-24" />}
                 </tr>
               </thead>

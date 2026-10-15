@@ -7,6 +7,7 @@ import { woStage, type WoBatch, type WoColumn, type WoItem } from "../../_types"
 import { STAGE_ORDER } from "../../_constants";
 import { CARD } from "@/app/admin/_ui";
 import WoTableRow from "./WoTableRow";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PAGE_SIZES = [20, 50, 100];
 const SORT_STAGE = "__stage";
@@ -139,12 +140,12 @@ export default function BatchTable({
               ))}
 
               <th className={TH}>{sortBtn("Regu", SORT_REGU)}</th>
-              <th className={TH}>Verifikator</th>
+              <th className={TH}><IkonKolom teks="Verifikator" />Verifikator</th>
               <th className="px-3 py-2 text-center font-semibold whitespace-nowrap">
                 {sortBtn("Tahap", SORT_STAGE)}
               </th>
               <th className={TH}>{sortBtn("Tgl Realisasi", SORT_TGL)}</th>
-              <th className={TH}>Bukti</th>
+              <th className={TH}><IkonKolom teks="Bukti" />Bukti</th>
               <th className="px-3 py-2 w-10" />
             </tr>
           </thead>

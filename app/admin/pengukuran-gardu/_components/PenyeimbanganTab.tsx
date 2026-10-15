@@ -24,6 +24,7 @@ import { downloadPenyeimbanganXlsx, downloadWoGarduXlsx } from "../_utils/downlo
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
 import { bulanWoIni, labelBulanWo, pilihanBulanWo } from "../_utils/bulanWo";
 import PindahBulanWo from "./PindahBulanWo";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -410,15 +411,15 @@ export default function PenyeimbanganTab({
                 <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No. Gardu</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Alamat</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Beban %</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Arus R/S/T/N</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">Suhu °C</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep">Alasan Anomali</th>
-                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep">Jenis WO</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="No. Gardu" />No. Gardu</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Penyulang" />Penyulang</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Alamat" />Alamat</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep"><IkonKolom teks="KVA" />KVA</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep"><IkonKolom teks="Beban %" />Beban %</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep"><IkonKolom teks="Arus R/S/T/N" />Arus R/S/T/N</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep"><IkonKolom teks="Suhu °C" />Suhu °C</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep"><IkonKolom teks="Alasan Anomali" />Alasan Anomali</th>
+                    <th className="px-3 py-2.5 text-xs font-semibold text-accent-deep"><IkonKolom teks="Jenis WO" />Jenis WO</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">
@@ -554,18 +555,18 @@ export default function PenyeimbanganTab({
                       title="Pilih semua WO yang belum dikerjakan"
                     />
                   </th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">No. Gardu</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Penyulang</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Alamat</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">KVA</th>
-                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">% Beban</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Tgl Ukur</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Bulan WO</th>
-                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold">Jenis WO</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="No. Gardu" />No. Gardu</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Alamat" />Alamat</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="KVA" />KVA</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="% Beban" />% Beban</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Bulan WO" />Bulan WO</th>
+                  <th className="text-left px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Jenis WO" />Jenis WO</th>
                   {hasActiveCriteria && (
                     <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">Kriteria</th>
                   )}
-                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold">Status</th>
+                  <th className="text-center px-4 py-2.5 text-xs text-emerald-600 font-semibold"><IkonKolom teks="Status" />Status</th>
                   <th className="px-4 py-2.5" />
                 </tr>
               </thead>
@@ -753,24 +754,24 @@ export default function PenyeimbanganTab({
                 <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Tgl Seimbang</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Gardu</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Alamat</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Tgl Seimbang" />Tgl Seimbang</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Gardu" />Gardu</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Alamat" />Alamat</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Penyulang" />Penyulang</th>
+                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep"><IkonKolom teks="KVA" />KVA</th>
                     <th className="kepala-tetap px-3 py-2.5 text-center text-xs font-semibold text-red-600" colSpan={2}>Sebelum</th>
                     <th className="kepala-tetap px-3 py-2.5 text-center text-xs font-semibold text-green-700" colSpan={2}>Sesudah</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Jenis</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Petugas</th>
-                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Catatan</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Jenis" />Jenis</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Petugas" />Petugas</th>
+                    <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep"><IkonKolom teks="Catatan" />Catatan</th>
                     <th className="px-3 py-2.5" />
                   </tr>
                   <tr className="bg-surface border-t border-line/50">
                     {["", "", "", "", "", ""].map((_, i) => <th key={i} className="px-3 py-1" />)}
                     <th className="px-3 py-1 text-center text-[10px] text-ink-soft">R/S/T/N (A)</th>
-                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">Beban %</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft"><IkonKolom teks="Beban %" />Beban %</th>
                     <th className="px-3 py-1 text-center text-[10px] text-ink-soft">R/S/T/N (A)</th>
-                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft">Beban %</th>
+                    <th className="px-3 py-1 text-center text-[10px] text-ink-soft"><IkonKolom teks="Beban %" />Beban %</th>
                     <th className="px-3 py-1" /><th className="px-3 py-1" /><th className="px-3 py-1" />
                   </tr>
                 </thead>

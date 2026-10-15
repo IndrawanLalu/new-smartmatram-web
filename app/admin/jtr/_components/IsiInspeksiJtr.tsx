@@ -11,6 +11,7 @@ import DaftarTemuanJtr from "./DaftarTemuanJtr";
 import AsalKabelBelumJelas from "./AsalKabelBelumJelas";
 import JurusanKabelBelumPasti from "./JurusanKabelBelumPasti";
 import { km, rentangKerja } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PetaPerbandingan = dynamic(() => import("./PetaPerbandingan"), {
   ssr: false,
@@ -99,11 +100,11 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh, onB
             <table className="w-full text-sm">
               <thead className="kepala-kit">
                 <tr className="bg-surface text-left text-ink-soft">
-                  <th className="px-3 py-2 font-semibold">Jurusan</th>
-                  <th className="px-3 py-2 font-semibold">Kabel</th>
-                  <th className="px-3 py-2 font-semibold">Ukuran</th>
-                  <th className="px-3 py-2 font-semibold text-right">Gawang</th>
-                  <th className="px-3 py-2 font-semibold text-right">Panjang</th>
+                  <th className="px-3 py-2 font-semibold"><IkonKolom teks="Jurusan" />Jurusan</th>
+                  <th className="px-3 py-2 font-semibold"><IkonKolom teks="Kabel" />Kabel</th>
+                  <th className="px-3 py-2 font-semibold"><IkonKolom teks="Ukuran" />Ukuran</th>
+                  <th className="px-3 py-2 font-semibold text-right"><IkonKolom teks="Gawang" />Gawang</th>
+                  <th className="px-3 py-2 font-semibold text-right"><IkonKolom teks="Panjang" />Panjang</th>
                 </tr>
               </thead>
               <tbody>

@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import { LABEL_LUAR, type BarisLuar } from "../_hooks/useLuarWoPerabasan";
 import { NADA_STATUS, tanggal } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Rabas di luar WO — satu baris satu pohon (teknisaplikasi.md butir 7).
@@ -53,12 +54,12 @@ export default function TabelLuarWo({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Tanggal</th>
-              <th className={TH}>Penyulang</th>
-              <th className={TH}>Jenis pohon</th>
-              <th className={TH}>Lokasi</th>
-              <th className={TH}>Regu</th>
-              <th className={TH}>Status</th>
+              <th className={TH}><IkonKolom teks="Tanggal" />Tanggal</th>
+              <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+              <th className={TH}><IkonKolom teks="Jenis pohon" />Jenis pohon</th>
+              <th className={TH}><IkonKolom teks="Lokasi" />Lokasi</th>
+              <th className={TH}><IkonKolom teks="Regu" />Regu</th>
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

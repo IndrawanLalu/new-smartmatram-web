@@ -7,6 +7,7 @@ import { CARD, EYEBROW, BTN_PRIMARY } from "@/app/admin/_ui";
 import { useTiangJtr, tanggalPeriksa, type TiangBaris } from "../_hooks/useTiangJtr";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useToast } from "@/app/admin/_components/Toast";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const BULAN = [
   "Januari", "Februari", "Maret", "April", "Mei", "Juni",
@@ -220,7 +221,7 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
               <thead className="kepala-kit">
                 <tr className="text-left text-ink-soft border-b border-line bg-surface">
                   {["Tanggal","Tiang","Gardu","Penyulang","Jur","Jenis","Tinggi","Kondisi","Kabel","Aksesoris","Jamperan","Andongan","SR","Arde","Stay","Rawan ROW","TM","Catatan","Petugas",""].map((h) => (
-                    <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>
+                    <th key={h} className="px-3 py-2.5 font-semibold"><IkonKolom teks={h} />{h}</th>
                   ))}
                 </tr>
               </thead>

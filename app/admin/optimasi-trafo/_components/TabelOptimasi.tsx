@@ -5,6 +5,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import type { BarisTabel } from "../_hooks/useOptimasiTrafo";
 import { NADA_STATUS, nadaPersen, persen, tanggal, teksAsal, teksTujuan } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Seluruh pekerjaan optimasi dalam satu tabel — dari WO yang baru terbit
@@ -58,17 +59,17 @@ export default function TabelOptimasi({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Gardu</th>
-              <th className={TH}>Tgl pekerjaan</th>
-              <th className={TH}>Penyulang</th>
+              <th className={TH}><IkonKolom teks="Gardu" />Gardu</th>
+              <th className={TH}><IkonKolom teks="Tgl pekerjaan" />Tgl pekerjaan</th>
+              <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
               <th className={TH}>Sumber</th>
-              <th className={TH}>Beban sebelum → sesudah</th>
-              <th className={TH}>kVA</th>
+              <th className={TH}><IkonKolom teks="Beban sebelum → sesudah" />Beban sebelum → sesudah</th>
+              <th className={TH}><IkonKolom teks="kVA" />kVA</th>
               <th className={TH}>No. seri lama → baru</th>
               <th className={TH}>Asal / tujuan trafo</th>
-              <th className={TH}>Alasan</th>
-              <th className={TH}>Petugas</th>
-              <th className={TH}>Status</th>
+              <th className={TH}><IkonKolom teks="Alasan" />Alasan</th>
+              <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

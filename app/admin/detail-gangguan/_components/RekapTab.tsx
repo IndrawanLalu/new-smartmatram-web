@@ -6,6 +6,7 @@ import StatTile from "@/app/admin/_components/StatTile";
 import { CARD, DISPLAY, EYEBROW } from "@/app/admin/_ui";
 import { fmtMenit, type KoreksiRow } from "../_lib/gangguan";
 import Paginasi from "./Paginasi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 interface GangguanLite {
   no_laporan?: string;
@@ -113,7 +114,7 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
               <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
                   {["#", "No Laporan", "RPT Asli", "RPT Koreksi", "RCT Asli", "RCT Koreksi", "Korektor", "Tgl Koreksi"].map((h) => (
-                    <th key={h} className={TH}>{h}</th>
+                    <th key={h} className={TH}><IkonKolom teks={h} />{h}</th>
                   ))}
                 </tr>
               </thead>

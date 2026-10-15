@@ -6,6 +6,7 @@ import { parseClipboardTable } from "@/lib/parseClipboardTable";
 import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import type { BarisImpor, HasilImpor } from "../_hooks/useMasterSegmen";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Impor segmen per penyulang, ditempel dari Excel.
@@ -184,9 +185,9 @@ export default function ImporSegmen({
           <table className="text-xs border border-line rounded-lg">
             <thead className="kepala-kit">
               <tr className="bg-surface text-ink-soft">
-                <th className="px-3 py-1.5 text-left font-semibold border-b border-line">Titik awal</th>
-                <th className="px-3 py-1.5 text-left font-semibold border-b border-line">Titik akhir</th>
-                <th className="px-3 py-1.5 text-left font-semibold border-b border-line">Panjang (km)</th>
+                <th className="px-3 py-1.5 text-left font-semibold border-b border-line"><IkonKolom teks="Titik awal" />Titik awal</th>
+                <th className="px-3 py-1.5 text-left font-semibold border-b border-line"><IkonKolom teks="Titik akhir" />Titik akhir</th>
+                <th className="px-3 py-1.5 text-left font-semibold border-b border-line"><IkonKolom teks="Panjang (km)" />Panjang (km)</th>
                 <th className="px-3 py-1.5 text-left font-semibold border-b border-line text-ink-muted">
                   → nama segmen yang terbentuk
                 </th>

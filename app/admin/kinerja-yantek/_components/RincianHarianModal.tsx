@@ -2,6 +2,7 @@
 
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { angkaId, ringkasan, tanggalPanjang, type KelompokHarian } from "../_lib/realisasiHarian";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /** Rincian satu jenis pekerjaan pada satu tanggal — objek, petugas, jam, status. */
 
@@ -28,13 +29,13 @@ export default function RincianHarianModal({ k, ulp, tgl, onTutup }: Props) {
         <table className="w-full border-collapse">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Jam</th>
-              {semuaUlp && <th className={TH}>ULP</th>}
-              <th className={TH}>Objek</th>
-              <th className={TH}>Rincian</th>
-              {adaKm && <th className={`${TH} text-right`}>KMS</th>}
-              <th className={TH}>Petugas</th>
-              <th className={TH}>Status</th>
+              <th className={TH}><IkonKolom teks="Jam" />Jam</th>
+              {semuaUlp && <th className={TH}><IkonKolom teks="ULP" />ULP</th>}
+              <th className={TH}><IkonKolom teks="Objek" />Objek</th>
+              <th className={TH}><IkonKolom teks="Rincian" />Rincian</th>
+              {adaKm && <th className={`${TH} text-right`}><IkonKolom teks="KMS" />KMS</th>}
+              <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

@@ -18,6 +18,7 @@ import {
   type UsulanSpek,
   type UsulanTitik,
 } from "../_hooks/useHargarduApproval";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const tgl = (iso: string | null) =>
   iso
@@ -307,7 +308,7 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
               <table className="w-full text-sm">
                 <thead className="kepala-kit">
                   <tr className="bg-surface text-left text-ink-soft">
-                    <th className="px-3 py-2 font-semibold">Tahap</th>
+                    <th className="px-3 py-2 font-semibold"><IkonKolom teks="Tahap" />Tahap</th>
                     <th className="px-3 py-2 font-semibold text-right">R</th>
                     <th className="px-3 py-2 font-semibold text-right">S</th>
                     <th className="px-3 py-2 font-semibold text-right">T</th>
@@ -549,8 +550,8 @@ function TabelJurusan({
       <table className="w-full text-sm">
         <thead className="kepala-kit">
           <tr className="bg-surface text-left text-ink-soft">
-            <th className="px-3 py-1.5 font-semibold">Jurusan</th>
-            <th className="px-3 py-1.5 font-semibold text-right">Beban R</th>
+            <th className="px-3 py-1.5 font-semibold"><IkonKolom teks="Jurusan" />Jurusan</th>
+            <th className="px-3 py-1.5 font-semibold text-right"><IkonKolom teks="Beban R" />Beban R</th>
             <th className="px-3 py-1.5 font-semibold text-right">S</th>
             <th className="px-3 py-1.5 font-semibold text-right">T</th>
             <th className="px-3 py-1.5 font-semibold text-right">N</th>

@@ -9,6 +9,7 @@ import { LABEL_ALASAN } from "../_lib/kandidatWo";
 import { STATUS_WO_HAR, statusWo, type BarisWoHar, type StatusWoHar } from "../_hooks/useWoHargardu";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PAGE_SIZE = 20;
 const TH = "px-3 py-2.5 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
@@ -132,12 +133,12 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
                     </th>
                   )}
                   <th className={`${TH} text-right`}>No</th>
-                  <th className={TH}>Gardu</th>
-                  <th className={TH}>Penyulang</th>
-                  <th className={TH}>Alasan masuk WO</th>
-                  <th className={TH}>Status</th>
-                  <th className={TH}>Tgl dikerjakan</th>
-                  <th className={TH}>Petugas</th>
+                  <th className={TH}><IkonKolom teks="Gardu" />Gardu</th>
+                  <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className={TH}><IkonKolom teks="Alasan masuk WO" />Alasan masuk WO</th>
+                  <th className={TH}><IkonKolom teks="Status" />Status</th>
+                  <th className={TH}><IkonKolom teks="Tgl dikerjakan" />Tgl dikerjakan</th>
+                  <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
                 </tr>
               </thead>
               <tbody>

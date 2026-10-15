@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { FileJson, CalendarDays, Loader2, X } from "lucide-react";
 import { MONTHS_ID, DAY_NAME, type DateSummary, type YantekRow } from "../_lib/yantek";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // Dipisah dari page.tsx (2026-08-05) — isinya sama, warnanya dipindah ke token navy.
 
@@ -89,10 +90,10 @@ export default function DatabaseTab({ dates, rowCache, filterYear, filterMonth, 
                 <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line w-8">#</th>
-                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line">Tanggal</th>
-                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line">Hari</th>
-                    <th className="py-2 px-3 text-center text-ink-soft font-semibold border-b border-line">Jumlah WO</th>
-                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line">Disimpan</th>
+                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line"><IkonKolom teks="Tanggal" />Tanggal</th>
+                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line"><IkonKolom teks="Hari" />Hari</th>
+                    <th className="py-2 px-3 text-center text-ink-soft font-semibold border-b border-line"><IkonKolom teks="Jumlah WO" />Jumlah WO</th>
+                    <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line"><IkonKolom teks="Disimpan" />Disimpan</th>
                     <th className="py-2 px-3 text-center text-ink-soft font-semibold border-b border-line">Aksi</th>
                   </tr>
                 </thead>

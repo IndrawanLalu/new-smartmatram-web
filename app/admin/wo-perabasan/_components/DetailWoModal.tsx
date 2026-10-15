@@ -10,6 +10,7 @@ import { statusTampil } from "../_hooks/useDaftarPerabasan";
 import { NADA_STATUS, tanggal } from "../_lib/tampilan";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Isi & ubah satu WO perabasan. Yang bisa diubah di sini: nama, target, dan
@@ -156,11 +157,11 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
             <table className="w-full border-collapse text-xs">
               <thead className="kepala-kit bg-surface">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Regu</th>
-                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Penyulang</th>
-                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Segmen</th>
-                  <th className="px-3 py-2 text-right font-semibold text-ink-soft border-b border-line">KMS</th>
-                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Status</th>
+                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line"><IkonKolom teks="Regu" />Regu</th>
+                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line"><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line"><IkonKolom teks="Segmen" />Segmen</th>
+                  <th className="px-3 py-2 text-right font-semibold text-ink-soft border-b border-line"><IkonKolom teks="KMS" />KMS</th>
+                  <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line"><IkonKolom teks="Status" />Status</th>
                 </tr>
               </thead>
               <tbody>

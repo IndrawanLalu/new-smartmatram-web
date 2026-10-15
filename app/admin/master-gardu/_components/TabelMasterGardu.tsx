@@ -26,6 +26,7 @@ import {
   type SaringanKondisi, type NilaiKondisi, type KeadaanHar,
 } from "../_lib/kondisiGardu";
 import type { StatusHar, SaringanUrl } from "../_lib/saringanUrl";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -572,18 +573,18 @@ export default function DataGarduTab({ user, ulp, settings, awal }: Props) {
               <table className="w-full text-sm whitespace-nowrap">
                 <thead className="kepala-kit">
                   <tr className="bg-surface">
-                    <th className={`${TH} text-left`}>No. Gardu</th>
-                    <th className={`${TH} text-left`}>Penyulang</th>
-                    <th className={`${TH} text-left`}>Alamat</th>
-                    <th className={`${TH} text-center`}>KVA</th>
-                    <th className={`${TH} text-center`}>Beban</th>
-                    <th className={`${TH} text-center`}>Arus R/S/T</th>
-                    <th className={`${TH} text-center`}>Suhu°C</th>
+                    <th className={`${TH} text-left`}><IkonKolom teks="No. Gardu" />No. Gardu</th>
+                    <th className={`${TH} text-left`}><IkonKolom teks="Penyulang" />Penyulang</th>
+                    <th className={`${TH} text-left`}><IkonKolom teks="Alamat" />Alamat</th>
+                    <th className={`${TH} text-center`}><IkonKolom teks="KVA" />KVA</th>
+                    <th className={`${TH} text-center`}><IkonKolom teks="Beban" />Beban</th>
+                    <th className={`${TH} text-center`}><IkonKolom teks="Arus R/S/T" />Arus R/S/T</th>
+                    <th className={`${TH} text-center`}><IkonKolom teks="Suhu°C" />Suhu°C</th>
                     <th className={`${TH} text-center`}>Sumber</th>
-                    <th className={`${TH} text-left`}>Tgl Ukur</th>
-                    {itemDisaring.length > 0 && <th className={`${TH} text-left`}>Kondisi</th>}
-                    <th className={`${TH} text-left`}>HAR Terakhir</th>
-                    <th className={`${TH} text-center`}>Status</th>
+                    <th className={`${TH} text-left`}><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
+                    {itemDisaring.length > 0 && <th className={`${TH} text-left`}><IkonKolom teks="Kondisi" />Kondisi</th>}
+                    <th className={`${TH} text-left`}><IkonKolom teks="HAR Terakhir" />HAR Terakhir</th>
+                    <th className={`${TH} text-center`}><IkonKolom teks="Status" />Status</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-line">

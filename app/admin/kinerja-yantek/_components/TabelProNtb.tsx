@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import { KOLOM_FORMULA, KOLOM_PRO_NTB, selPro, type BarisPro } from "../_lib/proNtb";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tabel Copy to PRO NTB — kolom yang disalin saja: TANGGAL, JENIS PEKERJAAN,
@@ -41,8 +42,8 @@ export default function TabelProNtb({ baris, timDari, onTim }: Props) {
         <table className="w-full border-collapse">
           <thead className="kepala-kit bg-surface">
             <tr>
-              {TAMPIL.map(({ k }) => <th key={k} className={TH}>{k}</th>)}
-              <th className={TH}>Status</th>
+              {TAMPIL.map(({ k }) => <th key={k} className={TH}><IkonKolom teks={k} />{k}</th>)}
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

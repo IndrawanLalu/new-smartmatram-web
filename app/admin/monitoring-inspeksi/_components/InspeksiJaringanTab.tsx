@@ -9,6 +9,7 @@ import InlineCategorySelect from "./InlineCategorySelect";
 import InspeksiDetailModal from "./_InspeksiDetailModal";
 import { Search, RefreshCw, Download, ChevronLeft, ChevronRight, FileSearch } from "lucide-react";
 import { CARD, FIELD } from "@/app/admin/_ui";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const STATUS_OPTIONS = ["Temuan", "Perlu Tindakan", "Ditugaskan", "Dalam Proses", "Selesai"];
 const CATEGORY_OPTIONS = Object.keys(CATEGORY_CONFIG) as InspeksiCategory[];
@@ -148,14 +149,14 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
           <table className="w-full text-sm">
             <thead className="kepala-kit sticky top-0 z-10">
               <tr className="bg-navy-50">
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold whitespace-nowrap">Tgl Inspeksi</th>
-                {showUlpFilter && <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">ULP</th>}
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Penyulang</th>
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Temuan / Deskripsi</th>
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Lokasi</th>
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Kategori</th>
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Status</th>
-                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Eksekutor</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold whitespace-nowrap"><IkonKolom teks="Tgl Inspeksi" />Tgl Inspeksi</th>
+                {showUlpFilter && <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="ULP" />ULP</th>}
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Penyulang" />Penyulang</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Temuan / Deskripsi" />Temuan / Deskripsi</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Lokasi" />Lokasi</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Kategori" />Kategori</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Status" />Status</th>
+                <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold"><IkonKolom teks="Eksekutor" />Eksekutor</th>
                 <th className="text-center px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">Aksi</th>
               </tr>
             </thead>

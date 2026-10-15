@@ -6,6 +6,7 @@ import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import { STATUS_UJUNG, useTeganganUjung, type StatusUjung, type TitikUjung } from "../_hooks/useTeganganUjung";
 import DetailUjungModal, { NADA_UJUNG, meter } from "./DetailUjungModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tab Tegangan Ujung — daftar TABEL titik ukur di ujung JTR (klik = rincian
@@ -147,10 +148,10 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
               <table className="w-full border-collapse text-sm">
                 <thead className="kepala-kit bg-surface">
                   <tr>
-                    <th className={TH}>Gardu</th>
-                    <th className={TH}>Penyulang</th>
-                    <th className={TH}>Tanggal beban</th>
-                    <th className={TH}>Petugas</th>
+                    <th className={TH}><IkonKolom teks="Gardu" />Gardu</th>
+                    <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+                    <th className={TH}><IkonKolom teks="Tanggal beban" />Tanggal beban</th>
+                    <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -182,13 +183,13 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
                         />
                       )}
                     </th>
-                    <th className={TH}>Gardu · Jurusan</th>
+                    <th className={TH}><IkonKolom teks="Gardu · Jurusan" />Gardu · Jurusan</th>
                     <th className={`${TH} text-right`}>R-N / S-N / T-N (V)</th>
-                    <th className={`${TH} text-right`}>Dari gardu</th>
+                    <th className={`${TH} text-right`}><IkonKolom teks="Dari gardu" />Dari gardu</th>
                     <th className={`${TH} text-right`}>Dari ujung terjauh</th>
-                    <th className={`${TH} text-right`}>GPS</th>
-                    <th className={TH}>Petugas · Tanggal</th>
-                    <th className={TH}>Status</th>
+                    <th className={`${TH} text-right`}><IkonKolom teks="GPS" />GPS</th>
+                    <th className={TH}><IkonKolom teks="Petugas · Tanggal" />Petugas · Tanggal</th>
+                    <th className={TH}><IkonKolom teks="Status" />Status</th>
                   </tr>
                 </thead>
                 <tbody>

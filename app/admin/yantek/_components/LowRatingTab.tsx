@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { TriangleAlert, Search, X } from "lucide-react";
 import { extractNama, calcDurasiNyalaSmt, type YantekRow } from "../_lib/yantek";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // Dipisah dari page.tsx (2026-08-05) — isinya sama, warnanya dipindah ke token navy.
 
@@ -116,7 +117,7 @@ export default function LowRatingTab({ rows }: { rows: YantekRow[] }) {
             <thead className="kepala-kit">
               <tr>
                 <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line w-8">#</th>
-                <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line">Nama Petugas</th>
+                <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line"><IkonKolom teks="Nama Petugas" />Nama Petugas</th>
                 <th className="kepala-tetap py-2 px-3 text-center bg-red-50 text-red-600 font-semibold border-b border-line">★1</th>
                 <th className="kepala-tetap py-2 px-3 text-center bg-orange-50 text-orange-500 font-semibold border-b border-line">★2</th>
                 <th className="py-2 px-3 text-center bg-navy-50 text-navy-600 font-semibold border-b border-line">Total</th>

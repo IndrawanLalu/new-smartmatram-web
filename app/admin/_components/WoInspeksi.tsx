@@ -10,6 +10,7 @@ import { useWoInspeksi, type ItemWoInspeksi, type JenisWoInspeksi, type TierWo, 
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 import { bulanTahun, useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tab Susun WO inspeksi JTM / JTR (J4, J5c `rencana-mobile-jtm-jtr.md`):
@@ -305,10 +306,10 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                     </th>
                     <th className={TH}>{Satuan}</th>
                     {jtm && <th className={TH}>Tier</th>}
-                    <th className={TH}>WO</th>
-                    <th className={`${TH} text-right`}>KMS</th>
-                    <th className={TH}>Tim</th>
-                    <th className={TH}>Tahap</th>
+                    <th className={TH}><IkonKolom teks="WO" />WO</th>
+                    <th className={`${TH} text-right`}><IkonKolom teks="KMS" />KMS</th>
+                    <th className={TH}><IkonKolom teks="Tim" />Tim</th>
+                    <th className={TH}><IkonKolom teks="Tahap" />Tahap</th>
                     <th className={TH} />
                   </tr>
                 </thead>
@@ -468,12 +469,12 @@ function DaftarWoInspeksi({
             <table className="w-full border-collapse text-sm">
               <thead className="kepala-kit bg-surface">
                 <tr>
-                  <th className={TH}>WO</th>
-                  <th className={TH}>Bulan</th>
-                  <th className={`${TH} text-right`}>Target</th>
-                  <th className={`${TH} text-right`}>Rencana</th>
+                  <th className={TH}><IkonKolom teks="WO" />WO</th>
+                  <th className={TH}><IkonKolom teks="Bulan" />Bulan</th>
+                  <th className={`${TH} text-right`}><IkonKolom teks="Target" />Target</th>
+                  <th className={`${TH} text-right`}><IkonKolom teks="Rencana" />Rencana</th>
                   <th className={`${TH} text-right`}>{satuan === "gardu" ? "Gardu" : "Segmen"} selesai</th>
-                  <th className={TH}>Status</th>
+                  <th className={TH}><IkonKolom teks="Status" />Status</th>
                   <th className={TH} />
                 </tr>
               </thead>

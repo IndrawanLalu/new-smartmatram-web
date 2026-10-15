@@ -2,6 +2,7 @@
 
 import { CARD } from "@/app/admin/_ui";
 import { angkaId, ringkasan, type KelompokHarian } from "../_lib/realisasiHarian";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /** Realisasi satu tanggal untuk SATU ULP — per jenis, dengan status persetujuan. */
 
@@ -20,11 +21,11 @@ export default function TabelHarian({ kelompok, onKlik }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Jenis pekerjaan</th>
-              <th className={`${TH} text-right`}>Realisasi</th>
-              <th className={`${TH} text-right`}>Sudah disetujui</th>
-              <th className={`${TH} text-right`}>Belum disetujui</th>
-              <th className={TH}>Keterangan</th>
+              <th className={TH}><IkonKolom teks="Jenis pekerjaan" />Jenis pekerjaan</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Realisasi" />Realisasi</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Sudah disetujui" />Sudah disetujui</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Belum disetujui" />Belum disetujui</th>
+              <th className={TH}><IkonKolom teks="Keterangan" />Keterangan</th>
             </tr>
           </thead>
           <tbody>

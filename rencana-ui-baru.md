@@ -155,7 +155,12 @@ regu langsung, Periksa & putuskan → modal rincian). Semua fungsi lama tetap.
   datanya), Detail Gangguan (rentang tanggal + Muat dari DB), juga Perabasan &
   Rekap Kinerja (pakai komponen yang sama). Chip status/ULP tetap di isi halaman.
 
-**Belum:** ikon kepala kolom per tabel, isi halaman lain ke komponen `_kit`
+- **Ikon kepala kolom** (15 Okt): kamus kata → ikon `ikonKolom()` di
+  `lib/ikonUi.ts` + `_kit/IkonKolom`; 297 kepala di 50 berkas terang. Kata
+  PERTAMA yang dikenal menentukan; tak dikenal = tanpa ikon. Kolom baru cukup
+  `<IkonKolom teks="…" />`; kata baru ditambahkan di kamus.
+
+**Belum:** isi halaman lain ke komponen `_kit`
 (tab ke kepala, saringan ke topbar, tabel), halaman gelap, cari global (U5),
 banner Beranda.
 

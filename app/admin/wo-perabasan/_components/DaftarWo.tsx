@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import type { WoRingkas } from "../_hooks/useWoPerabasan";
 import { tanggal } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Daftar WO perabasan yang sudah terbit (permintaan user 25 Sep 2026: "lihat
@@ -63,13 +64,13 @@ export default function DaftarWo({
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={`${TH} text-left`}>Nama WO</th>
-              <th className={`${TH} text-left`}>Tgl WO</th>
-              <th className={`${TH} text-right`}>Target</th>
-              <th className={`${TH} text-right`}>Rencana</th>
-              <th className={`${TH} text-right`}>Capaian</th>
-              <th className={`${TH} text-right`}>Segmen selesai</th>
-              <th className={`${TH} text-left`}>Status</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Nama WO" />Nama WO</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Tgl WO" />Tgl WO</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Target" />Target</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Rencana" />Rencana</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Capaian" />Capaian</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Segmen selesai" />Segmen selesai</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

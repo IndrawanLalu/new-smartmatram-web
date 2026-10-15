@@ -64,6 +64,7 @@ import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import { PilihField } from "@/app/admin/_kit/Field";
 import { PilihPeriode } from "@/app/admin/_kit/Saringan";
 import { IKON } from "@/lib/ikonUi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -717,16 +718,16 @@ export default function PengukuranGarduPage() {
                       {allPageSelected ? <CheckSquare2 size={15} /> : <Square size={15} />}
                     </div>
                   </th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">No. Gardu</th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Penyulang</th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Alamat</th>
-                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">KVA</th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32">% Beban</th>
-                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Beban KVA</th>
-                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
-                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Suhu (°C)</th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Tgl Ukur</th>
-                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Petugas</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="No. Gardu" />No. Gardu</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Alamat" />Alamat</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="KVA" />KVA</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32"><IkonKolom teks="% Beban" />% Beban</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Beban KVA" />Beban KVA</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus R/S/T (A)" />Arus R/S/T (A)</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Suhu (°C)" />Suhu (°C)</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
+                  <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Petugas" />Petugas</th>
                 </tr>
               </thead>
               <tbody>

@@ -9,6 +9,7 @@ import { BTN_GHOST, BTN_PRIMARY, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useSegmen, type SegmenBaris } from "../_hooks/useSegmen";
 import SegmenModal from "./SegmenModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PER_HALAMAN = 20;
 
@@ -172,10 +173,10 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
             <table className="w-full text-sm">
               <thead className="kepala-kit">
                 <tr className="bg-surface text-left text-ink-soft">
-                  <th className="px-4 py-2.5 font-semibold">Segmen</th>
-                  <th className="px-3 py-2.5 font-semibold">Penyulang</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">Tiang</th>
-                  <th className="px-3 py-2.5 font-semibold text-right">Panjang</th>
+                  <th className="px-4 py-2.5 font-semibold"><IkonKolom teks="Segmen" />Segmen</th>
+                  <th className="px-3 py-2.5 font-semibold"><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className="px-3 py-2.5 font-semibold text-right"><IkonKolom teks="Tiang" />Tiang</th>
+                  <th className="px-3 py-2.5 font-semibold text-right"><IkonKolom teks="Panjang" />Panjang</th>
                   <th className="px-3 py-2.5 font-semibold text-right">Bersama</th>
                   <th className="px-3 py-2.5 font-semibold">Induk</th>
                   <th className="px-3 py-2.5 font-semibold" />

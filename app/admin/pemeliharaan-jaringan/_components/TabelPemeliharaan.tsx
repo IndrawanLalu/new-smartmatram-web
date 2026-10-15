@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import type { BarisPemeliharaan, StatusTabel } from "../_hooks/usePemeliharaanJaringan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Daftar pemeliharaan jaringan — pola sama dengan Optimasi Trafo
@@ -75,17 +76,17 @@ export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Tanggal</th>
-              <th className={TH}>Penyulang</th>
-              <th className={TH}>Jenis</th>
-              <th className={TH}>Kategori</th>
+              <th className={TH}><IkonKolom teks="Tanggal" />Tanggal</th>
+              <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+              <th className={TH}><IkonKolom teks="Jenis" />Jenis</th>
+              <th className={TH}><IkonKolom teks="Kategori" />Kategori</th>
               <th className={TH}>Pekerjaan</th>
-              <th className={TH}>Alamat</th>
-              <th className={TH}>WO</th>
-              <th className={TH}>Tgl WO</th>
-              <th className={TH}>Foto</th>
-              <th className={TH}>Petugas</th>
-              <th className={TH}>Status</th>
+              <th className={TH}><IkonKolom teks="Alamat" />Alamat</th>
+              <th className={TH}><IkonKolom teks="WO" />WO</th>
+              <th className={TH}><IkonKolom teks="Tgl WO" />Tgl WO</th>
+              <th className={TH}><IkonKolom teks="Foto" />Foto</th>
+              <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

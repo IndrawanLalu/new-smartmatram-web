@@ -15,6 +15,7 @@ import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import GarduDetailModal from "./GarduDetailModal";
 import EditPengukuranModal from "./EditPengukuranModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -355,16 +356,16 @@ export default function FilterGarduTab({ user }: Props) {
               <table className="w-full text-sm">
                 <thead className="kepala-kit">
                   <tr className="bg-navy-50">
-                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">No. Gardu</th>
-                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Penyulang</th>
-                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">KVA</th>
-                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32">Beban %</th>
-                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus R/S/T (A)</th>
-                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Arus Max (A)</th>
-                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold">Suhu (°C)</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="No. Gardu" />No. Gardu</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Penyulang" />Penyulang</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="KVA" />KVA</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32"><IkonKolom teks="Beban %" />Beban %</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus R/S/T (A)" />Arus R/S/T (A)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus Max (A)" />Arus Max (A)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Suhu (°C)" />Suhu (°C)</th>
                     <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Teg R/S/T (V)</th>
-                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Tgl Ukur</th>
-                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Status</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
+                    <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Status" />Status</th>
                   </tr>
                 </thead>
                 <tbody>

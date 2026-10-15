@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, CircleDashed, CheckCircle2 } from "lucide-re
 import { LABEL_ALASAN, type AlasanWo } from "../_lib/kandidatWo";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 import { useGaransiItem } from "@/app/admin/_hooks/useGaransi";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Bentuk baris ──────────────────────────────────────────────────────────────
 
@@ -115,18 +116,18 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
                 </th>
               )}
               <th className={`${TH} text-center w-12`}>No</th>
-              <th className={`${TH} text-left`}>Kode</th>
-              <th className={`${TH} text-left`}>Nama / Alamat</th>
-              <th className={`${TH} text-left`}>Penyulang</th>
-              <th className={`${TH} text-right`}>kVA</th>
-              {tampilkanUlp && <th className={`${TH} text-left`}>ULP</th>}
-              <th className={`${TH} text-center`}>Terakhir Diukur</th>
-              <th className={`${TH} text-center`}>Umur</th>
-              <th className={`${TH} text-left`}>Alasan</th>
-              <th className={`${TH} text-center`}>Tgl WO</th>
-              <th className={`${TH} text-center`}>Tgl Realisasi</th>
-              <th className={`${TH} text-left`}>Petugas</th>
-              <th className={`${TH} text-center`}>Status</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Kode" />Kode</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Nama / Alamat" />Nama / Alamat</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Penyulang" />Penyulang</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="kVA" />kVA</th>
+              {tampilkanUlp && <th className={`${TH} text-left`}><IkonKolom teks="ULP" />ULP</th>}
+              <th className={`${TH} text-center`}><IkonKolom teks="Terakhir Diukur" />Terakhir Diukur</th>
+              <th className={`${TH} text-center`}><IkonKolom teks="Umur" />Umur</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Alasan" />Alasan</th>
+              <th className={`${TH} text-center`}><IkonKolom teks="Tgl WO" />Tgl WO</th>
+              <th className={`${TH} text-center`}><IkonKolom teks="Tgl Realisasi" />Tgl Realisasi</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Petugas" />Petugas</th>
+              <th className={`${TH} text-center`}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">

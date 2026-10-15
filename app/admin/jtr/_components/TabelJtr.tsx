@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import { statusTampil, type InspeksiMenunggu } from "../_hooks/useApprovalJtr";
 import { NADA_STATUS, km, rentangKerja, tgl } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Daftar inspeksi JTR — satu baris satu gardu, klik → modal persetujuan
@@ -53,16 +54,16 @@ export default function TabelJtr({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Gardu</th>
-              <th className={TH}>Penyulang</th>
-              <th className={TH}>WO</th>
-              <th className={TH}>Tgl WO</th>
-              <th className={TH}>Tanggal inspeksi</th>
-              <th className={TH}>Petugas</th>
-              <th className={`${TH} text-right`}>Tiang</th>
-              <th className={`${TH} text-right`}>Panjang</th>
-              <th className={`${TH} text-right`}>Temuan</th>
-              <th className={TH}>Status</th>
+              <th className={TH}><IkonKolom teks="Gardu" />Gardu</th>
+              <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+              <th className={TH}><IkonKolom teks="WO" />WO</th>
+              <th className={TH}><IkonKolom teks="Tgl WO" />Tgl WO</th>
+              <th className={TH}><IkonKolom teks="Tanggal inspeksi" />Tanggal inspeksi</th>
+              <th className={TH}><IkonKolom teks="Petugas" />Petugas</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Tiang" />Tiang</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Panjang" />Panjang</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Temuan" />Temuan</th>
+              <th className={TH}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
           <tbody>

@@ -7,6 +7,7 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
 import { CARD } from "@/app/admin/_ui";
 import type { RekapGardu } from "../_hooks/useJtrRekap";
 import { km } from "../_lib/tampilan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Jaringan JTR per gardu — panjang rute & penghantar, TURUNAN dari rangkaian
@@ -104,12 +105,12 @@ export default function JaringanPerGardu({ ulp, cari }: { ulp: string; cari: str
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Gardu</th>
-              <th className={TH}>ULP</th>
-              <th className={TH}>Jurusan</th>
-              <th className={`${TH} text-right`}>Tiang</th>
-              <th className={`${TH} text-right`}>Rute</th>
-              <th className={`${TH} text-right`}>Penghantar</th>
+              <th className={TH}><IkonKolom teks="Gardu" />Gardu</th>
+              <th className={TH}><IkonKolom teks="ULP" />ULP</th>
+              <th className={TH}><IkonKolom teks="Jurusan" />Jurusan</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Tiang" />Tiang</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Rute" />Rute</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Penghantar" />Penghantar</th>
             </tr>
           </thead>
           <tbody>

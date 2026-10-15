@@ -8,6 +8,7 @@ import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { META } from "../_lib/kinerjaMeta";
 import type { KolomJenis } from "../_lib/proNtb";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * JENIS PEKERJAAN per jenis Rekap Kinerja untuk Copy to PRO NTB
@@ -75,7 +76,7 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
         <thead className="kepala-kit">
           <tr>
             <th className={TH}>Rekap Kinerja</th>
-            <th className={TH}>JENIS PEKERJAAN di spreadsheet</th>
+            <th className={TH}><IkonKolom teks="JENIS PEKERJAAN di spreadsheet" />JENIS PEKERJAAN di spreadsheet</th>
           </tr>
         </thead>
         <tbody>

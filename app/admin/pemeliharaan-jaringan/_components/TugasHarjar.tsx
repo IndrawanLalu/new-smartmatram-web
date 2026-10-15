@@ -7,6 +7,7 @@ import { NADA_STATUS_TUGAS, STATUS_TUGAS, useTugasHarjar, type TugasHarjar as Tu
 import { tanggal } from "./TabelPemeliharaan";
 import BuatTugasModal from "./BuatTugasModal";
 import DetailTugasModal from "./DetailTugasModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tab "Tugas": semua tugas regu HARJAR (dari temuan & manual) + "Buat Tugas".
@@ -98,15 +99,15 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
             <table className="w-full border-collapse text-sm">
               <thead className="kepala-kit bg-surface">
                 <tr>
-                  <th className={TH}>Dibuat</th>
-                  <th className={TH}>Penyulang</th>
-                  <th className={TH}>Jenis</th>
+                  <th className={TH}><IkonKolom teks="Dibuat" />Dibuat</th>
+                  <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
+                  <th className={TH}><IkonKolom teks="Jenis" />Jenis</th>
                   <th className={TH}>Pekerjaan</th>
-                  <th className={TH}>Lokasi</th>
+                  <th className={TH}><IkonKolom teks="Lokasi" />Lokasi</th>
                   <th className={TH}>Sumber</th>
-                  <th className={TH}>Prioritas</th>
-                  <th className={TH}>Dikerjakan</th>
-                  <th className={TH}>Status</th>
+                  <th className={TH}><IkonKolom teks="Prioritas" />Prioritas</th>
+                  <th className={TH}><IkonKolom teks="Dikerjakan" />Dikerjakan</th>
+                  <th className={TH}><IkonKolom teks="Status" />Status</th>
                 </tr>
               </thead>
               <tbody>

@@ -3,6 +3,7 @@
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { angkaId, tanggalPanjang, type MetaJenis } from "../_lib/realisasiHarian";
 import { nilaiSetuju, nilaiUtama, rataId, type SelBulanan } from "../_lib/realisasiBulanan";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /** Rincian per tanggal satu jenis pekerjaan di satu ULP, sebulan. */
 
@@ -29,10 +30,10 @@ export default function RincianBulananModal({ meta, ulp, periode, sel, onTutup }
         <table className="w-full border-collapse">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}>Tanggal</th>
-              <th className={`${TH} text-right`}>Realisasi</th>
-              <th className={`${TH} text-right`}>Sudah disetujui</th>
-              <th className={`${TH} text-right`}>Belum disetujui</th>
+              <th className={TH}><IkonKolom teks="Tanggal" />Tanggal</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Realisasi" />Realisasi</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Sudah disetujui" />Sudah disetujui</th>
+              <th className={`${TH} text-right`}><IkonKolom teks="Belum disetujui" />Belum disetujui</th>
               {tambahan && <th className={TH}>Tambahan</th>}
             </tr>
           </thead>

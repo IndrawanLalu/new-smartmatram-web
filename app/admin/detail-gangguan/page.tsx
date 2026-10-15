@@ -48,6 +48,7 @@ import TabPil from "@/app/admin/_kit/TabPil";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import { PilihTanggal } from "@/app/admin/_kit/Field";
 import Tombol from "@/app/admin/_kit/Tombol";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -587,7 +588,7 @@ export default function DetailGangguanPage() {
               <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
                   <th className={`${TH} w-8`}>#</th>
-                  <th className={`${TH} whitespace-nowrap`}>Kategori</th>
+                  <th className={`${TH} whitespace-nowrap`}><IkonKolom teks="Kategori" />Kategori</th>
                   {COLS.map((c) => (
                     <th
                       key={c.key as string}

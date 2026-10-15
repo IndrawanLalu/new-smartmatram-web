@@ -7,6 +7,7 @@ import { KATEGORI_TEMUAN, PRIORITAS_DARI_KATEGORI, STATUS_TUGAS, kunciTemuan, us
 import { tgl } from "../_lib/tampilan";
 import DetailTemuanModal from "./DetailTemuanModal";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tab Temuan — temuan inspeksi JTM yang sudah disetujui, siap ditugaskan.
@@ -152,13 +153,13 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
                       aria-label="Pilih semua di halaman ini"
                     />
                   </th>
-                  <th className={TH}>Tiang</th>
-                  <th className={TH}>Penyulang · Segmen</th>
-                  <th className={TH}>Temuan</th>
-                  <th className={TH}>Ditemukan</th>
-                  <th className={TH}>WO</th>
-                  <th className={TH}>Tgl WO</th>
-                  <th className={TH}>Status</th>
+                  <th className={TH}><IkonKolom teks="Tiang" />Tiang</th>
+                  <th className={TH}><IkonKolom teks="Penyulang · Segmen" />Penyulang · Segmen</th>
+                  <th className={TH}><IkonKolom teks="Temuan" />Temuan</th>
+                  <th className={TH}><IkonKolom teks="Ditemukan" />Ditemukan</th>
+                  <th className={TH}><IkonKolom teks="WO" />WO</th>
+                  <th className={TH}><IkonKolom teks="Tgl WO" />Tgl WO</th>
+                  <th className={TH}><IkonKolom teks="Status" />Status</th>
                 </tr>
               </thead>
               <tbody>

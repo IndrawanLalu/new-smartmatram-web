@@ -9,6 +9,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import type { PermintaanNama } from "@/lib/jtmNama";
 import { useTiangDaftar, type TiangBaris } from "../_hooks/useTiangDaftar";
 import PratinjauNamaModal from "./PratinjauNamaModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tabel tiang JTM.
@@ -299,12 +300,12 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
           <table className="w-full text-sm">
             <thead className="kepala-kit">
               <tr className="bg-surface text-ink-soft">
-                <th className="text-left font-semibold px-4 py-2.5">Kode</th>
-                <th className="text-left font-semibold px-3 py-2.5">Penyulang</th>
+                <th className="text-left font-semibold px-4 py-2.5"><IkonKolom teks="Kode" />Kode</th>
+                <th className="text-left font-semibold px-3 py-2.5"><IkonKolom teks="Penyulang" />Penyulang</th>
                 <th className="text-left font-semibold px-3 py-2.5">Induk</th>
-                <th className="text-left font-semibold px-3 py-2.5">Segmen</th>
-                <th className="text-left font-semibold px-3 py-2.5">Jenis</th>
-                <th className="text-left font-semibold px-3 py-2.5">Keadaan</th>
+                <th className="text-left font-semibold px-3 py-2.5"><IkonKolom teks="Segmen" />Segmen</th>
+                <th className="text-left font-semibold px-3 py-2.5"><IkonKolom teks="Jenis" />Jenis</th>
+                <th className="text-left font-semibold px-3 py-2.5"><IkonKolom teks="Keadaan" />Keadaan</th>
                 <th className="px-3 py-2.5" />
               </tr>
             </thead>

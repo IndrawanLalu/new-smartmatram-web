@@ -16,6 +16,7 @@ import MvodTab from "./_components/MvodTab";
 import MvodSettingsModal from "./_components/MvodSettingsModal";
 import { useMvodSettings } from "./_hooks/useMvodSettings";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -790,21 +791,21 @@ function RekapTab({ stats, total }: RekapTabProps) {
         <table className="w-full text-sm">
           <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
-              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>ULP</th>
-              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>Penyulang</th>
+              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}><IkonKolom teks="ULP" />ULP</th>
+              <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}><IkonKolom teks="Penyulang" />Penyulang</th>
               <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>J</th>
               <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>P</th>
               <th className="px-3 py-3 text-center" rowSpan={adaKoreksiData ? 2 : 1}>Total</th>
-              <th className="px-4 py-3 text-right"  rowSpan={adaKoreksiData ? 2 : 1}>Pelanggan Padam</th>
+              <th className="px-4 py-3 text-right"  rowSpan={adaKoreksiData ? 2 : 1}><IkonKolom teks="Pelanggan Padam" />Pelanggan Padam</th>
               {adaKoreksiData ? (
                 <>
                   <th className="px-3 py-3 text-center" rowSpan={2}>Dikoreksi</th>
-                  <th className="px-4 py-2 text-center border-l border-[#B2DFDB]" colSpan={2}>Jam × Plgn</th>
+                  <th className="px-4 py-2 text-center border-l border-[#B2DFDB]" colSpan={2}><IkonKolom teks="Jam × Plgn" />Jam × Plgn</th>
                   <th className="px-4 py-2 text-center border-l border-[#B2DFDB]" colSpan={2}>ENS (kWh)</th>
                 </>
               ) : (
                 <>
-                  <th className="px-4 py-3 text-right">Jam × Plgn</th>
+                  <th className="px-4 py-3 text-right"><IkonKolom teks="Jam × Plgn" />Jam × Plgn</th>
                   <th className="px-4 py-3 text-right">ENS (kWh)</th>
                 </>
               )}
@@ -941,18 +942,18 @@ function DetailTab({ rows, jurnalMap, search, onSearch, page, totalPages, totalR
         <table className="w-full text-sm">
           <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
-              <th className="px-4 py-3 text-left whitespace-nowrap">No Laporan</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Tgl Padam</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Jam Padam</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Jam Nyala</th>
-              <th className="px-4 py-3 text-left">ULP</th>
-              <th className="px-4 py-3 text-left">Penyulang</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap"><IkonKolom teks="No Laporan" />No Laporan</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Tgl Padam" />Tgl Padam</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Jam Padam" />Jam Padam</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Jam Nyala" />Jam Nyala</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="ULP" />ULP</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="Penyulang" />Penyulang</th>
               <th className="px-3 py-3 text-right whitespace-nowrap">Lama (mnt)</th>
-              <th className="px-4 py-3 text-left">Penyebab</th>
-              <th className="px-3 py-3 text-center whitespace-nowrap">Status</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="Penyebab" />Penyebab</th>
+              <th className="px-3 py-3 text-center whitespace-nowrap"><IkonKolom teks="Status" />Status</th>
               <th className="px-4 py-3 text-left whitespace-nowrap">Section</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">ULP (Jurnal)</th>
-              <th className="px-3 py-3 text-center whitespace-nowrap">Anomali Kode J</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="ULP (Jurnal)" />ULP (Jurnal)</th>
+              <th className="px-3 py-3 text-center whitespace-nowrap"><IkonKolom teks="Anomali Kode J" />Anomali Kode J</th>
             </tr>
           </thead>
           <tbody>
@@ -1079,17 +1080,17 @@ function JDobelTab({ groups }: JDobelTabProps) {
         <table className="w-full text-sm">
           <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
-              <th className="px-4 py-3 text-left whitespace-nowrap">No Laporan</th>
-              <th className="px-4 py-3 text-left">ULP</th>
-              <th className="px-4 py-3 text-left">Penyulang</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Tgl Padam</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Jam Padam</th>
-              <th className="px-3 py-3 text-left whitespace-nowrap">Jam Nyala</th>
-              <th className="px-3 py-3 text-right whitespace-nowrap">Pelanggan</th>
+              <th className="px-4 py-3 text-left whitespace-nowrap"><IkonKolom teks="No Laporan" />No Laporan</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="ULP" />ULP</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="Penyulang" />Penyulang</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Tgl Padam" />Tgl Padam</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Jam Padam" />Jam Padam</th>
+              <th className="px-3 py-3 text-left whitespace-nowrap"><IkonKolom teks="Jam Nyala" />Jam Nyala</th>
+              <th className="px-3 py-3 text-right whitespace-nowrap"><IkonKolom teks="Pelanggan" />Pelanggan</th>
               <th className="px-3 py-3 text-right whitespace-nowrap">Lama (mnt)</th>
-              <th className="px-3 py-3 text-right whitespace-nowrap">Jam×Plgn</th>
+              <th className="px-3 py-3 text-right whitespace-nowrap"><IkonKolom teks="Jam×Plgn" />Jam×Plgn</th>
               <th className="px-3 py-3 text-right">ENS</th>
-              <th className="px-4 py-3 text-left">Penyebab</th>
+              <th className="px-4 py-3 text-left"><IkonKolom teks="Penyebab" />Penyebab</th>
             </tr>
           </thead>
           <tbody>

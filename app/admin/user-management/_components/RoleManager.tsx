@@ -5,6 +5,7 @@ import { Plus, Pencil, Trash2, Lock, ShieldCheck, Globe, Smartphone, Layers } fr
 import { useRoles } from "@/app/admin/_hooks/useRoles";
 import type { RoleRow } from "@/lib/roles";
 import RoleFormModal from "./RoleFormModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PLATFORM: Record<string, { label: string; icon: typeof Globe; cls: string }> = {
   all: { label: "Web & Mobile", icon: Layers, cls: "bg-[#E0F2F1] text-[#00695C]" },
@@ -57,9 +58,9 @@ export default function RoleManager() {
           <table className="w-full text-sm">
             <thead className="kepala-kit">
               <tr className="bg-[#E0F2F1] text-[#00695C] text-xs uppercase tracking-wide">
-                <th className="px-5 py-2.5 text-left font-semibold">Role</th>
+                <th className="px-5 py-2.5 text-left font-semibold"><IkonKolom teks="Role" />Role</th>
                 <th className="px-4 py-2.5 text-left font-semibold">Platform</th>
-                <th className="px-4 py-2.5 text-left font-semibold">Sifat</th>
+                <th className="px-4 py-2.5 text-left font-semibold"><IkonKolom teks="Sifat" />Sifat</th>
                 <th className="px-4 py-2.5 text-left font-semibold">Menu</th>
                 <th className="px-4 py-2.5 text-center font-semibold w-24">Aksi</th>
               </tr>

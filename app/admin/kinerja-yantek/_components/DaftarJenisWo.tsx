@@ -3,6 +3,7 @@
 import { ClipboardPaste, Trash2 } from "lucide-react";
 import type { DataSurat } from "../_hooks/useWoSurat";
 import { fmtAngka, JENIS_SURAT } from "../_lib/woSurat";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Sebelas baris surat, persis urutan surat. Tiap baris menyebut dari mana
@@ -27,7 +28,7 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
         <thead className="kepala-kit bg-slate-100">
           <tr>
             <th className={`${TH} text-left w-8`}>No</th>
-            <th className={`${TH} text-left`}>Work Order</th>
+            <th className={`${TH} text-left`}><IkonKolom teks="Work Order" />Work Order</th>
             <th className={`${TH} text-right`}>Jumlah</th>
             <th className={`${TH} text-left`}>Sumber</th>
             <th className={`${TH} text-right w-[150px]`} />

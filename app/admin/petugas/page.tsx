@@ -7,6 +7,7 @@ import { UNITS } from "@/lib/roles";
 import { usePetugas } from "./_hooks/usePetugas";
 import type { Petugas } from "./_hooks/usePetugas";
 import PetugasFormModal from "./_components/PetugasFormModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const STATUS_CLS: Record<string, string> = {
   aktif: "bg-green-50 text-green-700",
@@ -146,11 +147,11 @@ export default function PetugasPage() {
               <thead className="kepala-kit">
                 <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Nama</th>
-                  <th className="px-4 py-3 text-left">Group</th>
-                  <th className="px-4 py-3 text-left">ULP</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Group" />Group</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="ULP" />ULP</th>
                   <th className="px-4 py-3 text-left">No. HP</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Email" />Email</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Status" />Status</th>
                   <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>

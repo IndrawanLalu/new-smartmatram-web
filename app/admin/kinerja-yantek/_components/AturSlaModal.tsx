@@ -8,6 +8,7 @@ import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { CurrentUser } from "@/lib/roles";
 import { BULAN, JENIS_KINERJA } from "../_hooks/useKinerjaYantek";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Atur SLA — target bulanan per ULP per jenis pekerjaan (keputusan user
@@ -206,8 +207,8 @@ export default function AturSlaModal({ user, ulpAwal, onTutup, onTersimpan }: Pr
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-slate-100">
             <tr>
-              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300">Jenis pekerjaan</th>
-              <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300 w-[190px]">SLA per bulan</th>
+              <th className="px-3 py-2 text-left text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300"><IkonKolom teks="Jenis pekerjaan" />Jenis pekerjaan</th>
+              <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300 w-[190px]"><IkonKolom teks="SLA per bulan" />SLA per bulan</th>
               <th className="px-3 py-2 text-right text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300 w-[170px]">Masa garansi</th>
             </tr>
           </thead>

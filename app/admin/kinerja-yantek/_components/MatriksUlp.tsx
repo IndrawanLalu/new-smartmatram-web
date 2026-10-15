@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { CARD } from "@/app/admin/_ui";
 import type { MetaJenis } from "../_lib/realisasiHarian";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
  * Tabel perbandingan antar-ULP: baris = jenis pekerjaan (urutan Rekap Kinerja),
@@ -34,7 +35,7 @@ export default function MatriksUlp({ meta, ulps, kolomTotal, sel, berisi, sorot,
         <table className="w-full border-collapse text-[15px]">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={`${TH} text-left`}>Jenis pekerjaan</th>
+              <th className={`${TH} text-left`}><IkonKolom teks="Jenis pekerjaan" />Jenis pekerjaan</th>
               {kolom.map((u) => (
                 <th key={u ?? "total"} className={`${TH} text-right ${u === null ? "bg-navy-50/60" : ""}`}>
                   {u ?? "Total"}

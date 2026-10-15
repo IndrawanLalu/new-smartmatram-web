@@ -11,6 +11,7 @@ import {
   usePerluPerbaikan, kunciBaris, type BarisPerbaikan, type SaringPerbaikan,
 } from "../_hooks/usePerluPerbaikan";
 import JadikanWoModal from "./JadikanWoModal";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PER_HALAMAN = 20;
 
@@ -201,11 +202,11 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
                         />
                       </th>
                     )}
-                    <th className="px-4 py-2.5 font-semibold">Gardu</th>
-                    <th className="px-4 py-2.5 font-semibold">Temuan</th>
-                    <th className="px-4 py-2.5 font-semibold">Keterangan</th>
-                    <th className="px-4 py-2.5 font-semibold whitespace-nowrap">Ditemukan</th>
-                    <th className="px-4 py-2.5 font-semibold">Work Order</th>
+                    <th className="px-4 py-2.5 font-semibold"><IkonKolom teks="Gardu" />Gardu</th>
+                    <th className="px-4 py-2.5 font-semibold"><IkonKolom teks="Temuan" />Temuan</th>
+                    <th className="px-4 py-2.5 font-semibold"><IkonKolom teks="Keterangan" />Keterangan</th>
+                    <th className="px-4 py-2.5 font-semibold whitespace-nowrap"><IkonKolom teks="Ditemukan" />Ditemukan</th>
+                    <th className="px-4 py-2.5 font-semibold"><IkonKolom teks="Work Order" />Work Order</th>
                   </tr>
                 </thead>
                 <tbody>

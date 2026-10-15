@@ -9,6 +9,7 @@ import type {
   UpdatePenyeimbanganInput,
 } from "../_hooks/usePenyeimbangan";
 import { JENIS_PEMELIHARAAN_OPTIONS } from "../_utils/constants";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -256,7 +257,7 @@ export default function PenyeimbanganModal(props: Props) {
                     <thead className="kepala-kit">
                       <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
-                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
+                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center"><IkonKolom teks={h} />{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -281,7 +282,7 @@ export default function PenyeimbanganModal(props: Props) {
                     <thead className="kepala-kit">
                       <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
-                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
+                          <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center"><IkonKolom teks={h} />{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -344,9 +345,9 @@ export default function PenyeimbanganModal(props: Props) {
               <table className="w-full text-xs whitespace-nowrap">
                 <thead className="kepala-kit">
                   <tr className="bg-navy-50">
-                    <th className="text-left px-3 py-2 text-accent-deep font-semibold">Jur.</th>
+                    <th className="text-left px-3 py-2 text-accent-deep font-semibold"><IkonKolom teks="Jur." />Jur.</th>
                     {["Arus R (A)", "Arus S (A)", "Arus T (A)", "Arus N (A)"].map((h) => (
-                      <th key={h} className="text-center px-2 py-2 text-accent-deep font-semibold">{h}</th>
+                      <th key={h} className="text-center px-2 py-2 text-accent-deep font-semibold"><IkonKolom teks={h} />{h}</th>
                     ))}
                     <th className="px-2 py-2" />
                   </tr>
@@ -393,9 +394,9 @@ export default function PenyeimbanganModal(props: Props) {
                 <table className="w-full text-xs whitespace-nowrap">
                   <thead className="kepala-kit">
                     <tr className="bg-navy-50">
-                      <th className="text-left px-3 py-1.5 text-accent-deep">Jur.</th>
+                      <th className="text-left px-3 py-1.5 text-accent-deep"><IkonKolom teks="Jur." />Jur.</th>
                       {["R (A)", "S (A)", "T (A)", "N (A)"].map((h) => (
-                        <th key={h} className="text-center px-2 py-1.5 text-accent-deep">{h}</th>
+                        <th key={h} className="text-center px-2 py-1.5 text-accent-deep"><IkonKolom teks={h} />{h}</th>
                       ))}
                     </tr>
                   </thead>

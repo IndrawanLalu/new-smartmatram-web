@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { X, Save, Plus, Trash2, TriangleAlert } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { type PengukuranGardu } from "../_hooks/usePengukuranGardu";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -424,9 +425,9 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
               <table className="w-full text-xs whitespace-nowrap">
                 <thead className="kepala-kit">
                   <tr className="bg-navy-50">
-                    <th className="text-left px-3 py-2 text-accent-deep font-semibold">Jur.</th>
+                    <th className="text-left px-3 py-2 text-accent-deep font-semibold"><IkonKolom teks="Jur." />Jur.</th>
                     {JURUSAN_FIELDS.map(({ label }) => (
-                      <th key={label} className="text-center px-2 py-2 text-accent-deep font-semibold">{label}</th>
+                      <th key={label} className="text-center px-2 py-2 text-accent-deep font-semibold"><IkonKolom teks={label} />{label}</th>
                     ))}
                     <th className="px-2 py-2" />
                   </tr>

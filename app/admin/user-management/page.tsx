@@ -9,6 +9,7 @@ import type { UserWithRole } from "./_hooks/useUsers";
 import UserFormModal from "./_components/UserFormModal";
 import RoleManager from "./_components/RoleManager";
 import MenuAccessMatrix from "./_components/MenuAccessMatrix";
+import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PLATFORM_LABEL: Record<string, string> = {
   all: "Web & Mobile",
@@ -164,11 +165,11 @@ export default function UserManagementPage() {
               <thead className="kepala-kit">
                 <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Nama</th>
-                  <th className="px-4 py-3 text-left">Email</th>
-                  <th className="px-4 py-3 text-left">Role</th>
-                  <th className="px-4 py-3 text-left">ULP</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Email" />Email</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Role" />Role</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="ULP" />ULP</th>
                   <th className="px-4 py-3 text-left">Platform</th>
-                  <th className="px-4 py-3 text-left">Status</th>
+                  <th className="px-4 py-3 text-left"><IkonKolom teks="Status" />Status</th>
                   <th className="px-4 py-3 text-center">Aksi</th>
                 </tr>
               </thead>
