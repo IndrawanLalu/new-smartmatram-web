@@ -2,15 +2,24 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, Search, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, CalendarDays, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, MapPin, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits } from "@/lib/roles";
+import { nadaStatus } from "@/lib/statusUi";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
+import { KotakCari, PilihField } from "@/app/admin/_kit/Field";
+import ChipSaring, { type ItemChip } from "@/app/admin/_kit/ChipSaring";
+import CatatanInfo from "@/app/admin/_kit/CatatanInfo";
+import Tombol from "@/app/admin/_kit/Tombol";
+import { TabelKosong } from "@/app/admin/_kit/Tabel";
 import { useWoPerabasan } from "./_hooks/useWoPerabasan";
-import { useDaftarPerabasan, BULAN, STATUS_RABAS } from "./_hooks/useDaftarPerabasan";
+import { useDaftarPerabasan, BULAN, STATUS_RABAS, type BarisRabas, type SaringStatus } from "./_hooks/useDaftarPerabasan";
 import TabelRabas from "./_components/TabelRabas";
 import DetailRabasModal from "./_components/DetailRabasModal";
+import TugaskanReguModal from "./_components/TugaskanReguModal";
 import DashboardPerabasan from "./_components/DashboardPerabasan";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import TabelLuarWo from "./_components/TabelLuarWo";
@@ -24,14 +33,14 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
  * Perabasan Pohon — satuan SEGMEN, ukuran KILOMETER.
  *
  * Pola halaman Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
- * Daftar Segmen → Dashboard → Susun WO. Persetujuan bukan tab lagi, melainkan
- * chip "Menunggu verifikasi" di daftar; keputusannya di modal detail.
+ * Daftar Segmen → Dashboard → Daftar WO → Susun WO. Persetujuan bukan tab,
+ * melainkan chip "Menunggu verifikasi" di daftar; keputusannya di modal rincian.
  *
- * WO boleh terbit kapan saja dan memuat segmen dari beberapa penyulang — ruas
- * 7 km dan ruas 0,3 km bukan pekerjaan yang sama, jadi ukurannya km.
+ * UI baru (rencana-ui-baru.md, 14 Okt 2026): kepala halaman dari kerangka
+ * admin — tab dititipkan lewat IsiKepala, saringan lewat IsiTopbar.
  *
  * Rabas DI LUAR WO (tanpa segmen, tanpa km — keputusan user 25 Sep 2026)
- * tampil lewat chip "Di luar WO" di daftar; diperiksa admin ULP lokasi.
+ * tampil lewat chip "Di luar WO"; diperiksa admin ULP lokasi.
  */
 
 const ISTILAH: IstilahWo = {
@@ -42,20 +51,16 @@ const ISTILAH: IstilahWo = {
     `ULP ${ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN). WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya didaftarkan lalu ditugaskan dari daftar segmen.`,
 };
 
-const TABS = [
-  { key: "daftar", label: "Daftar Segmen", icon: ListChecks },
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  // Daftar WO yang sudah terbit — lihat & ubah (permintaan user 25 Sep 2026).
-  { key: "wo", label: "Daftar WO", icon: FileText },
-  { key: "terbit", label: "Susun WO", icon: Send },
-] as const;
+type TabKey = "daftar" | "dashboard" | "wo" | "terbit";
+type Chip = SaringStatus | "LUAR";
 
-type TabKey = (typeof TABS)[number]["key"];
+const kmTeks = (v: number) => v.toFixed(2).replace(".", ",");
 
 export default function WoPerabasanPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
   const [idDetail, setIdDetail] = useState<string | null>(null);
+  const [idRegu, setIdRegu] = useState<string | null>(null);
   const [mengunduh, setMengunduh] = useState(false);
   const [lihatLuar, setLihatLuar] = useState(false);
   const [idLuar, setIdLuar] = useState<string | null>(null);
@@ -71,7 +76,9 @@ export default function WoPerabasanPage() {
   const l = useLuarWoPerabasan(d.ulp, d.tahun, d.bulan, d.cari);
   const oleh = user.name ?? user.email;
 
+  // Modal membaca data hidup: kunci baris, dicari dari daftar LENGKAP.
   const detail = idDetail ? (d.semua.find((b) => b.id === idDetail) ?? null) : null;
+  const barisRegu = idRegu ? (d.semua.find((b) => b.id === idRegu) ?? null) : null;
   const detailLuar = idLuar ? (l.semua.find((b) => b.id === idLuar) ?? null) : null;
   const detailWo = idWo ? (w.wo.find((x) => x.wo_id === idWo) ?? null) : null;
   const bolehUlp = (u: string) =>
@@ -84,12 +91,9 @@ export default function WoPerabasanPage() {
       .filter((x) => x.ulp === u && x.status !== "Dibatalkan" && x.tgl_wo.slice(0, 7) === tglWo.slice(0, 7))
       .reduce((n, x) => n + Number(x.rencana_km ?? 0), 0),
   });
-  // Rabas di luar WO diputuskan admin ULP LOKASI atau UP3 (dijaga database juga).
-  const bolehPutuskanLuar = (ulpLokasi: string) =>
-    canSeeAllUnits(user.role) || (user.role === "admin" && (user.unit ?? "").toUpperCase() === ulpLokasi.toUpperCase());
 
   // Hanya yang BELUM dikerjakan regu boleh dikeluarkan (dijaga database juga).
-  const bisaPilih = (b: { statusDb: string; ulp: string }) => b.statusDb === "Dijadwalkan" && bolehUlp(b.ulp);
+  const bisaPilih = (b: BarisRabas) => b.statusDb === "Dijadwalkan" && bolehUlp(b.ulp);
   const dipilih = d.baris.filter((b) => pilih.has(b.id) && bisaPilih(b));
   const ubahPilih = (id: string[], aktif: boolean) =>
     setPilih((p) => {
@@ -100,6 +104,16 @@ export default function WoPerabasanPage() {
       }
       return n;
     });
+
+  /** Ganti regu: yang belum diselesaikan regu (sama dengan modal rincian). */
+  const bisaPindahRegu = (b: BarisRabas) => ["Dijadwalkan", "Dalam Proses", "Ditolak"].includes(b.statusDb) && bolehUlp(b.ulp);
+  /** Menu ⋯: penugasan langsung; keputusan (verifikasi/batal) lewat modal
+   *  rincian — teknisaplikasi.md butir 7, admin harus melihat buktinya. */
+  const aksiBaris = (b: BarisRabas) => [
+    ...(bisaPindahRegu(b) ? [{ label: b.regu ? "Ganti regu…" : "Tugaskan regu…", onPilih: () => setIdRegu(b.id) }] : []),
+    ...(b.status === "Menunggu verifikasi" ? [{ label: "Periksa & putuskan…", onPilih: () => setIdDetail(b.id) }] : []),
+    { label: "Buka rincian", onPilih: () => setIdDetail(b.id) },
+  ];
 
   /** Aksi dari modal: jalankan, lalu tambal baris itu saja di daftar. */
   const lalu = (id: string) => async (ok: boolean) => {
@@ -118,43 +132,91 @@ export default function WoPerabasanPage() {
     }
   };
 
-  const dashboard = tab === "dashboard";
-  const daftarWo = tab === "wo";
+  const TAB: ItemTab<TabKey>[] = [
+    { kunci: "daftar", label: "Daftar Segmen", ikon: ListChecks, angka: d.loading ? 0 : d.hitung["Belum ditugaskan"], angkaMasalah: true },
+    { kunci: "dashboard", label: "Dashboard", ikon: LayoutDashboard },
+    // Daftar WO yang sudah terbit — lihat & ubah (permintaan user 25 Sep 2026).
+    { kunci: "wo", label: "Daftar WO", ikon: FileText },
+    { kunci: "terbit", label: "Susun WO", ikon: Send },
+  ];
+  const CHIP: ItemChip<Chip>[] = [
+    { kunci: "SEMUA", label: "Semua" },
+    ...STATUS_RABAS.map((s) => ({ kunci: s, label: s, angka: d.loading ? null : d.hitung[s], nada: nadaStatus(s) })),
+    {
+      kunci: "LUAR",
+      label: "Di luar WO",
+      ikon: <TreeDeciduous size={13} />,
+      angka: l.loading ? null : l.semua.length,
+      peringatan: !l.loading && l.menunggu > 0 ? `${l.menunggu} menunggu` : null,
+      judul: "Pohon dirabas tanpa segmen WO — tidak dihitung km",
+    },
+  ];
+
+  const pilihUlp = (
+    <PilihField ikon={MapPin} label="ULP" lebar="w-[155px]" nilai={d.ulp} onUbah={d.setUlp} disabled={d.daftarUlp.length <= 1}>
+      {d.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
+    </PilihField>
+  );
+  // Pohon dilihat bersama jaringannya di Peta Jaringan (lapisan Pohon,
+  // keputusan user 8 Okt 2026) — bukan peta tersendiri di sini.
+  const lihatPeta = (
+    <Link
+      href={`/peta?pohon=1${d.ulp && d.ulp !== "SEMUA" ? `&ulp=${d.ulp}` : ""}`}
+      className="grid place-items-center w-10 h-10 rounded-xl border border-line bg-white shadow-sm text-ink-soft hover:border-brand-300 hover:text-brand-700"
+      title="Lihat pohon di peta — temuan pohon dari inspeksi JTM dan pohon yang sudah dirabas"
+      aria-label="Lihat pohon di peta"
+    >
+      <Map size={17} strokeWidth={1.75} />
+    </Link>
+  );
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => {
-              setTab(key);
-              setWoAwal(null);
-            }}
-            className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}
-          >
-            <Icon size={14} />
-            {label}
-            {key === "daftar" && !d.loading && d.hitung["Belum ditugaskan"] > 0 && (
-              <span
-                className={`tabular-nums text-[10px] px-1.5 rounded-full ${tab === key ? "bg-white/20" : "bg-red-100 text-red-700"}`}
-                title="Segmen belum ditugaskan ke regu mana pun — tidak muncul di HP siapa pun"
+      <IsiKepala>
+        <TabPil
+          tab={TAB}
+          aktif={tab}
+          onPilih={(k) => {
+            setTab(k);
+            setWoAwal(null);
+          }}
+        />
+      </IsiKepala>
+
+      {tab !== "terbit" && (
+        <IsiTopbar>
+          {pilihUlp}
+          {tab === "daftar" && (
+            <>
+              <PilihField
+                ikon={CalendarDays}
+                label="Periode"
+                lebar="w-[175px]"
+                nilai={`${d.tahun}-${d.bulan}`}
+                onUbah={(v) => {
+                  const [t, b] = v.split("-").map(Number);
+                  if (t !== d.tahun) d.setTahun(t);
+                  if (b !== d.bulan) d.setBulan(b);
+                }}
               >
-                {d.hitung["Belum ditugaskan"]}
-              </span>
-            )}
-          </button>
-        ))}
-        {/* Pohon dilihat bersama jaringannya di Peta Jaringan (lapisan Pohon,
-            keputusan user 8 Okt 2026) — bukan peta tersendiri di sini. */}
-        <Link
-          href={`/peta?pohon=1${d.ulp && d.ulp !== "SEMUA" ? `&ulp=${d.ulp}` : ""}`}
-          className={`${BTN_GHOST} ml-auto`}
-          title="Temuan pohon dari inspeksi JTM dan pohon yang sudah dirabas, di atas peta jaringan"
-        >
-          <Map size={14} /> Lihat pohon di peta
-        </Link>
-      </div>
+                {d.daftarTahun.map((t) => (
+                  <optgroup key={t} label={String(t)}>
+                    {BULAN.map((b, i) => <option key={b} value={`${t}-${i + 1}`}>{b} {t}</option>)}
+                    <option value={`${t}-0`}>Sepanjang tahun {t}</option>
+                  </optgroup>
+                ))}
+              </PilihField>
+              <KotakCari nilai={d.cari} onUbah={d.setCari} placeholder="Cari penyulang, segmen, regu" lebar="w-[215px]" />
+            </>
+          )}
+          {tab === "dashboard" && (
+            <PilihField ikon={CalendarDays} label="Tahun" lebar="w-[130px]" nilai={d.tahun} onUbah={(v) => d.setTahun(Number(v))}>
+              {d.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
+            </PilihField>
+          )}
+          {lihatPeta}
+        </IsiTopbar>
+      )}
 
       {tab === "terbit" ? (
         <SusunWoSegmen
@@ -179,139 +241,90 @@ export default function WoPerabasanPage() {
             return h;
           }}
         />
+      ) : tab === "dashboard" ? (
+        <DashboardPerabasan key={`${d.ulp}-${d.tahun}`} ulp={d.ulp} tahun={d.tahun} />
+      ) : tab === "wo" ? (
+        <DaftarWo wo={w.wo} ulp={d.ulp} loading={w.loading} onDetail={(x) => setIdWo(x.wo_id)} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={d.ulp}
-              onChange={(e) => d.setUlp(e.target.value)}
-              className={`${FIELD} w-[170px]`}
-              disabled={d.daftarUlp.length <= 1}
-              aria-label="ULP"
+          <div className="flex flex-wrap items-center gap-3">
+            <ChipSaring
+              item={CHIP}
+              aktif={lihatLuar ? "LUAR" : d.status}
+              onPilih={(k) => {
+                if (k === "LUAR") setLihatLuar(true);
+                else {
+                  setLihatLuar(false);
+                  d.setStatus(k);
+                }
+              }}
+            />
+            <Tombol
+              ragam="utama"
+              className="ml-auto"
+              ikon={mengunduh ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+              onClick={() => void unduh()}
+              disabled={lihatLuar || d.loading || !!d.galat || d.baris.length === 0 || mengunduh}
+              title="Mengunduh baris yang sedang tampil di tabel"
             >
-              {d.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-            </select>
-            {!dashboard && !daftarWo && (
-              <select value={d.bulan} onChange={(e) => d.setBulan(Number(e.target.value))} className={`${FIELD} w-[160px]`} aria-label="Bulan">
-                <option value={0}>Sepanjang tahun</option>
-                {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
-              </select>
-            )}
-            {!daftarWo && (
-              <select value={d.tahun} onChange={(e) => d.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
-                {d.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-              </select>
-            )}
-            {!dashboard && !daftarWo && (
-              <div className="relative">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-                <input
-                  value={d.cari}
-                  onChange={(e) => d.setCari(e.target.value)}
-                  placeholder="Cari penyulang / segmen / regu / WO"
-                  className={`${FIELD} w-[250px] pl-8`}
-                />
-              </div>
-            )}
+              Download XLSX
+            </Tombol>
           </div>
+          <CatatanInfo>
+            Segmen yang masih berjalan selalu tampil, berapa pun umur WO-nya — itu tunggakan. Periode menyaring yang sudah
+            diverifikasi (menurut tanggal selesai) dan yang dibatalkan.
+          </CatatanInfo>
 
-          {!dashboard && !daftarWo && (
-            <>
-              <div className="flex flex-wrap items-center gap-2 -mt-1">
-                <button
-                  onClick={() => { d.setStatus("SEMUA"); setLihatLuar(false); }}
-                  className={`${CHIP} ${!lihatLuar && d.status === "SEMUA" ? CHIP_ON : CHIP_OFF}`}
-                >
-                  Semua
-                </button>
-                {STATUS_RABAS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => { d.setStatus(s); setLihatLuar(false); }}
-                    className={`${CHIP} ${!lihatLuar && d.status === s ? CHIP_ON : CHIP_OFF}`}
-                  >
-                    {s} <span className="opacity-70">{d.loading ? "" : d.hitung[s]}</span>
-                  </button>
-                ))}
-                <button
-                  onClick={() => setLihatLuar(true)}
-                  className={`${CHIP} ${lihatLuar ? CHIP_ON : CHIP_OFF}`}
-                  title="Pohon dirabas tanpa segmen WO — tidak dihitung km"
-                >
-                  <TreeDeciduous size={13} /> Di luar WO{" "}
-                  <span className="opacity-70">{l.loading ? "" : l.semua.length}</span>
-                  {!l.loading && l.menunggu > 0 && (
-                    <span className={`tabular-nums text-[10px] px-1.5 rounded-full ${lihatLuar ? "bg-white/20" : "bg-amber-100 text-amber-800"}`}>
-                      {l.menunggu} menunggu
-                    </span>
-                  )}
-                </button>
-                <button
-                  onClick={() => void unduh()}
-                  disabled={lihatLuar || d.loading || !!d.galat || d.baris.length === 0 || mengunduh}
-                  title="Mengunduh baris yang sedang tampil di tabel"
-                  className="ml-auto flex items-center gap-1.5 h-8 px-3 rounded-lg bg-navy-600 text-white text-xs font-medium hover:opacity-90 transition-opacity disabled:opacity-40"
-                >
-                  {mengunduh ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                  Download XLSX
-                </button>
-              </div>
-              <p className="text-[11px] text-ink-muted -mt-2">
-                Segmen yang masih berjalan selalu tampil, berapa pun umur WO-nya — itu tunggakan. Periode
-                menyaring yang sudah diverifikasi (menurut tanggal selesai) dan yang dibatalkan.
-              </p>
-            </>
-          )}
-
-          {dashboard ? (
-            <DashboardPerabasan key={`${d.ulp}-${d.tahun}`} ulp={d.ulp} tahun={d.tahun} />
-          ) : daftarWo ? (
-            <DaftarWo wo={w.wo} ulp={d.ulp} loading={w.loading} onDetail={(x) => setIdWo(x.wo_id)} />
-          ) : d.galat && !d.loading ? (
-            <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+          {d.galat && !d.loading ? (
+            <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
               <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
               <div className="text-sm">
                 <p className="font-semibold text-amber-800">Daftar gagal dimuat</p>
                 <p className="mt-0.5 text-amber-700">{d.galat} — kosongnya tabel bukan berarti tidak ada pekerjaan.</p>
-                <button onClick={d.muat} className="mt-2 font-semibold text-navy-600 hover:text-navy-500">Muat ulang</button>
+                <button onClick={d.muat} className="mt-2 font-semibold text-brand-600 hover:text-brand-700">Muat ulang</button>
               </div>
             </div>
           ) : lihatLuar ? (
             l.galat && !l.loading ? (
-              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3">
                 <TriangleAlert size={17} className="mt-0.5 shrink-0 text-amber-600" />
                 <div className="text-sm">
                   <p className="font-semibold text-amber-800">Rabas di luar WO gagal dimuat</p>
                   <p className="mt-0.5 text-amber-700">{l.galat} — kosongnya tabel bukan berarti tidak ada pekerjaan.</p>
-                  <button onClick={l.muat} className="mt-2 font-semibold text-navy-600 hover:text-navy-500">Muat ulang</button>
+                  <button onClick={l.muat} className="mt-2 font-semibold text-brand-600 hover:text-brand-700">Muat ulang</button>
                 </div>
               </div>
             ) : (
               <TabelLuarWo baris={l.baris} loading={l.loading} onDetail={(b) => setIdLuar(b.id)} />
             )
+          ) : !d.loading && d.baris.length === 0 ? (
+            <TabelKosong judul="Tidak ada segmen perabasan">
+              Segmen masuk ke sini begitu WO diterbitkan di tab Susun WO. Yang masih berjalan selalu tampil; yang sudah
+              diverifikasi atau dibatalkan mengikuti periode yang dipilih.
+            </TabelKosong>
           ) : (
             <>
               {dipilih.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
-                  <span className="text-ink">
+                <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50 px-4 py-2.5 text-sm">
+                  <span>
                     <b className="tabular-nums">{dipilih.length}</b> segmen dipilih ·{" "}
-                    {dipilih.reduce((a, b) => a + (b.panjangKm ?? 0), 0).toFixed(2).replace(".", ",")} km
+                    {kmTeks(dipilih.reduce((a, b) => a + (b.panjangKm ?? 0), 0))} km
                   </span>
-                  <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">
-                    Batal pilih
-                  </button>
-                  <button onClick={() => setKeluarkan(true)} className={`${BTN_GHOST} ml-auto text-red-700`}>
-                    <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
-                  </button>
+                  <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
+                  <Tombol ukuran="sm" className="ml-auto text-red-700" ikon={<Ban size={14} />} onClick={() => setKeluarkan(true)}>
+                    Keluarkan dari WO ({dipilih.length})
+                  </Tombol>
                 </div>
               )}
               <TabelRabas
+                key={`${d.ulp}-${d.tahun}-${d.bulan}-${d.status}`}
                 baris={d.baris}
                 loading={d.loading}
                 onDetail={(b) => setIdDetail(b.id)}
                 dipilih={pilih}
                 onPilih={ubahPilih}
                 bisaPilih={bisaPilih}
+                aksi={aksiBaris}
               />
             </>
           )}
@@ -326,6 +339,15 @@ export default function WoPerabasanPage() {
           onTugaskan={(id, regu) => w.tugaskanRegu(id, regu, oleh).then(lalu(id))}
           onPutuskan={(id, terima, catatan) => w.putuskan(id, terima, catatan, oleh).then(lalu(id))}
           onBatalkan={(id, alasan) => w.batalkanItem(id, alasan, oleh).then(lalu(id))}
+        />
+      )}
+
+      {barisRegu && (
+        <TugaskanReguModal
+          b={barisRegu}
+          regu={w.regu}
+          onSimpan={(regu) => w.tugaskanRegu(barisRegu.id, regu, oleh).then(lalu(barisRegu.id))}
+          onTutup={() => setIdRegu(null)}
         />
       )}
 
@@ -349,7 +371,7 @@ export default function WoPerabasanPage() {
       {detailLuar && (
         <DetailLuarWoModal
           b={detailLuar}
-          bolehPutuskan={bolehPutuskanLuar(detailLuar.ulp)}
+          bolehPutuskan={bolehUlp(detailLuar.ulp)}
           onTutup={() => setIdLuar(null)}
           onPutuskan={(id, terima, catatan) => l.putuskan(id, terima, catatan, oleh)}
           onBatalkan={(id, alasan) => l.batalkan(id, alasan, oleh)}

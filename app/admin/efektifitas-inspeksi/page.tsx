@@ -2,7 +2,6 @@
 
 import { useState, useMemo } from "react";
 import {
-  ShieldCheck,
   RefreshCw,
   Filter,
   ChevronDown,
@@ -21,6 +20,8 @@ import { useInspeksiEffectiveness } from "./_hooks/useInspeksiEffectiveness";
 import type { PenyulangEffectiveness, Trend } from "./_hooks/useInspeksiEffectiveness";
 import EffectivenessScatter from "./_components/EffectivenessScatter";
 import PenyulangDetailModal from "./_components/PenyulangDetailModal";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import Tombol from "@/app/admin/_kit/Tombol";
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -319,29 +320,11 @@ export default function EfektifitasInspeksiPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/20 rounded-lg">
-              <ShieldCheck className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">Efektivitas Inspeksi</h2>
-              <p className="text-teal-100 text-sm">
-                Korelasi inspeksi & eksekusi terhadap jumlah gangguan per penyulang
-                {user.unit ? ` — ULP ${user.unit}` : ""}
-              </p>
-            </div>
-          </div>
-          <button onClick={refresh} disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <IsiKepala>
+        <Tombol ukuran="sm" ikon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />} onClick={refresh} disabled={loading}>
+          Refresh
+        </Tombol>
+      </IsiKepala>
 
       {/* Filters */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">

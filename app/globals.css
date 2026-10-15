@@ -7,7 +7,7 @@
   /* Tinggi topbar admin. Dipakai layout DAN halaman yang menghitung tinggi
      dari 100vh — kalau angkanya di-hardcode di dua tempat, salah satunya
      pasti ketinggalan saat topbar berubah. */
-  --topbar-h: 3rem;
+  --topbar-h: 3.5rem;
 }
 
 @theme inline {
@@ -34,6 +34,21 @@
   --color-navy-700: #16294f;
   --color-navy-800: #14264f;
   --color-navy-900: #0d1830;
+  /* UI baru (rencana-ui-baru.md, 14 Okt 2026): bidang sidebar gelap. */
+  --color-navy-950: #0f2347;
+
+  /* Warna yang DIKLIK di UI baru — navy sedikit lebih terang (keputusan user
+     14 Okt 2026, bukan biru terang mockup). 600 = tab aktif, tombol utama,
+     item menu aktif: putih di atasnya 6,9:1; beda 2,3:1 dari sidebar navy-950. */
+  --color-brand-50: #eef3fc;
+  --color-brand-100: #dbe5f8;
+  --color-brand-200: #b9cbf0;
+  --color-brand-300: #8eaae4;
+  --color-brand-400: #5f84d2;
+  --color-brand-500: #3f67c0;
+  --color-brand-600: #2f55b0;
+  --color-brand-700: #26468f;
+  --color-brand-800: #1f3a76;
 
   --color-accent: #00897b;
   --color-accent-deep: #00695c;

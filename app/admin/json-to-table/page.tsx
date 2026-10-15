@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import {
   Code2,
   Search,
@@ -168,30 +169,15 @@ export default function JsonToTablePage() {
   const inputEmpty = !input.trim();
 
   const statusText  = inputEmpty ? "Tempel JSON di bawah" : error ? "JSON tidak valid" : `${rows.length} baris · ${columns.length} kolom · ${type}`;
-  const statusColor = inputEmpty ? "text-[#94a3b8]" : error ? "text-red-500" : "text-emerald-600";
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-4">
 
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-lg">
-            <Code2 className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold">JSON ke Tabel</h1>
-            <p className="text-sm text-white/75 mt-0.5">
-              Tempel JSON → langsung jadi tabel yang bisa dicari & diurutkan
-            </p>
-          </div>
-          <div className="ml-auto text-right">
-            <p className={`text-sm font-semibold ${inputEmpty ? "text-white/50" : error ? "text-red-300" : "text-emerald-200"}`}>
-              {statusText}
-            </p>
-          </div>
-        </div>
-      </div>
+      <IsiKepala>
+        <p className={`text-sm font-semibold ${inputEmpty ? "text-ink-muted" : error ? "text-red-600" : "text-emerald-700"}`}>
+          {statusText}
+        </p>
+      </IsiKepala>
 
       {/* Input */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">

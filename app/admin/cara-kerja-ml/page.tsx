@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BrainCircuit, Gauge, Info, Clock, AlertTriangle } from "lucide-react";
+import { Gauge, Info, Clock, AlertTriangle } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
@@ -144,18 +144,6 @@ export default function CaraKerjaMlPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-5">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-lg shrink-0"><BrainCircuit className="w-6 h-6" /></div>
-          <div>
-            <h1 className="text-xl font-bold">SMART Learning</h1>
-            <p className="text-sm text-white/80 mt-0.5">
-              Mesin prediksi yang belajar dari data gangguan — memperkirakan penyulang berisiko, dijelaskan sederhana.
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* A. Alur (animasi) */}
       <EngineFlowAnimation

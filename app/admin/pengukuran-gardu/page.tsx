@@ -315,7 +315,7 @@ export default function PengukuranGarduPage() {
     <div className="space-y-4 text-ink">
 
       {/* ── Filter Bar — shared semua tab ───────────────────────────────────── */}
-      {/* Blok header navy dihapus: judulnya sudah ada di topbar (`PageTitle`),
+      {/* Blok header navy dihapus: judulnya ada di kepala halaman (`_kit/KepalaOtomatis`),
           cakupan ULP-nya sudah dinyatakan oleh penyaring di bilah ini, dan
           jumlah gardu + rata-ratanya sudah jadi kartu KPI pertama di tab
           Dashboard. Yang tersisa hanyalah ~90px tinggi yang tidak membawa

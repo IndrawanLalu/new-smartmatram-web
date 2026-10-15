@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { BrainCircuit, RefreshCw, ChevronDown, Filter, AlertCircle } from "lucide-react";
+import { RefreshCw, ChevronDown, Filter, AlertCircle } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useAdvancedDashboard } from "./_hooks/useAdvancedDashboard";
 import ParetoChart from "./_components/ParetoChart";
@@ -19,6 +19,8 @@ import PenyulangWatchlist from "./_components/PenyulangWatchlist";
 import { useRecommendations } from "./_hooks/useRecommendations";
 import { usePenyulangWatchlist } from "./_hooks/usePenyulangWatchlist";
 import { useSaidiSaifi } from "./_hooks/useSaidiSaifi";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import Tombol from "@/app/admin/_kit/Tombol";
 
 const ULP_OPTIONS = ["ALL", "AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
@@ -52,28 +54,11 @@ export default function AdvancedDashboardPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] rounded-xl p-6 text-white">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-white/20 rounded-lg">
-              <BrainCircuit className="w-6 h-6" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold">Advanced Analytics Dashboard</h2>
-              <p className="text-teal-100 text-sm">
-                Analisis mendalam & pengambilan keputusan manajemen{user.unit ? ` — ULP ${user.unit}` : ""}
-              </p>
-            </div>
-          </div>
-          <button onClick={refresh} disabled={loading}
-            className="flex items-center gap-2 px-3 py-2 bg-white/20 hover:bg-white/30 rounded-lg text-sm transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-            Refresh
-          </button>
-        </div>
-      </div>
+      <IsiKepala>
+        <Tombol ukuran="sm" ikon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />} onClick={refresh} disabled={loading}>
+          Refresh
+        </Tombol>
+      </IsiKepala>
 
       {/* Filters */}
       <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">

@@ -6,11 +6,13 @@ import { Plus, ClipboardList, LayoutGrid, BarChart3 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { MONTHS } from "./_constants";
-import { BTN_ON_NAVY, CARD, DISPLAY, FIELD } from "@/app/admin/_ui";
+import { CARD, FIELD } from "@/app/admin/_ui";
 import { useWorkOrderBatches } from "./_hooks/useWorkOrderBatches";
 import BatchCard from "./_components/BatchCard";
 import CreateBatchModal from "./_components/CreateBatchModal";
 import WorkOrderDashboard from "./_components/WorkOrderDashboard";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import Tombol from "@/app/admin/_kit/Tombol";
 
 const NOW = new Date();
 const YEARS = [NOW.getFullYear() - 1, NOW.getFullYear(), NOW.getFullYear() + 1];
@@ -59,20 +61,11 @@ function WorkOrderPageContent() {
 
   return (
     <div className="space-y-4 text-ink">
-      <header className="rounded-2xl bg-navy-600 px-6 py-5 text-white shadow-card flex items-center justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className={`${DISPLAY} text-2xl font-extrabold`}>Manajemen Work Order</h1>
-          <p className="text-white/60 text-sm mt-0.5">
-            Buat WO bulanan, petugas kerjakan di mobile, realisasi terhitung otomatis
-          </p>
-        </div>
-        <button
-          onClick={() => setCreateOpen(true)}
-          className={BTN_ON_NAVY}
-        >
-          <Plus size={16} /> Buat WO
-        </button>
-      </header>
+      <IsiKepala>
+        <Tombol ragam="utama" ikon={<Plus size={16} />} onClick={() => setCreateOpen(true)}>
+          Buat WO
+        </Tombol>
+      </IsiKepala>
 
       {/* Satu baris filter untuk seluruh isi halaman */}
       <div className={`${CARD} p-3 flex flex-wrap items-center gap-2`}>

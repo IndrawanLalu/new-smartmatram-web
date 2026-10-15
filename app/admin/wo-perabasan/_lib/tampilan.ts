@@ -38,3 +38,25 @@ export function rentangKerja(mulai: string | null, selesai: string | null): stri
 }
 
 export const km = (v: number | null) => (v === null ? "—" : `${v.toFixed(2)} km`);
+
+/** Hari antara dua tanggal ISO (yyyy-mm-dd…). */
+const selisihHari = (dari: string, ke: string) =>
+  Math.round((Date.parse(ke.slice(0, 10)) - Date.parse(dari.slice(0, 10))) / 86_400_000);
+
+/**
+ * Sudah berapa hari segmen ada di statusnya — hanya yang masih terbuka
+ * (umur tunggakan di bawah pil status). Dihitung dari tanggal yang membuka
+ * status itu: WO terbit, mulai dikerjakan, selesai, atau dikembalikan.
+ */
+export function umurStatus(
+  b: { status: string; woTgl: string | null; tglMulai: string | null; tglSelesai: string | null; verifiedAt: string | null },
+  hariIni: string,
+): number | null {
+  const sejak =
+    b.status === "Belum ditugaskan" || b.status === "Dijadwalkan" ? b.woTgl
+    : b.status === "Dalam proses" ? b.tglMulai
+    : b.status === "Menunggu verifikasi" ? b.tglSelesai
+    : b.status === "Dikembalikan" ? b.verifiedAt
+    : null;
+  return sejak ? selisihHari(sejak, hariIni) : null;
+}

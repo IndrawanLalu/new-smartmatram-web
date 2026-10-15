@@ -356,7 +356,7 @@ export default function YantekPage() {
   const butuhData = tab !== "ambil";
 
   return (
-    // Judul halaman ada di topbar (PageTitle), jadi halaman ini langsung isi.
+    // Judul halaman ada di kepala halaman (_kit/KepalaOtomatis), jadi halaman ini langsung isi.
     <div className="space-y-3 text-ink">
       {/* Filter periode + ULP */}
       {dates.length > 0 && butuhData && (

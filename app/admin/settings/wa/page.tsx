@@ -115,13 +115,6 @@ export default function WaSettingsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <h1 className="text-2xl font-bold">Pengaturan WhatsApp Group</h1>
-        <p className="text-white/80 text-sm mt-1">
-          Konfigurasi group WA tujuan untuk setiap notifikasi
-        </p>
-      </div>
 
       {!canEdit && (
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-amber-800 text-sm">

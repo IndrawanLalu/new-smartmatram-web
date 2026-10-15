@@ -66,13 +66,6 @@ export default function RekapProduktivitasPage() {
 
   return (
     <div className="p-6 space-y-5 min-h-screen bg-[#0a1628]">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <h1 className="text-2xl font-bold">Rekap Produktivitas Petugas</h1>
-        <p className="text-white/80 text-sm mt-1">
-          Jumlah pekerjaan yang diselesaikan per petugas per hari
-        </p>
-      </div>
 
       {/* Filter */}
       <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-xl p-4 flex flex-wrap gap-3 items-center">

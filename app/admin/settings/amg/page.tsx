@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Radio, Save, Loader2, CheckCircle2 } from "lucide-react";
+import { Save, Loader2, CheckCircle2 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { UNITS } from "@/lib/roles";
@@ -58,13 +58,6 @@ export default function AmgSettingsPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-5 text-[#1B2631]">
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6 flex items-center gap-3">
-        <Radio size={26} />
-        <div>
-          <h1 className="text-xl font-bold">Pengaturan AMG</h1>
-          <p className="text-white/70 text-sm mt-0.5">Kredensial login AMG per ULP — dipakai agen lokal untuk mengirim pengukuran.</p>
-        </div>
-      </div>
 
       {loading ? (
         <div className="flex justify-center py-16">

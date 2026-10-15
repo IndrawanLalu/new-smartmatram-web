@@ -10,6 +10,8 @@ import AddLMModal from "./_components/AddLMModal";
 import DuplicateModal from "./_components/DuplicateModal";
 import GangguanDetailSection from "./_components/GangguanDetailSection";
 import OverloadMonitorSection from "./_components/OverloadMonitorSection";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import Tombol from "@/app/admin/_kit/Tombol";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -245,19 +247,11 @@ export default function ScoreboardPage() {
       {/* ── NORMAL MODE ────────────────────────────────────────────────────── */}
       {!presentMode && (
         <div className="space-y-5">
-          {/* Page Header */}
-          <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight">Score Board — Lead Measures</h1>
-              <p className="text-white/70 text-sm mt-1">{bulanLabel} · {ulp}</p>
-            </div>
-            <button
-              onClick={() => setPresentMode(true)}
-              className="flex items-center gap-2 bg-white/15 hover:bg-white/25 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-            >
-              <Presentation size={16} /> Mode Presentasi
-            </button>
-          </div>
+          <IsiKepala>
+            <Tombol ukuran="sm" ikon={<Presentation size={15} />} onClick={() => setPresentMode(true)}>
+              Mode Presentasi
+            </Tombol>
+          </IsiKepala>
 
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center gap-3">

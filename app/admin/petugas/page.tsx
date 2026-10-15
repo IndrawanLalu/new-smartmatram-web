@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Search, RefreshCw, Trash2, Pencil, Users } from "lucide-react";
+import { Plus, Search, RefreshCw, Trash2, Pencil } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { UNITS } from "@/lib/roles";
 import { usePetugas } from "./_hooks/usePetugas";
@@ -76,18 +76,6 @@ export default function PetugasPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6">
-        <div className="flex items-center gap-3">
-          <Users size={28} />
-          <div>
-            <h1 className="text-xl font-bold">Manajemen Petugas</h1>
-            <p className="text-white/70 text-sm mt-0.5">
-              Kelola data petugas lapangan {isUP3 ? "semua ULP" : `ULP ${currentUser?.unit}`}
-            </p>
-          </div>
-        </div>
-      </div>
 
       {/* Toolbar */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4">

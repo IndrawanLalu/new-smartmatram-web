@@ -12,6 +12,7 @@ import InspeksiDashboardTab from "./_components/InspeksiDashboardTab";
 import { useInspeksiJaringan } from "./_hooks/useInspeksiJaringan";
 import { useInspeksiPohon } from "./_hooks/useInspeksiPohon";
 import { Zap, TreePine, Map, Layers, LayoutDashboard } from "lucide-react";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
 
 // Map hanya di-render saat tab peta aktif, dengan dynamic import SSR: false
 const InspeksiMap = dynamic(() => import("./_components/InspeksiMap"), {
@@ -127,35 +128,23 @@ export default function MonitoringInspeksiPage() {
     [showStatuses]
   );
 
-  const unitLabel = user.unit ?? "Semua Unit";
 
   return (
     <div className="space-y-6 text-ink">
-      {/* Header */}
-      <header className="rounded-2xl bg-navy-600 px-6 py-5 text-white shadow-card">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-          <div>
-            <h1 className={`${DISPLAY} text-2xl font-extrabold`}>Monitoring Inspeksi</h1>
-            <p className="text-white/60 text-sm mt-0.5">
-              {canSeeAllUnits(user.role)
-                ? "Semua ULP — PLN UP3 Mataram"
-                : `ULP ${unitLabel} · ${user.role}`}
-            </p>
-          </div>
-          <div className="flex items-center gap-2 text-xs">
-            {[
-              { n: jaringanHook.rawData.length, l: "Jaringan" },
-              { n: pohonHook.rawData.length, l: "Pohon" },
-              { n: jaringanMapData.length + pohonMapData.length, l: "Di Peta" },
-            ].map(({ n, l }) => (
-              <div key={l} className="rounded-xl bg-white/12 px-3 py-2 text-center">
-                <p className={`${DISPLAY} text-lg font-bold leading-none`}>{n}</p>
-                <p className="text-white/60 mt-0.5">{l}</p>
-              </div>
-            ))}
-          </div>
+      <IsiKepala>
+        <div className="flex items-center gap-2 text-xs">
+          {[
+            { n: jaringanHook.rawData.length, l: "Jaringan" },
+            { n: pohonHook.rawData.length, l: "Pohon" },
+            { n: jaringanMapData.length + pohonMapData.length, l: "Di Peta" },
+          ].map(({ n, l }) => (
+            <span key={l} className="inline-flex items-baseline gap-1.5 rounded-full border border-line bg-white px-3 py-1">
+              <b className={`${DISPLAY} text-sm text-ink tabular-nums`}>{n}</b>
+              <span className="text-ink-soft">{l}</span>
+            </span>
+          ))}
         </div>
-      </header>
+      </IsiKepala>
 
       {/* KPI Cards */}
       <InspeksiKPI user={user} filterUlp={filterUlp} />

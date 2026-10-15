@@ -15,6 +15,7 @@ import { canManageSettings } from "@/lib/roles";
 import MvodTab from "./_components/MvodTab";
 import MvodSettingsModal from "./_components/MvodSettingsModal";
 import { useMvodSettings } from "./_hooks/useMvodSettings";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -489,21 +490,13 @@ export default function PadamApktPage() {
 
   return (
     <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-5 text-[#1B2631]">
-      {/* Header */}
-      <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Rekap Padam APKT</h1>
-          <p className="text-white/70 text-sm mt-0.5">
-            Import & analisis data gangguan penyulang dari APKT
-          </p>
-        </div>
-        {rows.length > 0 && (
-          <div className="bg-white/10 rounded-lg px-4 py-2 text-center">
-            <p className="text-2xl font-bold">{filteredRows.length}</p>
-            <p className="text-xs text-white/70">baris data</p>
-          </div>
-        )}
-      </div>
+      {rows.length > 0 && (
+        <IsiKepala>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-700">
+            <b className="tabular-nums">{filteredRows.length}</b> baris data
+          </span>
+        </IsiKepala>
+      )}
 
       {/* Input Card */}
       <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5 space-y-3">

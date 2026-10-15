@@ -325,7 +325,7 @@ export default function DetailGangguanPage() {
   }
 
   return (
-    // Judul halaman ada di topbar (PageTitle), jadi halaman ini langsung isi.
+    // Judul halaman ada di kepala halaman (_kit/KepalaOtomatis), jadi halaman ini langsung isi.
     <div className="space-y-3 text-ink">
       {/* Rentang tanggal — berlaku untuk seluruh tab, termasuk Dashboard */}
       <div className={`${CARD} p-4 space-y-3`}>
