@@ -455,28 +455,16 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           adaLabel={!modeSld && (namaTiang || nomorKabel || isian.tampil)}
         />
 
-        {(modeSld ? sld.graf.length === 0 && sld.memuat.length === 0 : nyala.size === 0 && !satuSegmen) && !loading && (
+        {modeSld && sld.graf.length === 0 && sld.memuat.length === 0 && !loading && (
           <div className="absolute z-[1000] inset-x-0 top-1/2 -translate-y-1/2 grid place-items-center pointer-events-none px-4">
             <p
               className="rounded-xl text-gray-300 text-sm px-4 py-3 max-w-sm text-center leading-relaxed backdrop-blur-sm border"
               style={GAYA_PADAM}
             >
-              {modeSld ? (
-                <>
-                  Centang penyulang JTM di panel kiri.
-                  <span className="block text-gray-500 text-xs mt-1">
-                    SLD disusun dari tiang yang sudah dititik — hanya pangkal, keypoint, gardu, dan garis di antaranya.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Pilih penyulang atau gardu di panel kiri — atau ketik namanya di kotak cari.
-                  <span className="block text-gray-500 text-xs mt-1">
-                    Peta sengaja dibuka kosong supaya tidak menarik puluhan ribu titik yang belum
-                    tentu Anda butuhkan.
-                  </span>
-                </>
-              )}
+              Centang penyulang JTM di panel kiri.
+              <span className="block text-gray-500 text-xs mt-1">
+                SLD disusun dari tiang yang sudah dititik — hanya pangkal, keypoint, gardu, dan garis di antaranya.
+              </span>
             </p>
           </div>
         )}
