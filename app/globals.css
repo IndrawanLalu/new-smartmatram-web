@@ -341,3 +341,22 @@ thead.kepala-kit th:not(.kepala-tetap) {
   text-transform: none;
   letter-spacing: normal;
 }
+
+/* Kepala tabel MENEMPEL saat digulir (15 Okt 2026) — pola `_kit/Tabel`
+   KartuTabel: pembungkus langsung tabel menjadi area gulir sendiri setinggi
+   layar, karena pembungkus `overflow-x-auto`/`overflow-hidden` memutus
+   `sticky` terhadap gulir halaman. Pembungkus yang sudah menetapkan max-h
+   sendiri (modal) tingginya dibiarkan. Garis bawah lewat box-shadow:
+   garis `border-collapse` tidak ikut menempel. */
+thead.kepala-kit th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  box-shadow: inset 0 -1px 0 var(--color-line);
+}
+:has(> table > thead.kepala-kit) {
+  overflow: auto;
+}
+:has(> table > thead.kepala-kit):not([class*="max-h-"]) {
+  max-height: calc(100vh - var(--topbar-h) - 1.5rem);
+}
