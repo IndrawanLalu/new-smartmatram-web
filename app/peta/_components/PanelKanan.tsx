@@ -93,7 +93,7 @@ export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon,
         <PeriksaUjung
           antrean={antreanUjung}
           oleh={oleh}
-          onDisetujui={ujung.tandaiDisetujui}
+          onSelesai={(id, hasil) => (hasil === "setuju" ? ujung.tandaiDisetujui(id) : ujung.tandaiDikembalikan(id))}
           onBuka={bukaUjung}
           onTutup={() => ujung.setPeriksa(null)}
         />

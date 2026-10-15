@@ -130,6 +130,12 @@ export function useUjungPeta(aktif: boolean, ulp: string, tahun: number, bulan: 
   /** Setelah disetujui dari popup, statusnya ditambal di tempat. */
   const tandaiDisetujui = (id: string) =>
     setSemua((s) => s.map((t) => (t.id === id ? { ...t, status_tampil: "Disetujui" } : t)));
+  /** Setelah ditolak (dikembalikan ke petugas). */
+  const tandaiDikembalikan = (id: string) =>
+    setSemua((s) => s.map((t) => (t.id === id ? { ...t, status_tampil: "Dikembalikan" } : t)));
 
-  return { titik, total: aktif ? semua.length : 0, sibuk, galat, muatUlang: () => setNonce((n) => n + 1), tandaiDisetujui };
+  return {
+    titik, total: aktif ? semua.length : 0, sibuk, galat, muatUlang: () => setNonce((n) => n + 1),
+    tandaiDisetujui, tandaiDikembalikan,
+  };
 }
