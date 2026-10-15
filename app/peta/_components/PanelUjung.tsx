@@ -35,12 +35,14 @@ interface Props {
   total: number;
   sibuk: boolean;
   galat: string | null;
+  tampilJtr: boolean;
+  onTampilJtr: (v: boolean) => void;
   /** Titik yang gardunya belum bertitik di master — garisnya tidak tergambar. */
   tanpaGardu: number;
   onTutup: () => void;
 }
 
-export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, tanpaGardu, onTutup }: Props) {
+export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, tampilJtr, onTampilJtr, tanpaGardu, onTutup }: Props) {
   const alih = <T,>(s: Set<T>, v: T) => {
     const b = new Set(s);
     if (b.has(v)) b.delete(v);
@@ -87,6 +89,19 @@ export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, ju
               {s}
             </button>
           ))}
+        </div>
+      </div>
+
+      <div>
+        <p className={JUDUL_BAGIAN}>Jaringan</p>
+        <div className="flex flex-wrap gap-1.5 mt-1.5">
+          <button
+            onClick={() => onTampilJtr(!tampilJtr)}
+            className={chip(tampilJtr)}
+            title="Gambar JTR gardu yang punya tiang JTR"
+          >
+            Tampilkan JTR
+          </button>
         </div>
       </div>
 

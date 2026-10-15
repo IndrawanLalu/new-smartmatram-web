@@ -86,23 +86,30 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [fokus, setFokus] = useState<Bingkai | null>(null);
   const [panel, setPanel] = useState(true);
 
-  const { perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
+  const { daftar, perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
   const sld = useModeSld({ ulp, nyala, awal: awal?.sld, daftarJtm: perFolder.jtm });
   const modeSld = sld.aktif;
   const [latar, setLatar] = useLatarPeta(modeSld ? "sld" : "biasa");
   const penanda = usePenandaJtm();
   // Mode SLD tidak menarik tiang sama sekali — SLD punya datanya sendiri.
   // Gardu titik tegangan ujung ikut digambar lewat lapisan Gardu yang sama —
-  // garis putus-putus lapisan ujung berpangkal di gardunya.
+  // garis putus-putus lapisan ujung berpangkal di gardunya. "Tampilkan JTR"
+  // menambah lapisan JTR gardu itu, hanya yang memang punya tiang JTR.
   const ujung = useLapisanUjung(ulp);
   const pilihanIsi = useMemo(() => {
     if (ujung.titik.length === 0) return pilihan;
-    const ada = new Set(pilihan.filter((p) => p.jaringan === "gardu").map((p) => p.kode));
-    const tambahan = [...new Set(ujung.titik.map((t) => t.gardu_kode))]
-      .filter((k) => !ada.has(k))
-      .map((kode) => ({ jaringan: "gardu" as const, kode }));
+    const ada = new Set(pilihan.map((p) => `${p.jaringan}:${p.kode}`));
+    const punyaJtr = new Map(
+      daftar.filter((d) => d.jaringan === "gardu" && d.jumlahTiang > 0).map((d) => [d.kode.toUpperCase(), d.kode]),
+    );
+    const tambahan: typeof pilihan = [];
+    for (const kode of new Set(ujung.titik.map((t) => t.gardu_kode))) {
+      const jtr = ujung.tampilJtr ? punyaJtr.get(kode.toUpperCase()) : undefined;
+      if (jtr && !ada.has(`jtr:${jtr}`)) tambahan.push({ jaringan: "jtr", kode: jtr });
+      else if (!ada.has(`gardu:${kode}`)) tambahan.push({ jaringan: "gardu", kode });
+    }
     return [...pilihan, ...tambahan];
-  }, [pilihan, ujung.titik]);
+  }, [pilihan, daftar, ujung.titik, ujung.tampilJtr]);
   const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } =
     usePetaIsi(kotak, modeSld ? TANPA : pilihanIsi, modeSld ? false : tampilGardu);
   const indukLoncat = useIndukLoncat();

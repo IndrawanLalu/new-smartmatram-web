@@ -63,6 +63,8 @@ export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon,
           total={ujung.total}
           sibuk={ujung.sibuk}
           galat={ujung.galat}
+          tampilJtr={ujung.tampilJtr}
+          onTampilJtr={ujung.setTampilJtr}
           tanpaGardu={ujung.titik.filter((t) => t.gardu_lat === null || t.gardu_lng === null).length}
           onTutup={() => ujung.setAktif(false)}
         />
