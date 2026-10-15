@@ -8,8 +8,9 @@ import {
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 
 /**
- * Saringan lapisan tegangan ujung. Bulan = bulan tanggal ukur; ULP mengikuti
- * pilihan ULP di panel kiri.
+ * Saringan lapisan tegangan ujung. Bulan = bulan tanggal ukur ("Semua bulan" =
+ * satu tahun, pengukuran terakhir tiap gardu + jurusan); ULP mengikuti pilihan
+ * ULP di panel kiri.
  */
 
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -34,10 +35,12 @@ interface Props {
   total: number;
   sibuk: boolean;
   galat: string | null;
+  /** Titik yang gardunya belum bertitik di master — garisnya tidak tergambar. */
+  tanpaGardu: number;
   onTutup: () => void;
 }
 
-export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, onTutup }: Props) {
+export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, tanpaGardu, onTutup }: Props) {
   const alih = <T,>(s: Set<T>, v: T) => {
     const b = new Set(s);
     if (b.has(v)) b.delete(v);
@@ -56,6 +59,7 @@ export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, ju
 
       <div className="flex gap-2">
         <select value={bulan} onChange={(e) => onBulan(tahun, Number(e.target.value))} className={INPUT} aria-label="Bulan ukur">
+          <option value={0}>Semua bulan</option>
           {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
         </select>
         <select value={tahun} onChange={(e) => onBulan(Number(e.target.value), bulan)} className={INPUT} aria-label="Tahun ukur">
@@ -104,6 +108,9 @@ export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, ju
         {sibuk && <Loader2 size={11} className="animate-spin" />}
         {galat ? <span className="text-red-300">{galat}</span> : `${jumlah} dari ${total} titik ditampilkan`}
       </p>
+      {!galat && tanpaGardu > 0 && (
+        <p className="text-[11px] text-amber-300 -mt-2">{tanpaGardu} titik gardunya belum bertitik di master</p>
+      )}
     </div>
   );
 }

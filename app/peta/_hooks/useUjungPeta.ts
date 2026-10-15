@@ -6,7 +6,9 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
 
 /**
  * Lapisan tegangan ujung — titik ukur di ujung JTR dari `tegangan_ujung_daftar`,
- * satu bulan tanggal ukur. Dibaca hanya saat lapisannya menyala; jumlahnya
+ * satu bulan tanggal ukur, atau satu tahun penuh (`bulan` = 0, "Semua bulan").
+ * Pada satu tahun penuh hanya pengukuran TERAKHIR tiap gardu + jurusan yang
+ * dipakai — kondisi terkini, tanpa titik bertumpuk di tiang yang sama. Dibaca hanya saat lapisannya menyala; jumlahnya
  * ratusan per bulan, jadi disaring di sisi layar tanpa kueri ulang.
  */
 
@@ -54,6 +56,17 @@ const KOLOM =
 
 const dua = (n: number) => String(n).padStart(2, "0");
 
+/** Sisakan pengukuran terakhir tiap gardu + jurusan. */
+const terakhirSaja = (daftar: TitikUjungPeta[]) => {
+  const per = new Map<string, TitikUjungPeta>();
+  for (const t of daftar) {
+    const k = `${t.gardu_kode.toUpperCase()}|${t.jurusan}`;
+    const lama = per.get(k);
+    if (!lama || t.tgl_ukur > lama.tgl_ukur) per.set(k, t);
+  }
+  return [...per.values()];
+};
+
 export function useUjungPeta(aktif: boolean, ulp: string, tahun: number, bulan: number, saring: SaringUjung) {
   const [semua, setSemua] = useState<TitikUjungPeta[]>([]);
   const [galat, setGalat] = useState<string | null>(null);
@@ -66,8 +79,8 @@ export function useUjungPeta(aktif: boolean, ulp: string, tahun: number, bulan: 
   useEffect(() => {
     if (!aktif) return;
     let hidup = true;
-    const awal = `${tahun}-${dua(bulan)}-01`;
-    const akhir = bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${dua(bulan + 1)}-01`;
+    const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
+    const akhir = bulan === 0 || bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${dua(bulan + 1)}-01`;
     const kerja = async () => {
       try {
         const data = await fetchAllRows<Record<string, unknown>>(() => {
@@ -80,16 +93,15 @@ export function useUjungPeta(aktif: boolean, ulp: string, tahun: number, bulan: 
           return q.order("id");
         });
         if (!hidup) return;
-        setSemua(
-          data.map((r) => ({
+        const baris = data.map((r): TitikUjungPeta => ({
             ...(r as unknown as TitikUjungPeta),
             v_rn: Number(r.v_rn), v_sn: Number(r.v_sn), v_tn: Number(r.v_tn), v_min: Number(r.v_min),
             lat: Number(r.lat), lng: Number(r.lng),
             jarak_rekomendasi_m: r.jarak_rekomendasi_m === null ? null : Number(r.jarak_rekomendasi_m),
             gardu_lat: r.gardu_lat === null ? null : Number(r.gardu_lat),
             gardu_lng: r.gardu_lng === null ? null : Number(r.gardu_lng),
-          })),
-        );
+        }));
+        setSemua(bulan === 0 ? terakhirSaja(baris) : baris);
         setGalat(null);
       } catch (e) {
         if (hidup) setGalat(e instanceof Error ? e.message : String(e));

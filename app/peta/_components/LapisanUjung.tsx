@@ -4,6 +4,7 @@ import { memo, useState } from "react";
 import { CircleMarker, Polyline, Popup } from "react-leaflet";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
+import { fotoKecil } from "@/lib/fotoKecil";
 import { nadaUjung, WARNA_NADA, type TitikUjungPeta } from "../_hooks/useUjungPeta";
 
 /**
@@ -12,7 +13,8 @@ import { nadaUjung, WARNA_NADA, type TitikUjungPeta } from "../_hooks/useUjungPe
  * — dengan garis putus-putus dari gardunya, supaya terlihat jurusan mana yang
  * diukur dan seberapa jauh.
  *
- * Hanya elemen kanvas (lingkaran & garis); popup dibuat saat diklik.
+ * Hanya elemen kanvas (lingkaran & garis); popup — termasuk foto mini alat
+ * ukurnya (diperkecil server web kita, bukan Supabase) — dibuat saat diklik.
  */
 const m = (v: number | null) =>
   v === null ? "—" : v >= 1000 ? `${(v / 1000).toFixed(2).replace(".", ",")} km` : `${Math.round(v)} m`;
@@ -62,9 +64,15 @@ function IsiPopup({
       <p className="mt-1">
         Status: <b>{t.status_tampil}</b>
       </p>
+      {t.foto_url && (
+        <a href={t.foto_url} target="_blank" rel="noreferrer" className="block mt-2" title="Buka foto ukuran penuh">
+          {/* eslint-disable-next-line @next/next/no-img-element -- foto Storage di popup Leaflet */}
+          <img src={fotoKecil(t.foto_url, 240)} alt="Foto alat ukur" className="h-28 w-full object-cover rounded" />
+        </a>
+      )}
       <div className="mt-2 flex items-center gap-3">
         <a href={t.foto_url} target="_blank" rel="noreferrer" className="text-blue-600 font-semibold">
-          Foto alat ukur
+          Foto ukuran penuh
         </a>
         {bolehSetujui && t.status_tampil === "Menunggu verifikasi" && (
           <button

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2, PanelLeftOpen } from "lucide-react";
 import type { CurrentUser } from "@/lib/roles";
@@ -92,8 +92,19 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [latar, setLatar] = useLatarPeta(modeSld ? "sld" : "biasa");
   const penanda = usePenandaJtm();
   // Mode SLD tidak menarik tiang sama sekali — SLD punya datanya sendiri.
+  // Gardu titik tegangan ujung ikut digambar lewat lapisan Gardu yang sama —
+  // garis putus-putus lapisan ujung berpangkal di gardunya.
+  const ujung = useLapisanUjung(ulp);
+  const pilihanIsi = useMemo(() => {
+    if (ujung.titik.length === 0) return pilihan;
+    const ada = new Set(pilihan.filter((p) => p.jaringan === "gardu").map((p) => p.kode));
+    const tambahan = [...new Set(ujung.titik.map((t) => t.gardu_kode))]
+      .filter((k) => !ada.has(k))
+      .map((kode) => ({ jaringan: "gardu" as const, kode }));
+    return [...pilihan, ...tambahan];
+  }, [pilihan, ujung.titik]);
   const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } =
-    usePetaIsi(kotak, modeSld ? TANPA : pilihan, modeSld ? false : tampilGardu);
+    usePetaIsi(kotak, modeSld ? TANPA : pilihanIsi, modeSld ? false : tampilGardu);
   const indukLoncat = useIndukLoncat();
   // Gardu & peralatan di tiang yang dipakai beberapa penyulang hanya digambar di
   // lapisan pemiliknya; titik pertemuan & yang belum dipilih di semua (10 Okt 2026).
@@ -195,7 +206,6 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     }
   };
 
-  const ujung = useLapisanUjung(ulp);
   const kesehatan = useLapisanKesehatan(ulp);
   const pohon = useLapisanPohon(ulp, nyala);
   // Dibuka dari WO Perabasan (/peta?pohon=1): semua penyulang pohon menyala
