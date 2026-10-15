@@ -144,9 +144,11 @@ regu langsung, Periksa & putuskan → modal rincian). Semua fungsi lama tetap.
   aturan CSS di luar @layer (`globals.css`). Halaman gelap tidak disentuh;
   sel berwarna berarti = `kepala-tetap`. Ikon kepala kolom belum (per kolom).
 
-**Belum:** tab halaman lain ke `TabPil` di kepala (master-segmen,
-pengukuran-gardu, hargardu, jtm, jtr, optimasi, pemeliharaan, yantek,
-detail-gangguan …), saringan ke topbar, isi halaman lain ke komponen `_kit`
+- **Tab 10 halaman ke kepala** (`TabPil`, commit ac2e97d): JTM, JTR, Hargardu,
+  Pengukuran, Yantek, Detail Gangguan, Master Penyulang/Segmen, Optimasi,
+  Pemeliharaan.
+
+**Belum:** saringan halaman lain ke topbar, ikon kepala kolom per tabel, isi halaman lain ke komponen `_kit`
 (tab ke kepala, saringan ke topbar, tabel), halaman gelap, cari global (U5),
 banner Beranda.
 
