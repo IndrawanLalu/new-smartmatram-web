@@ -198,7 +198,7 @@ export default function DaftarPenyulang({ user }: { user: CurrentUser }) {
       <div className={`${CARD} p-5`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-[720px]">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="text-left text-ink-soft border-b border-line bg-surface">
                 {["Penyulang", "ULP", "Prefiks", "Gardu", "Tiang", "Nama di penyulang ini", "Segmen", ""].map(
                   (h) => (

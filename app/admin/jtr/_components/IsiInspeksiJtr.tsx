@@ -97,7 +97,7 @@ export default function IsiInspeksiJtr({ aktif, banding, galatBanding, oleh, onB
           <p className={EYEBROW}>Panjang jaringan</p>
           <div className="mt-2 rounded-xl border border-line overflow-hidden">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-surface text-left text-ink-soft">
                   <th className="px-3 py-2 font-semibold">Jurusan</th>
                   <th className="px-3 py-2 font-semibold">Kabel</th>

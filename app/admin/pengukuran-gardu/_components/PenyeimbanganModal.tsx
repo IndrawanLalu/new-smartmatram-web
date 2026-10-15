@@ -253,7 +253,7 @@ export default function PenyeimbanganModal(props: Props) {
                 <p className="text-[10px] text-red-600 uppercase font-bold mb-2 tracking-wider">Sebelum</p>
                 <div className="overflow-hidden rounded-lg border border-line">
                   <table className="w-full text-xs">
-                    <thead>
+                    <thead className="kepala-kit">
                       <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
                           <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
@@ -278,7 +278,7 @@ export default function PenyeimbanganModal(props: Props) {
                 <p className="text-[10px] text-green-700 uppercase font-bold mb-2 tracking-wider">Sesudah</p>
                 <div className="overflow-hidden rounded-lg border border-line">
                   <table className="w-full text-xs">
-                    <thead>
+                    <thead className="kepala-kit">
                       <tr className="bg-navy-50">
                         {["", "R", "S", "T", "N"].map((h) => (
                           <th key={h} className="px-2 py-1 text-accent-deep font-semibold text-center">{h}</th>
@@ -342,7 +342,7 @@ export default function PenyeimbanganModal(props: Props) {
 
             <div className="border border-line rounded-xl overflow-x-auto">
               <table className="w-full text-xs whitespace-nowrap">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-navy-50">
                     <th className="text-left px-3 py-2 text-accent-deep font-semibold">Jur.</th>
                     {["Arus R (A)", "Arus S (A)", "Arus T (A)", "Arus N (A)"].map((h) => (
@@ -391,7 +391,7 @@ export default function PenyeimbanganModal(props: Props) {
                   Data Sebelum (Read-only)
                 </p>
                 <table className="w-full text-xs whitespace-nowrap">
-                  <thead>
+                  <thead className="kepala-kit">
                     <tr className="bg-navy-50">
                       <th className="text-left px-3 py-1.5 text-accent-deep">Jur.</th>
                       {["R (A)", "S (A)", "T (A)", "N (A)"].map((h) => (

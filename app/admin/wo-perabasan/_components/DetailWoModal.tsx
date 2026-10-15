@@ -154,7 +154,7 @@ export default function DetailWoModal({ w, bolehUbah, ambilItem, onUbah, onTamba
         ) : (
           <div className="rounded-xl border border-line overflow-hidden">
             <table className="w-full border-collapse text-xs">
-              <thead className="bg-surface">
+              <thead className="kepala-kit bg-surface">
                 <tr>
                   <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Regu</th>
                   <th className="px-3 py-2 text-left font-semibold text-ink-soft border-b border-line">Penyulang</th>

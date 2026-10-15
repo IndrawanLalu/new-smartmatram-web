@@ -25,12 +25,13 @@ export const BTN_GHOST =
 export const BTN_ON_NAVY =
   "inline-flex items-center gap-2 h-9 px-3.5 rounded-xl text-sm font-medium bg-white/12 text-white hover:bg-white/20 disabled:opacity-50 transition-colors";
 
-/** Chip pil — dasar untuk filter & tag. */
+/** Chip pil — dasar untuk filter & tag. Rupa SAMA dengan `_kit/ChipSaring`
+ *  (UI baru 15 Okt 2026): garis abu tegas, terpilih = navy terang brand-600. */
 export const CHIP =
-  "inline-flex items-center gap-1.5 h-8 px-3 rounded-full text-xs font-medium border transition-colors whitespace-nowrap";
+  "inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap";
 
-export const CHIP_OFF = "bg-white border-line text-ink-soft hover:border-navy-300";
-export const CHIP_ON = "bg-navy-600 border-navy-600 text-white";
+export const CHIP_OFF = "bg-white border-slate-300 text-ink-soft hover:border-brand-400 hover:text-brand-700";
+export const CHIP_ON = "bg-brand-600 border-brand-600 text-white";
 
 /** Label bagian kecil huruf besar. */
 export const EYEBROW =

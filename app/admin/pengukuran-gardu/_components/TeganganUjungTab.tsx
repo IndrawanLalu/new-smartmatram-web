@@ -145,7 +145,7 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
           <div className="overflow-x-auto">
             {saring === "tanpa" ? (
               <table className="w-full border-collapse text-sm">
-                <thead className="bg-surface">
+                <thead className="kepala-kit bg-surface">
                   <tr>
                     <th className={TH}>Gardu</th>
                     <th className={TH}>Penyulang</th>
@@ -169,7 +169,7 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
               </table>
             ) : (
               <table className="w-full border-collapse text-sm">
-                <thead className="bg-surface">
+                <thead className="kepala-kit bg-surface">
                   <tr>
                     <th className={`${TH} w-8`}>
                       {bisaSetuju.length > 0 && (

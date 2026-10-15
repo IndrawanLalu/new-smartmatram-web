@@ -291,7 +291,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           <>
             <div className="overflow-x-auto">
               <table className="w-full border-collapse text-sm">
-                <thead className="bg-surface">
+                <thead className="kepala-kit bg-surface">
                   <tr>
                     <th className={`${TH} w-8`}>
                       <input
@@ -466,7 +466,7 @@ function DaftarWoInspeksi({
         <>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
-              <thead className="bg-surface">
+              <thead className="kepala-kit bg-surface">
                 <tr>
                   <th className={TH}>WO</th>
                   <th className={TH}>Bulan</th>

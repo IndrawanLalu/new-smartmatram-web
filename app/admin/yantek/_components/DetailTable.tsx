@@ -29,7 +29,7 @@ export default function DetailTable({ rows }: { rows: YantekRow[] }) {
       </div>
       <div className="overflow-auto max-h-[60vh]">
         <table className="w-full text-xs border-collapse">
-          <thead className="sticky top-0 z-10">
+          <thead className="kepala-kit sticky top-0 z-10">
             <tr>
               <th className="py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line w-8">#</th>
               {cols.map(c => (

@@ -2,10 +2,14 @@
 
 import Link from "next/link";
 import {
-  Activity, ArrowUpDown, ArrowUpRight, CheckSquare, Gauge, HardHat, Loader2, Network, Scale, ScanSearch, Trees, Waypoints, Wrench,
+  Activity, ArrowUpDown, ArrowUpRight, BarChart3, CheckCircle2, CheckSquare, Gauge, HardHat, Hourglass, Info, Layers, Loader2,
+  Network, Scale, ScanSearch, Target, TrendingUp, Trees, Waypoints, Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { CARD, DISPLAY } from "@/app/admin/_ui";
+import { Kolom } from "@/app/admin/_kit/Tabel";
+import { IKON as IKON_UI } from "@/lib/ikonUi";
+import { NADA_UI, type NadaStatus } from "@/lib/statusUi";
 import { capaianSla, capaianWo, type BarisKinerja } from "../_hooks/useKinerjaYantek";
 import { KUNCI_CENTANG } from "../_lib/woSurat";
 
@@ -44,14 +48,19 @@ const IKON: Record<string, LucideIcon> = {
 
 const TANDA: Record<BarisKinerja["keadaan"], { teks: string; cls: string } | null> = {
   lengkap: null,
-  tanpaWo: { teks: "belum ber-WO", cls: "bg-amber-50 text-amber-700 border-amber-200" },
-  belumAda: { teks: "belum ada modulnya", cls: "bg-red-50 text-red-700 border-red-200" },
+  tanpaWo: { teks: "belum ber-WO", cls: NADA_UI.tunggu.pil },
+  belumAda: { teks: "belum ada modulnya", cls: NADA_UI.masalah.pil },
 };
 
-const nadaPersen = (p: number) =>
-  p >= 80 ? { bilah: "bg-emerald-500", teks: "text-emerald-700" } :
-  p >= 50 ? { bilah: "bg-amber-500", teks: "text-amber-700" } :
-            { bilah: "bg-red-500", teks: "text-red-700" };
+/** Ambang capaian -> nada dari peta status bersama; legenda di kepala kartu
+ *  dibaca dari daftar yang sama, jadi warna dan artinya tidak bisa berpisah. */
+const AMBANG: { min: number; nada: NadaStatus; label: string }[] = [
+  { min: 80, nada: "selesai", label: "≥ 80%" },
+  { min: 50, nada: "tunggu", label: "50–79%" },
+  { min: -Infinity, nada: "masalah", label: "< 50%" },
+];
+
+const nadaPersen = (p: number) => NADA_UI[AMBANG.find((a) => p >= a.min)!.nada];
 
 function Capaian({ p }: { p: number | null }) {
   if (p === null) return <span className="text-ink-muted text-xs">—</span>;
@@ -59,7 +68,7 @@ function Capaian({ p }: { p: number | null }) {
   return (
     <div className="flex items-center gap-2 justify-end">
       <div className="w-24 h-1.5 rounded-full bg-surface overflow-hidden">
-        <div className={`h-full rounded-full ${n.bilah}`} style={{ width: `${Math.min(100, p)}%` }} />
+        <div className={`h-full rounded-full ${n.titik}`} style={{ width: `${Math.min(100, p)}%` }} />
       </div>
       <span className={`${DISPLAY} w-11 text-right text-sm font-bold tabular-nums ${n.teks}`}>{p}%</span>
     </div>
@@ -95,7 +104,6 @@ interface Props {
 }
 
 // Garis sel tegas di semua sisi — diminta user: bentuk tabel, bukan daftar.
-const TH = "px-4 py-2.5 text-[11px] font-semibold uppercase tracking-wide text-ink whitespace-nowrap border border-slate-300";
 const TD = "px-4 py-3 align-middle border border-slate-300";
 
 export default function TabelKinerja({ baris, loading, periode, onCentang }: Props) {
@@ -103,35 +111,46 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
 
   return (
     <div className={`${CARD} overflow-hidden`}>
-      <div className="px-5 py-4 flex items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <Activity size={16} className="text-navy-600 shrink-0" />
+      <div className="px-5 py-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="w-10 h-10 rounded-xl bg-brand-50 text-brand-600 grid place-items-center shrink-0">
+            <BarChart3 size={19} strokeWidth={1.75} />
+          </span>
+          <div className="min-w-0">
             <h3 className={`${DISPLAY} text-base font-bold text-ink`}>Rekap Kinerja {periode}</h3>
+            <p className="text-xs text-ink-soft mt-0.5">
+              {baris.length} jenis pekerjaan Pelayanan Teknik · {belum} di antaranya belum ber-WO
+            </p>
           </div>
-          <p className="text-xs text-ink-soft mt-0.5">
-            {baris.length} jenis pekerjaan Pelayanan Teknik · {belum} di antaranya belum ber-WO
-          </p>
+          {loading && (
+            <span className="flex items-center gap-1.5 text-xs text-ink-soft">
+              <Loader2 size={14} className="animate-spin" /> memuat…
+            </span>
+          )}
         </div>
-        {loading && (
-          <div className="flex items-center gap-2 text-xs text-ink-soft">
-            <Loader2 size={14} className="animate-spin" /> memuat…
-          </div>
-        )}
+        <div className="flex items-center gap-4 text-[11.5px] text-ink-soft" aria-label="Arti warna capaian">
+          <span className="font-semibold">Capaian</span>
+          {AMBANG.map((a) => (
+            <span key={a.nada} className="inline-flex items-center gap-1.5">
+              <span className={`w-2 h-2 rounded-full ${NADA_UI[a.nada].titik}`} />
+              {a.label}
+            </span>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
         <table className="w-full border-collapse min-w-[1180px] [&_tr>*:first-child]:border-l-0 [&_tr>*:last-child]:border-r-0">
-          <thead className="bg-slate-100">
+          <thead>
             <tr>
-              <th className={`${TH} text-left min-w-[250px]`}>Jenis pekerjaan</th>
-              <th className={`${TH} text-right`}>WO terbit</th>
-              <th className={`${TH} text-right`}>SLA</th>
-              <th className={`${TH} text-right`}>Realisasi</th>
-              <th className={`${TH} text-right`}>Belum disetujui</th>
-              <th className={`${TH} text-right min-w-[170px]`}>Capaian WO</th>
-              <th className={`${TH} text-right min-w-[170px]`}>Capaian SLA</th>
-              <th className={`${TH} text-left min-w-[280px]`}>Keterangan</th>
+              <Kolom bergaris ikon={Layers} lebar="min-w-[250px]">Jenis pekerjaan</Kolom>
+              <Kolom bergaris kanan ikon={IKON_UI.wo}>WO terbit</Kolom>
+              <Kolom bergaris kanan ikon={Target}>SLA</Kolom>
+              <Kolom bergaris kanan ikon={CheckCircle2}>Realisasi</Kolom>
+              <Kolom bergaris kanan ikon={Hourglass}>Belum disetujui</Kolom>
+              <Kolom bergaris kanan ikon={TrendingUp} lebar="min-w-[170px]">Capaian WO</Kolom>
+              <Kolom bergaris kanan ikon={Gauge} lebar="min-w-[170px]">Capaian SLA</Kolom>
+              <Kolom bergaris ikon={Info} lebar="min-w-[280px]">Keterangan</Kolom>
             </tr>
           </thead>
           <tbody>
@@ -140,12 +159,12 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
               const mati = b.keadaan === "belumAda";
               const Ikon = IKON[b.kunci] ?? Activity;
               return (
-                <tr key={b.kunci} className={`transition-colors ${mati ? "bg-surface/50" : "hover:bg-navy-50/40"}`}>
+                <tr key={b.kunci} className={`transition-colors ${mati ? "bg-surface/50" : "hover:bg-brand-50/40"}`}>
                   <td className={TD}>
                     <div className="flex items-center gap-3">
                       <span
                         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                          mati ? "bg-surface text-ink-muted" : "bg-navy-50 text-navy-600"
+                          mati ? "bg-surface text-ink-muted" : "bg-brand-50 text-brand-600"
                         }`}
                       >
                         <Ikon size={17} />
@@ -154,10 +173,10 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                         {b.href ? (
                           <Link
                             href={b.href}
-                            className="group inline-flex items-center gap-1 text-sm font-semibold text-ink hover:text-navy-600"
+                            className="group inline-flex items-center gap-1 text-sm font-semibold text-ink hover:text-brand-600"
                           >
                             {b.jenis}
-                            <ArrowUpRight size={13} className="text-ink-muted group-hover:text-navy-600" />
+                            <ArrowUpRight size={13} className="text-ink-muted group-hover:text-brand-600" />
                           </Link>
                         ) : (
                           <span className="text-sm font-semibold text-ink-muted">{b.jenis}</span>
@@ -175,7 +194,7 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                           {onCentang && KUNCI_CENTANG.includes(b.kunci) && (
                             <button
                               onClick={() => onCentang(b.kunci)}
-                              className="inline-flex items-center gap-1 px-1.5 py-px rounded-full border border-navy-200 bg-navy-50 text-[10px] font-semibold text-navy-700 hover:bg-navy-100"
+                              className="inline-flex items-center gap-1 px-1.5 py-px rounded-full border border-brand-200 bg-brand-50 text-[10px] font-semibold text-brand-700 hover:bg-brand-100"
                             >
                               <CheckSquare size={10} /> centang realisasi
                             </button>

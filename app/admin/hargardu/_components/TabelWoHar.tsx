@@ -117,7 +117,7 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
         <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-sm">
-              <thead className="bg-surface">
+              <thead className="kepala-kit bg-surface">
                 <tr>
                   {bolehKelola && (
                     <th className={`${TH} w-8`}>

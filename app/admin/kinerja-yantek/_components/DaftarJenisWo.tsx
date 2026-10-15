@@ -24,7 +24,7 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
   return (
     <div className="rounded-xl border border-line overflow-x-auto">
       <table className="w-full border-collapse text-sm min-w-[620px]">
-        <thead className="bg-slate-100">
+        <thead className="kepala-kit bg-slate-100">
           <tr>
             <th className={`${TH} text-left w-8`}>No</th>
             <th className={`${TH} text-left`}>Work Order</th>

@@ -26,7 +26,7 @@ export default function RincianHarianModal({ k, ulp, tgl, onTutup }: Props) {
     <ModalShell title={ulp ? `${k.meta.jenis} · ${ulp}` : k.meta.jenis} subtitle={`${tanggalPanjang(tgl)} · ${ringkasan(k).utama}`} maxWidth="max-w-4xl" onClose={onTutup}>
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={TH}>Jam</th>
               {semuaUlp && <th className={TH}>ULP</th>}

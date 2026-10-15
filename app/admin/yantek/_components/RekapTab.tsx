@@ -81,7 +81,7 @@ export default function RekapTab({ stats, grandTotal }: RekapTabProps) {
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
-          <thead className="sticky top-0 z-10">
+          <thead className="kepala-kit sticky top-0 z-10">
             <tr>
               <th className="py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line w-8">#</th>
               <Th label="Nama Petugas" k="petugas" {...{ sortKey, sortDir, onSort: handleSort }} />

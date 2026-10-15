@@ -80,7 +80,7 @@ export default function PapanPeringkat({ papan, onPilih }: PapanPeringkatProps) 
 
       <div className="overflow-x-auto">
         <table className="w-full text-xs border-collapse">
-          <thead>
+          <thead className="kepala-kit">
             <tr>
               <th className="py-2.5 px-3 w-10 bg-navy-50 text-navy-600 font-semibold border-b border-line text-center">
                 #

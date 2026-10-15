@@ -256,7 +256,7 @@ export default function DashboardTab({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
-              <thead>
+              <thead className="kepala-kit">
                 <tr>
                   {["Periode", "Laporan", "Dikoreksi", "RPT Asli", "RPT Koreksi", "Δ RPT",
                     "RCT Asli", "RCT Koreksi", "Δ RCT"].map((h, i) => (

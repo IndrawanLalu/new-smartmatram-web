@@ -110,7 +110,7 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
         ) : (
           <div className="overflow-auto max-h-[55vh]">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 z-10">
+              <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
                   {["#", "No Laporan", "RPT Asli", "RPT Koreksi", "RCT Asli", "RCT Koreksi", "Korektor", "Tgl Koreksi"].map((h) => (
                     <th key={h} className={TH}>{h}</th>

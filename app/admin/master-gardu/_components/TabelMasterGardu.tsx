@@ -570,7 +570,7 @@ export default function DataGarduTab({ user, ulp, settings, awal }: Props) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className={`${TH} text-left`}>No. Gardu</th>
                     <th className={`${TH} text-left`}>Penyulang</th>

@@ -133,7 +133,7 @@ export default function WaSettingsPage() {
               <h2 className="font-semibold text-[#004D40]">{CATEGORY_LABELS[cat] ?? cat}</h2>
             </div>
             <table className="w-full text-sm">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
                   <th className="px-4 py-2 text-left w-48">Nama</th>
                   <th className="px-4 py-2 text-left">Group ID</th>

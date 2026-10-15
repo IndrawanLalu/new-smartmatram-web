@@ -1,9 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, FileText, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
+import { CalendarDays, FileText, MapPin, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
+import { PilihField } from "@/app/admin/_kit/Field";
+import Tombol from "@/app/admin/_kit/Tombol";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
 import AturSlaModal from "./_components/AturSlaModal";
@@ -18,7 +22,8 @@ import RealisasiHarian from "./_components/RealisasiHarian";
  * Pelayanan Teknik, berapa yang diterbitkan, berapa yang jadi, dan berapa yang
  * masih menunggu persetujuan.
  *
- * Sengaja TIDAK memakai kartu KPI besar di atas tabel. Angka besar di puncak
+ * Sengaja TIDAK memakai kartu KPI besar di atas tabel (ditegaskan lagi user
+ * 15 Okt 2026 saat UI baru — kartu mockup tidak dipasang). Angka besar di puncak
  * layar menuntut satu angka tunggal yang mewakili semuanya — dan di sini tidak
  * ada: satuannya berbeda-beda, dan separuh barisnya belum punya WO sama sekali.
  * Angka tunggal yang menutupi kenyataan itu akan dikutip di rapat, lalu
@@ -30,10 +35,12 @@ import RealisasiHarian from "./_components/RealisasiHarian";
  * ULP" di Per hari tampil berkolom per ULP.
  */
 
-const TABS = [
-  { key: "bulanan", label: "Rekap Bulanan", icon: Table2 },
-  { key: "harian", label: "Realisasi Harian", icon: CalendarDays },
-] as const;
+type Tab = "bulanan" | "harian";
+
+const TABS: ItemTab<Tab>[] = [
+  { kunci: "bulanan", label: "Rekap Bulanan", ikon: Table2 },
+  { kunci: "harian", label: "Realisasi Harian", ikon: CalendarDays },
+];
 
 export default function KinerjaYantekPage() {
   const user = useCurrentUser();
@@ -48,20 +55,15 @@ export default function KinerjaYantekPage() {
   const [aturSla, setAturSla] = useState(false);
   const [cetakWo, setCetakWo] = useState(false);
   const [centang, setCentang] = useState<string | null>(null);
-  const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("bulanan");
+  const [tab, setTab] = useState<Tab>("bulanan");
   const bulanIni = new Date().getMonth() + 1;
   const periodeCentang = `${tahun}-${String(bulan || bulanIni).padStart(2, "0")}`;
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "harian" ? (
         <RealisasiHarian
@@ -72,62 +74,39 @@ export default function KinerjaYantekPage() {
         />
       ) : (
       <>
-      <div className="flex flex-wrap items-center gap-2">
-        <select
-          value={tahun}
-          onChange={(e) => setTahun(Number(e.target.value))}
-          className={`${FIELD} w-[110px]`}
-          aria-label="Tahun"
+      <IsiTopbar>
+        <PilihField
+          ikon={CalendarDays}
+          label="Periode"
+          lebar="w-[175px]"
+          nilai={`${tahun}-${bulan}`}
+          onUbah={(v) => {
+            const [t, b] = v.split("-").map(Number);
+            if (t !== tahun) setTahun(t);
+            if (b !== bulan) setBulan(b);
+          }}
         >
           {daftarTahun.map((t) => (
-            <option key={t} value={t}>{t}</option>
+            <optgroup key={t} label={String(t)}>
+              {BULAN.map((b, i) => <option key={b} value={`${t}-${i + 1}`}>{b} {t}</option>)}
+              <option value={`${t}-0`}>Seluruh tahun {t}</option>
+            </optgroup>
           ))}
-        </select>
-
-        {/* Bulan sebelum ULP: yang paling sering diganti ditaruh paling dekat
-            dengan tahun, dan ULP jarang berubah dalam satu sesi. */}
-        <select
-          value={bulan}
-          onChange={(e) => setBulan(Number(e.target.value))}
-          className={`${FIELD} w-[150px]`}
-          aria-label="Bulan"
-        >
-          <option value={0}>Seluruh tahun</option>
-          {BULAN.map((b, i) => (
-            <option key={b} value={i + 1}>{b}</option>
-          ))}
-        </select>
-
-        <select
-          value={ulp}
-          onChange={(e) => setUlp(e.target.value)}
-          className={`${FIELD} w-[170px]`}
-          disabled={daftarUlp.length <= 1}
-          aria-label="ULP"
-        >
-          {daftarUlp.map((u) => (
-            <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>
-          ))}
-        </select>
-
-        <button onClick={muatUlang} className={BTN_GHOST} disabled={loading}>
-          <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
+        </PilihField>
+        <PilihField ikon={MapPin} label="ULP" lebar="w-[155px]" nilai={ulp} onUbah={setUlp} disabled={daftarUlp.length <= 1}>
+          {daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
+        </PilihField>
+        <Tombol onClick={muatUlang} disabled={loading} ikon={<RefreshCw size={15} className={loading ? "animate-spin" : ""} />}>
           Muat ulang
-        </button>
+        </Tombol>
+      </IsiTopbar>
 
-        {bolehSla && (
-          <>
-            <button onClick={() => setCetakWo(true)} className={`${BTN_GHOST} ml-auto`}>
-              <FileText size={14} />
-              Cetak / Kirim WO
-            </button>
-            <button onClick={() => setAturSla(true)} className={BTN_GHOST}>
-              <Target size={14} />
-              Atur SLA
-            </button>
-          </>
-        )}
-      </div>
+      {bolehSla && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <Tombol onClick={() => setCetakWo(true)} ikon={<FileText size={15} />}>Cetak / Kirim WO</Tombol>
+          <Tombol onClick={() => setAturSla(true)} ikon={<Target size={15} />}>Atur SLA</Tombol>
+        </div>
+      )}
 
       {adaGagal && !loading && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">

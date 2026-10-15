@@ -187,7 +187,7 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface text-left text-ink-soft">
                     {canManage && (
                       <th className="px-3 py-2.5 w-10">

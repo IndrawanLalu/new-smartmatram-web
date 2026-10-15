@@ -55,7 +55,7 @@ export default function RoleManager() {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="bg-[#E0F2F1] text-[#00695C] text-xs uppercase tracking-wide">
                 <th className="px-5 py-2.5 text-left font-semibold">Role</th>
                 <th className="px-4 py-2.5 text-left font-semibold">Platform</th>

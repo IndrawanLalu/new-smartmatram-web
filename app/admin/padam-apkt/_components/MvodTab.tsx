@@ -262,7 +262,7 @@ export default function MvodTab({
                 </p>
               </div>
               <table className="w-full text-sm">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-[#E0F2F1] text-[#00695C]">
                     <th className="px-5 py-2.5 text-left text-xs font-semibold">ULP</th>
                     <th className="px-4 py-2.5 text-center text-xs font-semibold">Kali Padam</th>

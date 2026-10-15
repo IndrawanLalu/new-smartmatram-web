@@ -180,7 +180,7 @@ export default function SlaTab({
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-xs border-collapse">
-              <thead>
+              <thead className="kepala-kit">
                 <tr>
                   {["#", "Nama Petugas", "Total WO", "WO/Hari", "Lewat Response", "Lewat Recovery", "Median Resp", "Median Reco", ""].map((h, i) => (
                     <th

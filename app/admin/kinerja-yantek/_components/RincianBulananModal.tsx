@@ -27,7 +27,7 @@ export default function RincianBulananModal({ meta, ulp, periode, sel, onTutup }
     <ModalShell title={meta.jenis} subtitle={subjudul} maxWidth="max-w-2xl" onClose={onTutup}>
       <div className="overflow-x-auto rounded-xl border border-line">
         <table className="w-full border-collapse">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={TH}>Tanggal</th>
               <th className={`${TH} text-right`}>Realisasi</th>

@@ -113,12 +113,12 @@ export default function LowRatingTab({ rows }: { rows: YantekRow[] }) {
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-xs border-collapse">
-            <thead>
+            <thead className="kepala-kit">
               <tr>
                 <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line w-8">#</th>
                 <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line">Nama Petugas</th>
-                <th className="py-2 px-3 text-center bg-red-50 text-red-600 font-semibold border-b border-line">★1</th>
-                <th className="py-2 px-3 text-center bg-orange-50 text-orange-500 font-semibold border-b border-line">★2</th>
+                <th className="kepala-tetap py-2 px-3 text-center bg-red-50 text-red-600 font-semibold border-b border-line">★1</th>
+                <th className="kepala-tetap py-2 px-3 text-center bg-orange-50 text-orange-500 font-semibold border-b border-line">★2</th>
                 <th className="py-2 px-3 text-center bg-navy-50 text-navy-600 font-semibold border-b border-line">Total</th>
               </tr>
             </thead>
@@ -159,10 +159,10 @@ export default function LowRatingTab({ rows }: { rows: YantekRow[] }) {
         </div>
         <div className="overflow-auto max-h-[55vh]">
           <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 z-10">
+            <thead className="kepala-kit sticky top-0 z-10">
               <tr>
                 <th className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line w-8">#</th>
-                <th className="py-2 px-3 text-center bg-red-50 text-red-600 font-semibold border-b border-line">Rating</th>
+                <th className="kepala-tetap py-2 px-3 text-center bg-red-50 text-red-600 font-semibold border-b border-line">Rating</th>
                 {LOW_COLS.map(c => (
                   <th key={c} className="py-2 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line whitespace-nowrap">
                     {LOW_COL_LABEL[c]}

@@ -39,9 +39,11 @@ interface KolomProps {
   lebar?: string;
   /** Kolom yang bisa diurutkan — dari `useUrutan().kolom(k)`. */
   urut?: { arah: Arah | null; onKlik: () => void };
+  /** Garis tegas di semua sisi — untuk tabel rekap berbentuk kisi. */
+  bergaris?: boolean;
 }
 
-export function Kolom({ ikon: Ikon, children, kanan, lebar, urut }: KolomProps) {
+export function Kolom({ ikon: Ikon, children, kanan, lebar, urut, bergaris }: KolomProps) {
   const isi = (
     <span className={`inline-flex items-center gap-1.5 ${kanan ? "flex-row-reverse" : ""}`}>
       {Ikon && <Ikon size={14} strokeWidth={IKON_STROKE} className="text-ink-muted" />}
@@ -58,7 +60,9 @@ export function Kolom({ ikon: Ikon, children, kanan, lebar, urut }: KolomProps) 
   );
   return (
     <th
-      className={`sticky top-0 z-10 px-3 py-3 border-b border-line bg-brand-50 text-[11.5px] font-semibold whitespace-nowrap ${
+      className={`sticky top-0 z-10 px-3 py-3 bg-brand-50 text-[11.5px] font-semibold whitespace-nowrap ${
+        bergaris ? "border border-slate-300" : "border-b border-line"
+      } ${
         kanan ? "text-right" : "text-left"
       } ${urut?.arah ? "text-brand-700" : "text-ink-soft"} ${lebar ?? ""}`}
       aria-sort={urut?.arah === "naik" ? "ascending" : urut?.arah === "turun" ? "descending" : undefined}

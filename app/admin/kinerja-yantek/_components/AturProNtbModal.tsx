@@ -72,7 +72,7 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
       footer={footer}
     >
       <table className="w-full border-collapse text-sm">
-        <thead>
+        <thead className="kepala-kit">
           <tr>
             <th className={TH}>Rekap Kinerja</th>
             <th className={TH}>JENIS PEKERJAAN di spreadsheet</th>

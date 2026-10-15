@@ -39,7 +39,7 @@ export default function TabelProNtb({ baris, timDari, onTim }: Props) {
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               {TAMPIL.map(({ k }) => <th key={k} className={TH}>{k}</th>)}
               <th className={TH}>Status</th>

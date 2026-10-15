@@ -73,7 +73,7 @@ export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={TH}>Tanggal</th>
               <th className={TH}>Penyulang</th>

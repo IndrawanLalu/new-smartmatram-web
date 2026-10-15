@@ -213,7 +213,7 @@ export default function TempelWoModal({ ulp, tahun, bulan, kunci, oleh, onTutup,
           </div>
           <div className="rounded-xl border border-line overflow-auto max-h-[40vh]">
             <table className="w-full text-xs">
-              <thead className="bg-slate-100 sticky top-0">
+              <thead className="kepala-kit bg-slate-100 sticky top-0">
                 <tr className="text-left">
                   {kolom.map((k) => <th key={k.isi} className="px-2 py-1.5 font-semibold">{k.label}</th>)}
                 </tr>

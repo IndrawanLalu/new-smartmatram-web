@@ -132,7 +132,21 @@ status bertitik + Download, `TabelRabas` baru (kepala berikon & menempel,
 urut, WO+tgl & regu+petugas digabung, umur tunggakan, menu ⋯: Tugaskan/Ganti
 regu langsung, Periksa & putuskan → modal rincian). Semua fungsi lama tetap.
 
-**Belum:** Rekap Kinerja (mockup 2), isi halaman lain ke komponen `_kit`
+**15 Okt 2026 (commit 329747f = kerangka + pilot Perabasan):**
+- **Rekap Kinerja**: tab di kepala, Periode · ULP · Muat ulang di topbar,
+  kepala tabel `Kolom bergaris` berikon, legenda capaian dari `AMBANG` →
+  `NADA_UI`. **Kartu KPI mockup DITOLAK user** (tetap tanpa kartu — angka
+  lintas satuan tidak bermakna).
+- **Chip seluruh halaman**: `CHIP/CHIP_ON/CHIP_OFF` di `_ui.ts` = rupa
+  `ChipSaring` (31 berkas ikut), + chip buatan sendiri di Master Gardu &
+  Pengukuran Gardu.
+- **Kepala tabel 66 berkas terang**: kelas `kepala-kit` di `<thead>` + satu
+  aturan CSS di luar @layer (`globals.css`). Halaman gelap tidak disentuh;
+  sel berwarna berarti = `kepala-tetap`. Ikon kepala kolom belum (per kolom).
+
+**Belum:** tab halaman lain ke `TabPil` di kepala (master-segmen,
+pengukuran-gardu, hargardu, jtm, jtr, optimasi, pemeliharaan, yantek,
+detail-gangguan …), saringan ke topbar, isi halaman lain ke komponen `_kit`
 (tab ke kepala, saringan ke topbar, tabel), halaman gelap, cari global (U5),
 banner Beranda.
 

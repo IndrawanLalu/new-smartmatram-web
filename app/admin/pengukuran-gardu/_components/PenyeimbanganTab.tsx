@@ -407,7 +407,7 @@ export default function PenyeimbanganTab({
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No. Gardu</th>
@@ -542,7 +542,7 @@ export default function PenyeimbanganTab({
           ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm whitespace-nowrap">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-navy-50">
                   <th className="pl-4 py-2.5 w-6">
                     <input
@@ -750,7 +750,7 @@ export default function PenyeimbanganTab({
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm whitespace-nowrap">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">No</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Tgl Seimbang</th>
@@ -758,8 +758,8 @@ export default function PenyeimbanganTab({
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Alamat</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Penyulang</th>
                     <th className="px-3 py-2.5 text-center text-xs font-semibold text-accent-deep">KVA</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-red-600" colSpan={2}>Sebelum</th>
-                    <th className="px-3 py-2.5 text-center text-xs font-semibold text-green-700" colSpan={2}>Sesudah</th>
+                    <th className="kepala-tetap px-3 py-2.5 text-center text-xs font-semibold text-red-600" colSpan={2}>Sebelum</th>
+                    <th className="kepala-tetap px-3 py-2.5 text-center text-xs font-semibold text-green-700" colSpan={2}>Sesudah</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Jenis</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Petugas</th>
                     <th className="px-3 py-2.5 text-left text-xs font-semibold text-accent-deep">Catatan</th>

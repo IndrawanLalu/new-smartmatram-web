@@ -217,7 +217,7 @@ export default function HasilInspeksi({ user }: { user: CurrentUser }) {
 
           <div className="overflow-x-auto">
             <table className="w-full text-sm whitespace-nowrap">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="text-left text-ink-soft border-b border-line bg-surface">
                   {["Tanggal","Tiang","Gardu","Penyulang","Jur","Jenis","Tinggi","Kondisi","Kabel","Aksesoris","Jamperan","Andongan","SR","Arde","Stay","Rawan ROW","TM","Catatan","Petugas",""].map((h) => (
                     <th key={h} className="px-3 py-2.5 font-semibold">{h}</th>

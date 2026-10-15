@@ -182,7 +182,7 @@ export default function ImporSegmen({
 
         <div className="mt-3 overflow-x-auto">
           <table className="text-xs border border-line rounded-lg">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="bg-surface text-ink-soft">
                 <th className="px-3 py-1.5 text-left font-semibold border-b border-line">Titik awal</th>
                 <th className="px-3 py-1.5 text-left font-semibold border-b border-line">Titik akhir</th>

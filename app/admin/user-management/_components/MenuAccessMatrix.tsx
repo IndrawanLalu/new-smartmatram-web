@@ -94,7 +94,7 @@ export default function MenuAccessMatrix() {
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-separate border-spacing-0">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="text-[#00695C]">
                 <th className="sticky left-0 z-20 bg-[#E0F2F1] px-5 py-2.5 text-left text-xs font-semibold uppercase tracking-wide border-b border-[#CBE4E1] shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]">
                   Role

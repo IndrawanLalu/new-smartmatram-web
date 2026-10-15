@@ -32,7 +32,7 @@ export default function MatriksUlp({ meta, ulps, kolomTotal, sel, berisi, sorot,
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-[15px]">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={`${TH} text-left`}>Jenis pekerjaan</th>
               {kolom.map((u) => (

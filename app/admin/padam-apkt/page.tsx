@@ -788,7 +788,7 @@ function RekapTab({ stats, total }: RekapTabProps) {
       {/* Table */}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
               <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>ULP</th>
               <th className="px-4 py-3 text-left"   rowSpan={adaKoreksiData ? 2 : 1}>Penyulang</th>
@@ -939,7 +939,7 @@ function DetailTab({ rows, jurnalMap, search, onSearch, page, totalPages, totalR
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
               <th className="px-4 py-3 text-left whitespace-nowrap">No Laporan</th>
               <th className="px-3 py-3 text-left whitespace-nowrap">Tgl Padam</th>
@@ -1077,7 +1077,7 @@ function JDobelTab({ groups }: JDobelTabProps) {
 
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
-          <thead>
+          <thead className="kepala-kit">
             <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs">
               <th className="px-4 py-3 text-left whitespace-nowrap">No Laporan</th>
               <th className="px-4 py-3 text-left">ULP</th>

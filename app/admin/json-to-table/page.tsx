@@ -259,7 +259,7 @@ export default function JsonToTablePage() {
           {/* Table */}
           <div className="overflow-auto max-h-[62vh]">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 z-10">
+              <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
                   <th className="py-2.5 px-3 text-left text-[#94a3b8] font-semibold bg-[#E0F2F1] border-b border-[#E2E8F0] w-10 select-none">
                     #

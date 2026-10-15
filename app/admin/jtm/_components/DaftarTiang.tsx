@@ -297,7 +297,7 @@ export default function DaftarTiang({ user }: { user: CurrentUser }) {
       <div className={`${CARD} overflow-hidden`}>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="bg-surface text-ink-soft">
                 <th className="text-left font-semibold px-4 py-2.5">Kode</th>
                 <th className="text-left font-semibold px-3 py-2.5">Penyulang</th>

@@ -422,7 +422,7 @@ export default function EditPengukuranModal({ row, onClose, onSaved }: Props) {
             </div>
             <div className="border border-line rounded-xl overflow-x-auto">
               <table className="w-full text-xs whitespace-nowrap">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-navy-50">
                     <th className="text-left px-3 py-2 text-accent-deep font-semibold">Jur.</th>
                     {JURUSAN_FIELDS.map(({ label }) => (

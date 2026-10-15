@@ -67,7 +67,7 @@ export default function PengaturanAlasan({ alasan, onSimpan }: Props) {
 
       <div className={`${CARD} overflow-hidden`}>
         <table className="w-full border-collapse">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className="px-4 py-2 text-left text-[11px] font-semibold text-ink-soft border-b border-line">Nama yang tampil di HP</th>
               <th className="px-4 py-2 text-left text-[11px] font-semibold text-ink-soft border-b border-line w-[150px]">Kode</th>

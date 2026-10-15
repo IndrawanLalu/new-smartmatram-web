@@ -146,7 +146,7 @@ export default function InspeksiJaringanTab({ user, filterUlp }: Props) {
 
         <div className="overflow-auto max-h-[calc(100vh-var(--topbar-h)-30rem)] min-h-[16rem]">
           <table className="w-full text-sm">
-            <thead className="sticky top-0 z-10">
+            <thead className="kepala-kit sticky top-0 z-10">
               <tr className="bg-navy-50">
                 <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold whitespace-nowrap">Tgl Inspeksi</th>
                 {showUlpFilter && <th className="text-left px-4 py-3 text-[11px] uppercase tracking-wide text-navy-600 font-semibold">ULP</th>}

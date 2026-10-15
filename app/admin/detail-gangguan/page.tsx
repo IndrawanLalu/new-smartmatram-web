@@ -606,7 +606,7 @@ export default function DetailGangguanPage() {
 
           <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs border-collapse">
-              <thead className="sticky top-0 z-10">
+              <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
                   <th className={`${TH} w-8`}>#</th>
                   <th className={`${TH} whitespace-nowrap`}>Kategori</th>

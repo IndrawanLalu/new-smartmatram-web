@@ -644,12 +644,12 @@ export default function PengukuranGarduPage() {
                   <button
                     key={k}
                     onClick={() => { setAmgSaring(k); setShowTable(true); }}
-                    className={`inline-flex items-center gap-1.5 h-8 px-2.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap ${
+                    className={`inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap ${
                       aktif
-                        ? "bg-navy-600 border-navy-600 text-white"
+                        ? "bg-brand-600 border-brand-600 text-white"
                         : sorot
                           ? "bg-red-50 border-red-200 text-red-700 hover:border-red-300"
-                          : "bg-white border-line text-ink-soft hover:border-navy-300"
+                          : "bg-white border-slate-300 text-ink-soft hover:border-brand-400 hover:text-brand-700"
                     }`}
                   >
                     {k === "semua" ? "Semua" : LABEL_AMG[k]}
@@ -721,7 +721,7 @@ export default function PengukuranGarduPage() {
           {/* Table */}
           {showTable && <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-navy-50">
                   <th className="px-3 py-3 w-8" onClick={toggleSelectAll}>
                     <div className="flex items-center justify-center cursor-pointer text-accent-deep">

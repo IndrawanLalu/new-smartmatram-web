@@ -100,7 +100,7 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
     <div className="bg-white rounded-2xl border border-line shadow-card overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1100px]">
-          <thead className="bg-accent-tint">
+          <thead className="kepala-kit bg-accent-tint">
             <tr>
               {onPilih && (
                 <th className={`${TH} w-8`}>

@@ -305,7 +305,7 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
             <p className={EYEBROW}>Pengukuran siang</p>
             <div className="mt-2 rounded-xl border border-line overflow-hidden">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface text-left text-ink-soft">
                     <th className="px-3 py-2 font-semibold">Tahap</th>
                     <th className="px-3 py-2 font-semibold text-right">R</th>
@@ -547,7 +547,7 @@ function TabelJurusan({
   return (
     <div className="mt-3 rounded-lg border border-line overflow-hidden">
       <table className="w-full text-sm">
-        <thead>
+        <thead className="kepala-kit">
           <tr className="bg-surface text-left text-ink-soft">
             <th className="px-3 py-1.5 font-semibold">Jurusan</th>
             <th className="px-3 py-1.5 font-semibold text-right">Beban R</th>

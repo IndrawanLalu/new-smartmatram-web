@@ -165,7 +165,7 @@ export default function DaftarSegmen({
         <p className={EYEBROW}>Paling lama tidak diinspeksi, di atas</p>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm min-w-[860px]">
-            <thead>
+            <thead className="kepala-kit">
               <tr className="text-left text-ink-soft border-b border-line bg-surface">
                 {["Penyulang", "Segmen", "Sumber", "Panjang", "Tiang", "Terakhir diinspeksi", ""].map(
                   (h) => (

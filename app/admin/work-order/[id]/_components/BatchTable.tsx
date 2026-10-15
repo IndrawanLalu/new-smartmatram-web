@@ -113,7 +113,7 @@ export default function BatchTable({
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-auto max-h-[calc(100vh-var(--topbar-h)-24rem)] min-h-[18rem]">
         <table className="w-full text-[13px] border-collapse">
-          <thead className="sticky top-0 z-20">
+          <thead className="kepala-kit sticky top-0 z-20">
             <tr className="bg-navy-50 text-navy-600 text-[11px] uppercase tracking-wide">
               <th className={`${TH_STICKY} left-0 w-10`}>
                 <input

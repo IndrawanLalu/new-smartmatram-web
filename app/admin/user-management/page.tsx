@@ -161,7 +161,7 @@ export default function UserManagementPage() {
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-[#E0F2F1] text-[#00695C] font-semibold text-xs uppercase tracking-wide">
                   <th className="px-4 py-3 text-left">Nama</th>
                   <th className="px-4 py-3 text-left">Email</th>

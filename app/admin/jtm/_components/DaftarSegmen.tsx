@@ -170,7 +170,7 @@ export default function DaftarSegmen({ user }: { user: CurrentUser }) {
         <div className={`${CARD} overflow-hidden`}>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
+              <thead className="kepala-kit">
                 <tr className="bg-surface text-left text-ink-soft">
                   <th className="px-4 py-2.5 font-semibold">Segmen</th>
                   <th className="px-3 py-2.5 font-semibold">Penyulang</th>

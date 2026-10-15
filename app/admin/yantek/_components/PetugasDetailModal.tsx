@@ -165,7 +165,7 @@ export default function PetugasDetailModal({
 
         <div className="overflow-auto max-h-[55vh] rounded-xl border border-line">
           <table className="w-full text-xs border-collapse">
-            <thead className="sticky top-0 z-10">
+            <thead className="kepala-kit sticky top-0 z-10">
               <tr>
                 {[
                   ["#", "text-right w-10"],

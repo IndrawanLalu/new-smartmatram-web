@@ -8,9 +8,9 @@ import {
 } from "../_lib/kondisiGardu";
 
 const PILL =
-  "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium border transition-colors whitespace-nowrap";
-const PILL_OFF = "bg-white border-line text-ink-soft hover:border-navy-300";
-const PILL_ON = "bg-navy-600 border-navy-600 text-white";
+  "inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-semibold border transition-colors whitespace-nowrap";
+const PILL_OFF = "bg-white border-slate-300 text-ink-soft hover:border-brand-400 hover:text-brand-700";
+const PILL_ON = "bg-brand-600 border-brand-600 text-white";
 
 interface Props {
   saringan: SaringanKondisi;

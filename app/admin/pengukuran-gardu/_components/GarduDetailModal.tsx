@@ -666,7 +666,7 @@ export default function GarduDetailModal({
             ) : (
               <div className="border border-line rounded-xl overflow-hidden">
                 <table className="w-full text-sm">
-                  <thead>
+                  <thead className="kepala-kit">
                     <tr className="bg-navy-50">
                       <th className="text-left px-4 py-2.5 text-xs text-accent-deep font-semibold">
                         Jurusan
@@ -1045,7 +1045,7 @@ export default function GarduDetailModal({
                         {hJurusanKeys.length > 0 && (
                           <div className="overflow-x-auto">
                             <table className="w-full text-xs whitespace-nowrap">
-                              <thead>
+                              <thead className="kepala-kit">
                                 <tr className="bg-gray-50 border-b border-line">
                                   <th className="text-left px-3 py-1.5 text-ink-soft font-semibold">
                                     Jurusan

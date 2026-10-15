@@ -152,7 +152,7 @@ export default function PersetujuanUkurTab({
           <div className={`${CARD} p-5`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[760px]">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="text-left text-ink-soft border-b border-line bg-surface">
                     {["Gardu", "Penyulang", "Tanggal", "% Beban", "Suhu", "Sebab"].map((h) => (
                       <th key={h} className="px-3 py-2.5 font-semibold">

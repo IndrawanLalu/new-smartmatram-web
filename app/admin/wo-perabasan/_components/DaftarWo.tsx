@@ -61,7 +61,7 @@ export default function DaftarWo({
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={`${TH} text-left`}>Nama WO</th>
               <th className={`${TH} text-left`}>Tgl WO</th>

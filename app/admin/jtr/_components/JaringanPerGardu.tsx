@@ -102,7 +102,7 @@ export default function JaringanPerGardu({ ulp, cari }: { ulp: string; cari: str
     <div className={`${CARD} overflow-hidden`}>
       <div className="overflow-x-auto">
         <table className="w-full border-collapse text-sm">
-          <thead className="bg-surface">
+          <thead className="kepala-kit bg-surface">
             <tr>
               <th className={TH}>Gardu</th>
               <th className={TH}>ULP</th>

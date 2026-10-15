@@ -87,10 +87,10 @@ export default function FilterGarduTab({ user }: Props) {
   }
 
   const chip = (active: boolean) =>
-    `px-2.5 py-1 rounded-full text-xs border transition-colors ${
+    `px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${
       active
-        ? "bg-navy-600 border-navy-600 text-white"
-        : "border-line text-ink-soft hover:border-navy-500/50 hover:text-ink"
+        ? "bg-brand-600 border-brand-600 text-white"
+        : "bg-white border-slate-300 text-ink-soft hover:border-brand-400 hover:text-brand-700"
     }`;
 
   return (
@@ -353,7 +353,7 @@ export default function FilterGarduTab({ user }: Props) {
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-navy-50">
                     <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">No. Gardu</th>
                     <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold">Penyulang</th>

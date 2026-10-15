@@ -327,3 +327,17 @@ body {
   white-space: nowrap;
 }
 .leaflet-tooltip.tooltip-tiang::before { display: none; }
+
+/* Kepala tabel seragam (UI baru, 15 Okt 2026) — rupa sama dengan `_kit/Tabel`
+   `Kolom`. Dipasang lewat kelas `kepala-kit` di <thead> halaman terang. Sengaja
+   di LUAR @layer: menang atas kelas Tailwind di tiap <th> (latar, warna, huruf
+   besar) tanpa menyunting ratusan sel satu per satu. Sel yang warnanya
+   BERARTI (Sebelum/Sesudah, bintang rating) diberi `kepala-tetap`. */
+thead.kepala-kit th:not(.kepala-tetap) {
+  background-color: var(--color-brand-50);
+  color: var(--color-ink-soft);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}

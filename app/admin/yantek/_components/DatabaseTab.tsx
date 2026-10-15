@@ -86,7 +86,7 @@ export default function DatabaseTab({ dates, rowCache, filterYear, filterMonth, 
             {/* Table */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs border-collapse">
-                <thead>
+                <thead className="kepala-kit">
                   <tr className="bg-surface">
                     <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line w-8">#</th>
                     <th className="py-2 px-3 text-left text-ink-soft font-semibold border-b border-line">Tanggal</th>

@@ -197,7 +197,7 @@ function TabelArus({
     <div className="mb-3">
       <p className="text-[11px] font-semibold text-navy-600 mb-1">{judul}</p>
       <table className="w-full text-xs border border-line rounded-lg overflow-hidden">
-        <thead>
+        <thead className="kepala-kit">
           <tr className="bg-surface">
             <th className="px-3 py-1.5 text-left font-semibold text-ink-muted w-24" />
             {FASA.map((f) => (
