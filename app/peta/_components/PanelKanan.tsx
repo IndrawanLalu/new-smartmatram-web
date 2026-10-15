@@ -4,6 +4,9 @@ import type { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_
 import PanelKesehatan from "./PanelKesehatan";
 import PanelPohon from "./PanelPohon";
 import PanelUjung from "./PanelUjung";
+import PeriksaUjung from "./PeriksaUjung";
+import { bingkaiTitik, type Bingkai } from "../_lib/bingkai";
+import type { TitikUjungPeta } from "../_hooks/useUjungPeta";
 
 /**
  * Tumpukan panel saringan di kanan peta untuk lapisan yang sedang menyala:
@@ -16,12 +19,26 @@ interface Props {
   pohonAktif: boolean;
   onTutupPohon: () => void;
   ujung: ReturnType<typeof useLapisanUjung>;
-  /** Admin ULP & UP3: boleh menugaskan pohon ke regu. */
+  /** Admin ULP & UP3: boleh menugaskan pohon ke regu & menyetujui tegangan ujung. */
   boleh: boolean;
+  oleh: string;
+  onFokus: (b: Bingkai) => void;
 }
 
-export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon, ujung, boleh }: Props) {
+const MENUNGGU = "Menunggu verifikasi";
+
+export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon, ujung, boleh, oleh, onFokus }: Props) {
   if (!ujung.aktif && !kesehatan.aktif && !pohonAktif) return null;
+  const antreanUjung = ujung.titik.filter((t) => t.status_tampil === MENUNGGU);
+  // Peta menuju titik ukur dan gardunya sekaligus — garis di antaranya terlihat.
+  const bukaUjung = (t: TitikUjungPeta) => {
+    ujung.setPeriksa(t.id);
+    const b = bingkaiTitik(
+      t.gardu_lat !== null && t.gardu_lng !== null ? [t, { lat: t.gardu_lat, lng: t.gardu_lng }] : [t],
+      0.0004,
+    );
+    if (b) onFokus(b);
+  };
   return (
     <div className="absolute z-[1050] top-14 right-3 bottom-3 flex flex-col gap-2 overflow-y-auto pointer-events-none [&>*]:pointer-events-auto">
       {kesehatan.aktif && (
@@ -65,8 +82,20 @@ export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon,
           galat={ujung.galat}
           tampilJtr={ujung.tampilJtr}
           onTampilJtr={ujung.setTampilJtr}
+          menunggu={boleh ? antreanUjung.length : 0}
+          memeriksa={ujung.periksa !== null}
+          onPeriksa={() => (antreanUjung[0] ? bukaUjung(antreanUjung[0]) : ujung.setPeriksa(""))}
           tanpaGardu={ujung.titik.filter((t) => t.gardu_lat === null || t.gardu_lng === null).length}
           onTutup={() => ujung.setAktif(false)}
+        />
+      )}
+      {ujung.aktif && boleh && ujung.periksa !== null && (
+        <PeriksaUjung
+          antrean={antreanUjung}
+          oleh={oleh}
+          onDisetujui={ujung.tandaiDisetujui}
+          onBuka={bukaUjung}
+          onTutup={() => ujung.setPeriksa(null)}
         />
       )}
     </div>

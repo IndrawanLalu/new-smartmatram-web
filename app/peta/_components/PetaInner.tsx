@@ -79,6 +79,8 @@ interface Props {
   bolehSetujuiUjung: boolean;
   oleh: string;
   onUjungDisetujui: (id: string) => void;
+  /** Titik yang sedang dibuka di "Periksa satu per satu". */
+  sorotUjung: string | null;
   /** Lapisan pohon (kosong = padam). */
   pohonTemuan: TemuanPohon[];
   pohonDirabas: PohonDirabas[];
@@ -165,7 +167,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
-  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
+  sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
   kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
@@ -212,7 +214,7 @@ export default function PetaInner({
       <LapisanKoreksi sorot={sorotKoreksi} />
       {isian && <LapisanIsian tiang={tiang} nilaiDi={isian.nilaiDi} warna={isian.warna} />}
       <LapisanSimulasi hasil={simulasi} />
-      <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} />
+      <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} sorot={sorotUjung} />
       <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} cek={pohonCek} onTugaskan={onTugaskanPohon} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
       <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />

@@ -42,8 +42,10 @@ export function useLapisanUjung(ulp: string) {
   const [saring, setSaring] = useState<SaringUjung>(SARING_UJUNG_AWAL);
   /** JTR gardu titik-titiknya ikut digambar (lapisan JTR yang sama). */
   const [tampilJtr, setTampilJtr] = useState(false);
+  /** Periksa satu per satu: id titik yang sedang dibuka (null = tidak memeriksa). */
+  const [periksa, setPeriksa] = useState<string | null>(null);
   const data = useUjungPeta(aktif, ulp, bulan.tahun, bulan.bulan, saring);
-  return { ...data, aktif, setAktif, bulan, setBulan, saring, setSaring, tampilJtr, setTampilJtr };
+  return { ...data, aktif, setAktif, bulan, setBulan, saring, setSaring, tampilJtr, setTampilJtr, periksa, setPeriksa };
 }
 
 export function useLapisanKesehatan(ulp: string) {

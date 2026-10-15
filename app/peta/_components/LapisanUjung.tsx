@@ -93,12 +93,16 @@ function LapisanUjung({
   bolehSetujui,
   oleh,
   onDisetujui,
+  sorot,
 }: {
   titik: TitikUjungPeta[];
   bolehSetujui: boolean;
   oleh: string;
   onDisetujui: (id: string) => void;
+  /** Titik yang sedang diperiksa — diberi cincin putih. */
+  sorot: string | null;
 }) {
+  const disorot = sorot ? titik.find((t) => t.id === sorot) : undefined;
   return (
     <>
       {titik.map((t) =>
@@ -130,6 +134,15 @@ function LapisanUjung({
           </Popup>
         </CircleMarker>
       ))}
+      {disorot && (
+        <CircleMarker
+          key={`us-${disorot.id}`}
+          center={[disorot.lat, disorot.lng]}
+          radius={14}
+          interactive={false}
+          pathOptions={{ color: "#ffffff", weight: 3, fillOpacity: 0, dashArray: "3 4" }}
+        />
+      )}
     </>
   );
 }

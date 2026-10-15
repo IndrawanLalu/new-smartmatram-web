@@ -35,6 +35,10 @@ interface Props {
   total: number;
   sibuk: boolean;
   galat: string | null;
+  /** Jumlah menunggu verifikasi yang boleh disetujui (0 = tombol periksa disembunyikan). */
+  menunggu: number;
+  memeriksa: boolean;
+  onPeriksa: () => void;
   tampilJtr: boolean;
   onTampilJtr: (v: boolean) => void;
   /** Titik yang gardunya belum bertitik di master — garisnya tidak tergambar. */
@@ -42,7 +46,7 @@ interface Props {
   onTutup: () => void;
 }
 
-export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, tampilJtr, onTampilJtr, tanpaGardu, onTutup }: Props) {
+export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, jumlah, total, sibuk, galat, menunggu, memeriksa, onPeriksa, tampilJtr, onTampilJtr, tanpaGardu, onTutup }: Props) {
   const alih = <T,>(s: Set<T>, v: T) => {
     const b = new Set(s);
     if (b.has(v)) b.delete(v);
@@ -118,6 +122,15 @@ export default function PanelUjung({ tahun, bulan, onBulan, saring, onSaring, ju
           ))}
         </div>
       </div>
+
+      {menunggu > 0 && !memeriksa && (
+        <button
+          onClick={onPeriksa}
+          className="w-full h-8 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold"
+        >
+          Periksa satu per satu ({menunggu} menunggu)
+        </button>
+      )}
 
       <p className="text-[11px] text-gray-400 flex items-center gap-1.5">
         {sibuk && <Loader2 size={11} className="animate-spin" />}

@@ -290,6 +290,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           geserBanyak={modeSld ? TANPA : geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
           ujung={sembunyi ? TANPA : ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
+          sorotUjung={ujung.periksa}
           pohonTemuan={sembunyi ? TANPA : pohon.temuan}
           pohonDirabas={sembunyi ? TANPA : pohon.dirabas}
           pohonCek={sembunyi ? TANPA : pohon.cek}
@@ -418,6 +419,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             onTutupPohon={lapisan.padamkanPohon}
             ujung={ujung}
             boleh={boleh}
+            oleh={oleh}
+            onFokus={setFokus}
           />
         )}
 
