@@ -137,18 +137,18 @@ export default function BriefHeader({ yesterdayLabel, unitLabel, data }: BriefHe
   }
 
   return (
-    <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl p-6 print:rounded-none print:bg-none print:text-black print:border-b-2 print:border-[#00897B]">
+    <div className="bg-linear-to-r from-brand-700 to-brand-600 text-white rounded-xl p-6 print:rounded-none print:bg-none print:text-black print:border-b-2 print:border-brand-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <div className="bg-white/15 rounded-xl p-3 print:hidden">
-            <Sun size={28} className="text-amber-300" />
+            <Sun size={28} className="text-amber-700" />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">Morning Brief</h1>
-            <p className="text-teal-100 text-sm mt-0.5">
+            <p className="text-white/85 text-sm mt-0.5">
               Rangkuman kejadian <span className="font-semibold text-white">{yesterdayLabel}</span>
             </p>
-            <p className="text-teal-200/70 text-xs mt-0.5">{unitLabel}</p>
+            <p className="text-white/75/70 text-xs mt-0.5">{unitLabel}</p>
           </div>
         </div>
 
@@ -176,7 +176,7 @@ export default function BriefHeader({ yesterdayLabel, unitLabel, data }: BriefHe
             )}
           </button>
           {err && (
-            <p className="text-red-300 text-xs">{err}</p>
+            <p className="text-red-700 text-xs">{err}</p>
           )}
         </div>
       </div>

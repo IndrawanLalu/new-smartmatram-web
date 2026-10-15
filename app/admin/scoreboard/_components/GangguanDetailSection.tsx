@@ -16,7 +16,7 @@ interface GangguanDetailSectionProps {
 }
 
 const TH = "px-3 py-2 text-xs font-semibold text-white text-center whitespace-nowrap";
-const TD = "px-3 py-2 text-xs text-[#1B2631] align-top";
+const TD = "px-3 py-2 text-xs text-ink align-top";
 const TDC = `${TD} text-center`;
 
 export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, presentMode }: GangguanDetailSectionProps) {
@@ -28,10 +28,10 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
+    <div className="bg-white rounded-xl shadow-sm border border-line overflow-hidden">
       {/* Section Header */}
       {presentMode ? (
-        <div className="bg-[#004D40] px-6 py-4 flex items-center justify-between">
+        <div className="bg-brand-800 px-6 py-4 flex items-center justify-between">
           <img src="/logo-danantara.png" alt="Danantara" className="h-10 w-auto object-contain" />
           <div className="text-center">
             <p className="text-white font-bold text-xl tracking-wide">REKAP GANGGUAN PENYULANG</p>
@@ -46,7 +46,7 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
           </div>
         </div>
       ) : (
-        <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-5 py-4 flex items-center justify-between">
+        <div className="bg-linear-to-r from-brand-700 to-brand-600 px-5 py-4 flex items-center justify-between">
           <div>
             <p className="text-white/60 text-xs font-medium uppercase tracking-wider">Rekap Detail</p>
             <h2 className="text-white font-bold text-base leading-tight">
@@ -67,10 +67,10 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
       {/* Table */}
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="w-6 h-6 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+          <div className="w-6 h-6 border-4 border-line border-t-brand-600 rounded-full animate-spin" />
         </div>
       ) : data.length === 0 ? (
-        <div className="py-10 text-center text-sm text-[#5D6D7E]">
+        <div className="py-10 text-center text-sm text-ink-soft">
           <p>Belum ada data gangguan.</p>
           <p className="text-xs text-gray-400 mt-1">Klik "Import Sheets" untuk menarik data dari Google Sheets, atau "Tambah Manual".</p>
         </div>
@@ -78,7 +78,7 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-sm">
             <thead>
-              <tr className="bg-[#00695C]">
+              <tr className="bg-brand-700">
                 <th className={`${TH} w-8`}>No</th>
                 <th className={`${TH} text-left`}>Titik Gangguan</th>
                 <th className={TH}>Tgl</th>
@@ -95,8 +95,8 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
             </thead>
             <tbody>
               {data.map((row, idx) => (
-                <tr key={row.id} className={`border-t border-[#E2E8F0] ${idx % 2 === 0 ? "bg-white" : "bg-[#f0faf9]"}`}>
-                  <td className={`${TDC} font-semibold text-[#00695C]`}>{idx + 1}</td>
+                <tr key={row.id} className={`border-t border-line ${idx % 2 === 0 ? "bg-white" : "bg-brand-50/60"}`}>
+                  <td className={`${TDC} font-semibold text-brand-700`}>{idx + 1}</td>
                   <td className={`${TD} font-medium`}>{row.titik_gangguan}</td>
                   <td className={TDC}>{row.tgl_gangguan}</td>
                   <td className={TDC}>{row.jam_padam}</td>
@@ -119,10 +119,10 @@ export default function GangguanDetailSection({ bulan, tahun, ulp, bulanLabel, p
                         </div>
                       ) : (
                         <div className="flex items-center justify-center gap-1">
-                          <button onClick={() => setEditRow(row)} className="text-[#00897B]/60 hover:text-[#00897B] p-0.5 transition-colors" title="Edit">
+                          <button onClick={() => setEditRow(row)} className="text-brand-600/60 hover:text-brand-600 p-0.5 transition-colors" title="Edit">
                             <Pencil size={13} />
                           </button>
-                          <button onClick={() => setConfirmDeleteId(row.id)} className="text-red-300 hover:text-red-500 p-0.5 transition-colors" title="Hapus">
+                          <button onClick={() => setConfirmDeleteId(row.id)} className="text-red-700 hover:text-red-500 p-0.5 transition-colors" title="Hapus">
                             <Trash2 size={13} />
                           </button>
                         </div>

@@ -23,7 +23,7 @@ const LEVEL_CONFIG: Record<RiskLevel, {
     icon: AlertTriangle,
     badgeCls: "bg-red-500 text-white",
     borderCls: "border-red-500/40",
-    rankCls: "bg-red-900/30 text-red-400 border-red-500/40",
+    rankCls: "bg-red-100 text-red-600 border-red-500/40",
     glowCls: "shadow-red-900/20",
   },
   KRITIS: {
@@ -31,7 +31,7 @@ const LEVEL_CONFIG: Record<RiskLevel, {
     icon: Shield,
     badgeCls: "bg-amber-500 text-white",
     borderCls: "border-amber-500/40",
-    rankCls: "bg-amber-900/30 text-amber-400 border-amber-500/40",
+    rankCls: "bg-amber-100 text-amber-600 border-amber-500/40",
     glowCls: "shadow-amber-900/20",
   },
   WASPADA: {
@@ -39,16 +39,16 @@ const LEVEL_CONFIG: Record<RiskLevel, {
     icon: Eye,
     badgeCls: "bg-blue-500 text-white",
     borderCls: "border-blue-500/30",
-    rankCls: "bg-blue-900/30 text-blue-400 border-blue-500/30",
+    rankCls: "bg-blue-100 text-blue-600 border-blue-500/30",
     glowCls: "",
   },
 };
 
 const REASON_CONFIG: Record<RiskReason["type"], { cls: string; icon: React.ElementType }> = {
-  repeat:   { cls: "bg-red-900/30 text-red-300 border-red-500/30",    icon: Repeat2 },
-  critical: { cls: "bg-orange-900/30 text-orange-300 border-orange-500/30", icon: Grid2x2 },
-  mtbf:     { cls: "bg-purple-900/30 text-purple-300 border-purple-500/30", icon: Clock },
-  pareto:   { cls: "bg-teal-900/30 text-teal-300 border-teal-500/30",  icon: BarChart2 },
+  repeat:   { cls: "bg-red-100 text-red-700 border-red-500/30",    icon: Repeat2 },
+  critical: { cls: "bg-orange-100 text-orange-700 border-orange-500/30", icon: Grid2x2 },
+  mtbf:     { cls: "bg-purple-100 text-purple-700 border-purple-500/30", icon: Clock },
+  pareto:   { cls: "bg-teal-100 text-teal-700 border-teal-500/30",  icon: BarChart2 },
 };
 
 // ── Score bar ─────────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@ function ScoreBar({ score, level }: { score: number; level: RiskLevel }) {
   const color = level === "DARURAT" ? "#ef4444" : level === "KRITIS" ? "#f59e0b" : "#3b82f6";
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1.5 bg-[#0d1b2a] rounded-full overflow-hidden">
+      <div className="flex-1 h-1.5 bg-white rounded-full overflow-hidden">
         <div
           className="h-full rounded-full transition-all"
           style={{ width: `${pct}%`, backgroundColor: color }}
@@ -77,7 +77,7 @@ function RiskCard({ item, rank }: { item: PenyulangRisk; rank: number }) {
   const LIcon = lc.icon;
 
   return (
-    <div className={`rounded-xl border bg-[#0d1b2a] shadow-sm ${lc.borderCls} ${lc.glowCls}`}>
+    <div className={`rounded-xl border bg-white shadow-sm ${lc.borderCls} ${lc.glowCls}`}>
       {/* Top row */}
       <div className="px-4 pt-3 pb-2 flex items-start gap-3">
         {/* Rank */}
@@ -92,18 +92,18 @@ function RiskCard({ item, rank }: { item: PenyulangRisk; rank: number }) {
               <LIcon className="w-3 h-3" />
               {lc.label}
             </span>
-            <span className="text-[10px] px-2 py-0.5 bg-[#162334] border border-[#1e3552] rounded text-[#94a3b8] font-medium">
+            <span className="text-[10px] px-2 py-0.5 bg-surface border border-line rounded text-ink-soft font-medium">
               ULP {item.ulp}
             </span>
           </div>
-          <p className="text-[#e2e8f0] font-bold text-sm leading-tight truncate">{item.penyulang}</p>
+          <p className="text-ink font-bold text-sm leading-tight truncate">{item.penyulang}</p>
         </div>
 
         {/* Count badge */}
         <div className="shrink-0 text-right">
-          <p className="text-[10px] text-[#94a3b8]">Total</p>
-          <p className="text-lg font-black text-[#e2e8f0] leading-none">{item.count}</p>
-          <p className="text-[9px] text-[#64748b]">gangguan</p>
+          <p className="text-[10px] text-ink-soft">Total</p>
+          <p className="text-lg font-black text-ink leading-none">{item.count}</p>
+          <p className="text-[9px] text-ink-muted">gangguan</p>
         </div>
       </div>
 
@@ -151,16 +151,16 @@ function RiskCard({ item, rank }: { item: PenyulangRisk; rank: number }) {
       {/* Reason details */}
       <div className="px-4 pb-2 space-y-0.5">
         {item.reasons.map((r, i) => (
-          <p key={i} className="text-[10px] text-[#64748b] leading-relaxed">
-            <span className="text-[#94a3b8] font-medium">{r.label}:</span> {r.detail}
+          <p key={i} className="text-[10px] text-ink-muted leading-relaxed">
+            <span className="text-ink-soft font-medium">{r.label}:</span> {r.detail}
           </p>
         ))}
       </div>
 
       {/* Recommendation */}
-      <div className="mx-4 mb-4 rounded-lg bg-[#162334] border border-[#1e3552] px-3 py-2.5">
-        <p className="text-[9px] text-[#00897B] font-black uppercase tracking-wide mb-1">Rekomendasi</p>
-        <p className="text-[#e2e8f0] text-xs leading-relaxed">{item.recommendation}</p>
+      <div className="mx-4 mb-4 rounded-lg bg-surface border border-line px-3 py-2.5">
+        <p className="text-[9px] text-brand-600 font-black uppercase tracking-wide mb-1">Rekomendasi</p>
+        <p className="text-ink text-xs leading-relaxed">{item.recommendation}</p>
       </div>
     </div>
   );
@@ -168,7 +168,7 @@ function RiskCard({ item, rank }: { item: PenyulangRisk; rank: number }) {
 
 function Stat({ icon, label }: { icon: React.ReactNode; label: string }) {
   return (
-    <span className="flex items-center gap-1 text-[10px] text-[#94a3b8] bg-[#162334] border border-[#1e3552] px-2 py-0.5 rounded">
+    <span className="flex items-center gap-1 text-[10px] text-ink-soft bg-surface border border-line px-2 py-0.5 rounded">
       {icon}
       {label}
     </span>
@@ -183,17 +183,17 @@ export default function PenyulangWatchlist({ items, loading = false }: Props) {
   const waspada = items.filter((i) => i.level === "WASPADA").length;
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
+    <div className="bg-white rounded-xl border border-line shadow-sm">
       {/* Header */}
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-start justify-between flex-wrap gap-3 mb-2">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-red-900/20 rounded-lg">
-              <Shield className="w-5 h-5 text-red-400" />
+            <div className="p-2 bg-red-50 rounded-lg">
+              <Shield className="w-5 h-5 text-red-600" />
             </div>
             <div>
-              <h3 className="text-[#e2e8f0] font-bold text-lg">Penyulang Watchlist</h3>
-              <p className="text-[#94a3b8] text-xs mt-0.5">
+              <h3 className="text-ink font-bold text-lg">Penyulang Watchlist</h3>
+              <p className="text-ink-soft text-xs mt-0.5">
                 Penyulang dengan risiko tertinggi berdasarkan multi-kriteria
               </p>
             </div>
@@ -221,11 +221,11 @@ export default function PenyulangWatchlist({ items, loading = false }: Props) {
           )}
         </div>
 
-        <p className="text-[#94a3b8] text-xs leading-relaxed border-l-2 border-red-500/50 pl-3">
-          Skor dihitung dari kombinasi: <span className="text-red-300">Repeat Offender</span>,{" "}
-          <span className="text-orange-300">Kuadran Kritis</span>,{" "}
-          <span className="text-purple-300">MTBF Rendah</span>, dan{" "}
-          <span className="text-teal-300">Pareto Top</span>.
+        <p className="text-ink-soft text-xs leading-relaxed border-l-2 border-red-500/50 pl-3">
+          Skor dihitung dari kombinasi: <span className="text-red-700">Repeat Offender</span>,{" "}
+          <span className="text-orange-700">Kuadran Kritis</span>,{" "}
+          <span className="text-purple-700">MTBF Rendah</span>, dan{" "}
+          <span className="text-teal-700">Pareto Top</span>.
           Hover badge alasan untuk melihat detail. Penyulang DARURAT membutuhkan tindakan segera.
         </p>
       </div>
@@ -235,14 +235,14 @@ export default function PenyulangWatchlist({ items, loading = false }: Props) {
         {loading ? (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {Array(6).fill(0).map((_, i) => (
-              <div key={i} className="h-52 bg-[#0d1b2a] rounded-xl animate-pulse" />
+              <div key={i} className="h-52 bg-white rounded-xl animate-pulse" />
             ))}
           </div>
         ) : items.length === 0 ? (
           <div className="h-32 flex flex-col items-center justify-center gap-2">
-            <Shield className="w-8 h-8 text-green-400/50" />
-            <p className="text-green-400 text-sm font-medium">Tidak ada penyulang berisiko tinggi</p>
-            <p className="text-[#94a3b8] text-xs">Semua penyulang dalam kondisi terkendali pada periode ini</p>
+            <Shield className="w-8 h-8 text-green-600" />
+            <p className="text-green-600 text-sm font-medium">Tidak ada penyulang berisiko tinggi</p>
+            <p className="text-ink-soft text-xs">Semua penyulang dalam kondisi terkendali pada periode ini</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">

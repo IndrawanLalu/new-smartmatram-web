@@ -10,7 +10,7 @@ interface Props {
 
 const DAY_LABELS = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
-const COLOR_SCALE = ["#1a2942", "#0c3535", "#0d5045", "#008068", "#00897B", "#34d399"];
+const COLOR_SCALE = ["#eef1f5", "#ccfbf1", "#99f6e4", "#2dd4bf", "#0d9488", "#115e59"];
 
 function getCellColor(count: number, max: number): string {
   if (count === 0 || max === 0) return COLOR_SCALE[0];
@@ -19,7 +19,7 @@ function getCellColor(count: number, max: number): string {
 
 export default function CalendarHeatmap({ trendPoints, loading = false }: Props) {
   if (loading) {
-    return <div className="bg-[#162334] rounded-xl border border-[#1e3552] h-52 animate-pulse" />;
+    return <div className="bg-white rounded-xl border border-line h-52 animate-pulse" />;
   }
   if (!trendPoints.length) return null;
 
@@ -60,49 +60,49 @@ export default function CalendarHeatmap({ trendPoints, loading = false }: Props)
   const colTemplate = `40px repeat(${numWeeks}, 1fr)`;
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm p-5 space-y-5">
+    <div className="bg-white rounded-xl border border-line shadow-sm p-5 space-y-5">
 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-teal-900/20 rounded-lg shrink-0">
-            <CalendarDays className="w-5 h-5 text-teal-400" />
+          <div className="p-2 bg-teal-50 rounded-lg shrink-0">
+            <CalendarDays className="w-5 h-5 text-teal-600" />
           </div>
           <div>
-            <h3 className="text-[#e2e8f0] font-bold text-lg leading-tight">Calendar Heatmap Gangguan</h3>
-            <p className="text-[#94a3b8] text-xs mt-0.5">Intensitas gangguan per hari sepanjang periode</p>
+            <h3 className="text-ink font-bold text-lg leading-tight">Calendar Heatmap Gangguan</h3>
+            <p className="text-ink-soft text-xs mt-0.5">Intensitas gangguan per hari sepanjang periode</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="text-[#94a3b8] text-[10px]">Sedikit</span>
+          <span className="text-ink-soft text-[10px]">Sedikit</span>
           {COLOR_SCALE.map((hex, i) => (
             <div key={i} className="w-3.5 h-3.5 rounded-sm" style={{ backgroundColor: hex }} />
           ))}
-          <span className="text-[#94a3b8] text-[10px]">Banyak</span>
+          <span className="text-ink-soft text-[10px]">Banyak</span>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-xl px-4 py-3 flex items-center gap-3">
-          <Sun className="w-5 h-5 text-[#00897B] shrink-0" />
+        <div className="bg-white border border-line rounded-xl px-4 py-3 flex items-center gap-3">
+          <Sun className="w-5 h-5 text-brand-600 shrink-0" />
           <div>
-            <p className="text-[#e2e8f0] font-bold text-xl">{activeDays}</p>
-            <p className="text-[#94a3b8] text-xs">hari ada gangguan</p>
+            <p className="text-ink font-bold text-xl">{activeDays}</p>
+            <p className="text-ink-soft text-xs">hari ada gangguan</p>
           </div>
         </div>
-        <div className="bg-red-900/20 border border-red-700/30 rounded-xl px-4 py-3 flex items-center gap-3">
-          <Flame className="w-5 h-5 text-red-400 shrink-0" />
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-3">
+          <Flame className="w-5 h-5 text-red-600 shrink-0" />
           <div>
-            <p className="text-red-400 font-bold text-xl">{peakDay.count}</p>
-            <p className="text-[#94a3b8] text-xs">puncak {peakDay.label}</p>
+            <p className="text-red-600 font-bold text-xl">{peakDay.count}</p>
+            <p className="text-ink-soft text-xs">puncak {peakDay.label}</p>
           </div>
         </div>
-        <div className="bg-amber-900/20 border border-amber-700/30 rounded-xl px-4 py-3 flex items-center gap-3">
-          <TrendingUp className="w-5 h-5 text-amber-400 shrink-0" />
+        <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-center gap-3">
+          <TrendingUp className="w-5 h-5 text-amber-600 shrink-0" />
           <div>
-            <p className="text-amber-400 font-bold text-xl">{avgPerActiveDay}</p>
-            <p className="text-[#94a3b8] text-xs">rata-rata / hari aktif</p>
+            <p className="text-amber-600 font-bold text-xl">{avgPerActiveDay}</p>
+            <p className="text-ink-soft text-xs">rata-rata / hari aktif</p>
           </div>
         </div>
       </div>
@@ -115,7 +115,7 @@ export default function CalendarHeatmap({ trendPoints, loading = false }: Props)
           {Array.from({ length: numWeeks }, (_, w) => {
             const marker = monthMarkers.find((m) => m.weekIdx === w);
             return (
-              <div key={w} className="text-[9px] text-[#94a3b8] text-center overflow-visible whitespace-nowrap pb-1">
+              <div key={w} className="text-[9px] text-ink-soft text-center overflow-visible whitespace-nowrap pb-1">
                 {marker ? MONTH_LABELS[marker.month] : ""}
               </div>
             );
@@ -129,7 +129,7 @@ export default function CalendarHeatmap({ trendPoints, loading = false }: Props)
             className="grid items-center gap-x-0.75"
             style={{ gridTemplateColumns: colTemplate }}
           >
-            <span className="text-[9px] text-[#94a3b8] text-right pr-2 leading-none select-none">
+            <span className="text-[9px] text-ink-soft text-right pr-2 leading-none select-none">
               {day % 2 === 0 ? DAY_LABELS[day] : ""}
             </span>
             {Array.from({ length: numWeeks }, (_, week) => {

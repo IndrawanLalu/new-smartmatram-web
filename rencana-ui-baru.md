@@ -160,6 +160,15 @@ regu langsung, Periksa & putuskan → modal rincian). Semua fungsi lama tetap.
   PERTAMA yang dikenal menentukan; tak dikenal = tanpa ikon. Kolom baru cukup
   `<IkonKolom teks="…" />`; kata baru ditambahkan di kamus.
 
+- **Halaman gelap → terang** (15 Okt): Advanced Dashboard, Efektivitas
+  Inspeksi, Morning Brief, Score Board, Rekap Produktivitas, Cara Kerja ML,
+  JSON to Table. Palet gelap & teal lama → token (`surface`/`line`/`ink`/
+  `brand`); kartu putih; warna -400/-300 (untuk latar gelap) → -600/-700;
+  grafik: grid/sumbu/tooltip terang, skala heatmap terang. Warna bermakna
+  (kritis/waspada/aman, warna ULP di radar) tetap. PDF (`_RekapPdf`,
+  `_MorningBriefDocument`) tidak disentuh. Command Center tetap tema
+  layar penuhnya sendiri.
+
 **Belum:** isi halaman lain ke komponen `_kit`
 (tab ke kepala, saringan ke topbar, tabel), halaman gelap, cari global (U5),
 banner Beranda.

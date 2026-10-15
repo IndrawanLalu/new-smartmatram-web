@@ -143,7 +143,7 @@ export default function CaraKerjaMlPage() {
     : "—";
 
   return (
-    <div className="min-h-screen bg-[#F4F6F8] p-6 space-y-5">
+    <div className="space-y-5 text-ink">
 
       {/* A. Alur (animasi) */}
       <EngineFlowAnimation
@@ -173,10 +173,10 @@ export default function CaraKerjaMlPage() {
       <RealDataPanels riskData={riskData} weather={weather} events={events} besok={besok} />
 
       {/* B. Status mesin */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-4 flex items-center gap-3 flex-wrap">
-        <Clock className="w-5 h-5 text-[#00897B] shrink-0" />
+      <div className="bg-white rounded-xl shadow-sm border border-line p-4 flex items-center gap-3 flex-wrap">
+        <Clock className="w-5 h-5 text-brand-600 shrink-0" />
         {run ? (
-          <p className="text-sm text-[#1B2631]">
+          <p className="text-sm text-ink">
             <span className="font-semibold">Mesin terakhir dijalankan:</span>{" "}
             {new Date(run.created_at).toLocaleString("id-ID", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" })}
             {" · "}
@@ -187,19 +187,19 @@ export default function CaraKerjaMlPage() {
             {riskData.length > 0 && <> · {riskData.length} penyulang dinilai</>}
           </p>
         ) : (
-          <p className="text-sm text-[#64748b]">Belum ada catatan jalannya mesin. Jalankan pipeline dulu.</p>
+          <p className="text-sm text-ink-muted">Belum ada catatan jalannya mesin. Jalankan pipeline dulu.</p>
         )}
       </div>
 
       {/* C. Contoh dibaca jadi cerita */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
-        <h2 className="text-sm font-bold text-[#1B2631] mb-3 flex items-center gap-2">
-          <Info className="w-4 h-4 text-[#00897B]" /> Contoh: membaca satu hasil
+      <div className="bg-white rounded-xl shadow-sm border border-line p-5">
+        <h2 className="text-sm font-bold text-ink mb-3 flex items-center gap-2">
+          <Info className="w-4 h-4 text-brand-600" /> Contoh: membaca satu hasil
         </h2>
         {loading ? (
-          <p className="text-sm text-[#94a3b8]">Memuat…</p>
+          <p className="text-sm text-ink-soft">Memuat…</p>
         ) : !top ? (
-          <p className="text-sm text-[#94a3b8]">Belum ada data prediksi. Jalankan pipeline ML dulu.</p>
+          <p className="text-sm text-ink-soft">Belum ada data prediksi. Jalankan pipeline ML dulu.</p>
         ) : (
           <div className="grid md:grid-cols-[auto_1fr] gap-5 items-center">
             {/* skor besar */}
@@ -208,28 +208,28 @@ export default function CaraKerjaMlPage() {
               <div className="text-xs font-bold tracking-wider mt-1" style={{ color: LEVEL_COLOR[top.risk_level] }}>
                 {LEVEL_LABEL[top.risk_level]}
               </div>
-              <div className="text-sm font-semibold text-[#1B2631] mt-1">{top.penyulang}</div>
-              <div className="text-[11px] text-[#94a3b8]">{top.ulp}</div>
+              <div className="text-sm font-semibold text-ink mt-1">{top.penyulang}</div>
+              <div className="text-[11px] text-ink-soft">{top.ulp}</div>
             </div>
             {/* alasan */}
             <div>
-              <p className="text-xs text-[#64748b] mb-2">Kenapa skornya segini? Faktor terbesar:</p>
+              <p className="text-xs text-ink-muted mb-2">Kenapa skornya segini? Faktor terbesar:</p>
               <div className="space-y-1.5">
                 {(top.breakdown?.drivers ?? []).map((d) => (
                   <div key={d.faktor} className="flex items-center gap-2">
-                    <span className="w-44 text-[12px] text-[#1B2631] shrink-0">{d.faktor}</span>
-                    <div className="flex-1 h-2 bg-[#F4F6F8] rounded-full overflow-hidden">
-                      <div className="h-full rounded-full bg-[#00897B]" style={{ width: `${d.kontribusi}%` }} />
+                    <span className="w-44 text-[12px] text-ink shrink-0">{d.faktor}</span>
+                    <div className="flex-1 h-2 bg-surface rounded-full overflow-hidden">
+                      <div className="h-full rounded-full bg-brand-600" style={{ width: `${d.kontribusi}%` }} />
                     </div>
-                    <span className="w-10 text-right text-[11px] font-mono text-[#64748b]">{d.kontribusi}%</span>
+                    <span className="w-10 text-right text-[11px] font-mono text-ink-muted">{d.kontribusi}%</span>
                   </div>
                 ))}
               </div>
               {top.predicted_cause && (
-                <p className="text-xs text-[#64748b] mt-3">Dugaan penyebab: <b className="text-[#1B2631]">{top.predicted_cause}</b></p>
+                <p className="text-xs text-ink-muted mt-3">Dugaan penyebab: <b className="text-ink">{top.predicted_cause}</b></p>
               )}
               {top.breakdown?.drivers?.[0] && (
-                <p className="mt-2 text-sm bg-[#E0F2F1] text-[#00695C] rounded-lg px-3 py-2">
+                <p className="mt-2 text-sm bg-brand-50 text-brand-700 rounded-lg px-3 py-2">
                   💡 <b>Saran:</b> {saranDari(top.breakdown.drivers[0].faktor)}
                 </p>
               )}
@@ -239,9 +239,9 @@ export default function CaraKerjaMlPage() {
       </div>
 
       {/* D. Cara baca skor */}
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
-        <h2 className="text-sm font-bold text-[#1B2631] mb-3 flex items-center gap-2">
-          <Gauge className="w-4 h-4 text-[#00897B]" /> Cara membaca skor (0–100)
+      <div className="bg-white rounded-xl shadow-sm border border-line p-5">
+        <h2 className="text-sm font-bold text-ink mb-3 flex items-center gap-2">
+          <Gauge className="w-4 h-4 text-brand-600" /> Cara membaca skor (0–100)
         </h2>
         <div className="flex h-7 rounded-lg overflow-hidden text-[11px] font-semibold text-white">
           <div className="bg-emerald-500 flex items-center justify-center" style={{ width: "40%" }}>Aman (0–40)</div>
@@ -278,8 +278,8 @@ function Zone({ color, title, desc }: { color: string; title: string; desc: stri
     <div className="flex items-start gap-2">
       <span className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: color }} />
       <div>
-        <p className="font-semibold text-[#1B2631]">{title}</p>
-        <p className="text-[#64748b]">{desc}</p>
+        <p className="font-semibold text-ink">{title}</p>
+        <p className="text-ink-muted">{desc}</p>
       </div>
     </div>
   );

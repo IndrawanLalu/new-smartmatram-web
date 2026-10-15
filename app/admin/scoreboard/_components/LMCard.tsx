@@ -36,7 +36,7 @@ function EditableCell({ value, onSave }: { value: number; onSave: (v: number) =>
         onChange={(e) => setLocal(e.target.value)}
         onBlur={commit}
         onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setEditing(false); }}
-        className="w-14 text-center text-[#1B2631] bg-white border border-[#00897B] rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-[#00897B]"
+        className="w-14 text-center text-ink bg-white border border-brand-500 rounded px-1 py-0.5 text-sm focus:outline-none focus:ring-1 focus:ring-brand-500"
       />
     );
   }
@@ -44,7 +44,7 @@ function EditableCell({ value, onSave }: { value: number; onSave: (v: number) =>
     <button
       onClick={() => { setLocal(String(value)); setEditing(true); }}
       title="Klik untuk edit"
-      className="w-full text-center text-[#1B2631] hover:bg-[#00897B]/10 rounded px-2 py-0.5 text-sm transition-colors font-medium"
+      className="w-full text-center text-ink hover:bg-brand-600/10 rounded px-2 py-0.5 text-sm transition-colors font-medium"
     >
       {value}
     </button>
@@ -93,9 +93,9 @@ export default function LMCard({
 
   return (
     <>
-      <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] overflow-hidden">
+      <div className="bg-white rounded-xl shadow-sm border border-line overflow-hidden">
         {/* Header */}
-        <div className="bg-linear-to-r from-[#004D40] to-[#00897B] px-4 py-3 flex items-start justify-between">
+        <div className="bg-linear-to-r from-brand-700 to-brand-600 px-4 py-3 flex items-start justify-between">
           <div>
             <span className="text-white/60 text-xs font-medium uppercase tracking-wider">
               Lead Measure {index + 1}
@@ -127,8 +127,8 @@ export default function LMCard({
         {/* Body: items table full-width */}
         <div className="p-4">
           {lm.pic && (
-            <p className="text-xs text-[#5D6D7E] mb-3">
-              PIC: <span className="font-semibold text-[#1B2631]">{lm.pic}</span>
+            <p className="text-xs text-ink-soft mb-3">
+              PIC: <span className="font-semibold text-ink">{lm.pic}</span>
             </p>
           )}
           {lm.items.length === 0 ? (
@@ -154,7 +154,7 @@ export default function LMCard({
           {!presentMode && (
             <button
               onClick={() => setShowAddItem(true)}
-              className="mt-4 flex items-center gap-1.5 text-sm text-[#00897B] hover:text-[#004D40] font-medium transition-colors"
+              className="mt-4 flex items-center gap-1.5 text-sm text-brand-600 hover:text-brand-800 font-medium transition-colors"
             >
               <Plus size={15} /> Tambah Item Pekerjaan
             </button>
@@ -208,9 +208,9 @@ function ItemTable({
   };
 
   return (
-    <div className="border border-[#E2E8F0] rounded-lg overflow-hidden">
+    <div className="border border-line rounded-lg overflow-hidden">
       {/* Item header */}
-      <div className="bg-[#E0F2F1] px-3 py-1.5 flex justify-between items-center gap-2">
+      <div className="bg-brand-50 px-3 py-1.5 flex justify-between items-center gap-2">
         {editingMeta ? (
           <div className="flex items-center gap-2 flex-1">
             <input
@@ -219,21 +219,21 @@ function ItemTable({
               onChange={(e) => setMetaNama(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") saveMeta(); if (e.key === "Escape") setEditingMeta(false); }}
               placeholder="Nama pekerjaan"
-              className="flex-1 text-sm text-[#1B2631] bg-white border border-[#00897B] rounded px-2 py-0.5 focus:outline-none"
+              className="flex-1 text-sm text-ink bg-white border border-brand-500 rounded px-2 py-0.5 focus:outline-none"
             />
             <input
               value={metaSatuan}
               onChange={(e) => setMetaSatuan(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") saveMeta(); if (e.key === "Escape") setEditingMeta(false); }}
               placeholder="satuan"
-              className="w-20 text-sm text-[#1B2631] bg-white border border-[#00897B] rounded px-2 py-0.5 focus:outline-none"
+              className="w-20 text-sm text-ink bg-white border border-brand-500 rounded px-2 py-0.5 focus:outline-none"
             />
-            <button onClick={saveMeta} className="text-xs text-[#00897B] font-semibold hover:text-[#004D40]">Simpan</button>
+            <button onClick={saveMeta} className="text-xs text-brand-600 font-semibold hover:text-brand-800">Simpan</button>
           </div>
         ) : (
-          <span className="text-sm font-medium text-[#004D40] flex-1">
+          <span className="text-sm font-medium text-brand-800 flex-1">
             {index + 1}. {item.nama_item}
-            {item.satuan && <span className="ml-1.5 text-xs text-[#00695C] font-normal">({item.satuan})</span>}
+            {item.satuan && <span className="ml-1.5 text-xs text-brand-700 font-normal">({item.satuan})</span>}
           </span>
         )}
 
@@ -247,10 +247,10 @@ function ItemTable({
               </>
             ) : (
               <>
-                <button onClick={() => setEditingMeta(true)} className="text-[#00897B]/60 hover:text-[#00897B] transition-colors p-0.5" title="Edit nama">
+                <button onClick={() => setEditingMeta(true)} className="text-brand-600/60 hover:text-brand-600 transition-colors p-0.5" title="Edit nama">
                   <Pencil size={11} />
                 </button>
-                <button onClick={() => setConfirmDelete(true)} className="text-red-300 hover:text-red-500 transition-colors p-0.5" title="Hapus item">
+                <button onClick={() => setConfirmDelete(true)} className="text-red-700 hover:text-red-500 transition-colors p-0.5" title="Hapus item">
                   <Trash2 size={11} />
                 </button>
               </>
@@ -262,12 +262,12 @@ function ItemTable({
       {/* Score table */}
       <table className="w-full text-sm">
         <thead>
-          <tr className="bg-[#f0faf9]">
-            <th className="text-left px-3 py-1 text-xs text-[#00695C] font-semibold w-1/3" />
+          <tr className="bg-brand-50/60">
+            <th className="text-left px-3 py-1 text-xs text-brand-700 font-semibold w-1/3" />
             {WEEKS.map((w) => (
-              <th key={w.label} className="text-center px-2 py-1 text-xs text-[#00695C] font-bold">{w.label}</th>
+              <th key={w.label} className="text-center px-2 py-1 text-xs text-brand-700 font-bold">{w.label}</th>
             ))}
-            <th className="text-center px-2 py-1 text-xs text-[#004D40] font-bold bg-[#b2dfdb]">TOTAL</th>
+            <th className="text-center px-2 py-1 text-xs text-brand-800 font-bold bg-brand-100">TOTAL</th>
           </tr>
         </thead>
         <tbody>
@@ -276,7 +276,7 @@ function ItemTable({
             {WEEKS.map((w) => (
               <td key={w.label} className="text-center px-1 py-0.5">
                 {presentMode ? (
-                  <span className="text-sm font-medium text-[#1B2631] px-2">{item[w.targetField] as number}</span>
+                  <span className="text-sm font-medium text-ink px-2">{item[w.targetField] as number}</span>
                 ) : (
                   <EditableCell
                     value={item[w.targetField] as number}
@@ -285,7 +285,7 @@ function ItemTable({
                 )}
               </td>
             ))}
-            <td className="text-center px-2 py-1 text-sm font-bold text-[#004D40] bg-[#e0f2f1]">
+            <td className="text-center px-2 py-1 text-sm font-bold text-brand-800 bg-brand-50">
               {WEEKS.reduce((sum, w) => sum + (item[w.targetField] as number), 0)}
             </td>
           </tr>
@@ -294,7 +294,7 @@ function ItemTable({
             {WEEKS.map((w) => (
               <td key={w.label} className="text-center px-1 py-0.5">
                 {presentMode ? (
-                  <span className="text-sm font-medium text-[#1B2631] px-2">{item[w.realisasiField] as number}</span>
+                  <span className="text-sm font-medium text-ink px-2">{item[w.realisasiField] as number}</span>
                 ) : (
                   <EditableCell
                     value={item[w.realisasiField] as number}
@@ -303,7 +303,7 @@ function ItemTable({
                 )}
               </td>
             ))}
-            <td className="text-center px-2 py-1 text-sm font-bold text-[#004D40] bg-[#e0f2f1]">
+            <td className="text-center px-2 py-1 text-sm font-bold text-brand-800 bg-brand-50">
               {WEEKS.reduce((sum, w) => sum + (item[w.realisasiField] as number), 0)}
             </td>
           </tr>
@@ -314,7 +314,7 @@ function ItemTable({
               const realisasi = item[w.realisasiField] as number;
               if (target === 0) return (
                 <td key={w.label} className="text-center px-2 py-1.5">
-                  <span className="text-gray-300 text-xs">—</span>
+                  <span className="text-ink-soft text-xs">—</span>
                 </td>
               );
               const win = realisasi >= target;
@@ -329,10 +329,10 @@ function ItemTable({
             {(() => {
               const totalTarget = WEEKS.reduce((s, w) => s + (item[w.targetField] as number), 0);
               const totalReal = WEEKS.reduce((s, w) => s + (item[w.realisasiField] as number), 0);
-              if (totalTarget === 0) return <td className="text-center px-2 py-1.5 bg-[#e0f2f1]"><span className="text-gray-300 text-xs">—</span></td>;
+              if (totalTarget === 0) return <td className="text-center px-2 py-1.5 bg-brand-50"><span className="text-ink-soft text-xs">—</span></td>;
               const win = totalReal >= totalTarget;
               return (
-                <td className="text-center px-1 py-1.5 bg-[#e0f2f1]">
+                <td className="text-center px-1 py-1.5 bg-brand-50">
                   <span className={`text-xs font-bold px-2 py-0.5 rounded text-white ${win ? "bg-green-600" : "bg-red-600"}`}>
                     {win ? "WIN" : "LOSE"}
                   </span>
@@ -344,13 +344,13 @@ function ItemTable({
       </table>
 
       {/* Komitmen per item */}
-      <div className="border-t border-[#E2E8F0] px-3 py-2 bg-amber-50">
+      <div className="border-t border-line px-3 py-2 bg-amber-50">
         <p className="text-[10px] font-bold text-amber-800 uppercase tracking-wider mb-1">
           Komitmen Minggu Depan
         </p>
         {presentMode ? (
           <p className="text-xs text-amber-900 leading-relaxed min-h-5">
-            {item.komitmen || <span className="text-amber-300 italic">—</span>}
+            {item.komitmen || <span className="text-amber-700 italic">—</span>}
           </p>
         ) : (
           <KomitmenEdit

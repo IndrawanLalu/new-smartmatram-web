@@ -51,7 +51,7 @@ export default function MorningBriefPage() {
     <>
       <style dangerouslySetInnerHTML={{ __html: PRINT_STYLE }} />
 
-      <div className="space-y-4">
+      <div className="space-y-4 text-ink">
         <BriefHeader yesterdayLabel={data?.yesterdayLabel ?? "—"} unitLabel={unitLabel} data={data} />
 
         {/* Brief WA aktual (fusion ML + analitik) — preview & kirim manual */}
@@ -69,18 +69,18 @@ export default function MorningBriefPage() {
             value={selectedDate}
             max={maxDate}
             onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-            className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+            className="border border-line rounded-lg px-3 py-1.5 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
           />
         </div>
 
         {/* Filter ULP — UP3 only */}
         {isUp3 && (
           <div className="flex items-center gap-3 print:hidden">
-            <span className="text-sm text-[#94a3b8] shrink-0">Filter ULP:</span>
+            <span className="text-sm text-ink-soft shrink-0">Filter ULP:</span>
             <select
               value={filterUlp}
               onChange={(e) => setFilterUlp(e.target.value)}
-              className="border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+              className="border border-line rounded-lg px-3 py-1.5 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
             >
               <option value="">Semua ULP</option>
               {UNITS.map((u) => (
@@ -92,17 +92,17 @@ export default function MorningBriefPage() {
 
         {loading && (
           <div className="flex items-center justify-center py-20">
-            <div className="flex flex-col items-center gap-3 text-[#94a3b8]">
-              <div className="w-10 h-10 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+            <div className="flex flex-col items-center gap-3 text-ink-soft">
+              <div className="w-10 h-10 border-4 border-line border-t-brand-600 rounded-full animate-spin" />
               <p className="text-sm">Memuat morning brief...</p>
             </div>
           </div>
         )}
 
         {!loading && error && (
-          <div className="bg-red-500/10 border border-red-500/30 text-red-400 rounded-xl px-5 py-4 text-sm">
+          <div className="bg-red-500/10 border border-red-500/30 text-red-600 rounded-xl px-5 py-4 text-sm">
             <p className="font-semibold mb-1">Gagal memuat data</p>
-            <p className="text-red-400/70">{error}</p>
+            <p className="text-red-600">{error}</p>
           </div>
         )}
 
@@ -175,7 +175,7 @@ export default function MorningBriefPage() {
               />
             </div>
 
-            <p className="text-center text-[#94a3b8] text-xs pb-4 print:text-gray-400">
+            <p className="text-center text-ink-soft text-xs pb-4 print:text-gray-400">
               Dibuat otomatis oleh SMART Mataram · {data.yesterdayLabel}
             </p>
           </>

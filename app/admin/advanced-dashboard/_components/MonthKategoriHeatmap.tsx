@@ -18,13 +18,13 @@ function mkLabel(key: string, multiYear: boolean): string {
 }
 
 function cellCls(count: number, max: number): string {
-  if (!count || !max) return "text-[#2a3a52]";
+  if (!count || !max) return "text-ink-muted/50";
   const pct = count / max;
-  if (pct < 0.15) return "bg-teal-950/50 text-teal-500/70";
-  if (pct < 0.35) return "bg-teal-900/50 text-teal-300";
-  if (pct < 0.60) return "bg-teal-800/60 text-teal-100";
-  if (pct < 0.80) return "bg-teal-700/70 text-white";
-  return "bg-[#00897B] text-white font-bold";
+  if (pct < 0.15) return "bg-brand-50 text-brand-700";
+  if (pct < 0.35) return "bg-brand-100 text-brand-800";
+  if (pct < 0.60) return "bg-brand-300 text-brand-800 font-medium";
+  if (pct < 0.80) return "bg-brand-500 text-white";
+  return "bg-brand-700 text-white font-bold";
 }
 
 // ── Trend helpers ─────────────────────────────────────────────────────────────
@@ -45,8 +45,8 @@ function computeTrend(values: number[]): { dir: TrendDir; pct: number } {
 }
 
 const TREND_COLOR: Record<TrendDir, string> = {
-  up:   "#f87171",
-  down: "#34d399",
+  up:   "#ef4444",
+  down: "#10b981",
   flat: "#64748b",
 };
 
@@ -82,11 +82,11 @@ function Sparkline({ values, dir }: { values: number[]; dir: TrendDir }) {
 
 function TrendBadge({ dir, pct }: { dir: TrendDir; pct: number }) {
   if (dir === "flat") {
-    return <span className="text-[#64748b] text-[10px] font-medium leading-none">→ stabil</span>;
+    return <span className="text-ink-muted text-[10px] font-medium leading-none">→ stabil</span>;
   }
   const isUp = dir === "up";
   return (
-    <span className={`text-[10px] font-bold leading-none ${isUp ? "text-red-400" : "text-emerald-400"}`}>
+    <span className={`text-[10px] font-bold leading-none ${isUp ? "text-red-600" : "text-emerald-600"}`}>
       {isUp ? "↑" : "↓"} {pct}%
     </span>
   );
@@ -98,7 +98,7 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
   const [hovered, setHovered] = useState<{ ri: number; ci: number } | null>(null);
 
   if (loading) {
-    return <div className="bg-[#162334] rounded-xl border border-[#1e3552] h-60 animate-pulse" />;
+    return <div className="bg-white rounded-xl border border-line h-60 animate-pulse" />;
   }
   if (!rows.length || !monthKeys.length) return null;
 
@@ -108,22 +108,22 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
   const grandTotal = rows.reduce((s, r) => s + r.total, 0);
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
+    <div className="bg-white rounded-xl border border-line shadow-sm">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-blue-900/20 rounded-lg">
-            <BarChart2 className="w-5 h-5 text-blue-400" />
+          <div className="p-2 bg-blue-50 rounded-lg">
+            <BarChart2 className="w-5 h-5 text-blue-600" />
           </div>
           <div>
-            <h3 className="text-[#e2e8f0] font-bold text-lg">Tren Musiman per Kategori Penyebab</h3>
-            <p className="text-[#94a3b8] text-xs mt-0.5">Penyebab × Bulan — intensitas + arah tren tiap kategori</p>
+            <h3 className="text-ink font-bold text-lg">Tren Musiman per Kategori Penyebab</h3>
+            <p className="text-ink-soft text-xs mt-0.5">Penyebab × Bulan — intensitas + arah tren tiap kategori</p>
           </div>
         </div>
-        <p className="text-[#94a3b8] text-xs leading-relaxed border-l-2 border-blue-500/50 pl-3">
-          Warna tiap sel menunjukkan intensitas kejadian. Kolom <span className="text-[#e2e8f0]">Tren</span> menampilkan
+        <p className="text-ink-soft text-xs leading-relaxed border-l-2 border-blue-500/50 pl-3">
+          Warna tiap sel menunjukkan intensitas kejadian. Kolom <span className="text-ink">Tren</span> menampilkan
           grafik mini dan arah perubahan (rata-rata paruh awal vs paruh akhir periode).
-          <span className="text-red-400 ml-1">↑ Naik = memburuk</span> ·
-          <span className="text-emerald-400 ml-1">↓ Turun = membaik</span>.
+          <span className="text-red-600 ml-1">↑ Naik = memburuk</span> ·
+          <span className="text-emerald-600 ml-1">↓ Turun = membaik</span>.
         </p>
       </div>
 
@@ -131,14 +131,14 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
         <table className="text-xs border-collapse w-full min-w-max">
           <thead>
             <tr>
-              <th className="text-left text-[#94a3b8] font-medium py-1.5 pr-4 min-w-40">Kategori</th>
+              <th className="text-left text-ink-soft font-medium py-1.5 pr-4 min-w-40">Kategori</th>
               {monthKeys.map((mk) => (
-                <th key={mk} className="text-center text-[#94a3b8] font-medium py-1.5 px-1 min-w-10">
+                <th key={mk} className="text-center text-ink-soft font-medium py-1.5 px-1 min-w-10">
                   {mkLabel(mk, multiYear)}
                 </th>
               ))}
-              <th className="text-center text-[#94a3b8] font-medium py-1.5 px-2 min-w-12">Total</th>
-              <th className="text-left text-[#94a3b8] font-medium py-1.5 pl-3 min-w-28">Tren</th>
+              <th className="text-center text-ink-soft font-medium py-1.5 px-2 min-w-12">Total</th>
+              <th className="text-left text-ink-soft font-medium py-1.5 pl-3 min-w-28">Tren</th>
             </tr>
           </thead>
           <tbody>
@@ -148,8 +148,8 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
               const isHovRow = hovered?.ri === ri;
 
               return (
-                <tr key={row.kategori} className="border-t border-[#1e3552]/50">
-                  <td className="text-[#e2e8f0] py-1.5 pr-4 font-medium whitespace-nowrap">{row.kategori}</td>
+                <tr key={row.kategori} className="border-t border-line">
+                  <td className="text-ink py-1.5 pr-4 font-medium whitespace-nowrap">{row.kategori}</td>
 
                   {monthKeys.map((mk, ci) => {
                     const val = row.byMonth[mk] ?? 0;
@@ -167,7 +167,7 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
                     );
                   })}
 
-                  <td className="text-center py-1.5 px-2 text-[#e2e8f0] font-semibold">{row.total}</td>
+                  <td className="text-center py-1.5 px-2 text-ink font-semibold">{row.total}</td>
 
                   {/* Tren: sparkline + badge */}
                   <td className="py-1 pl-3 pr-2">
@@ -181,12 +181,12 @@ export default function MonthKategoriHeatmap({ rows, monthKeys, loading = false 
             })}
           </tbody>
           <tfoot>
-            <tr className="border-t border-[#1e3552]">
-              <td className="text-[#94a3b8] py-1.5 pr-4 font-medium">Total</td>
+            <tr className="border-t border-line">
+              <td className="text-ink-soft py-1.5 pr-4 font-medium">Total</td>
               {colTotals.map((t, ci) => (
-                <td key={ci} className="text-center py-1.5 px-1 text-[#94a3b8] font-medium">{t || ""}</td>
+                <td key={ci} className="text-center py-1.5 px-1 text-ink-soft font-medium">{t || ""}</td>
               ))}
-              <td className="text-center py-1.5 px-2 text-[#e2e8f0] font-bold">{grandTotal}</td>
+              <td className="text-center py-1.5 px-2 text-ink font-bold">{grandTotal}</td>
               <td />
             </tr>
           </tfoot>

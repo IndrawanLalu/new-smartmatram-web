@@ -29,15 +29,15 @@ const ULP_COLORS: Record<string, string> = {
 
 export default function UlpRadarAdvanced({ data, loading = false }: Props) {
   if (loading) {
-    return <div className="bg-[#162334] rounded-xl border border-[#1e3552] h-80 animate-pulse" />;
+    return <div className="bg-white rounded-xl border border-line h-80 animate-pulse" />;
   }
 
   if (data.length < 2) {
     return (
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-8 flex flex-col items-center justify-center gap-2 text-center">
-        <Target className="w-8 h-8 text-[#94a3b8]" />
-        <p className="text-[#94a3b8] text-sm">
-          Pilih <span className="text-[#e2e8f0] font-medium">"Semua ULP"</span> untuk melihat
+      <div className="bg-white rounded-xl border border-line p-8 flex flex-col items-center justify-center gap-2 text-center">
+        <Target className="w-8 h-8 text-ink-soft" />
+        <p className="text-ink-soft text-sm">
+          Pilih <span className="text-ink font-medium">"Semua ULP"</span> untuk melihat
           perbandingan radar antar ULP
         </p>
       </div>
@@ -51,20 +51,20 @@ export default function UlpRadarAdvanced({ data, loading = false }: Props) {
   });
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] shadow-sm">
+    <div className="bg-white rounded-xl border border-line shadow-sm">
       <div className="px-5 pt-5 pb-3">
         <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-[#0a2a26] rounded-lg">
-            <Target className="w-5 h-5 text-[#00897B]" />
+          <div className="p-2 bg-brand-50 rounded-lg">
+            <Target className="w-5 h-5 text-brand-600" />
           </div>
           <div>
-            <h3 className="text-[#e2e8f0] font-bold text-lg">Radar Performa ULP</h3>
-            <p className="text-[#94a3b8] text-xs mt-0.5">
+            <h3 className="text-ink font-bold text-lg">Radar Performa ULP</h3>
+            <p className="text-ink-soft text-xs mt-0.5">
               Perbandingan 5 dimensi kesehatan jaringan antar ULP — area lebih luas = kondisi lebih baik
             </p>
           </div>
         </div>
-        <p className="text-[#94a3b8] text-xs leading-relaxed border-l-2 border-[#00897B]/50 pl-3">
+        <p className="text-ink-soft text-xs leading-relaxed border-l-2 border-brand-300 pl-3">
           Skor 0–100 dinormalisasi relatif terhadap ULP lain dalam periode yang sama.
           Skor 100 = terbaik di dimensi tersebut di antara ULP yang ada.
         </p>
@@ -75,10 +75,10 @@ export default function UlpRadarAdvanced({ data, loading = false }: Props) {
           {/* Radar chart */}
           <ResponsiveContainer width="100%" height={300}>
             <RadarChart data={chartData} margin={{ top: 15, right: 35, bottom: 15, left: 35 }}>
-              <PolarGrid stroke="rgba(255,255,255,0.08)" />
+              <PolarGrid stroke="rgba(15,26,46,0.08)" />
               <PolarAngleAxis
                 dataKey="subject"
-                tick={{ fill: "#94a3b8", fontSize: 10 }}
+                tick={{ fill: "#44546f", fontSize: 10 }}
               />
               <PolarRadiusAxis
                 domain={[0, 100]}
@@ -99,16 +99,16 @@ export default function UlpRadarAdvanced({ data, loading = false }: Props) {
                 />
               ))}
               <Legend
-                wrapperStyle={{ color: "rgba(255,255,255,0.7)", fontSize: "11px", paddingTop: "8px" }}
+                wrapperStyle={{ color: "rgba(15,26,46,0.65)", fontSize: "11px", paddingTop: "8px" }}
               />
               <Tooltip
                 contentStyle={{
-                  background: "rgba(13,27,42,0.97)",
-                  border: "1px solid #1e3552",
+                  background: "#ffffff",
+                  border: "1px solid #e4e8f0",
                   borderRadius: "8px",
                   fontSize: "11px",
                 }}
-                labelStyle={{ color: "#e2e8f0", fontWeight: 600 }}
+                labelStyle={{ color: "#0f1a2e", fontWeight: 600 }}
                 formatter={(val: number | undefined) => [`${val ?? 0}`, ""]}
               />
             </RadarChart>
@@ -119,11 +119,11 @@ export default function UlpRadarAdvanced({ data, loading = false }: Props) {
             {SUBJECTS.map((s) => (
               <div
                 key={s.key}
-                className="flex items-center gap-2 p-2 rounded-lg bg-[#0d1b2a] border border-[#1e3552]"
+                className="flex items-center gap-2 p-2 rounded-lg bg-white border border-line"
               >
                 <div className="flex-1 min-w-0">
-                  <p className="text-[#e2e8f0] text-xs font-semibold">{s.subject}</p>
-                  <p className="text-[#94a3b8] text-[10px] mt-0.5">{s.desc}</p>
+                  <p className="text-ink text-xs font-semibold">{s.subject}</p>
+                  <p className="text-ink-soft text-[10px] mt-0.5">{s.desc}</p>
                 </div>
                 <div className="flex gap-2 shrink-0">
                   {data.map((d) => (
@@ -149,7 +149,7 @@ export default function UlpRadarAdvanced({ data, loading = false }: Props) {
               {data.map((d) => (
                 <div key={d.ulp} className="flex items-center gap-1.5">
                   <div className="w-3 h-0.5 rounded" style={{ backgroundColor: ULP_COLORS[d.ulp] }} />
-                  <span className="text-[10px] text-[#94a3b8]">{d.ulp}</span>
+                  <span className="text-[10px] text-ink-soft">{d.ulp}</span>
                 </div>
               ))}
             </div>

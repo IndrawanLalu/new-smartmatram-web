@@ -49,9 +49,9 @@ const CSS = `
 
 function Track() {
   return (
-    <div className="relative h-1.5 bg-[#cdeae6] rounded-full flex-1 min-w-[28px] self-center">
+    <div className="relative h-1.5 bg-brand-100 rounded-full flex-1 min-w-[28px] self-center">
       {[0, 1, 2, 3, 4].map((i) => (
-        <span key={i} className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-[#00897B] shadow"
+        <span key={i} className="absolute top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-brand-600 shadow"
           style={{ left: 0, animation: `mlflow 2.4s linear ${i * 0.48}s infinite` }} />
       ))}
     </div>
@@ -79,27 +79,27 @@ export default function EngineFlowAnimation({ counts, besok, kritis, waspada, am
   ];
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-line p-5">
       <style>{CSS}</style>
-      <h2 className="text-sm font-bold text-[#1B2631] mb-4 flex items-center gap-2">
-        <BrainCircuit className="w-4 h-4 text-[#00897B]" /> Simulasi Cara Kerja Engine (animasi)
+      <h2 className="text-sm font-bold text-ink mb-4 flex items-center gap-2">
+        <BrainCircuit className="w-4 h-4 text-brand-600" /> Simulasi Cara Kerja Engine (animasi)
       </h2>
 
       <div className="flex items-stretch gap-2 overflow-x-auto pb-2">
         {/* 1. Sumber data lengkap */}
         <div className="shrink-0 flex flex-col gap-1.5 justify-center">
-          <p className="text-[10px] font-bold text-[#94a3b8] uppercase tracking-wide">Data Masuk</p>
+          <p className="text-[10px] font-bold text-ink-soft uppercase tracking-wide">Data Masuk</p>
           {SOURCES.map((s) => {
             const Icon = s.icon;
             return (
-              <div key={s.label} className="flex items-center gap-2 rounded-lg border border-[#E2E8F0] bg-[#F4F6F8] px-2.5 py-1.5 w-52">
+              <div key={s.label} className="flex items-center gap-2 rounded-lg border border-line bg-surface px-2.5 py-1.5 w-52">
                 <span className="relative flex items-center justify-center shrink-0">
                   <Icon className="w-4 h-4" style={{ color: s.color }} />
                   <span className="absolute -right-1.5 w-2 h-2 rounded-full" style={{ backgroundColor: s.color, animation: "mlpulse 1.6s ease-in-out infinite" }} />
                 </span>
-                <span className="flex-1 text-[11px] text-[#1B2631] truncate">{s.label}</span>
-                <span className="text-xs font-bold text-[#1B2631] tabular-nums">{fmt(s.value)}</span>
-                <span className="text-[9px] text-[#94a3b8] w-12 shrink-0">{s.unit}</span>
+                <span className="flex-1 text-[11px] text-ink truncate">{s.label}</span>
+                <span className="text-xs font-bold text-ink tabular-nums">{fmt(s.value)}</span>
+                <span className="text-[9px] text-ink-soft w-12 shrink-0">{s.unit}</span>
               </div>
             );
           })}
@@ -109,7 +109,7 @@ export default function EngineFlowAnimation({ counts, besok, kritis, waspada, am
 
         {/* 2. Mesin + faktor lengkap */}
         <div className="shrink-0 w-56 flex flex-col gap-2">
-          <div className="rounded-2xl bg-linear-to-br from-[#004D40] to-[#00897B] text-white p-3 flex flex-col items-center text-center"
+          <div className="rounded-2xl bg-linear-to-br from-brand-700 to-brand-600 text-white p-3 flex flex-col items-center text-center"
             style={{ animation: "mlglow 2.6s ease-in-out infinite" }}>
             <div className="relative w-11 h-11 flex items-center justify-center">
               <Cog className="w-11 h-11 text-white/30 animate-spin" style={{ animationDuration: "5s" }} />
@@ -123,11 +123,11 @@ export default function EngineFlowAnimation({ counts, besok, kritis, waspada, am
             </div>
           </div>
           {/* 8 faktor yang ditimbang */}
-          <div className="rounded-lg border border-[#E2E8F0] bg-[#F4F6F8] p-2">
-            <p className="text-[9px] font-bold text-[#94a3b8] uppercase mb-1">8 faktor ditimbang</p>
+          <div className="rounded-lg border border-line bg-surface p-2">
+            <p className="text-[9px] font-bold text-ink-soft uppercase mb-1">8 faktor ditimbang</p>
             <div className="flex flex-wrap gap-1">
               {FAKTOR.map((f) => (
-                <span key={f} className="text-[9px] bg-white border border-[#E2E8F0] text-[#00695C] rounded px-1.5 py-0.5">{f}</span>
+                <span key={f} className="text-[9px] bg-white border border-line text-brand-700 rounded px-1.5 py-0.5">{f}</span>
               ))}
             </div>
           </div>
@@ -136,23 +136,23 @@ export default function EngineFlowAnimation({ counts, besok, kritis, waspada, am
         <Track />
 
         {/* 3. Hasil lengkap */}
-        <div className="shrink-0 w-52 rounded-2xl border-2 border-[#00897B]/30 bg-[#E0F2F1] p-3 flex flex-col items-center text-center self-center">
-          <Gauge className="w-9 h-9 text-[#00897B]" style={{ animation: "mlpulse 2.2s ease-in-out infinite" }} />
-          <p className="text-xs font-bold text-[#004D40] mt-1">Prediksi Risiko H+1</p>
-          <p className="text-[10px] text-[#00695C]">{besok}</p>
+        <div className="shrink-0 w-52 rounded-2xl border-2 border-brand-200 bg-brand-50 p-3 flex flex-col items-center text-center self-center">
+          <Gauge className="w-9 h-9 text-brand-600" style={{ animation: "mlpulse 2.2s ease-in-out infinite" }} />
+          <p className="text-xs font-bold text-brand-800 mt-1">Prediksi Risiko H+1</p>
+          <p className="text-[10px] text-brand-700">{besok}</p>
           <div className="w-full h-2 bg-white rounded-full overflow-hidden mt-2">
             <div className="h-full rounded-full bg-linear-to-r from-emerald-500 via-amber-500 to-red-500" style={{ animation: "mlfill 3.6s ease-in-out infinite" }} />
           </div>
           <div className="grid grid-cols-3 gap-1 w-full mt-2">
-            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-red-500 leading-none">{kritis}</p><p className="text-[8px] text-[#64748b]">Kritis</p></div>
-            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-amber-500 leading-none">{waspada}</p><p className="text-[8px] text-[#64748b]">Waspada</p></div>
-            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-emerald-600 leading-none">{aman}</p><p className="text-[8px] text-[#64748b]">Aman</p></div>
+            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-red-500 leading-none">{kritis}</p><p className="text-[8px] text-ink-muted">Kritis</p></div>
+            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-amber-500 leading-none">{waspada}</p><p className="text-[8px] text-ink-muted">Waspada</p></div>
+            <div className="bg-white rounded py-1"><p className="text-sm font-bold text-emerald-600 leading-none">{aman}</p><p className="text-[8px] text-ink-muted">Aman</p></div>
           </div>
-          <p className="text-[9px] text-[#00695C] mt-1">{total} penyulang dinilai</p>
+          <p className="text-[9px] text-brand-700 mt-1">{total} penyulang dinilai</p>
           {top && (
             <div className="mt-2 w-full bg-white rounded-lg px-2 py-1 text-left">
-              <p className="text-[9px] text-[#94a3b8]">Tertinggi besok</p>
-              <p className="text-[11px] font-bold text-[#1B2631] truncate">
+              <p className="text-[9px] text-ink-soft">Tertinggi besok</p>
+              <p className="text-[11px] font-bold text-ink truncate">
                 {top.penyulang} · <span style={{ color: LEVEL_COLOR[top.risk_level] }}>{top.risk_score.toFixed(0)}</span>
               </p>
             </div>
@@ -160,7 +160,7 @@ export default function EngineFlowAnimation({ counts, besok, kritis, waspada, am
         </div>
       </div>
 
-      <p className="text-[11px] text-[#94a3b8] mt-3 text-center">
+      <p className="text-[11px] text-ink-soft mt-3 text-center">
         Tiap malam mesin menarik semua data di atas, menimbang 8 faktor risiko untuk tiap penyulang, lalu menghasilkan skor 0–100 untuk keesokan hari.
       </p>
     </div>

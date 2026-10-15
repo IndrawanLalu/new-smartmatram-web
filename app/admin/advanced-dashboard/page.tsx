@@ -46,14 +46,14 @@ export default function AdvancedDashboardPage() {
   const { data: saidiData, loading: saidiLoading, noKeypoint } = useSaidiSaifi({ computed, startDate, endDate });
 
   const kpis = computed && !computed.isEmpty ? [
-    { label: "Total Gangguan", value: computed.totalGangguan.toLocaleString(), sub: "kejadian", color: "text-red-400", bg: "bg-red-900/20" },
-    { label: "Penyulang Terdampak", value: computed.totalPenyulang, sub: "penyulang", color: "text-amber-400", bg: "bg-amber-900/20" },
-    { label: "Avg Durasi", value: `${Math.round(computed.avgDurMin)} mnt`, sub: "per kejadian", color: "text-blue-400", bg: "bg-blue-900/20" },
-    { label: "Quick Recovery", value: `${computed.quickRecoveryPct.toFixed(1)}%`, sub: "≤ 5 menit", color: "text-[#00897B]", bg: "bg-[#0a2a26]" },
+    { label: "Total Gangguan", value: computed.totalGangguan.toLocaleString(), sub: "kejadian", color: "text-red-600", bg: "bg-red-50" },
+    { label: "Penyulang Terdampak", value: computed.totalPenyulang, sub: "penyulang", color: "text-amber-600", bg: "bg-amber-50" },
+    { label: "Avg Durasi", value: `${Math.round(computed.avgDurMin)} mnt`, sub: "per kejadian", color: "text-blue-600", bg: "bg-blue-50" },
+    { label: "Quick Recovery", value: `${computed.quickRecoveryPct.toFixed(1)}%`, sub: "≤ 5 menit", color: "text-brand-600", bg: "bg-brand-50" },
   ] : [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 text-ink">
       <IsiKepala>
         <Tombol ukuran="sm" ikon={<RefreshCw size={14} className={loading ? "animate-spin" : ""} />} onClick={refresh} disabled={loading}>
           Refresh
@@ -61,47 +61,47 @@ export default function AdvancedDashboardPage() {
       </IsiKepala>
 
       {/* Filters */}
-      <div className="bg-[#162334] rounded-xl border border-[#1e3552] p-4">
+      <div className="bg-white rounded-xl border border-line p-4">
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex items-center gap-2">
-            <Filter className="w-4 h-4 text-[#94a3b8]" />
-            <span className="text-sm font-medium text-[#e2e8f0]">Filter</span>
+            <Filter className="w-4 h-4 text-ink-soft" />
+            <span className="text-sm font-medium text-ink">Filter</span>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94a3b8]">ULP</label>
+            <label className="text-xs text-ink-soft">ULP</label>
             <div className="relative">
               <select
                 value={selectedULP}
                 onChange={(e) => setSelectedULP(e.target.value)}
-                className="appearance-none bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 pr-8 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B]"
+                className="appearance-none bg-white border border-line rounded-lg px-3 py-2 pr-8 text-sm text-ink focus:outline-none focus:border-brand-500"
               >
                 {ULP_OPTIONS.map((u) => <option key={u} value={u}>{u === "ALL" ? "🏢 Semua ULP" : u}</option>)}
               </select>
-              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-[#94a3b8] pointer-events-none" />
+              <ChevronDown className="absolute right-2 top-2.5 w-4 h-4 text-ink-soft pointer-events-none" />
             </div>
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94a3b8]">Dari</label>
+            <label className="text-xs text-ink-soft">Dari</label>
             <input type="date" value={fmt(startDate)}
               onChange={(e) => e.target.value && setStartDate(new Date(e.target.value + "T12:00:00"))}
-              className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B]"
+              className="bg-white border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand-500"
             />
           </div>
 
           <div className="flex flex-col gap-1">
-            <label className="text-xs text-[#94a3b8]">Sampai</label>
+            <label className="text-xs text-ink-soft">Sampai</label>
             <input type="date" value={fmt(endDate)}
               onChange={(e) => e.target.value && setEndDate(new Date(e.target.value + "T12:00:00"))}
-              className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg px-3 py-2 text-sm text-[#e2e8f0] focus:outline-none focus:border-[#00897B]"
+              className="bg-white border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand-500"
             />
           </div>
 
           <div className="flex gap-2 ml-auto">
             {QUICK_RANGES.map(({ label, getRange }) => (
               <button key={label} onClick={() => { const { s, e } = getRange(); setStartDate(s); setEndDate(e); }}
-                className="px-3 py-2 text-xs bg-[#0a2a26] text-[#00897B] hover:bg-[#B2DFDB] rounded-lg transition-colors font-medium"
+                className="px-3 py-2 text-xs bg-brand-50 text-brand-600 hover:bg-brand-100 rounded-lg transition-colors font-medium"
               >
                 {label}
               </button>
@@ -112,9 +112,9 @@ export default function AdvancedDashboardPage() {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-900/20 border border-red-700/30 rounded-xl p-4 flex items-center gap-3">
-          <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-          <p className="text-red-400 text-sm">{error}</p>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          <p className="text-red-600 text-sm">{error}</p>
           <button onClick={refresh} className="ml-auto px-3 py-1.5 bg-red-500 text-white rounded-lg text-xs">Coba Lagi</button>
         </div>
       )}
@@ -123,12 +123,12 @@ export default function AdvancedDashboardPage() {
       {(loading || kpis.length > 0) && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {loading ? Array(4).fill(0).map((_, i) => (
-            <div key={i} className="bg-[#162334] border border-[#1e3552] rounded-xl p-4 animate-pulse h-24" />
+            <div key={i} className="bg-white border border-line rounded-xl p-4 animate-pulse h-24" />
           )) : kpis.map(({ label, value, sub, color, bg }) => (
-            <div key={label} className="bg-[#162334] border border-[#1e3552] rounded-xl p-4">
+            <div key={label} className="bg-white border border-line rounded-xl p-4">
               <div className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium mb-2 ${bg} ${color}`}>{label}</div>
               <p className={`text-2xl font-black ${color}`}>{value}</p>
-              <p className="text-[#94a3b8] text-xs">{sub}</p>
+              <p className="text-ink-soft text-xs">{sub}</p>
             </div>
           ))}
         </div>
@@ -216,10 +216,10 @@ export default function AdvancedDashboardPage() {
 function SectionLabel({ number, title, desc }: { number: string; title: string; desc: string }) {
   return (
     <div className="flex items-center gap-3 mb-3">
-      <span className="text-xs font-black text-[#00897B] bg-[#0a2a26] border border-[#00897B]/30 px-2 py-1 rounded-lg font-mono">{number}</span>
+      <span className="text-xs font-black text-brand-600 bg-brand-50 border border-brand-200 px-2 py-1 rounded-lg font-mono">{number}</span>
       <div>
-        <h4 className="text-[#e2e8f0] font-semibold text-sm">{title}</h4>
-        <p className="text-[#94a3b8] text-xs">{desc}</p>
+        <h4 className="text-ink font-semibold text-sm">{title}</h4>
+        <p className="text-ink-soft text-xs">{desc}</p>
       </div>
     </div>
   );

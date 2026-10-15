@@ -100,7 +100,7 @@ export default function ScoreboardPage() {
 
   // ── PLN Slide Header (shared across LM slides) ────────────────────────────
   const SlideHeader = () => (
-    <div className="bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-xl px-8 py-4 flex items-center justify-between">
+    <div className="bg-linear-to-r from-brand-700 to-brand-600 text-white rounded-xl px-8 py-4 flex items-center justify-between">
       <img src="/logo-danantara.png" alt="Danantara" className="h-12 w-auto object-contain" />
       <div className="text-center">
         <p className="text-white font-bold text-2xl tracking-wide">SCORE BOARD</p>
@@ -122,7 +122,7 @@ export default function ScoreboardPage() {
 
       {/* Floating Presentation Toolbar */}
       {presentMode && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-[#004D40] rounded-2xl px-4 py-2.5 shadow-2xl print-hidden">
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 bg-brand-800 rounded-2xl px-4 py-2.5 shadow-2xl print-hidden">
           {/* Prev */}
           <button
             onClick={() => setSlideIndex((i) => Math.max(i - 1, 0))}
@@ -192,7 +192,7 @@ export default function ScoreboardPage() {
 
       {/* ── PRESENTATION MODE — SLIDE VIEW ─────────────────────────────────── */}
       {presentMode && (
-        <div ref={contentRef} className="bg-[#F4F6F8] min-h-screen overflow-y-auto p-5">
+        <div ref={contentRef} className="bg-surface min-h-screen overflow-y-auto p-5">
           {/* Slide 0: Gangguan Penyulang */}
           {slideIndex === 0 && (
             <GangguanDetailSection
@@ -258,7 +258,7 @@ export default function ScoreboardPage() {
             <select
               value={bulan}
               onChange={(e) => setBulan(Number(e.target.value))}
-              className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white"
+              className="border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white"
             >
               {BULAN_NAMA.map((b, i) => (
                 <option key={i + 1} value={i + 1}>{b}</option>
@@ -269,14 +269,14 @@ export default function ScoreboardPage() {
               type="number"
               value={tahun}
               onChange={(e) => setTahun(Number(e.target.value))}
-              className="w-24 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white"
+              className="w-24 border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white"
             />
 
             {isUp3 && (
               <select
                 value={ulp}
                 onChange={(e) => setUlp(e.target.value)}
-                className="border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20 bg-white"
+                className="border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 bg-white"
               >
                 {UNITS.map((u) => (
                   <option key={u.value} value={u.value}>{u.label}</option>
@@ -286,7 +286,7 @@ export default function ScoreboardPage() {
 
             <button
               onClick={refresh}
-              className="p-2 border border-[#E2E8F0] rounded-lg text-[#5D6D7E] hover:text-[#00897B] hover:border-[#00897B] transition-colors bg-white"
+              className="p-2 border border-line rounded-lg text-ink-soft hover:text-brand-600 hover:border-brand-500 transition-colors bg-white"
               title="Refresh"
             >
               <RefreshCw size={16} />
@@ -296,14 +296,14 @@ export default function ScoreboardPage() {
               {data.length > 0 && (
                 <button
                   onClick={() => setShowDuplicate(true)}
-                  className="flex items-center gap-2 border border-[#00897B] text-[#00897B] px-4 py-2 rounded-lg text-sm font-medium hover:bg-[#00897B]/5 transition-colors bg-white"
+                  className="flex items-center gap-2 border border-brand-500 text-brand-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-brand-600/5 transition-colors bg-white"
                 >
                   <Copy size={15} /> Salin ke Bulan Lain
                 </button>
               )}
               <button
                 onClick={() => setShowAddLM(true)}
-                className="flex items-center gap-2 bg-linear-to-r from-[#004D40] to-[#00897B] text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                className="flex items-center gap-2 bg-linear-to-r from-brand-700 to-brand-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
               >
                 <Plus size={16} /> Tambah Lead Measure
               </button>
@@ -313,7 +313,7 @@ export default function ScoreboardPage() {
           {/* Loading */}
           {loading && (
             <div className="flex justify-center py-16">
-              <div className="w-8 h-8 border-4 border-[#E2E8F0] border-t-[#00897B] rounded-full animate-spin" />
+              <div className="w-8 h-8 border-4 border-line border-t-brand-600 rounded-full animate-spin" />
             </div>
           )}
 
@@ -327,12 +327,12 @@ export default function ScoreboardPage() {
 
           {/* Empty State */}
           {!loading && !error && data.length === 0 && (
-            <div className="bg-white rounded-xl border border-[#E2E8F0] border-dashed py-16 flex flex-col items-center gap-3 text-center">
-              <p className="text-[#5D6D7E] font-medium">Belum ada Lead Measure</p>
+            <div className="bg-white rounded-xl border border-line border-dashed py-16 flex flex-col items-center gap-3 text-center">
+              <p className="text-ink-soft font-medium">Belum ada Lead Measure</p>
               <p className="text-sm text-gray-400">untuk {bulanLabel} · {ulp}</p>
               <button
                 onClick={() => setShowAddLM(true)}
-                className="mt-2 flex items-center gap-2 bg-linear-to-r from-[#004D40] to-[#00897B] text-white px-5 py-2.5 rounded-lg text-sm font-medium"
+                className="mt-2 flex items-center gap-2 bg-linear-to-r from-brand-700 to-brand-600 text-white px-5 py-2.5 rounded-lg text-sm font-medium"
               >
                 <Plus size={16} /> Tambah Lead Measure Pertama
               </button>

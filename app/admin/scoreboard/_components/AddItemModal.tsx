@@ -39,10 +39,10 @@ export default function AddItemModal({ lmNama, onClose, onSave }: AddItemModalPr
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#E2E8F0]">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <div>
-            <h2 className="font-semibold text-[#1B2631]">Tambah Item Pekerjaan</h2>
-            <p className="text-xs text-[#5D6D7E] mt-0.5 line-clamp-1">{lmNama}</p>
+            <h2 className="font-semibold text-ink">Tambah Item Pekerjaan</h2>
+            <p className="text-xs text-ink-soft mt-0.5 line-clamp-1">{lmNama}</p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
             <X size={18} />
@@ -52,7 +52,7 @@ export default function AddItemModal({ lmNama, onClose, onSave }: AddItemModalPr
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
           <div className="flex gap-3">
             <div className="flex-1">
-              <label className="block text-sm font-medium text-[#1B2631] mb-1">
+              <label className="block text-sm font-medium text-ink mb-1">
                 Nama Pekerjaan <span className="text-red-500">*</span>
               </label>
               <input
@@ -61,17 +61,17 @@ export default function AddItemModal({ lmNama, onClose, onSave }: AddItemModalPr
                 onChange={(e) => setNamaItem(e.target.value)}
                 placeholder="Contoh: PDKB — 30 titik"
                 required
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="w-full border border-line rounded-lg px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               />
             </div>
             <div className="w-28">
-              <label className="block text-sm font-medium text-[#1B2631] mb-1">Satuan</label>
+              <label className="block text-sm font-medium text-ink mb-1">Satuan</label>
               <input
                 type="text"
                 value={satuan}
                 onChange={(e) => setSatuan(e.target.value)}
                 placeholder="titik / kali"
-                className="w-full border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                className="w-full border border-line rounded-lg px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
               />
             </div>
           </div>
@@ -82,37 +82,37 @@ export default function AddItemModal({ lmNama, onClose, onSave }: AddItemModalPr
                 type="checkbox"
                 checked={sameTarget}
                 onChange={(e) => setSameTarget(e.target.checked)}
-                className="w-4 h-4 accent-[#00897B]"
+                className="w-4 h-4 accent-brand-600"
               />
-              <span className="text-sm text-[#1B2631]">Target sama untuk semua minggu</span>
+              <span className="text-sm text-ink">Target sama untuk semua minggu</span>
             </label>
 
             {sameTarget ? (
               <div>
-                <label className="block text-sm font-medium text-[#1B2631] mb-1">Target (M1–M4)</label>
+                <label className="block text-sm font-medium text-ink mb-1">Target (M1–M4)</label>
                 <input
                   type="number"
                   value={targetAll}
                   onChange={(e) => setTargetAll(e.target.value)}
                   min={0}
-                  className="w-32 border border-[#E2E8F0] rounded-lg px-3 py-2 text-sm text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                  className="w-32 border border-line rounded-lg px-3 py-2 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                 />
               </div>
             ) : (
               <div>
-                <label className="block text-sm font-medium text-[#1B2631] mb-2">Target per Minggu</label>
+                <label className="block text-sm font-medium text-ink mb-2">Target per Minggu</label>
                 <div className="grid grid-cols-4 gap-2">
                   {WEEK_LABELS.map((w) => {
                     const key = w.toLowerCase() as "m1" | "m2" | "m3" | "m4";
                     return (
                       <div key={w}>
-                        <p className="text-xs text-center text-[#5D6D7E] mb-1">{w}</p>
+                        <p className="text-xs text-center text-ink-soft mb-1">{w}</p>
                         <input
                           type="number"
                           value={targets[key]}
                           onChange={(e) => setTargets((prev) => ({ ...prev, [key]: e.target.value }))}
                           min={0}
-                          className="w-full border border-[#E2E8F0] rounded-lg px-2 py-2 text-sm text-center text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20"
+                          className="w-full border border-line rounded-lg px-2 py-2 text-sm text-center text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20"
                         />
                       </div>
                     );
@@ -126,14 +126,14 @@ export default function AddItemModal({ lmNama, onClose, onSave }: AddItemModalPr
             <button
               type="button"
               onClick={onClose}
-              className="flex-1 border border-[#E2E8F0] rounded-lg py-2 text-sm text-[#5D6D7E] hover:bg-gray-50 transition-colors"
+              className="flex-1 border border-line rounded-lg py-2 text-sm text-ink-soft hover:bg-gray-50 transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={saving || !namaItem.trim()}
-              className="flex-1 bg-linear-to-r from-[#004D40] to-[#00897B] text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50 transition-opacity"
+              className="flex-1 bg-linear-to-r from-brand-700 to-brand-600 text-white rounded-lg py-2 text-sm font-medium disabled:opacity-50 transition-opacity"
             >
               {saving ? "Menyimpan..." : "Tambah Item"}
             </button>

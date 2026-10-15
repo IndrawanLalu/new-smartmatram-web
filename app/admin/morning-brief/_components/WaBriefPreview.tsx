@@ -15,8 +15,8 @@ interface PreviewResponse {
 function renderLine(line: string) {
   const parts = line.split(/(\*[^*]+\*|_[^_]+_)/g);
   return parts.map((p, i) => {
-    if (/^\*[^*]+\*$/.test(p)) return <strong key={i} className="font-semibold text-[#e2e8f0]">{p.slice(1, -1)}</strong>;
-    if (/^_[^_]+_$/.test(p)) return <em key={i} className="text-[#94a3b8]">{p.slice(1, -1)}</em>;
+    if (/^\*[^*]+\*$/.test(p)) return <strong key={i} className="font-semibold text-ink">{p.slice(1, -1)}</strong>;
+    if (/^_[^_]+_$/.test(p)) return <em key={i} className="text-ink-soft">{p.slice(1, -1)}</em>;
     return <span key={i}>{p}</span>;
   });
 }
@@ -66,25 +66,25 @@ export default function WaBriefPreview({ canSend }: { canSend: boolean }) {
   }
 
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] overflow-hidden print:hidden">
-      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-[#1e3552]">
+    <div className="bg-white rounded-xl border border-line overflow-hidden print:hidden">
+      <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line">
         <div className="flex items-center gap-2">
-          <MessageSquareText size={16} className="text-[#00897B]" />
-          <span className="text-sm font-semibold text-[#e2e8f0]">Preview Brief WhatsApp</span>
+          <MessageSquareText size={16} className="text-brand-600" />
+          <span className="text-sm font-semibold text-ink">Preview Brief WhatsApp</span>
           {stale && (
-            <span className="flex items-center gap-1 text-[10px] text-amber-400 bg-amber-900/20 px-2 py-0.5 rounded-full">
+            <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
               <AlertTriangle size={11} /> prediksi belum di-update
             </span>
           )}
         </div>
         <div className="flex items-center gap-2">
           <button onClick={load} disabled={loading}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-[#94a3b8] hover:text-[#e2e8f0] rounded-lg hover:bg-[#0d1b2a] transition-colors disabled:opacity-50">
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-ink-soft hover:text-ink rounded-lg hover:bg-white transition-colors disabled:opacity-50">
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Muat ulang
           </button>
           {canSend && (
             <button onClick={handleSend} disabled={sending || loading || !text}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-linear-to-r from-[#004D40] to-[#00897B] rounded-lg disabled:opacity-50">
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-linear-to-r from-brand-700 to-brand-600 rounded-lg disabled:opacity-50">
               {sending ? <Loader2 size={13} className="animate-spin" /> : sent ? <CheckCircle2 size={13} /> : <Send size={13} />}
               {sent ? "Terkirim" : "Kirim Sekarang"}
             </button>
@@ -92,16 +92,16 @@ export default function WaBriefPreview({ canSend }: { canSend: boolean }) {
         </div>
       </div>
 
-      <div className="p-4 bg-[#0a1628]">
+      <div className="p-4 bg-surface">
         {loading ? (
-          <div className="flex items-center gap-2 text-[#94a3b8] text-sm py-8 justify-center">
+          <div className="flex items-center gap-2 text-ink-soft text-sm py-8 justify-center">
             <Loader2 size={16} className="animate-spin" /> Menyusun brief…
           </div>
         ) : error ? (
-          <p className="text-red-400 text-sm py-4">{error}</p>
+          <p className="text-red-600 text-sm py-4">{error}</p>
         ) : (
-          <div className="max-w-md mx-auto bg-[#162334] border border-[#1e3552] rounded-xl rounded-tl-sm px-4 py-3 shadow-sm">
-            <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-[#cbd5e1] m-0">
+          <div className="max-w-md mx-auto bg-white border border-line rounded-xl rounded-tl-sm px-4 py-3 shadow-sm">
+            <pre className="whitespace-pre-wrap break-words font-sans text-[13px] leading-relaxed text-ink-soft m-0">
               {text.split("\n").map((line, i) => (
                 <div key={i}>{line ? renderLine(line) : " "}</div>
               ))}

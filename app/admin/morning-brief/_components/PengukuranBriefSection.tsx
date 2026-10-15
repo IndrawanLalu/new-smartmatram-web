@@ -27,20 +27,20 @@ export default function PengukuranBriefSection({
   petugasRekap,
 }: Props) {
   return (
-    <div className="bg-[#162334] rounded-xl border border-[#1e3552] print:bg-white print:border print:border-gray-300">
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-[#1e3552] print:border-gray-300">
+    <div className="bg-white rounded-xl border border-line print:bg-white print:border print:border-gray-300">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-line print:border-gray-300">
         <div className="bg-teal-500/15 rounded-lg p-2 print:hidden">
-          <Gauge size={16} className="text-teal-400" />
+          <Gauge size={16} className="text-teal-600" />
         </div>
         <div className="flex-1">
-          <h2 className="text-[#e2e8f0] font-semibold print:text-black">Pengukuran Gardu</h2>
-          <p className="text-[#94a3b8] text-xs print:text-gray-500">Beban & kondisi gardu</p>
+          <h2 className="text-ink font-semibold print:text-black">Pengukuran Gardu</h2>
+          <p className="text-ink-soft text-xs print:text-gray-500">Beban & kondisi gardu</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs px-2.5 py-1 rounded-full bg-[#1e3552] text-[#94a3b8] print:text-gray-500">
-            {monthLabel}: <span className="font-bold text-[#e2e8f0] print:text-black">{totalBulanIni}</span>
+          <span className="text-xs px-2.5 py-1 rounded-full bg-line text-ink-soft print:text-gray-500">
+            {monthLabel}: <span className="font-bold text-ink print:text-black">{totalBulanIni}</span>
           </span>
-          <span className="bg-teal-500/15 text-teal-400 text-sm font-bold px-3 py-1 rounded-full print:text-teal-700">
+          <span className="bg-teal-500/15 text-teal-600 text-sm font-bold px-3 py-1 rounded-full print:text-teal-700">
             Kemarin: {total}
           </span>
         </div>
@@ -48,7 +48,7 @@ export default function PengukuranBriefSection({
 
       <div className="p-5 space-y-5">
         {total === 0 ? (
-          <p className="text-[#94a3b8] text-sm text-center py-4">
+          <p className="text-ink-soft text-sm text-center py-4">
             Tidak ada data pengukuran kemarin
           </p>
         ) : (
@@ -59,8 +59,8 @@ export default function PengukuranBriefSection({
                 label={`Overload ≥${OVERLOAD_PCT}%`}
                 value={overload.length}
                 colorClass={overload.length > 0
-                  ? "bg-red-500/15 text-red-400 print:text-red-700"
-                  : "bg-green-500/10 text-green-400 print:text-green-700"}
+                  ? "bg-red-500/15 text-red-600 print:text-red-700"
+                  : "bg-green-500/10 text-green-600 print:text-green-700"}
                 subLabel="s/d kmrn"
                 subValue={overloadBulanIni}
               />
@@ -68,22 +68,22 @@ export default function PengukuranBriefSection({
                 label={`Suhu >${HIGH_TEMP_C}°C`}
                 value={highTemp.length}
                 colorClass={highTemp.length > 0
-                  ? "bg-orange-500/15 text-orange-400 print:text-orange-700"
-                  : "bg-green-500/10 text-green-400 print:text-green-700"}
+                  ? "bg-orange-500/15 text-orange-600 print:text-orange-700"
+                  : "bg-green-500/10 text-green-600 print:text-green-700"}
                 subLabel="s/d kmrn"
                 subValue={highTempBulanIni}
               />
               <StatPill
                 label="WO Dikirim"
                 value={woDone.length}
-                colorClass="bg-blue-500/15 text-blue-400 print:text-blue-700"
+                colorClass="bg-blue-500/15 text-blue-600 print:text-blue-700"
                 subLabel={monthLabel}
                 subValue={woDoneBulanIni}
               />
               <StatPill
                 label="AMG di-Input"
                 value={amgDone.length}
-                colorClass="bg-purple-500/15 text-purple-400 print:text-purple-700"
+                colorClass="bg-purple-500/15 text-purple-600 print:text-purple-700"
                 subLabel={monthLabel}
                 subValue={amgDoneBulanIni}
               />
@@ -92,29 +92,29 @@ export default function PengukuranBriefSection({
             {/* Petugas rekap */}
             {petugasRekap.length > 0 && (
               <div>
-                <p className="text-[#e2e8f0] text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Users size={12} className="text-teal-400" />
+                <p className="text-ink text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Users size={12} className="text-teal-600" />
                   Rekap Per Petugas
                 </p>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e3552] print:border-gray-300">
-                      <th className="text-left py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Petugas</th>
-                      <th className="text-center py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">{monthLabel}</th>
-                      <th className="text-center py-1.5 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Kemarin</th>
+                    <tr className="border-b border-line print:border-gray-300">
+                      <th className="text-left py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Petugas</th>
+                      <th className="text-center py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">{monthLabel}</th>
+                      <th className="text-center py-1.5 text-ink-soft font-semibold text-xs print:text-gray-600">Kemarin</th>
                     </tr>
                   </thead>
                   <tbody>
                     {petugasRekap.map((p) => (
-                      <tr key={p.nama} className="border-b border-[#1e3552]/50 last:border-0 print:border-gray-200">
-                        <td className="py-2 pr-4 text-[#e2e8f0] font-medium text-sm print:text-black">{p.nama}</td>
+                      <tr key={p.nama} className="border-b border-line last:border-0 print:border-gray-200">
+                        <td className="py-2 pr-4 text-ink font-medium text-sm print:text-black">{p.nama}</td>
                         <td className="py-2 pr-4 text-center">
-                          <span className="bg-teal-500/15 text-teal-400 text-xs font-bold px-2 py-0.5 rounded print:text-teal-700">
+                          <span className="bg-teal-500/15 text-teal-600 text-xs font-bold px-2 py-0.5 rounded print:text-teal-700">
                             {p.jumlahBulanIni}
                           </span>
                         </td>
-                        <td className="py-2 text-center text-[#e2e8f0] font-medium print:text-black">
-                          {p.jumlah > 0 ? p.jumlah : <span className="text-[#94a3b8]">—</span>}
+                        <td className="py-2 text-center text-ink font-medium print:text-black">
+                          {p.jumlah > 0 ? p.jumlah : <span className="text-ink-soft">—</span>}
                         </td>
                       </tr>
                     ))}
@@ -126,29 +126,29 @@ export default function PengukuranBriefSection({
             {/* Overload */}
             {overload.length > 0 && (
               <div>
-                <p className="text-[#e2e8f0] text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Gauge size={12} className="text-red-400" />Gardu Overload
+                <p className="text-ink text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Gauge size={12} className="text-red-600" />Gardu Overload
                 </p>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e3552] print:border-gray-300">
-                      <th className="text-left py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Gardu</th>
-                      <th className="text-left py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Penyulang</th>
-                      <th className="text-right py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Beban</th>
-                      <th className="text-right py-1.5 text-[#94a3b8] font-semibold text-xs print:text-gray-600">kVA</th>
+                    <tr className="border-b border-line print:border-gray-300">
+                      <th className="text-left py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Gardu</th>
+                      <th className="text-left py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Penyulang</th>
+                      <th className="text-right py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Beban</th>
+                      <th className="text-right py-1.5 text-ink-soft font-semibold text-xs print:text-gray-600">kVA</th>
                     </tr>
                   </thead>
                   <tbody>
                     {overload.map((r) => (
-                      <tr key={r.id} className="border-b border-[#1e3552]/50 last:border-0 print:border-gray-200">
-                        <td className="py-2 pr-4 text-[#e2e8f0] font-medium print:text-black">{r.no_gardu}</td>
-                        <td className="py-2 pr-4 text-[#94a3b8] text-xs print:text-gray-600">{r.penyulang ?? "-"}</td>
+                      <tr key={r.id} className="border-b border-line last:border-0 print:border-gray-200">
+                        <td className="py-2 pr-4 text-ink font-medium print:text-black">{r.no_gardu}</td>
+                        <td className="py-2 pr-4 text-ink-soft text-xs print:text-gray-600">{r.penyulang ?? "-"}</td>
                         <td className="py-2 pr-4 text-right">
-                          <span className="bg-red-500/15 text-red-400 text-xs font-bold px-2 py-0.5 rounded print:text-red-700">
+                          <span className="bg-red-500/15 text-red-600 text-xs font-bold px-2 py-0.5 rounded print:text-red-700">
                             {r.persen_beban.toFixed(1)}%
                           </span>
                         </td>
-                        <td className="py-2 text-right text-[#94a3b8] text-xs print:text-gray-600">{r.kva_trafo}</td>
+                        <td className="py-2 text-right text-ink-soft text-xs print:text-gray-600">{r.kva_trafo}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -159,24 +159,24 @@ export default function PengukuranBriefSection({
             {/* High temp */}
             {highTemp.length > 0 && (
               <div>
-                <p className="text-[#e2e8f0] text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                  <Thermometer size={12} className="text-orange-400" />Suhu Tinggi (&gt;{HIGH_TEMP_C}°C)
+                <p className="text-ink text-xs font-semibold uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                  <Thermometer size={12} className="text-orange-600" />Suhu Tinggi (&gt;{HIGH_TEMP_C}°C)
                 </p>
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b border-[#1e3552] print:border-gray-300">
-                      <th className="text-left py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Gardu</th>
-                      <th className="text-left py-1.5 pr-4 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Penyulang</th>
-                      <th className="text-right py-1.5 text-[#94a3b8] font-semibold text-xs print:text-gray-600">Suhu</th>
+                    <tr className="border-b border-line print:border-gray-300">
+                      <th className="text-left py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Gardu</th>
+                      <th className="text-left py-1.5 pr-4 text-ink-soft font-semibold text-xs print:text-gray-600">Penyulang</th>
+                      <th className="text-right py-1.5 text-ink-soft font-semibold text-xs print:text-gray-600">Suhu</th>
                     </tr>
                   </thead>
                   <tbody>
                     {highTemp.map((r) => (
-                      <tr key={r.id} className="border-b border-[#1e3552]/50 last:border-0 print:border-gray-200">
-                        <td className="py-2 pr-4 text-[#e2e8f0] font-medium print:text-black">{r.no_gardu}</td>
-                        <td className="py-2 pr-4 text-[#94a3b8] text-xs print:text-gray-600">{r.penyulang ?? "-"}</td>
+                      <tr key={r.id} className="border-b border-line last:border-0 print:border-gray-200">
+                        <td className="py-2 pr-4 text-ink font-medium print:text-black">{r.no_gardu}</td>
+                        <td className="py-2 pr-4 text-ink-soft text-xs print:text-gray-600">{r.penyulang ?? "-"}</td>
                         <td className="py-2 text-right">
-                          <span className="bg-orange-500/15 text-orange-400 text-xs font-bold px-2 py-0.5 rounded print:text-orange-700">
+                          <span className="bg-orange-500/15 text-orange-600 text-xs font-bold px-2 py-0.5 rounded print:text-orange-700">
                             {r.suhu_trafo}°C
                           </span>
                         </td>
@@ -192,16 +192,16 @@ export default function PengukuranBriefSection({
               <div className="flex flex-wrap gap-3">
                 {woDone.length > 0 && (
                   <div className="flex items-center gap-2 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2 print:border-blue-300">
-                    <FileCheck size={14} className="text-blue-400 print:text-blue-600" />
-                    <span className="text-blue-300 text-sm print:text-blue-700">
+                    <FileCheck size={14} className="text-blue-600 print:text-blue-600" />
+                    <span className="text-blue-700 text-sm print:text-blue-700">
                       <span className="font-semibold">{woDone.length}</span> gardu sudah di-WO
                     </span>
                   </div>
                 )}
                 {amgDone.length > 0 && (
                   <div className="flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-lg px-3 py-2 print:border-purple-300">
-                    <ClipboardCheck size={14} className="text-purple-400 print:text-purple-600" />
-                    <span className="text-purple-300 text-sm print:text-purple-700">
+                    <ClipboardCheck size={14} className="text-purple-600 print:text-purple-600" />
+                    <span className="text-purple-700 text-sm print:text-purple-700">
                       <span className="font-semibold">{amgDone.length}</span> gardu sudah di-AMG
                     </span>
                   </div>

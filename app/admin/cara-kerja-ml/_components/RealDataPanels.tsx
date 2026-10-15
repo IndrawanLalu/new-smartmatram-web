@@ -99,7 +99,7 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
       </Card>
 
       {/* 2. Hasil prediksi ML */}
-      <Card icon={<Target className="w-4 h-4 text-[#00897B]" />} title="Hasil Prediksi ML — Skor Risiko Besok" subtitle={`${riskData.length} penyulang, urut paling berisiko`}>
+      <Card icon={<Target className="w-4 h-4 text-brand-600" />} title="Hasil Prediksi ML — Skor Risiko Besok" subtitle={`${riskData.length} penyulang, urut paling berisiko`}>
         {riskData.length === 0 ? (
           <Empty text="Belum ada hasil prediksi. Jalankan pipeline ML dulu." />
         ) : (
@@ -113,13 +113,13 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
               <tbody>
                 {riskData.map((r, i) => (
                   <Tr key={r.id}>
-                    <Td cls="text-[#94a3b8] text-right">{i + 1}</Td>
+                    <Td cls="text-ink-soft text-right">{i + 1}</Td>
                     <Td><b>{r.penyulang}</b></Td>
                     <Td>{r.ulp}</Td>
                     <Td center cls="font-mono font-bold" style={{ color: LEVEL_COLOR[r.risk_level] }}>{r.risk_score.toFixed(0)}</Td>
                     <Td center><Badge level={r.risk_level} /></Td>
                     <Td>{r.predicted_cause ?? "—"}</Td>
-                    <Td cls="text-[#64748b]">{r.breakdown?.drivers?.[0]?.faktor ?? "—"}</Td>
+                    <Td cls="text-ink-muted">{r.breakdown?.drivers?.[0]?.faktor ?? "—"}</Td>
                   </Tr>
                 ))}
               </tbody>
@@ -135,9 +135,9 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
         ) : (
           <>
             <div className="flex items-center gap-2 mb-3 flex-wrap">
-              <label className="text-xs text-[#64748b]">Pilih penyulang:</label>
+              <label className="text-xs text-ink-muted">Pilih penyulang:</label>
               <select value={selected?.penyulang ?? ""} onChange={(e) => setSel(e.target.value)}
-                className="border border-[#E2E8F0] rounded-lg px-2 py-1 text-sm text-[#1B2631] bg-white focus:outline-none focus:border-[#00897B]">
+                className="border border-line rounded-lg px-2 py-1 text-sm text-ink bg-white focus:outline-none focus:border-brand-500">
                 {riskData.map((r) => <option key={r.id} value={r.penyulang}>{r.penyulang} ({r.risk_score.toFixed(0)})</option>)}
               </select>
               {selected && (
@@ -150,15 +150,15 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
             {selected && (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {Object.entries(FITUR_LABEL).map(([key, label]) => (
-                  <div key={key} className="flex items-center justify-between rounded-lg bg-[#F4F6F8] border border-[#E2E8F0] px-3 py-1.5">
-                    <span className="text-[11px] text-[#64748b]">{label}</span>
-                    <span className="text-xs font-bold text-[#1B2631]">{fmtFitur(key, selected.breakdown?.fitur?.[key])}</span>
+                  <div key={key} className="flex items-center justify-between rounded-lg bg-surface border border-line px-3 py-1.5">
+                    <span className="text-[11px] text-ink-muted">{label}</span>
+                    <span className="text-xs font-bold text-ink">{fmtFitur(key, selected.breakdown?.fitur?.[key])}</span>
                   </div>
                 ))}
               </div>
             )}
             {selected?.breakdown?.drivers && selected.breakdown.drivers.length > 0 && (
-              <p className="text-[11px] text-[#64748b] mt-3">
+              <p className="text-[11px] text-ink-muted mt-3">
                 → Faktor terbesar pembentuk skor:{" "}
                 {selected.breakdown.drivers.map((d) => `${d.faktor} (${d.kontribusi}%)`).join(" · ")}
               </p>
@@ -184,16 +184,16 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
                   return (
                     <Tr key={i}>
                       <Td cls="whitespace-nowrap">{e.tgl_gangguan ?? "—"}</Td>
-                      <Td><b>{e.penyulang ?? "—"}</b> <span className="text-[#94a3b8]">· {e.ulp ?? "—"}</span></Td>
+                      <Td><b>{e.penyulang ?? "—"}</b> <span className="text-ink-soft">· {e.ulp ?? "—"}</span></Td>
                       <Td center>
-                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isT ? "bg-amber-100 text-amber-700" : "bg-[#E0F2F1] text-[#00695C]"}`}>
+                        <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold ${isT ? "bg-amber-100 text-amber-700" : "bg-brand-50 text-brand-700"}`}>
                           {e.kode ?? "—"}
                         </span>
                       </Td>
-                      <Td right cls="font-mono text-[11px] text-[#64748b] whitespace-nowrap">{arus}</Td>
-                      <Td cls="text-[#64748b]">{e.penyebab || <span className="italic text-[#C7D2DA]">kosong</span>}</Td>
-                      <Td>{e.predicted_cause ? <span className="text-fuchsia-600 font-semibold">{e.predicted_cause}</span> : <span className="text-[#C7D2DA]">—</span>}</Td>
-                      <Td cls="text-[#64748b] max-w-[300px]">{e.cause_reason || (e.predicted_cause ? "—" : <span className="italic text-[#C7D2DA]">sudah diketahui (KODE)</span>)}</Td>
+                      <Td right cls="font-mono text-[11px] text-ink-muted whitespace-nowrap">{arus}</Td>
+                      <Td cls="text-ink-muted">{e.penyebab || <span className="italic text-ink-muted">kosong</span>}</Td>
+                      <Td>{e.predicted_cause ? <span className="text-fuchsia-600 font-semibold">{e.predicted_cause}</span> : <span className="text-ink-muted">—</span>}</Td>
+                      <Td cls="text-ink-muted max-w-[300px]">{e.cause_reason || (e.predicted_cause ? "—" : <span className="italic text-ink-muted">sudah diketahui (KODE)</span>)}</Td>
                     </Tr>
                   );
                 })}
@@ -209,26 +209,26 @@ export default function RealDataPanels({ riskData, weather, events, besok }: Pro
 // ── helper kecil ─────────────────────────────────────────────────────────────
 function Card({ icon, title, subtitle, children }: { icon: React.ReactNode; title: string; subtitle: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-[#E2E8F0] p-5">
+    <div className="bg-white rounded-xl shadow-sm border border-line p-5">
       <div className="mb-3">
-        <h2 className="text-sm font-bold text-[#1B2631] flex items-center gap-2">{icon}{title}</h2>
-        <p className="text-[11px] text-[#94a3b8] mt-0.5 ml-6">{subtitle}</p>
+        <h2 className="text-sm font-bold text-ink flex items-center gap-2">{icon}{title}</h2>
+        <p className="text-[11px] text-ink-soft mt-0.5 ml-6">{subtitle}</p>
       </div>
       {children}
     </div>
   );
 }
 function Tr({ children, head }: { children: React.ReactNode; head?: boolean }) {
-  return <tr className={head ? "" : "border-t border-[#E2E8F0] hover:bg-[#F4F6F8]"}>{children}</tr>;
+  return <tr className={head ? "" : "border-t border-line hover:bg-surface"}>{children}</tr>;
 }
 function Th({ children, right, center }: { children: React.ReactNode; right?: boolean; center?: boolean }) {
-  return <th className={`py-2 px-2 bg-[#E0F2F1] text-[#00695C] font-semibold border-b border-[#E2E8F0] whitespace-nowrap ${right ? "text-right" : center ? "text-center" : "text-left"}`}>{children}</th>;
+  return <th className={`py-2 px-2 bg-brand-50 text-brand-700 font-semibold border-b border-line whitespace-nowrap ${right ? "text-right" : center ? "text-center" : "text-left"}`}>{children}</th>;
 }
 function Td({ children, right, center, cls, style }: { children: React.ReactNode; right?: boolean; center?: boolean; cls?: string; style?: React.CSSProperties }) {
   const align = right ? "text-right" : center ? "text-center" : "text-left";
   const hasColor = cls?.includes("text-") || style?.color != null;
-  return <td className={`py-1.5 px-2 ${align} ${hasColor ? "" : "text-[#1B2631]"} ${cls ?? ""}`} style={style}>{children}</td>;
+  return <td className={`py-1.5 px-2 ${align} ${hasColor ? "" : "text-ink"} ${cls ?? ""}`} style={style}>{children}</td>;
 }
 function Empty({ text }: { text: string }) {
-  return <div className="py-8 text-center text-sm text-[#94a3b8]">{text}</div>;
+  return <div className="py-8 text-center text-sm text-ink-soft">{text}</div>;
 }

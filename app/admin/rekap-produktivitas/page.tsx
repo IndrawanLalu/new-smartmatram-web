@@ -16,13 +16,13 @@ const BULAN_LABELS = [
 ];
 
 const SELECT_CLASS =
-  "border border-[#1e3552] rounded-lg px-3 py-1.5 text-sm text-[#e2e8f0] bg-[#162334] focus:outline-none focus:border-[#00897B] focus:ring-2 focus:ring-[#00897B]/20";
+  "border border-line rounded-lg px-3 py-1.5 text-sm text-ink bg-white focus:outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20";
 
 function cellBg(count: number) {
   if (count === 0) return "";
-  if (count === 1)  return "bg-teal-900/60 text-teal-300";
-  if (count === 2)  return "bg-teal-800/70 text-teal-200";
-  return                   "bg-teal-700/80 text-white font-semibold";
+  if (count === 1)  return "bg-brand-100 text-brand-800";
+  if (count === 2)  return "bg-brand-300 text-brand-800 font-medium";
+  return                   "bg-brand-600 text-white font-semibold";
 }
 
 export default function RekapProduktivitasPage() {
@@ -65,10 +65,10 @@ export default function RekapProduktivitasPage() {
   }
 
   return (
-    <div className="p-6 space-y-5 min-h-screen bg-[#0a1628]">
+    <div className="space-y-5 text-ink">
 
       {/* Filter */}
-      <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-xl p-4 flex flex-wrap gap-3 items-center">
+      <div className="bg-white border border-line rounded-xl p-4 flex flex-wrap gap-3 items-center">
         {canSeeAllUnits(user.role) && (
           <select
             value={filter.ulp}
@@ -112,14 +112,14 @@ export default function RekapProduktivitasPage() {
           ))}
         </select>
 
-        <span className="text-[#94a3b8] text-sm ml-auto">
+        <span className="text-ink-soft text-sm ml-auto">
           {loading ? "Memuat..." : `${rows.length} petugas`}
         </span>
 
         <button
           onClick={handleDownloadPdf}
           disabled={pdfLoading || loading || rows.length === 0}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-[#00897B] hover:bg-[#00695C] disabled:opacity-50 text-white transition-colors"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-semibold bg-brand-600 hover:bg-brand-700 disabled:opacity-50 text-white transition-colors"
         >
           {pdfLoading ? (
             <Loader2 className="w-4 h-4 animate-spin" />
@@ -131,21 +131,21 @@ export default function RekapProduktivitasPage() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-xl overflow-hidden">
+      <div className="bg-white border border-line rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-[#1e3552] border-t-[#00897B] rounded-full animate-spin" />
+            <div className="w-8 h-8 border-4 border-line border-t-brand-600 rounded-full animate-spin" />
           </div>
         ) : rows.length === 0 ? (
-          <div className="text-center py-16 text-[#94a3b8]">
+          <div className="text-center py-16 text-ink-soft">
             Tidak ada data untuk filter yang dipilih
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm border-collapse">
               <thead>
-                <tr className="bg-[#162334] text-[#94a3b8] text-xs">
-                  <th className="sticky left-0 z-10 bg-[#162334] px-4 py-3 text-left font-semibold text-[#5eead4] min-w-[180px] border-r border-[#1e3552]">
+                <tr className="bg-surface text-ink-soft text-xs">
+                  <th className="sticky left-0 z-10 bg-surface px-4 py-3 text-left font-semibold text-brand-700 min-w-[180px] border-r border-line">
                     Nama Petugas
                   </th>
                   {days.map((d) => (
@@ -153,7 +153,7 @@ export default function RekapProduktivitasPage() {
                       {d}
                     </th>
                   ))}
-                  <th className="px-3 py-3 text-center font-semibold text-[#5eead4] min-w-[60px] border-l border-[#1e3552]">
+                  <th className="px-3 py-3 text-center font-semibold text-brand-700 min-w-[60px] border-l border-line">
                     Total
                   </th>
                 </tr>
@@ -162,9 +162,9 @@ export default function RekapProduktivitasPage() {
                 {rows.map((row, ri) => (
                   <tr
                     key={row.team_name}
-                    className={`border-t border-[#1e3552] ${ri % 2 === 0 ? "bg-[#0d1b2a]" : "bg-[#0a1628]"}`}
+                    className={`border-t border-line ${ri % 2 === 0 ? "bg-white" : "bg-surface"}`}
                   >
-                    <td className={`sticky left-0 z-10 px-4 py-2 font-medium text-[#e2e8f0] border-r border-[#1e3552] ${ri % 2 === 0 ? "bg-[#0d1b2a]" : "bg-[#0a1628]"}`}>
+                    <td className={`sticky left-0 z-10 px-4 py-2 font-medium text-ink border-r border-line ${ri % 2 === 0 ? "bg-white" : "bg-surface"}`}>
                       {row.team_name}
                     </td>
                     {days.map((d) => {
@@ -172,13 +172,13 @@ export default function RekapProduktivitasPage() {
                       return (
                         <td
                           key={d}
-                          className={`px-1 py-2 text-center text-xs ${count > 0 ? cellBg(count) : "text-[#334155]"}`}
+                          className={`px-1 py-2 text-center text-xs ${count > 0 ? cellBg(count) : "text-ink-muted/50"}`}
                         >
                           {count > 0 ? count : "—"}
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-center font-bold text-[#5eead4] border-l border-[#1e3552]">
+                    <td className="px-3 py-2 text-center font-bold text-brand-700 border-l border-line">
                       {row.total}
                     </td>
                   </tr>

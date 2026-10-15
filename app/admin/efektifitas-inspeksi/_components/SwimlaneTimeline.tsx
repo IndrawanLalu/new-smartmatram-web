@@ -237,7 +237,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
   // Baru di sini boleh keluar lebih awal — seluruh hook sudah dipanggil.
   if (kosong) {
     return (
-      <div className="h-20 flex items-center justify-center text-xs text-[#64748b]">
+      <div className="h-20 flex items-center justify-center text-xs text-ink-muted">
         Tidak ada data untuk ditampilkan dalam periode ini
       </div>
     );
@@ -260,22 +260,22 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
       preserveAspectRatio="xMidYMid meet"
     >
       {/* Background */}
-      <rect x={PAD_L} y={0} width={CHART_W} height={VB_H} fill="#0a1628" rx={4} />
+      <rect x={PAD_L} y={0} width={CHART_W} height={VB_H} fill="#f8fafc" rx={4} />
 
       {/* Lane separators */}
-      <line x1={PAD_L} y1={MID_GI} x2={PAD_L + CHART_W} y2={MID_GI} stroke="#1e3552" strokeWidth={0.5} strokeDasharray="4 3" />
-      <line x1={PAD_L} y1={MID_IE} x2={PAD_L + CHART_W} y2={MID_IE} stroke="#1e3552" strokeWidth={0.5} strokeDasharray="4 3" />
+      <line x1={PAD_L} y1={MID_GI} x2={PAD_L + CHART_W} y2={MID_GI} stroke="#e4e8f0" strokeWidth={0.5} strokeDasharray="4 3" />
+      <line x1={PAD_L} y1={MID_IE} x2={PAD_L + CHART_W} y2={MID_IE} stroke="#e4e8f0" strokeWidth={0.5} strokeDasharray="4 3" />
 
         {/* Lane labels */}
         <text x={PAD_L - 6} y={Y_G + 4} textAnchor="end" fontSize={9} fill="#ef4444" fontWeight="600">Gangguan</text>
-        <text x={PAD_L - 6} y={Y_I + 4} textAnchor="end" fontSize={9} fill="#5eead4" fontWeight="600">Inspeksi</text>
-        <text x={PAD_L - 6} y={Y_E + 4} textAnchor="end" fontSize={9} fill="#34d399" fontWeight="600">Eksekusi</text>
+        <text x={PAD_L - 6} y={Y_I + 4} textAnchor="end" fontSize={9} fill="#14b8a6" fontWeight="600">Inspeksi</text>
+        <text x={PAD_L - 6} y={Y_E + 4} textAnchor="end" fontSize={9} fill="#10b981" fontWeight="600">Eksekusi</text>
 
         {/* Time axis */}
-        <line x1={PAD_L} y1={Y_AXIS} x2={PAD_L + CHART_W} y2={Y_AXIS} stroke="#1e3552" strokeWidth={1} />
+        <line x1={PAD_L} y1={Y_AXIS} x2={PAD_L + CHART_W} y2={Y_AXIS} stroke="#e4e8f0" strokeWidth={1} />
         {monthTicks.map((t, i) => (
           <g key={i}>
-            <line x1={t.x} y1={Y_AXIS - 2} x2={t.x} y2={Y_AXIS + 2} stroke="#334155" strokeWidth={1} />
+            <line x1={t.x} y1={Y_AXIS - 2} x2={t.x} y2={Y_AXIS + 2} stroke="#94a3b8" strokeWidth={1} />
             <text x={t.x} y={Y_AXIS + 11} textAnchor="middle" fontSize={7.5} fill="#475569">{t.label}</text>
           </g>
         ))}
@@ -292,8 +292,8 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
                 return (
                   <g>
                     <path d={`M ${xi} ${Y_I - S_I} Q ${midX} ${MID_GI - 10} ${xg} ${Y_G + R_G}`}
-                      fill="none" stroke="#fbbf24" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.65} />
-                    <text x={midX} y={MID_GI - 16} textAnchor="middle" fontSize={8} fill="#fbbf24" fontWeight="700">
+                      fill="none" stroke="#f59e0b" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.65} />
+                    <text x={midX} y={MID_GI - 16} textAnchor="middle" fontSize={8} fill="#f59e0b" fontWeight="700">
                       {days}h
                     </text>
                   </g>
@@ -306,8 +306,8 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
                 return (
                   <g>
                     <path d={`M ${xg} ${Y_G + R_G} Q ${midX} ${MID_GI - 10} ${xi} ${Y_I - S_I}`}
-                      fill="none" stroke="#86efac" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.65} />
-                    <text x={midX} y={MID_GI - 16} textAnchor="middle" fontSize={8} fill="#86efac" fontWeight="700">
+                      fill="none" stroke="#22c55e" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.65} />
+                    <text x={midX} y={MID_GI - 16} textAnchor="middle" fontSize={8} fill="#22c55e" fontWeight="700">
                       {days}h
                     </text>
                   </g>
@@ -325,9 +325,9 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
           return (
             <g key={`ie-${i}`}>
               <path d={`M ${xi} ${Y_I + S_I} Q ${midX} ${MID_IE + 10} ${xe} ${Y_E - S_E}`}
-                fill="none" stroke="#5eead4" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.55} />
+                fill="none" stroke="#14b8a6" strokeWidth={1.2} strokeDasharray="4 3" strokeOpacity={0.55} />
               {link.days > 0 && (
-                <text x={midX} y={MID_IE + 22} textAnchor="middle" fontSize={8} fill="#5eead4" fontWeight="700">
+                <text x={midX} y={MID_IE + 22} textAnchor="middle" fontSize={8} fill="#14b8a6" fontWeight="700">
                   {link.days}h
                 </text>
               )}
@@ -359,7 +359,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
         {inspeksiGroups.map(({ date, records, jaringan, pohon }) => {
           const x     = dateToX(date);
           const count = records.length;
-          const fill  = jaringan > 0 && pohon > 0 ? "#a78bfa" : jaringan > 0 ? "#5eead4" : "#a78bfa";
+          const fill  = jaringan > 0 && pohon > 0 ? "#a78bfa" : jaringan > 0 ? "#14b8a6" : "#a78bfa";
           const statuses = [...new Set(records.map(r => r.status))].join(", ");
           const ghNames  = [...new Set(records.map(r => r.gh))];
           const tip = [
@@ -405,9 +405,9 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
           return (
             <g key={`e-${date}`} className="cursor-pointer" onMouseEnter={e => showHover(e, tip)}>
               <rect x={x - s} y={Y_E - s} width={s * 2} height={s * 2}
-                fill="#34d399" fillOpacity={0.9} stroke="#6ee7b7" strokeWidth={1} rx={1} />
+                fill="#10b981" fillOpacity={0.9} stroke="#6ee7b7" strokeWidth={1} rx={1} />
               {/* count badge above */}
-              <text x={x} y={Y_E - s - 3} textAnchor="middle" fontSize={8} fill="#34d399" fontWeight="700">
+              <text x={x} y={Y_E - s - 3} textAnchor="middle" fontSize={8} fill="#10b981" fontWeight="700">
                 {count}
               </text>
             </g>
@@ -449,7 +449,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
               />
               {/* Label dua baris — di bawah garis, kiri dari "Hari Ini" */}
               <rect x={xToday - 116} y={yLine + 4} width={112} height={22} rx={3}
-                fill="#0d1b2a" stroke={sinceColor} strokeWidth={1} strokeOpacity={0.7} />
+                fill="#ffffff" stroke={sinceColor} strokeWidth={1} strokeOpacity={0.7} />
               <text x={xToday - 8} y={yLine + 14} textAnchor="end" fontSize={9}
                 fill={sinceColor} fontWeight="bold">
                 {daysSinceLast}h tidak gangguan
@@ -493,7 +493,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
                 points={`${x},${Y_I - s} ${x + s},${Y_I} ${x},${Y_I + s} ${x - s},${Y_I}`}
                 fill="#6366f1" fillOpacity={0.9} stroke="#a5b4fc" strokeWidth={1.5}
               />
-              <text x={x} y={Y_I - s - 3} textAnchor="middle" fontSize={8} fill="#818cf8" fontWeight="700">
+              <text x={x} y={Y_I - s - 3} textAnchor="middle" fontSize={8} fill="#4f46e5" fontWeight="700">
                 {count}L
               </text>
             </g>
@@ -514,7 +514,7 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
             <g key={`liga-e-${date}`} className="cursor-pointer" onMouseEnter={e => showHover(e, tip)}>
               <rect x={x - s} y={Y_E - s} width={s * 2} height={s * 2}
                 fill="#6366f1" fillOpacity={0.9} stroke="#a5b4fc" strokeWidth={1.5} rx={1} />
-              <text x={x} y={Y_E - s - 3} textAnchor="middle" fontSize={8} fill="#818cf8" fontWeight="700">
+              <text x={x} y={Y_E - s - 3} textAnchor="middle" fontSize={8} fill="#4f46e5" fontWeight="700">
                 {count}L
               </text>
             </g>
@@ -531,10 +531,10 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
           const ty = Math.max(hover.y - bh - 6, 2);
           return (
             <g>
-              <rect x={tx} y={ty} width={bw} height={bh} rx={4} fill="#162334" stroke="#1e3552" strokeWidth={1} />
+              <rect x={tx} y={ty} width={bw} height={bh} rx={4} fill="#f2f3f5" stroke="#e4e8f0" strokeWidth={1} />
               {hover.lines.map((line, li) => (
                 <text key={li} x={tx + P} y={ty + P + (li + 1) * lh - 2}
-                  fontSize={9.5} fill={li === 0 ? "#e2e8f0" : "#94a3b8"} fontWeight={li === 0 ? "700" : "400"}>
+                  fontSize={9.5} fill={li === 0 ? "#0f1a2e" : "#44546f"} fontWeight={li === 0 ? "700" : "400"}>
                   {line}
                 </text>
               ))}
@@ -547,13 +547,13 @@ export default function SwimlaneTimeline({ data, fullscreen }: Props) {
   const legend = (
     <div className={`flex items-center gap-4 px-1 flex-wrap shrink-0${fullscreen ? " mt-3" : " mt-2"}`}>
       <LegendItem shape="circle"  color="#ef4444" label="Gangguan" />
-      <LegendItem shape="diamond" color="#5eead4" label="Inspeksi Jaringan" />
+      <LegendItem shape="diamond" color="#14b8a6" label="Inspeksi Jaringan" />
       <LegendItem shape="diamond" color="#a78bfa" label="Inspeksi Pohon" />
-      <LegendItem shape="square"  color="#34d399" label="Eksekusi" />
-      <div className="flex items-center gap-3 ml-1 text-[10px] text-[#64748b]">
-        <span><span className="text-amber-400 font-semibold">— —</span> sebelum gangguan</span>
-        <span><span className="text-green-400 font-semibold">— —</span> setelah gangguan</span>
-        <span><span className="text-teal-400 font-semibold">— —</span> inspeksi → eksekusi</span>
+      <LegendItem shape="square"  color="#10b981" label="Eksekusi" />
+      <div className="flex items-center gap-3 ml-1 text-[10px] text-ink-muted">
+        <span><span className="text-amber-600 font-semibold">— —</span> sebelum gangguan</span>
+        <span><span className="text-green-600 font-semibold">— —</span> setelah gangguan</span>
+        <span><span className="text-teal-600 font-semibold">— —</span> inspeksi → eksekusi</span>
         <span>· angka = jumlah / hari</span>
       </div>
     </div>
@@ -584,7 +584,7 @@ function LegendItem({ shape, color, label }: { shape: "circle" | "diamond" | "sq
         {shape === "diamond" && <polygon points="6,0 12,6 6,12 0,6" fill={color} />}
         {shape === "square"  && <rect x={1} y={1} width={10} height={10} fill={color} rx={1} />}
       </svg>
-      <span className="text-[10px] text-[#94a3b8]">{label}</span>
+      <span className="text-[10px] text-ink-soft">{label}</span>
     </div>
   );
 }

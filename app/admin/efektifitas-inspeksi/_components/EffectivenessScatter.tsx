@@ -18,8 +18,8 @@ interface Props {
 }
 
 const GROUP_COLOR: Record<string, string> = {
-  A: "#34d399",
-  B: "#fbbf24",
+  A: "#10b981",
+  B: "#f59e0b",
   C: "#64748b",
 };
 
@@ -63,24 +63,24 @@ function CustomTooltip({ active, payload }: CustomTooltipProps) {
   if (!active || !payload?.[0]?.payload) return null;
   const d = payload[0].payload;
   return (
-    <div className="bg-[#0d1b2a] border border-[#1e3552] rounded-lg p-3 shadow-xl text-xs min-w-[160px]">
-      <p className="text-[#e2e8f0] font-bold mb-1.5">{d.penyulang}</p>
-      <p className="text-[#94a3b8]">ULP: <span className="text-[#e2e8f0]">{d.ulp}</span></p>
-      <p className="text-[#94a3b8]">
+    <div className="bg-white border border-line rounded-lg p-3 shadow-xl text-xs min-w-[160px]">
+      <p className="text-ink font-bold mb-1.5">{d.penyulang}</p>
+      <p className="text-ink-soft">ULP: <span className="text-ink">{d.ulp}</span></p>
+      <p className="text-ink-soft">
         Gangguan:{" "}
-        <span className="text-red-400 font-semibold">{d.gangguanCount}</span>
+        <span className="text-red-600 font-semibold">{d.gangguanCount}</span>
       </p>
-      <p className="text-[#94a3b8]">
+      <p className="text-ink-soft">
         Inspeksi:{" "}
-        <span className="text-[#e2e8f0]">{d.inspeksiTotal}</span>
+        <span className="text-ink">{d.inspeksiTotal}</span>
         {d.inspeksiTotal > 0 && (
-          <span className="text-[#94a3b8]">
+          <span className="text-ink-soft">
             {" "}({d.eksekusiSelesai} selesai)
           </span>
         )}
       </p>
       {d.inspeksiTotal > 0 && (
-        <p className="text-[#94a3b8]">
+        <p className="text-ink-soft">
           Eksekusi:{" "}
           <span style={{ color: GROUP_COLOR[d.group] }} className="font-semibold">
             {d.eksekusiRate.toFixed(0)}%
@@ -112,20 +112,20 @@ export default function EffectivenessScatter({ data, medianGangguan }: Props) {
               className="w-3 h-3 rounded-full inline-block"
               style={{ background: GROUP_COLOR[g] }}
             />
-            <span className="text-[#94a3b8] text-xs">
+            <span className="text-ink-soft text-xs">
               Grup {g}: {GROUP_LABEL[g]}
             </span>
           </div>
         ))}
         <div className="flex items-center gap-1.5">
-          <span className="w-6 border-t border-dashed border-[#64748b] inline-block" />
-          <span className="text-[#64748b] text-xs">Median gangguan ({medianGangguan})</span>
+          <span className="w-6 border-t border-dashed border-slate-300 inline-block" />
+          <span className="text-ink-muted text-xs">Median gangguan ({medianGangguan})</span>
         </div>
       </div>
 
       <ResponsiveContainer width="100%" height={340}>
         <ScatterChart margin={{ top: 10, right: 20, bottom: 30, left: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#1e3552" />
+          <CartesianGrid strokeDasharray="3 3" stroke="#e4e8f0" />
           <XAxis
             type="number"
             dataKey="eksekusiRate"
@@ -161,14 +161,14 @@ export default function EffectivenessScatter({ data, medianGangguan }: Props) {
             strokeDasharray="4 4"
             strokeWidth={1}
           />
-          <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#1e3552" }} />
+          <Tooltip content={<CustomTooltip />} cursor={{ strokeDasharray: "3 3", stroke: "#e4e8f0" }} />
           <Scatter data={groupA} shape={<CustomDot />} />
           <Scatter data={groupB} shape={<CustomDot />} />
           <Scatter data={groupC} shape={<CustomDot />} />
         </ScatterChart>
       </ResponsiveContainer>
 
-      <p className="text-[10px] text-[#64748b] text-center mt-1">
+      <p className="text-[10px] text-ink-muted text-center mt-1">
         Setiap titik mewakili satu penyulang · Garis putus-putus = median gangguan
       </p>
     </div>
