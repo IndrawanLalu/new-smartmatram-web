@@ -5,6 +5,7 @@ import { CircleMarker, Polyline, Popup } from "react-leaflet";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 import { fotoKecil } from "@/lib/fotoKecil";
+import JarakGardu, { meter } from "./JarakGardu";
 import { nadaUjung, WARNA_NADA, type TitikUjungPeta } from "../_hooks/useUjungPeta";
 
 /**
@@ -16,9 +17,6 @@ import { nadaUjung, WARNA_NADA, type TitikUjungPeta } from "../_hooks/useUjungPe
  * Hanya elemen kanvas (lingkaran & garis); popup — termasuk foto mini alat
  * ukurnya (diperkecil server web kita, bukan Supabase) — dibuat saat diklik.
  */
-const m = (v: number | null) =>
-  v === null ? "—" : v >= 1000 ? `${(v / 1000).toFixed(2).replace(".", ",")} km` : `${Math.round(v)} m`;
-
 function IsiPopup({
   t,
   bolehSetujui,
@@ -57,13 +55,11 @@ function IsiPopup({
         {t.tgl_ukur} · {t.petugas_nama ?? "—"}
       </p>
       <p className="text-gray-500 mt-0.5">
-        {t.jarak_gardu_m === null
-          ? "Jarak dari gardu: — (gardu belum bertitik)"
-          : `Jarak dari gardu: ${m(t.jarak_gardu_m)} (garis lurus)`}
+        <JarakGardu t={t} />
       </p>
       <p className="text-gray-500 mt-0.5">
         {t.tiang_rekomendasi_kode
-          ? `${m(t.jarak_rekomendasi_m)} dari ujung terjauh (${t.tiang_rekomendasi_kode})`
+          ? `${meter(t.jarak_rekomendasi_m)} dari ujung terjauh (${t.tiang_rekomendasi_kode})`
           : "Tanpa rekomendasi tiang ujung"}
       </p>
       <p className="mt-1">

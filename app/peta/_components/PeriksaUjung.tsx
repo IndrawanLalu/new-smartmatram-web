@@ -5,6 +5,8 @@ import { Check, ChevronLeft, ChevronRight, Loader2, MapPin, Undo2, X } from "luc
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fotoKecil } from "@/lib/fotoKecil";
 import { useToast } from "@/app/admin/_components/Toast";
+import JarakGardu, { meter } from "./JarakGardu";
+import { ambilJarakJtr } from "../_hooks/useJarakJtr";
 import { nadaUjung, WARNA_NADA, type TitikUjungPeta } from "../_hooks/useUjungPeta";
 import { GARIS, PANEL } from "../_ui";
 
@@ -18,9 +20,6 @@ import { GARIS, PANEL } from "../_ui";
  *
  * Papan ketik: ← → pindah, Enter setujui, T tolak.
  */
-
-const m = (v: number | null) =>
-  v === null ? "—" : v >= 1000 ? `${(v / 1000).toFixed(2).replace(".", ",")} km` : `${Math.round(v)} m`;
 
 /** Alasan siap pakai — tinggal ketuk, masih bisa disunting. */
 const ALASAN_CEPAT = ["Foto alat ukur tidak terbaca", "Angka tidak sesuai foto", "Bukan diukur di ujung jaringan"];
@@ -140,7 +139,12 @@ export default function PeriksaUjung({ antrean, oleh, onSelesai, onBuka, onTutup
     return () => window.removeEventListener("keydown", tekan);
   });
 
-  const alamatKini = kini ? alamat.get(kunciGardu(kini.ulp, kini.gardu_kode)) : undefined;
+  // Jarak lewat JTR titik berikutnya dihitung lebih dulu, seperti fotonya.
+  useEffect(() => {
+    if (berikut) void ambilJarakJtr(berikut);
+  }, [berikut]);
+
+  const alamatKini =kini ? alamat.get(kunciGardu(kini.ulp, kini.gardu_kode)) : undefined;
 
   return (
     <div className="w-[300px] rounded-xl border shadow-2xl p-3 space-y-2.5 text-[#e2e8f0]" style={{ background: PANEL, borderColor: GARIS }}>
@@ -172,12 +176,10 @@ export default function PeriksaUjung({ antrean, oleh, onSelesai, onBuka, onTutup
           <p className="text-[11px] text-gray-400">
             {kini.tgl_ukur} · {kini.petugas_nama ?? "—"}
             <br />
-            {kini.jarak_gardu_m === null
-              ? "Jarak dari gardu: — (gardu belum bertitik)"
-              : `Jarak dari gardu: ${m(kini.jarak_gardu_m)} (garis lurus)`}
+            <JarakGardu t={kini} />
             <br />
             {kini.tiang_rekomendasi_kode
-              ? `${m(kini.jarak_rekomendasi_m)} dari ujung terjauh (${kini.tiang_rekomendasi_kode})`
+              ? `${meter(kini.jarak_rekomendasi_m)} dari ujung terjauh (${kini.tiang_rekomendasi_kode})`
               : "Tanpa rekomendasi tiang ujung"}
           </p>
           {kini.foto_url && (
