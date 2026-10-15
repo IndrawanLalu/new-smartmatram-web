@@ -39,6 +39,8 @@ export interface TitikUjungPeta {
   petugas_nama: string | null;
   status_tampil: string;
   jarak_rekomendasi_m: number | null;
+  /** Garis lurus titik ukur ke gardu (null = gardu belum bertitik). */
+  jarak_gardu_m: number | null;
   tiang_rekomendasi_kode: string | null;
   gardu_lat: number | null;
   gardu_lng: number | null;
@@ -52,7 +54,7 @@ export interface SaringUjung {
 }
 
 const KOLOM =
-  "id,gardu_kode,ulp,jurusan,v_rn,v_sn,v_tn,v_min,lat,lng,foto_url,tgl_ukur,petugas_nama,status_tampil,jarak_rekomendasi_m,tiang_rekomendasi_kode,gardu_lat,gardu_lng";
+  "id,gardu_kode,ulp,jurusan,v_rn,v_sn,v_tn,v_min,lat,lng,foto_url,tgl_ukur,petugas_nama,status_tampil,jarak_rekomendasi_m,jarak_gardu_m,tiang_rekomendasi_kode,gardu_lat,gardu_lng";
 
 const dua = (n: number) => String(n).padStart(2, "0");
 
@@ -98,6 +100,7 @@ export function useUjungPeta(aktif: boolean, ulp: string, tahun: number, bulan: 
             v_rn: Number(r.v_rn), v_sn: Number(r.v_sn), v_tn: Number(r.v_tn), v_min: Number(r.v_min),
             lat: Number(r.lat), lng: Number(r.lng),
             jarak_rekomendasi_m: r.jarak_rekomendasi_m === null ? null : Number(r.jarak_rekomendasi_m),
+            jarak_gardu_m: r.jarak_gardu_m === null ? null : Number(r.jarak_gardu_m),
             gardu_lat: r.gardu_lat === null ? null : Number(r.gardu_lat),
             gardu_lng: r.gardu_lng === null ? null : Number(r.gardu_lng),
         }));

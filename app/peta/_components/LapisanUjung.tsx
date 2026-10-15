@@ -57,6 +57,11 @@ function IsiPopup({
         {t.tgl_ukur} · {t.petugas_nama ?? "—"}
       </p>
       <p className="text-gray-500 mt-0.5">
+        {t.jarak_gardu_m === null
+          ? "Jarak dari gardu: — (gardu belum bertitik)"
+          : `Jarak dari gardu: ${m(t.jarak_gardu_m)} (garis lurus)`}
+      </p>
+      <p className="text-gray-500 mt-0.5">
         {t.tiang_rekomendasi_kode
           ? `${m(t.jarak_rekomendasi_m)} dari ujung terjauh (${t.tiang_rekomendasi_kode})`
           : "Tanpa rekomendasi tiang ujung"}

@@ -172,6 +172,10 @@ export default function PeriksaUjung({ antrean, oleh, onSelesai, onBuka, onTutup
           <p className="text-[11px] text-gray-400">
             {kini.tgl_ukur} · {kini.petugas_nama ?? "—"}
             <br />
+            {kini.jarak_gardu_m === null
+              ? "Jarak dari gardu: — (gardu belum bertitik)"
+              : `Jarak dari gardu: ${m(kini.jarak_gardu_m)} (garis lurus)`}
+            <br />
             {kini.tiang_rekomendasi_kode
               ? `${m(kini.jarak_rekomendasi_m)} dari ujung terjauh (${kini.tiang_rekomendasi_kode})`
               : "Tanpa rekomendasi tiang ujung"}
