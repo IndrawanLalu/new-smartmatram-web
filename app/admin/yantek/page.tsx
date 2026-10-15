@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canManageSettings, canSeeAllUnits } from "@/lib/roles";
-import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW } from "@/app/admin/_ui";
 import {
   buildDurasiPerPetugas, buildStats, durasiSah, extractPrefix, hariDalamBulan,
   jumlahHariBerdata, median, medianPerHari, MONTHS_ID, POSKO_MAP, toDateStr,
@@ -24,6 +24,8 @@ import AmbilDataTab from "./_components/AmbilDataTab";
 import SlaSettingsModal from "./_components/SlaSettingsModal";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { PilihField } from "@/app/admin/_kit/Field";
 
 /** "2026-05" → "2026-04". Dipakai untuk garis pembanding di tab SLA. */
 function bulanSebelumnya(key: string): string {
@@ -363,28 +365,25 @@ export default function YantekPage() {
       {/* Filter periode + ULP */}
       {dates.length > 0 && butuhData && (
         <div className={`${CARD} p-4 space-y-3`}>
-          <div className="flex items-center gap-3 flex-wrap">
-            <span className="text-xs font-semibold text-ink-soft shrink-0 flex items-center gap-1.5">
-              <CalendarDays className="w-3.5 h-3.5 text-navy-600" /> Periode:
-            </span>
-            <select
-              value={filterYear}
-              onChange={(e) => { setFilterYear(e.target.value); setFilterMonth(""); }}
-              className={`${FIELD} text-xs`}
+          <IsiTopbar>
+            <PilihField
+              ikon={CalendarDays}
+              label="Tahun"
+              lebar="w-[130px]"
+              nilai={filterYear}
+              onUbah={(v) => { setFilterYear(v); setFilterMonth(""); }}
             >
               {availableYears.map((y) => <option key={y} value={y}>{y}</option>)}
-            </select>
-            <select
-              value={filterMonth}
-              onChange={(e) => { setFilterMonth(e.target.value); }}
-              className={`${FIELD} text-xs`}
-              disabled={!filterYear}
-            >
+            </PilihField>
+            {/* Hanya bulan yang ada datanya — bukan dua belas bulan. */}
+            <PilihField ikon={CalendarDays} label="Bulan" lebar="w-[165px]" nilai={filterMonth} onUbah={setFilterMonth} disabled={!filterYear}>
               <option value="">Semua Bulan</option>
               {availableMonths.map((m) => (
                 <option key={m} value={m}>{MONTHS_ID[parseInt(m) - 1]}</option>
               ))}
-            </select>
+            </PilihField>
+          </IsiTopbar>
+          <div className="flex items-center gap-3 flex-wrap">
             {poskoRows.length > 0 && (
               <span className="text-xs text-ink-muted ml-1">
                 {poskoRows.length} WO · {stats.length} petugas

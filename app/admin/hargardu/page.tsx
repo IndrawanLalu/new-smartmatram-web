@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CalendarClock, Download, LayoutDashboard, ListChecks, Loader2, Search, SlidersHorizontal, TriangleAlert, Wrench, X } from "lucide-react";
+import { CalendarClock, Download, LayoutDashboard, ListChecks, Loader2, SlidersHorizontal, TriangleAlert, Wrench } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
-import { useHargarduApproval, BULAN, STATUS_HARGARDU } from "./_hooks/useHargarduApproval";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
+import { useHargarduApproval, STATUS_HARGARDU } from "./_hooks/useHargarduApproval";
 import TabelHargardu from "./_components/TabelHargardu";
 import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardHargardu from "./_components/DashboardHargardu";
@@ -13,6 +13,9 @@ import PengaturanItem from "./_components/PengaturanItem";
 import WoPemeliharaan from "./_components/WoPemeliharaan";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { KotakCari } from "@/app/admin/_kit/Field";
+import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Pemeliharaan Gardu — pola Kinerja Pelayanan Teknik (teknisaplikasi.md
@@ -66,70 +69,28 @@ export default function HargarduPage() {
       {tab === "pengaturan" && up3 && <PengaturanItem user={user} />}
       {tab === "wo" && (
         <>
-          <select
-            value={o.ulp}
-            onChange={(e) => o.setUlp(e.target.value)}
-            className={`${FIELD} w-[170px]`}
-            disabled={o.daftarUlp.length <= 1}
-            aria-label="ULP"
-          >
-            {o.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-          </select>
+          <IsiTopbar>
+            <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
+          </IsiTopbar>
           <WoPemeliharaan user={user} ulp={o.ulp} daftarUlp={o.daftarUlp} />
         </>
       )}
 
       {(tab === "daftar" || tab === "dashboard") && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={o.ulp}
-              onChange={(e) => o.setUlp(e.target.value)}
-              className={`${FIELD} w-[170px]`}
-              disabled={o.daftarUlp.length <= 1}
-              aria-label="ULP"
-            >
-              {o.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-            </select>
-            {tab === "daftar" && (
-            <select
-              value={o.bulan}
-              onChange={(e) => o.setBulan(Number(e.target.value))}
-              disabled={mencari}
-              title={mencari ? "Pencarian gardu menelusuri seluruh riwayat, tidak dibatasi periode" : ""}
-              className={`${FIELD} w-[160px] disabled:opacity-40`}
-              aria-label="Bulan"
-            >
-              <option value={0}>Sepanjang tahun</option>
-              {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
-            </select>
+          {/* Pencarian gardu menelusuri seluruh riwayat — periode dimatikan
+              selama ada kata cari supaya tidak dikira ikut membatasi. */}
+          <IsiTopbar>
+            <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
+            {tab === "daftar" ? (
+              <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} disabled={mencari} />
+            ) : (
+              <PilihTahun tahun={o.tahun} daftarTahun={o.daftarTahun} onTahun={o.setTahun} />
             )}
-            <select
-              value={o.tahun}
-              onChange={(e) => o.setTahun(Number(e.target.value))}
-              disabled={mencari && tab === "daftar"}
-              className={`${FIELD} w-[100px] disabled:opacity-40`}
-              aria-label="Tahun"
-            >
-              {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
             {tab === "daftar" && (
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-              <input
-                value={o.cari}
-                onChange={(e) => o.setCari(e.target.value)}
-                placeholder="Cari kode / nama gardu — seluruh riwayat"
-                className={`${FIELD} w-[270px] pl-8 pr-8`}
-              />
-              {o.cari && (
-                <button onClick={() => o.setCari("")} className="absolute right-2 top-1/2 -translate-y-1/2 text-ink-muted hover:text-ink" aria-label="Kosongkan pencarian">
-                  <X size={14} />
-                </button>
-              )}
-            </div>
+              <KotakCari nilai={o.cari} onUbah={o.setCari} placeholder="Cari kode / nama gardu — seluruh riwayat" lebar="w-[260px]" />
             )}
-          </div>
+          </IsiTopbar>
 
           {tab === "dashboard" ? (
             // key: ganti ULP/tahun = pasang ulang, jadi "memuat" tidak menampilkan angka lama.

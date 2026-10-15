@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { Download, ListChecks, Loader2, Search, Settings2, TriangleAlert } from "lucide-react";
+import { Download, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
-import { useOptimasiTrafo, STATUS_TABEL, BULAN } from "./_hooks/useOptimasiTrafo";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
+import { useOptimasiTrafo, STATUS_TABEL } from "./_hooks/useOptimasiTrafo";
 import TabelOptimasi from "./_components/TabelOptimasi";
 import DetailOptimasiModal from "./_components/DetailOptimasiModal";
 import PengaturanAlasan from "./_components/PengaturanAlasan";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { KotakCari } from "@/app/admin/_kit/Field";
+import { PilihPeriode, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Optimasi Trafo — uprating/downrating kapasitas trafo.
@@ -66,51 +69,13 @@ export default function OptimasiTrafoPage() {
         <PengaturanAlasan alasan={o.alasan} onSimpan={o.simpanAlasan} />
       ) : (
         <>
+          <IsiTopbar>
+            <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
+            <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} />
+            <KotakCari nilai={o.cari} onUbah={o.setCari} placeholder="Cari gardu, penyulang" lebar="w-[210px]" />
+          </IsiTopbar>
+
           <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={o.ulp}
-              onChange={(e) => o.setUlp(e.target.value)}
-              className={`${FIELD} w-[170px]`}
-              disabled={o.daftarUlp.length <= 1}
-              aria-label="ULP"
-            >
-              {o.daftarUlp.map((u) => (
-                <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>
-              ))}
-            </select>
-
-            <select
-              value={o.bulan}
-              onChange={(e) => o.setBulan(Number(e.target.value))}
-              className={`${FIELD} w-[160px]`}
-              aria-label="Bulan"
-            >
-              <option value={0}>Sepanjang tahun</option>
-              {BULAN.map((b, i) => (
-                <option key={b} value={i + 1}>{b}</option>
-              ))}
-            </select>
-            <select
-              value={o.tahun}
-              onChange={(e) => o.setTahun(Number(e.target.value))}
-              className={`${FIELD} w-[100px]`}
-              aria-label="Tahun"
-            >
-              {o.daftarTahun.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-              <input
-                value={o.cari}
-                onChange={(e) => o.setCari(e.target.value)}
-                placeholder="Cari gardu / penyulang"
-                className={`${FIELD} w-[210px] pl-8`}
-              />
-            </div>
-
             <button
               onClick={() => o.setStatus("SEMUA")}
               className={`${CHIP} ${o.status === "SEMUA" ? CHIP_ON : CHIP_OFF}`}

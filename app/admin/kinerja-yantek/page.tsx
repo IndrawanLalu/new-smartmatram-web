@@ -1,12 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, FileText, MapPin, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
+import { CalendarDays, FileText, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
-import { PilihField } from "@/app/admin/_kit/Field";
 import Tombol from "@/app/admin/_kit/Tombol";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
@@ -14,6 +13,7 @@ import AturSlaModal from "./_components/AturSlaModal";
 import CetakWoModal from "./_components/CetakWoModal";
 import CentangRealisasiModal from "./_components/CentangRealisasiModal";
 import RealisasiHarian from "./_components/RealisasiHarian";
+import { PilihPeriode, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Rekap Kinerja Pelayanan Teknik.
@@ -75,27 +75,8 @@ export default function KinerjaYantekPage() {
       ) : (
       <>
       <IsiTopbar>
-        <PilihField
-          ikon={CalendarDays}
-          label="Periode"
-          lebar="w-[175px]"
-          nilai={`${tahun}-${bulan}`}
-          onUbah={(v) => {
-            const [t, b] = v.split("-").map(Number);
-            if (t !== tahun) setTahun(t);
-            if (b !== bulan) setBulan(b);
-          }}
-        >
-          {daftarTahun.map((t) => (
-            <optgroup key={t} label={String(t)}>
-              {BULAN.map((b, i) => <option key={b} value={`${t}-${i + 1}`}>{b} {t}</option>)}
-              <option value={`${t}-0`}>Seluruh tahun {t}</option>
-            </optgroup>
-          ))}
-        </PilihField>
-        <PilihField ikon={MapPin} label="ULP" lebar="w-[155px]" nilai={ulp} onUbah={setUlp} disabled={daftarUlp.length <= 1}>
-          {daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-        </PilihField>
+        <PilihPeriode tahun={tahun} bulan={bulan} daftarTahun={daftarTahun} onTahun={setTahun} onBulan={setBulan} />
+        <PilihUlp nilai={ulp} onUbah={setUlp} daftar={daftarUlp} />
         <Tombol onClick={muatUlang} disabled={loading} ikon={<RefreshCw size={15} className={loading ? "animate-spin" : ""} />}>
           Muat ulang
         </Tombol>

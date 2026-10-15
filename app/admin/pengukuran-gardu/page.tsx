@@ -22,6 +22,7 @@ import {
 } from "./_hooks/usePengukuranGardu";
 import {
   AlertTriangle,
+  MapPin,
   RefreshCw,
   Search,
   ChevronLeft,
@@ -59,6 +60,10 @@ import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
 import { detectAnomali, hasThresholdCriteria } from "@/lib/anomaliGardu";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { PilihField } from "@/app/admin/_kit/Field";
+import { PilihPeriode } from "@/app/admin/_kit/Saringan";
+import { IKON } from "@/lib/ikonUi";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -85,8 +90,6 @@ const TABS = [
 
 type TabKey = typeof TABS[number]["key"];
 
-const INPUT_CLASS =
-  "border border-line rounded-lg px-3 py-1.5 text-sm text-ink focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15 bg-white";
 
 const PAGE_SIZE = 20;
 
@@ -323,48 +326,46 @@ export default function PengukuranGarduPage() {
           Dashboard. Yang tersisa hanyalah ~90px tinggi yang tidak membawa
           satu pun keterangan baru. Dua angkanya dipindah ke ujung bilah ini
           supaya tetap terlihat dari tab mana pun. */}
-      <div className="bg-white rounded-xl border border-line p-4 flex flex-wrap items-center gap-3">
-        <span className="text-sm font-medium text-ink-soft">Periode:</span>
-        <select
-          value={filter.month}
-          onChange={(e) => { setFilter((f) => ({ ...f, month: Number(e.target.value) })); setPage(1); }}
-          className={INPUT_CLASS}
+      <IsiTopbar>
+        <PilihPeriode
+          tahun={filter.year}
+          bulan={filter.month}
+          daftarTahun={years}
+          onTahun={(t) => { setFilter((f) => ({ ...f, year: t })); setPage(1); }}
+          onBulan={(b) => { setFilter((f) => ({ ...f, month: b })); setPage(1); }}
+        />
+        {/* Pengguna ULP tetap melihat ULP-nya (terkunci) — tanpa itu tidak ada
+            apa pun di layar yang menyebut data siapa yang sedang dilihat. */}
+        <PilihField
+          ikon={MapPin}
+          label="ULP"
+          lebar="w-[155px]"
+          nilai={showUlpFilter ? filter.ulp : user.unit ?? ""}
+          onUbah={(v) => { setFilter((f) => ({ ...f, ulp: v, penyulang: "" })); setPage(1); }}
+          disabled={!showUlpFilter}
         >
-          <option value={0}>Semua Bulan</option>
-          {MONTHS.map((m, i) => <option key={i} value={i + 1}>{m}</option>)}
-        </select>
-        <select
-          value={filter.year}
-          onChange={(e) => { setFilter((f) => ({ ...f, year: Number(e.target.value) })); setPage(1); }}
-          className={INPUT_CLASS}
-        >
-          {years.map((y) => <option key={y} value={y}>{y}</option>)}
-        </select>
-        {showUlpFilter ? (
-          <select
-            value={filter.ulp}
-            onChange={(e) => { setFilter((f) => ({ ...f, ulp: e.target.value, penyulang: "" })); setPage(1); }}
-            className={INPUT_CLASS}
-          >
-            <option value="">Semua ULP</option>
-            {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
-          </select>
-        ) : (
-          // Pengguna ULP tidak punya penyaring unit, jadi tanpa ini tidak ada
-          // apa pun di layar yang menyebut data siapa yang sedang dilihat.
-          <span className="h-9 flex items-center rounded-lg bg-surface border border-line px-3 text-sm font-medium text-ink-soft">
-            ULP {user.unit}
-          </span>
-        )}
-        <select
-          value={filter.penyulang}
-          onChange={(e) => { setFilter((f) => ({ ...f, penyulang: e.target.value })); setPage(1); }}
-          className={INPUT_CLASS}
+          {showUlpFilter ? (
+            <>
+              <option value="">Semua ULP</option>
+              {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </>
+          ) : (
+            <option value={user.unit ?? ""}>{user.unit}</option>
+          )}
+        </PilihField>
+        <PilihField
+          ikon={IKON.penyulang}
+          label="Penyulang"
+          lebar="w-[190px]"
+          nilai={filter.penyulang}
+          onUbah={(v) => { setFilter((f) => ({ ...f, penyulang: v })); setPage(1); }}
         >
           <option value="">Semua Penyulang</option>
           {penyulangOptions.map((p) => <option key={p} value={p}>{p}</option>)}
-        </select>
-        <div className="ml-auto flex items-center gap-3">
+        </PilihField>
+      </IsiTopbar>
+      <div className="flex flex-wrap items-center justify-end gap-3">
+        <div className="flex items-center gap-3">
           <span className="text-sm text-ink-soft">
             <span className="font-bold text-ink">{latestData.length}</span> gardu
             {data.length > latestData.length && (

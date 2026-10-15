@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Search, Settings2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
-import { usePemeliharaanJaringan, BULAN, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
+import { usePemeliharaanJaringan, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
 import TabelPemeliharaan from "./_components/TabelPemeliharaan";
 import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardPemeliharaan from "./_components/DashboardPemeliharaan";
@@ -12,6 +12,9 @@ import PengaturanKategori from "./_components/PengaturanKategori";
 import TugasHarjar from "./_components/TugasHarjar";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { KotakCari } from "@/app/admin/_kit/Field";
+import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Pemeliharaan Jaringan JTM/JTR.
@@ -76,42 +79,23 @@ export default function PemeliharaanJaringanPage() {
         <PengaturanKategori kategori={o.kategori} onSimpan={o.simpanKategori} />
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              value={o.ulp}
-              onChange={(e) => o.setUlp(e.target.value)}
-              className={`${FIELD} w-[170px]`}
-              disabled={o.daftarUlp.length <= 1}
-              aria-label="ULP"
-            >
-              {o.daftarUlp.map((u) => (
-                <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>
-              ))}
-            </select>
-
+          <IsiTopbar>
+            <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
             {/* Dashboard selalu setahun penuh — penyaring bulan disembunyikan
                 di sana supaya tidak dikira ikut berlaku. */}
-            {!dashboard && (
-              <select value={o.bulan} onChange={(e) => o.setBulan(Number(e.target.value))} className={`${FIELD} w-[160px]`} aria-label="Bulan">
-                <option value={0}>Sepanjang tahun</option>
-                {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
-              </select>
+            {dashboard ? (
+              <PilihTahun tahun={o.tahun} daftarTahun={o.daftarTahun} onTahun={o.setTahun} />
+            ) : (
+              <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} />
             )}
-            <select value={o.tahun} onChange={(e) => o.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
-              {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+            {saringCatatan && (
+              <KotakCari nilai={o.cari} onUbah={o.setCari} placeholder="Cari penyulang, pekerjaan, petugas" lebar="w-[240px]" />
+            )}
+          </IsiTopbar>
 
+          <div className="flex flex-wrap items-center gap-2">
             {saringCatatan && (
               <>
-                <div className="relative">
-                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-                  <input
-                    value={o.cari}
-                    onChange={(e) => o.setCari(e.target.value)}
-                    placeholder="Cari penyulang / pekerjaan / petugas"
-                    className={`${FIELD} w-[250px] pl-8`}
-                  />
-                </div>
                 {JENIS.map((j) => (
                   <button key={j} onClick={() => o.setJenis(j)} className={`${CHIP} ${o.jenis === j ? CHIP_ON : CHIP_OFF}`}>
                     {j === "SEMUA" ? "JTM & JTR" : j}

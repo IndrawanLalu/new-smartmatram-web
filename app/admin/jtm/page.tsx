@@ -2,14 +2,11 @@
 
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  CheckCheck, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search, SearchCheck,
-  Send, SlidersHorizontal, TowerControl, TriangleAlert, Upload,
-} from "lucide-react";
+import { CheckCheck, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, SearchCheck, Send, SlidersHorizontal, TowerControl, TriangleAlert, Upload } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import { useDaftarJtm } from "./_hooks/useDaftarJtm";
-import { BULAN, STATUS_JTM } from "./_lib/tampilan";
+import { STATUS_JTM } from "./_lib/tampilan";
 import TabelJtm from "./_components/TabelJtm";
 import DetailInspeksiJtmModal from "./_components/DetailInspeksiJtmModal";
 import DashboardJtm from "./_components/DashboardJtm";
@@ -23,6 +20,9 @@ import DaftarTiang from "./_components/DaftarTiang";
 import WoInspeksi from "@/app/admin/_components/WoInspeksi";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { KotakCari } from "@/app/admin/_kit/Field";
+import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Inspeksi JTM — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
@@ -78,39 +78,17 @@ export default function JtmPage() {
       </IsiKepala>
 
       {berpenyaring && (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={o.ulp}
-            onChange={(e) => o.setUlp(e.target.value)}
-            className={`${FIELD} w-[170px]`}
-            disabled={o.daftarUlp.length <= 1}
-            aria-label="ULP"
-          >
-            {o.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-          </select>
-          {tab === "daftar" && (
-            <select value={o.bulan} onChange={(e) => o.setBulan(Number(e.target.value))} className={`${FIELD} w-[160px]`} aria-label="Bulan">
-              <option value={0}>Sepanjang tahun</option>
-              {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
-            </select>
-          )}
-          {tab !== "temuan" && (
-            <select value={o.tahun} onChange={(e) => o.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
-              {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
+        <IsiTopbar>
+          <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
+          {tab === "daftar" ? (
+            <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} />
+          ) : tab !== "temuan" && (
+            <PilihTahun tahun={o.tahun} daftarTahun={o.daftarTahun} onTahun={o.setTahun} />
           )}
           {tab === "daftar" && (
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-              <input
-                value={o.cari}
-                onChange={(e) => o.setCari(e.target.value)}
-                placeholder="Cari segmen / penyulang / regu"
-                className={`${FIELD} w-[250px] pl-8`}
-              />
-            </div>
+            <KotakCari nilai={o.cari} onUbah={o.setCari} placeholder="Cari segmen, penyulang, regu" lebar="w-[230px]" />
           )}
-        </div>
+        </IsiTopbar>
       )}
 
       {tab === "daftar" && (

@@ -2,14 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  BookOpen, CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, Search,
-  SearchCheck, Send, SlidersHorizontal, TriangleAlert,
-} from "lucide-react";
+import { BookOpen, CheckCheck, ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Map, Network, SearchCheck, Send, SlidersHorizontal, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canManageSettings } from "@/lib/roles";
-import { CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
-import { useDaftarJtr, BULAN, STATUS_JTR } from "./_hooks/useApprovalJtr";
+import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
+import { useDaftarJtr, STATUS_JTR } from "./_hooks/useApprovalJtr";
 import TabelJtr from "./_components/TabelJtr";
 import DetailInspeksiJtrModal from "./_components/DetailInspeksiJtrModal";
 import DashboardJtr from "./_components/DashboardJtr";
@@ -24,6 +21,9 @@ import WoInspeksi from "@/app/admin/_components/WoInspeksi";
 import PanduanModul from "@/app/admin/_components/PanduanModul";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { KotakCari } from "@/app/admin/_kit/Field";
+import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Inspeksi JTR — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
@@ -92,48 +92,18 @@ export default function JtrPage() {
       </IsiKepala>
 
       {berpenyaring && (
-        <div className="flex flex-wrap items-center gap-2">
-          <select
-            value={o.ulp}
-            onChange={(e) => o.setUlp(e.target.value)}
-            className={`${FIELD} w-[170px]`}
-            disabled={o.daftarUlp.length <= 1}
-            aria-label="ULP"
-          >
-            {o.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-          </select>
+        <IsiTopbar>
+          <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
+          {tab === "daftar" ? (
+            <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} />
+          ) : tab === "dashboard" && (
+            <PilihTahun tahun={o.tahun} daftarTahun={o.daftarTahun} onTahun={o.setTahun} />
+          )}
           {tab === "daftar" && (
-            <select value={o.bulan} onChange={(e) => o.setBulan(Number(e.target.value))} className={`${FIELD} w-[160px]`} aria-label="Bulan">
-              <option value={0}>Sepanjang tahun</option>
-              {BULAN.map((b, i) => <option key={b} value={i + 1}>{b}</option>)}
-            </select>
+            <KotakCari nilai={o.cari} onUbah={o.setCari} placeholder="Cari gardu, penyulang, petugas" lebar="w-[230px]" />
           )}
-          {(tab === "daftar" || tab === "dashboard") && (
-            <select value={o.tahun} onChange={(e) => o.setTahun(Number(e.target.value))} className={`${FIELD} w-[100px]`} aria-label="Tahun">
-              {o.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          )}
-          {(tab === "daftar" || tab === "jaringan") && (
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
-              {tab === "daftar" ? (
-                <input
-                  value={o.cari}
-                  onChange={(e) => o.setCari(e.target.value)}
-                  placeholder="Cari gardu / penyulang / petugas"
-                  className={`${FIELD} w-[250px] pl-8`}
-                />
-              ) : (
-                <input
-                  value={cariGardu}
-                  onChange={(e) => setCariGardu(e.target.value)}
-                  placeholder="Cari gardu"
-                  className={`${FIELD} w-[200px] pl-8`}
-                />
-              )}
-            </div>
-          )}
-        </div>
+          {tab === "jaringan" && <KotakCari nilai={cariGardu} onUbah={setCariGardu} placeholder="Cari gardu" lebar="w-[200px]" />}
+        </IsiTopbar>
       )}
 
       {tab === "daftar" && (

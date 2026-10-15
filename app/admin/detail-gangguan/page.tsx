@@ -45,6 +45,9 @@ import {
 } from "./_lib/gangguan";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
+import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
+import { PilihTanggal } from "@/app/admin/_kit/Field";
+import Tombol from "@/app/admin/_kit/Tombol";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -331,37 +334,19 @@ export default function DetailGangguanPage() {
     <div className="space-y-3 text-ink">
       {/* Rentang tanggal — berlaku untuk seluruh tab, termasuk Dashboard */}
       <div className={`${CARD} p-4 space-y-3`}>
-        <div className="flex items-end gap-3 flex-wrap">
-          <Field label="Dari tanggal">
-            <input
-              type="date"
-              value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
-              className={FIELD}
-            />
-          </Field>
-          <Field label="Sampai tanggal">
-            <input
-              type="date"
-              value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
-              className={FIELD}
-            />
-          </Field>
-          <button onClick={loadSaved} disabled={loading} className={BTN_GHOST}>
-            {loading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Database className="w-4 h-4" />
-            )}
+        <IsiTopbar>
+          <PilihTanggal label="Dari tanggal" nilai={dateFrom} onUbah={setDateFrom} />
+          <span className="text-xs text-ink-muted">s/d</span>
+          <PilihTanggal label="Sampai tanggal" nilai={dateTo} onUbah={setDateTo} />
+          <Tombol onClick={loadSaved} disabled={loading} ikon={loading ? <Loader2 size={15} className="animate-spin" /> : <Database size={15} />}>
             Muat dari DB
-          </button>
-          {rows.length > 0 && (
-            <span className="text-xs text-ink-muted ml-auto">
-              {rows.length} laporan tersimpan · {range.from} s/d {range.to}
-            </span>
-          )}
-        </div>
+          </Tombol>
+        </IsiTopbar>
+        {rows.length > 0 && (
+          <p className="text-xs text-ink-muted">
+            {rows.length} laporan tersimpan · {range.from} s/d {range.to}
+          </p>
+        )}
 
         {/* Perintah console — hanya relevan saat menarik data baru */}
         {tab === "data" && (
@@ -738,21 +723,6 @@ export default function DetailGangguanPage() {
           onSaved={loadKoreksi}
         />
       )}
-    </div>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-semibold text-ink-soft">{label}</span>
-      {children}
     </div>
   );
 }

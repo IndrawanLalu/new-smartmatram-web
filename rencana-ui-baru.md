@@ -148,7 +148,14 @@ regu langsung, Periksa & putuskan → modal rincian). Semua fungsi lama tetap.
   Pengukuran, Yantek, Detail Gangguan, Master Penyulang/Segmen, Optimasi,
   Pemeliharaan.
 
-**Belum:** saringan halaman lain ke topbar, ikon kepala kolom per tabel, isi halaman lain ke komponen `_kit`
+- **Saringan ke topbar** (15 Okt): `_kit/Saringan.tsx` (`PilihUlp`,
+  `PilihPeriode` = bulan+tahun satu pilihan, `PilihTahun`) + `PilihTanggal` di
+  `Field.tsx`. Terpasang: JTM, JTR, Hargardu, Optimasi, Pemeliharaan Jaringan,
+  Pengukuran Gardu (Periode · ULP · Penyulang), Yantek (Tahun · Bulan yang ada
+  datanya), Detail Gangguan (rentang tanggal + Muat dari DB), juga Perabasan &
+  Rekap Kinerja (pakai komponen yang sama). Chip status/ULP tetap di isi halaman.
+
+**Belum:** ikon kepala kolom per tabel, isi halaman lain ke komponen `_kit`
 (tab ke kepala, saringan ke topbar, tabel), halaman gelap, cari global (U5),
 banner Beranda.
 

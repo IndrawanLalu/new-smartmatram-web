@@ -67,3 +67,20 @@ export function KotakCari({ nilai, onUbah, placeholder, lebar = "flex-1 min-w-[2
     </label>
   );
 }
+
+interface TanggalProps {
+  nilai: string;
+  onUbah: (v: string) => void;
+  label: string;
+  lebar?: string;
+}
+
+/** Tanggal (yyyy-mm-dd) memakai pemilih tanggal asli peramban, rupa sama dengan field lain. */
+export function PilihTanggal({ nilai, onUbah, label, lebar = "w-[165px]" }: TanggalProps) {
+  return (
+    <label className={`relative ${lebar}`} title={label}>
+      <span className="sr-only">{label}</span>
+      <input type="date" value={nilai} onChange={(e) => onUbah(e.target.value)} className={`${KOTAK} px-3 font-medium`} />
+    </label>
+  );
+}

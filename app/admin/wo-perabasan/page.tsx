@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, CalendarDays, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, MapPin, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
@@ -10,13 +10,13 @@ import { nadaStatus } from "@/lib/statusUi";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
-import { KotakCari, PilihField } from "@/app/admin/_kit/Field";
+import { KotakCari } from "@/app/admin/_kit/Field";
 import ChipSaring, { type ItemChip } from "@/app/admin/_kit/ChipSaring";
 import CatatanInfo from "@/app/admin/_kit/CatatanInfo";
 import Tombol from "@/app/admin/_kit/Tombol";
 import { TabelKosong } from "@/app/admin/_kit/Tabel";
 import { useWoPerabasan } from "./_hooks/useWoPerabasan";
-import { useDaftarPerabasan, BULAN, STATUS_RABAS, type BarisRabas, type SaringStatus } from "./_hooks/useDaftarPerabasan";
+import { useDaftarPerabasan, STATUS_RABAS, type BarisRabas, type SaringStatus } from "./_hooks/useDaftarPerabasan";
 import TabelRabas from "./_components/TabelRabas";
 import DetailRabasModal from "./_components/DetailRabasModal";
 import TugaskanReguModal from "./_components/TugaskanReguModal";
@@ -28,6 +28,7 @@ import { useLuarWoPerabasan } from "./_hooks/useLuarWoPerabasan";
 import DaftarWo from "./_components/DaftarWo";
 import DetailWoModal from "./_components/DetailWoModal";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
+import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
  * Perabasan Pohon — satuan SEGMEN, ukuran KILOMETER.
@@ -152,11 +153,6 @@ export default function WoPerabasanPage() {
     },
   ];
 
-  const pilihUlp = (
-    <PilihField ikon={MapPin} label="ULP" lebar="w-[155px]" nilai={d.ulp} onUbah={d.setUlp} disabled={d.daftarUlp.length <= 1}>
-      {d.daftarUlp.map((u) => <option key={u} value={u}>{u === "SEMUA" ? "Semua ULP" : u}</option>)}
-    </PilihField>
-  );
   // Pohon dilihat bersama jaringannya di Peta Jaringan (lapisan Pohon,
   // keputusan user 8 Okt 2026) — bukan peta tersendiri di sini.
   const lihatPeta = (
@@ -185,34 +181,15 @@ export default function WoPerabasanPage() {
 
       {tab !== "terbit" && (
         <IsiTopbar>
-          {pilihUlp}
+          <PilihUlp nilai={d.ulp} onUbah={d.setUlp} daftar={d.daftarUlp} />
           {tab === "daftar" && (
             <>
-              <PilihField
-                ikon={CalendarDays}
-                label="Periode"
-                lebar="w-[175px]"
-                nilai={`${d.tahun}-${d.bulan}`}
-                onUbah={(v) => {
-                  const [t, b] = v.split("-").map(Number);
-                  if (t !== d.tahun) d.setTahun(t);
-                  if (b !== d.bulan) d.setBulan(b);
-                }}
-              >
-                {d.daftarTahun.map((t) => (
-                  <optgroup key={t} label={String(t)}>
-                    {BULAN.map((b, i) => <option key={b} value={`${t}-${i + 1}`}>{b} {t}</option>)}
-                    <option value={`${t}-0`}>Sepanjang tahun {t}</option>
-                  </optgroup>
-                ))}
-              </PilihField>
+              <PilihPeriode tahun={d.tahun} bulan={d.bulan} daftarTahun={d.daftarTahun} onTahun={d.setTahun} onBulan={d.setBulan} />
               <KotakCari nilai={d.cari} onUbah={d.setCari} placeholder="Cari penyulang, segmen, regu" lebar="w-[215px]" />
             </>
           )}
           {tab === "dashboard" && (
-            <PilihField ikon={CalendarDays} label="Tahun" lebar="w-[130px]" nilai={d.tahun} onUbah={(v) => d.setTahun(Number(v))}>
-              {d.daftarTahun.map((t) => <option key={t} value={t}>{t}</option>)}
-            </PilihField>
+            <PilihTahun tahun={d.tahun} daftarTahun={d.daftarTahun} onTahun={d.setTahun} />
           )}
           {lihatPeta}
         </IsiTopbar>
