@@ -11,6 +11,8 @@ import DashboardHargardu from "./_components/DashboardHargardu";
 import PerluPerbaikan from "./_components/PerluPerbaikan";
 import PengaturanItem from "./_components/PengaturanItem";
 import WoPemeliharaan from "./_components/WoPemeliharaan";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Pemeliharaan Gardu — pola Kinerja Pelayanan Teknik (teknisaplikasi.md
@@ -56,19 +58,9 @@ export default function HargarduPage() {
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} />
-            {label}
-            {key === "daftar" && !o.loading && o.hitung["Menunggu persetujuan"] > 0 && (
-              <span className={`tabular-nums text-[10px] px-1.5 rounded-full ${tab === key ? "bg-white/20" : "bg-amber-100 text-amber-800"}`}>
-                {o.hitung["Menunggu persetujuan"]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={tabs.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon, angka: t.key === "daftar" && !o.loading ? o.hitung["Menunggu persetujuan"] : 0, angkaTunggu: true }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "perbaikan" && <PerluPerbaikan user={user} />}
       {tab === "pengaturan" && up3 && <PengaturanItem user={user} />}

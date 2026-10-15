@@ -6,6 +6,8 @@ import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useMasterSegmen } from "./_hooks/useMasterSegmen";
 import DaftarSegmen from "./_components/DaftarSegmen";
 import ImporSegmen from "./_components/ImporSegmen";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Master Segmen — daftar acuan ruas jaringan.
@@ -37,22 +39,9 @@ export default function MasterSegmenPage() {
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`inline-flex items-center gap-2 h-9 px-4 rounded-xl text-sm font-semibold transition-colors ${
-              tab === key
-                ? "bg-navy-600 text-white shadow-sm"
-                : "bg-white text-ink-soft border border-line hover:border-navy-300"
-            }`}
-          >
-            <Icon size={16} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "daftar" && (
         <DaftarSegmen

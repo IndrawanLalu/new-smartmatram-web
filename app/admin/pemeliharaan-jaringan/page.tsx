@@ -10,6 +10,8 @@ import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardPemeliharaan from "./_components/DashboardPemeliharaan";
 import PengaturanKategori from "./_components/PengaturanKategori";
 import TugasHarjar from "./_components/TugasHarjar";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Pemeliharaan Jaringan JTM/JTR.
@@ -66,14 +68,9 @@ export default function PemeliharaanJaringanPage() {
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "pengaturan" ? (
         <PengaturanKategori kategori={o.kategori} onSimpan={o.simpanKategori} />

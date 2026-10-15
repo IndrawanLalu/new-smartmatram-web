@@ -43,6 +43,8 @@ import {
   type GangguanRow,
   type KoreksiRow,
 } from "./_lib/gangguan";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -460,18 +462,9 @@ export default function DetailGangguanPage() {
         </div>
       )}
 
-      {/* Tabs */}
-      <div className="flex items-center gap-1.5 flex-wrap">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}
-          >
-            <Icon className="w-3.5 h-3.5" /> {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "dashboard" && (
         <DashboardTab

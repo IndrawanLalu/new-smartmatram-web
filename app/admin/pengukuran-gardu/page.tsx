@@ -57,6 +57,8 @@ import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
 import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
 import { detectAnomali, hasThresholdCriteria } from "@/lib/anomaliGardu";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 const BebanBarChart      = dynamic(() => import("./_components/BebanBarChart"),      { ssr: false });
 const PenyulangDistChart = dynamic(() => import("./_components/PenyulangDistChart"), { ssr: false });
@@ -407,23 +409,9 @@ export default function PengukuranGarduPage() {
         onReset={resetSettings}
       />
 
-      {/* ── Tab Switcher ────────────────────────────────────────────────────── */}
-      <div className="flex gap-1 rounded-xl border border-line bg-white p-1 shadow-card">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button
-            key={key}
-            onClick={() => setActiveTab(key)}
-            className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-              activeTab === key
-                ? "bg-navy-600 text-white shadow-sm"
-                : "text-ink-soft hover:text-ink hover:bg-surface"
-            }`}
-          >
-            <Icon size={15} className="shrink-0" />
-            <span className="hidden sm:inline">{label}</span>
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={activeTab} onPilih={setActiveTab} />
+      </IsiKepala>
 
       {/* ── Error ───────────────────────────────────────────────────────────── */}
       {error && (

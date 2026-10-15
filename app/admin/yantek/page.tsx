@@ -22,6 +22,8 @@ import DetailTable from "./_components/DetailTable";
 import DatabaseTab from "./_components/DatabaseTab";
 import AmbilDataTab from "./_components/AmbilDataTab";
 import SlaSettingsModal from "./_components/SlaSettingsModal";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /** "2026-05" → "2026-04". Dipakai untuk garis pembanding di tab SLA. */
 function bulanSebelumnya(key: string): string {
@@ -440,23 +442,9 @@ export default function YantekPage() {
       ) : (
         <>
           <div className="flex items-center gap-1.5 flex-wrap">
-            {TABS.map(({ key, label, icon: Icon, badge, tone }) => (
-              <button
-                key={key}
-                onClick={() => setTab(key)}
-                className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}
-              >
-                <Icon className="w-3.5 h-3.5" /> {label}
-                {badge !== undefined && badge > 0 && (
-                  <span className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    tab === key ? "bg-white/25 text-white"
-                      : tone === "merah" ? "bg-red-100 text-red-600" : "bg-navy-50 text-navy-600"
-                  }`}>
-                    {badge}
-                  </span>
-                )}
-              </button>
-            ))}
+            <IsiKepala>
+              <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon, angka: t.badge, angkaMasalah: t.tone === "merah" }))} aktif={tab} onPilih={setTab} />
+            </IsiKepala>
             <div className="flex-1" />
             {butuhData && dates.length > 0 && (
               <button onClick={handleDownloadPdf} disabled={pdfLoading || stats.length === 0} className={BTN_GHOST}>

@@ -8,6 +8,8 @@ import { useOptimasiTrafo, STATUS_TABEL, BULAN } from "./_hooks/useOptimasiTrafo
 import TabelOptimasi from "./_components/TabelOptimasi";
 import DetailOptimasiModal from "./_components/DetailOptimasiModal";
 import PengaturanAlasan from "./_components/PengaturanAlasan";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Optimasi Trafo — uprating/downrating kapasitas trafo.
@@ -56,14 +58,9 @@ export default function OptimasiTrafoPage() {
 
   return (
     <div className="text-ink flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} />
-            {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {tab === "pengaturan" ? (
         <PengaturanAlasan alasan={o.alasan} onSimpan={o.simpanAlasan} />

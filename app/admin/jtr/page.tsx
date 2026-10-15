@@ -22,6 +22,8 @@ import PengaturanJtr from "./_components/PengaturanJtr";
 import TemuanJtr from "./_components/TemuanJtr";
 import WoInspeksi from "@/app/admin/_components/WoInspeksi";
 import PanduanModul from "@/app/admin/_components/PanduanModul";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Inspeksi JTR — pola Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
@@ -85,19 +87,9 @@ export default function JtrPage() {
     // Tab peta memakai tinggi penuh lewat flex, bukan calc() — tebakan tinggi
     // topbar dan padding meleset di tiap ukuran layar.
     <div className={`text-ink flex flex-col gap-4 ${tab === "peta" ? "h-full" : ""}`}>
-      <div className="flex flex-wrap gap-2 shrink-0">
-        {tabTampil.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} />
-            {label}
-            {key === "daftar" && !o.loading && o.hitung["Menunggu persetujuan"] > 0 && (
-              <span className={`tabular-nums text-[10px] px-1.5 rounded-full ${tab === key ? "bg-white/20" : "bg-amber-100 text-amber-800"}`}>
-                {o.hitung["Menunggu persetujuan"]}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={tabTampil.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon, angka: t.key === "daftar" && !o.loading ? o.hitung["Menunggu persetujuan"] : 0, angkaTunggu: true }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
 
       {berpenyaring && (
         <div className="flex flex-wrap items-center gap-2">

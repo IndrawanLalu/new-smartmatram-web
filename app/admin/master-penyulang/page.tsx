@@ -3,9 +3,10 @@
 import { useState } from "react";
 import { ListChecks, Table2 } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
-import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import DaftarPenyulang from "./_components/DaftarPenyulang";
 import RekapData from "./_components/RekapData";
+import IsiKepala from "@/app/admin/_kit/IsiKepala";
+import TabPil from "@/app/admin/_kit/TabPil";
 
 /**
  * Master Penyulang — induk yang dituju gardu, tiang, dan segmen.
@@ -30,13 +31,9 @@ export default function MasterPenyulangPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]["key"]>("daftar");
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap gap-2">
-        {TABS.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setTab(key)} className={`${CHIP} ${tab === key ? CHIP_ON : CHIP_OFF}`}>
-            <Icon size={14} /> {label}
-          </button>
-        ))}
-      </div>
+      <IsiKepala>
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+      </IsiKepala>
       {tab === "daftar" ? <DaftarPenyulang user={user} /> : <RekapData user={user} />}
     </div>
   );
