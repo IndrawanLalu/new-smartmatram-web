@@ -32,7 +32,13 @@ const KOLOM: { judul: string; lebar: number }[] = [
 export async function unduhExcelPemeliharaan(baris: BarisPemeliharaan[], namaBerkas: string) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
-  const ws = wb.addWorksheet("Pemeliharaan Jaringan", {
+  lembarPemeliharaan(wb, baris);
+  await downloadBuffer(wb, namaBerkas);
+}
+
+/** Isi satu lembar ke workbook yang ada — dipakai juga Realisasi Bulanan (Rekap Kinerja). */
+export function lembarPemeliharaan(wb: ExcelJS.Workbook, baris: BarisPemeliharaan[], nama = "Pemeliharaan Jaringan"): void {
+  const ws = wb.addWorksheet(nama, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
 
@@ -77,5 +83,4 @@ export async function unduhExcelPemeliharaan(baris: BarisPemeliharaan[], namaBer
   });
 
   ws.views = [{ state: "frozen", xSplit: 4, ySplit: 1 }];
-  await downloadBuffer(wb, namaBerkas);
 }

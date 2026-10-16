@@ -37,7 +37,13 @@ const bulat = (v: number | null | undefined) => (v === null || v === undefined ?
 export async function unduhExcelOptimasi(baris: BarisTabel[], namaBerkas: string) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
-  const ws = wb.addWorksheet("Optimasi Trafo", {
+  lembarOptimasi(wb, baris);
+  await downloadBuffer(wb, namaBerkas);
+}
+
+/** Isi satu lembar ke workbook yang ada — dipakai juga Realisasi Bulanan (Rekap Kinerja). */
+export function lembarOptimasi(wb: ExcelJS.Workbook, baris: BarisTabel[], nama = "Optimasi Trafo"): void {
+  const ws = wb.addWorksheet(nama, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
 
@@ -139,5 +145,4 @@ export async function unduhExcelOptimasi(baris: BarisTabel[], namaBerkas: string
   });
 
   ws.views = [{ state: "frozen", xSplit: COL.gardu, ySplit: 2 }];
-  await downloadBuffer(wb, namaBerkas);
 }

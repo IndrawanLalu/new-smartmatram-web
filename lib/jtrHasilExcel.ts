@@ -1,5 +1,5 @@
 import type ExcelJS from "exceljs";
-import { susunHasilInspeksi, type BarisHasil, type KolomHasil, type SelHasil, type TemuanHasil } from "@/lib/hasilInspeksiExcel";
+import { susunHasilInspeksi, type BarisHasil, type IsiHasil, type KolomHasil, type SelHasil, type TemuanHasil } from "@/lib/hasilInspeksiExcel";
 
 /**
  * Excel Hasil Inspeksi JTR — bentuk yang sama dengan JTM
@@ -88,6 +88,11 @@ const tglId = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("i
 const semuaFoto = (m: Record<string, string | null> | null) => Object.values(m ?? {}).filter((u): u is string => !!u);
 
 export function susunHasilJtr(tiang: TiangJtrExcel[], adalahTemuan: TemuanJtr, judul: string): ExcelJS.Workbook {
+  return susunHasilInspeksi(isiHasilJtr(tiang, adalahTemuan, judul));
+}
+
+/** Isi lembar tanpa workbook — rute ekspor memulangkannya sebagai JSON untuk Realisasi Bulanan. */
+export function isiHasilJtr(tiang: TiangJtrExcel[], adalahTemuan: TemuanJtr, judul: string): IsiHasil {
   const nKabel = Math.max(1, ...tiang.flatMap((t) => t.kabel.map((k) => k.nomor)));
   const kolom: KolomHasil[] = [
     ...DEPAN,
@@ -160,5 +165,5 @@ export function susunHasilJtr(tiang: TiangJtrExcel[], adalahTemuan: TemuanJtr, j
     return { grup: [t.penyulang || "—", t.gardu], dinilai: true, temuan, sel };
   });
 
-  return susunHasilInspeksi({ judul, kolom, baris, namaGrup: ["Penyulang", "Gardu"], bekuKiri: 8 });
+  return { judul, kolom, baris, namaGrup: ["Penyulang", "Gardu"], bekuKiri: 8 };
 }

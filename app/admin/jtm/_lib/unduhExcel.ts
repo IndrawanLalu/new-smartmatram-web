@@ -27,7 +27,13 @@ const KOLOM: { judul: string; lebar: number }[] = [
 export async function unduhExcelJtm(baris: BarisJtm[], namaBerkas: string) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
-  const ws = wb.addWorksheet("Inspeksi JTM", { pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 } });
+  lembarJtm(wb, baris);
+  await downloadBuffer(wb, namaBerkas);
+}
+
+/** Isi satu lembar ke workbook yang ada — dipakai juga Realisasi Bulanan (Rekap Kinerja). */
+export function lembarJtm(wb: ExcelJS.Workbook, baris: BarisJtm[], nama = "Inspeksi JTM"): void {
+  const ws = wb.addWorksheet(nama, { pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 } });
 
   KOLOM.forEach((k, i) => {
     ws.getColumn(i + 1).width = k.lebar;
@@ -68,5 +74,4 @@ export async function unduhExcelJtm(baris: BarisJtm[], namaBerkas: string) {
   styleCell(c, { bold: true, size: 9, bgColor: CLR_HEADER });
 
   ws.views = [{ state: "frozen", xSplit: 2, ySplit: 1 }];
-  await downloadBuffer(wb, namaBerkas);
 }

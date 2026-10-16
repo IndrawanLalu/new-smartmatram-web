@@ -68,7 +68,7 @@ export interface JawabanTiang {
   }[];
 }
 
-const KOLOM =
+export const KOLOM =
   "id,segmen_id,segmen_nama,penyulang,ulp,tier,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_at,verified_by,verified_note,tiang_segmen,tiang_dinilai,jawaban,temuan,jumlah_foto";
 const AKTIF = ["Dijadwalkan", "Dalam Proses", "Selesai", "Ditolak"];
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];

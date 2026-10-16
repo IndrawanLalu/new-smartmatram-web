@@ -188,10 +188,16 @@ function buildJurusanSection(
 // ══════════════════════════════════════════════════════════════════════════════
 
 export async function downloadXlsx(semua: PengukuranGardu[], filename: string) {
-  const rows = await denganUjungLapangan(semua);
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
-  const ws  = wb.addWorksheet("Pengukuran Gardu", {
+  await lembarPengukuran(wb, semua);
+  await downloadBuffer(wb, filename);
+}
+
+/** Isi satu lembar ke workbook yang ada — dipakai juga Realisasi Bulanan (Rekap Kinerja). */
+export async function lembarPengukuran(wb: ExcelJS.Workbook, semua: PengukuranGardu[], nama = "Pengukuran Gardu"): Promise<void> {
+  const rows = await denganUjungLapangan(semua);
+  const ws  = wb.addWorksheet(nama, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
 
@@ -244,7 +250,6 @@ export async function downloadXlsx(semua: PengukuranGardu[], filename: string) {
   });
 
   ws.views = [{ state: "frozen", xSplit: 6, ySplit: 3 }];
-  await downloadBuffer(wb, filename);
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -326,13 +331,16 @@ const CLR_BEFORE = "F8BBD9";
 const CLR_AFTER  = "C8E6C9";
 const CLR_DELTA  = "FFF9C4";
 
-export async function downloadPenyeimbanganXlsx(
-  rows: PenyeimbanganGardu[],
-  filename: string
-) {
+export async function downloadPenyeimbanganXlsx(rows: PenyeimbanganGardu[], filename: string) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
-  const ws  = wb.addWorksheet("Rekap Penyeimbangan", {
+  lembarPenyeimbangan(wb, rows);
+  await downloadBuffer(wb, filename);
+}
+
+/** Isi satu lembar ke workbook yang ada — dipakai juga Realisasi Bulanan (Rekap Kinerja). */
+export function lembarPenyeimbangan(wb: ExcelJS.Workbook, rows: PenyeimbanganGardu[], nama = "Rekap Penyeimbangan"): void {
+  const ws  = wb.addWorksheet(nama, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1 },
   });
 
@@ -442,5 +450,4 @@ export async function downloadPenyeimbanganXlsx(
   });
 
   ws.views = [{ state: "frozen", xSplit: 7, ySplit: 2 }];
-  await downloadBuffer(wb, filename);
 }

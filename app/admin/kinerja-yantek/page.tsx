@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays, FileText, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
+import { CalendarDays, FileSpreadsheet, FileText, RefreshCw, Table2, Target, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
@@ -11,6 +11,7 @@ import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
 import TabelKinerja from "./_components/TabelKinerja";
 import AturSlaModal from "./_components/AturSlaModal";
 import CetakWoModal from "./_components/CetakWoModal";
+import RealisasiBulananModal from "./_components/RealisasiBulananModal";
 import CentangRealisasiModal from "./_components/CentangRealisasiModal";
 import RealisasiHarian from "./_components/RealisasiHarian";
 import { PilihPeriode, PilihUlp } from "@/app/admin/_kit/Saringan";
@@ -54,6 +55,7 @@ export default function KinerjaYantekPage() {
   const bolehSla = user.role === "UP3" || user.role === "admin";
   const [aturSla, setAturSla] = useState(false);
   const [cetakWo, setCetakWo] = useState(false);
+  const [lampiran, setLampiran] = useState(false);
   const [centang, setCentang] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("bulanan");
   const bulanIni = new Date().getMonth() + 1;
@@ -85,6 +87,7 @@ export default function KinerjaYantekPage() {
       {bolehSla && (
         <div className="flex flex-wrap items-center justify-end gap-2">
           <Tombol onClick={() => setCetakWo(true)} ikon={<FileText size={15} />}>Cetak / Kirim WO</Tombol>
+          <Tombol onClick={() => setLampiran(true)} ikon={<FileSpreadsheet size={15} />}>Realisasi Bulanan</Tombol>
           <Tombol onClick={() => setAturSla(true)} ikon={<Target size={15} />}>Atur SLA</Tombol>
         </div>
       )}
@@ -123,6 +126,10 @@ export default function KinerjaYantekPage() {
           onTutup={() => setCetakWo(false)}
           onBerubah={muatUlang}
         />
+      )}
+
+      {lampiran && (
+        <RealisasiBulananModal ulp={ulp} tahun={tahun} bulan={bulan} rekap={baris} onTutup={() => setLampiran(false)} />
       )}
 
       {centang && (

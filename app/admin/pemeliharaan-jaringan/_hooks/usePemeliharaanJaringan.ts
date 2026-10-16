@@ -101,7 +101,7 @@ export const rentangPeriode = (tahun: number, bulan: number) => ({
 const angka = (v: unknown) => (v === null || v === undefined ? null : Number(v));
 const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
 
-const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
+export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
   const statusDb = (r.status as string) ?? "Selesai";
   return {
     id: r.id as string,

@@ -43,7 +43,7 @@ const BLN_WO = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "
  * `wo_hargardu_realisasi` (pekerjaan yang mewakili baris WO di bulannya) —
  * tidak ada kolom WO di `pemeliharaan_gardu`, dan memang tidak perlu.
  */
-async function tempelWo(rows: PemeliharaanMenunggu[]): Promise<PemeliharaanMenunggu[]> {
+export async function tempelWo(rows: PemeliharaanMenunggu[]): Promise<PemeliharaanMenunggu[]> {
   const ids = rows.map((r) => r.id);
   const peta = new Map<string, { bulan: number; tahun: number; tgl_wo: string }>();
   for (let i = 0; i < ids.length; i += 100) {

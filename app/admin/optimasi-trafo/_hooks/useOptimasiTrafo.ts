@@ -192,7 +192,7 @@ const angka = (v: unknown) => (v === null || v === undefined || v === "" ? null 
 const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- baris mentah view PostgREST */
-const petaCatatan = (r: any): CatatanOptimasi => ({
+export const petaCatatan = (r: any): CatatanOptimasi => ({
   id: r.id,
   pengukuranId: teks(r.pengukuran_id),
   kodeGardu: r.kode_gardu,
@@ -260,7 +260,7 @@ const petaWo = (r: any): WoTerbuka => ({
 });
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
-const barisDariCatatan = (c: CatatanOptimasi): BarisTabel => ({
+export const barisDariCatatan = (c: CatatanOptimasi): BarisTabel => ({
   kunci: c.id,
   status: STATUS_DB[c.statusDb] ?? "Menunggu verifikasi",
   kodeGardu: c.kodeGardu,

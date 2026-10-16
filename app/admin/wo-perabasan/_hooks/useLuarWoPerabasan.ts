@@ -46,7 +46,7 @@ export interface BarisLuar {
 const dua = (n: number) => String(n).padStart(2, "0");
 const akhirBulan = (t: number, b: number) => new Date(t, b, 0).getDate();
 
-const petaBaris = (r: Record<string, unknown>): BarisLuar => ({
+export const petaBaris = (r: Record<string, unknown>): BarisLuar => ({
   id: r.id as string,
   ulp: r.ulp as string,
   ulpRegu: r.ulp_regu as string,

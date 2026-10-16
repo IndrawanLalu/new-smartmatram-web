@@ -1,5 +1,5 @@
 import type ExcelJS from "exceljs";
-import { susunHasilInspeksi, type BarisHasil, type KolomHasil, type SelHasil, type TemuanHasil } from "@/lib/hasilInspeksiExcel";
+import { susunHasilInspeksi, type BarisHasil, type IsiHasil, type KolomHasil, type SelHasil, type TemuanHasil } from "@/lib/hasilInspeksiExcel";
 
 /**
  * Excel Hasil Inspeksi JTM — keadaan TERAKHIR tiap tiang (keputusan user
@@ -85,6 +85,11 @@ function selIsian(daftar: KondisiJtm[], satuan: string | null): SelHasil {
 }
 
 export function susunHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string): ExcelJS.Workbook {
+  return susunHasilInspeksi(isiHasilJtm(tiang, item, judul));
+}
+
+/** Isi lembar tanpa workbook — rute ekspor memulangkannya sebagai JSON untuk Realisasi Bulanan. */
+export function isiHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string): IsiHasil {
   const kolom: KolomHasil[] = [
     ...DEPAN,
     ...item.map((i) => ({ judul: i.nama, lebar: 14, kelompok: i.kelompok })),
@@ -133,5 +138,5 @@ export function susunHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string)
     };
   });
 
-  return susunHasilInspeksi({ judul, kolom, baris, namaGrup: ["Penyulang"], bekuKiri: 4 });
+  return { judul, kolom, baris, namaGrup: ["Penyulang"], bekuKiri: 4 };
 }

@@ -66,8 +66,21 @@ export function susunHasilInspeksi(isi: IsiHasil): ExcelJS.Workbook {
   return wb;
 }
 
-function lembarHasil(wb: ExcelJS.Workbook, { judul, kolom, baris, bekuKiri }: IsiHasil) {
-  const ws = wb.addWorksheet("Hasil Inspeksi", {
+/** Dua lembar hasil inspeksi ke workbook yang ada (Realisasi Bulanan), dengan
+ *  nama lembar sendiri. Kolom foto dibuang — lampiran tagihan tanpa tautan foto. */
+export function tambahHasilInspeksi(wb: ExcelJS.Workbook, isi: IsiHasil, namaHasil: string, namaRekap: string) {
+  const buang = new Set(isi.kolom.flatMap((k, i) => (/^foto/i.test(k.judul) ? [i] : [])));
+  const bersih: IsiHasil = {
+    ...isi,
+    kolom: isi.kolom.filter((_, i) => !buang.has(i)),
+    baris: isi.baris.map((b) => ({ ...b, sel: b.sel.filter((_, i) => !buang.has(i)) })),
+  };
+  lembarHasil(wb, bersih, namaHasil);
+  lembarRekap(wb, bersih, namaRekap);
+}
+
+function lembarHasil(wb: ExcelJS.Workbook, { judul, kolom, baris, bekuKiri }: IsiHasil, nama = "Hasil Inspeksi") {
+  const ws = wb.addWorksheet(nama, {
     views: [{ state: "frozen", xSplit: bekuKiri, ySplit: 4 }],
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
@@ -114,8 +127,8 @@ function lembarHasil(wb: ExcelJS.Workbook, { judul, kolom, baris, bekuKiri }: Is
   ws.autoFilter = { from: { row: 4, column: 1 }, to: { row: 4 + baris.length, column: kolom.length } };
 }
 
-function lembarRekap(wb: ExcelJS.Workbook, { judul, baris, namaGrup, kolom }: IsiHasil) {
-  const ws = wb.addWorksheet("Rekap Temuan", {
+function lembarRekap(wb: ExcelJS.Workbook, { judul, baris, namaGrup, kolom }: IsiHasil, nama = "Rekap Temuan") {
+  const ws = wb.addWorksheet(nama, {
     pageSetup: { orientation: "landscape", fitToPage: true, fitToWidth: 1, fitToHeight: 0 },
   });
   const g = namaGrup.length;

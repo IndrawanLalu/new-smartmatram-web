@@ -68,7 +68,7 @@ export const BULAN = [
 const dua = (n: number) => String(n).padStart(2, "0");
 const akhirBulan = (t: number, b: number) => new Date(t, b, 0).getDate();
 
-const KOLOM =
+export const KOLOM =
   "id,wo_id,segmen_id,urutan,ulp,penyulang,segmen_nama,panjang_km,panjang_dari,regu,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_note,verified_at,wo:wo_perabasan(nama,tgl_wo)";
 
 const teks = (v: unknown) => (v === null || v === undefined ? null : String(v));
@@ -88,7 +88,7 @@ export const statusTampil = (status: string, regu: string | null): StatusRabas =
   }
 };
 
-const petaBaris = (r: Record<string, unknown>): BarisRabas => {
+export const petaBaris = (r: Record<string, unknown>): BarisRabas => {
   const wo = r.wo as { nama?: string; tgl_wo?: string } | null;
   const regu = teks(r.regu);
   return {
