@@ -119,7 +119,8 @@ async function muat(id: string): Promise<Keadaan> {
     fetchAllRows<{ tiang_id: string }>(() =>
       supabaseBrowser.from("segmen_tiang").select("tiang_id").eq("segmen_id", id).order("tiang_id"),
     ),
-    supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ringkas.ulp }).eq("segmen_id", id).maybeSingle(),
+    // Disaring di server (jtm-rekap-data-saring.sql) — se-ULP bisa lewat batas waktu.
+    supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ringkas.ulp, p_segmen_id: id }).eq("segmen_id", id).maybeSingle(),
     supabaseBrowser
       .from("inspeksi_jtm_ringkas")
       .select("id,status,tier,tgl_mulai,tgl_selesai,petugas_nama")

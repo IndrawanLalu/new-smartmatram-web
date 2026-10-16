@@ -49,7 +49,8 @@ async function muat(kode: string, ulp: string, kunci: string): Promise<Keadaan> 
         .gt("jumlah_tiang", 0)
         .order("segmen_id"),
     ),
-    supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ulp }).eq("penyulang", kode.toUpperCase()),
+    // Disaring di server (jtm-rekap-data-saring.sql) — se-ULP bisa lewat batas waktu.
+    supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ulp, p_penyulang: kode }).eq("penyulang", kode.toUpperCase()),
     muatLabel().catch(() => null),
   ]);
   if (rekap.error) throw new Error(rekap.error.message);
