@@ -92,7 +92,7 @@ export default function ObjekTerpilih({
     return ok;
   };
 
-  /** Batang hilang dari peta (dibatalkan / lepas tumpang): panel ditutup. */
+  /** Batang hilang dari peta / lapisan (dibatalkan / lepas tumpang): panel ditutup. */
   const tutupLaluMuat = (ok: boolean) => {
     if (ok) {
       p.tutup();
@@ -146,6 +146,10 @@ export default function ObjekTerpilih({
           onBatalkan={async (alasan) => {
             if (terpilih.jenis !== "tiang") return false;
             return tutupLaluMuat(await sunting.batalkan(terpilih.id, alasan));
+          }}
+          onLepasTumpangJtm={async (penyulang, alasan) => {
+            if (terpilih.jenis !== "tiang") return false;
+            return tutupLaluMuat(await sunting.lepasTumpangJtm(terpilih.id, penyulang, alasan));
           }}
           onTutup={p.tutup}
           simulasi={simulasi.hasil}

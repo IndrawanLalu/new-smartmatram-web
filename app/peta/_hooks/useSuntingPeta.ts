@@ -83,6 +83,14 @@ export function useSuntingPeta(oleh: string) {
       `Pasangan portal ${d.kode} dibuat 2 m dari ${d.dari}. Geser titiknya kalau letaknya berbeda.`,
     );
 
+  /** Penyulang yang salah menumpang: namanya, segmennya, & penilaiannya dihapus (`jtm-lepas-tumpang.sql`). */
+  const lepasTumpangJtm = (id: string, penyulang: string, alasan: string) =>
+    jalankan<{ kode: string; penyulang: string; penilaian: number }>(
+      "lepas_tumpang_jtm",
+      { p_tiang_id: id, p_penyulang: penyulang, p_alasan: alasan, p_nama: oleh },
+      (d) => `${d.penyulang} dilepas dari tiang ini — ${d.kode} dihapus${d.penilaian ? `, ${d.penilaian} penilaian ikut terhapus` : ""}.`,
+    );
+
   const batalkan = (id: string, alasan: string) =>
     jalankan<unknown>("batalkan_tiang", { p_id: id, p_nama: oleh, p_alasan: alasan }, () =>
       "Tiang dibatalkan (salah input).",
@@ -142,7 +150,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, batalkan, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, batalkan, lepasTumpangJtm, buatPasanganPortal,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
 }

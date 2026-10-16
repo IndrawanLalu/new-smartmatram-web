@@ -86,6 +86,8 @@ export interface TiangPeta {
   garduDiTiang: string | null;
   /** JTM: nama peralatan di tiang bertanda (SAMPOERNA) — label di samping ikonnya. */
   namaPeralatan: string | null;
+  /** JTM: tiang pertama penyulang ini — tidak ada induk di penyulang ini (`jtm-lepas-tumpang.sql`). */
+  pangkal: boolean;
 }
 
 export interface GarduPeta {
@@ -118,7 +120,7 @@ const keGardu = (x: Record<string, unknown>): GarduPeta => ({
 
 /** Kolom `peta_tiang` yang digambar — dipakai juga tampilan satu segmen. */
 export const KOLOM_TIANG =
-  "id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang,nama_peralatan";
+  "id,kode,lat,lng,penanda,percabangan,jaringan,induk_kelompok,induk_lat,induk_lng,menumpang,jumlah_kabel,kabel_putus,di_jtm,gardu_bersama,nomor_kabel,pasangan_portal_dari,gardu_di_tiang,nama_peralatan,pangkal";
 
 export const keTiang = (x: Record<string, unknown>): TiangPeta => ({
   id: x.id as string,
@@ -139,6 +141,7 @@ export const keTiang = (x: Record<string, unknown>): TiangPeta => ({
   pasanganPortalDari: (x.pasangan_portal_dari as string) ?? null,
   garduDiTiang: (x.gardu_di_tiang as string) ?? null,
   namaPeralatan: (x.nama_peralatan as string) ?? null,
+  pangkal: !!x.pangkal,
 });
 
 export function usePetaIsi(

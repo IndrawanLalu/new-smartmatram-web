@@ -16,6 +16,10 @@ import LabelTetap, { type NadaLabel } from "./LabelTetap";
  * Nama peralatan (SAMPOERNA) di tiang LBS/recloser/FCO ditulis dengan cara
  * yang sama.
  *
+ * Tiang PANGKAL JTM selalu berlabel "Pangkal <penyulang>" — juga saat Nama
+ * tiang mati: jumlahnya sedikit, dan pangkal yang salah tempat (atau lebih
+ * dari satu) langsung terlihat.
+ *
  * Label adalah elemen DOM, bukan gambar kanvas, jadi jumlahnya dibatasi: di
  * atas BATAS_NAMA label peta mulai tersendat, dan label yang bertumpuk juga
  * tak terbaca. Lebih dari itu → minta perbesar dulu (lihat bilah keadaan).
@@ -34,7 +38,11 @@ export default function LapisanNama({
   nama: boolean;
   nomor: boolean;
 }) {
-  if ((!nama && !nomor) || tiang.length > BATAS_NAMA) return null;
+  const pangkal = tiang.filter((t) => t.jaringan === "jtm" && t.pangkal);
+  const labelPangkal = pangkal.map((t) => (
+    <LabelTetap key={`pangkal-${t.id}-${t.kelompok}`} posisi={[t.lat, t.lng]} teks={`Pangkal ${t.kelompok}`} nada="pangkal" arah="left" geser={[-8, -12]} />
+  ));
+  if ((!nama && !nomor) || tiang.length > BATAS_NAMA) return <>{labelPangkal}</>;
   // Satu batang di dua kelompok (underbuild/pinjaman) = satu label berisi
   // keduanya, bukan dua label yang saling menimpa.
   const perBatang = new Map<string, { t: TiangPeta; bagian: string[]; nada: NadaLabel }>();
@@ -61,6 +69,7 @@ export default function LapisanNama({
     : [];
   return (
     <>
+      {labelPangkal}
       {gardu.map((t) => (
         <LabelTetap key={`gardu-${t.id}`} posisi={portal.get(t.id) ?? [t.lat, t.lng]} teks={t.garduDiTiang ?? ""} nada="gardu" arah="left" geser={[-8, 0]} />
       ))}

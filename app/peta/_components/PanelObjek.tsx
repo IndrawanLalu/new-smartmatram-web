@@ -12,6 +12,7 @@ import InfoTiang, { Baris, TOMBOL_PANEL } from "./InfoTiang";
 import RingkasSimulasi from "./RingkasSimulasi";
 import RincianKesehatan from "./RincianKesehatan";
 import KoreksiJtr from "./KoreksiJtr";
+import LepasTumpangJtm from "./LepasTumpangJtm";
 import PersetujuanJtrPeta from "./PersetujuanJtrPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
@@ -73,6 +74,7 @@ interface Props {
   onMulaiGabung: () => void;
   onBatalGabung: () => void;
   onLepasTumpang: (alasan: string) => Promise<boolean>;
+  onLepasTumpangJtm: (penyulang: string, alasan: string) => Promise<boolean>;
 }
 
 export default function PanelObjek(p: Props) {
@@ -81,6 +83,7 @@ export default function PanelObjek(p: Props) {
   const [sibuk, setSibuk] = useState(false);
   const [tanyaBatal, setTanyaBatal] = useState(false);
   const [tanyaLepas, setTanyaLepas] = useState(false);
+  const [lepasJtm, setLepasJtm] = useState<string | null>(null);
 
   const jarak = geser ? jarakMeter(terpilih.lat, terpilih.lng, geser.lat, geser.lng) : 0;
   const memuat = !galat && !tiang && !gardu;
@@ -235,6 +238,7 @@ export default function PanelObjek(p: Props) {
             milik={p.milikPenanda}
             onPemilikPeralatan={p.onPemilikPeralatan}
             onBatalkan={() => setTanyaBatal(true)}
+            onLepasTumpang={setLepasJtm}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}
             tanpaGantiInduk={!!tiang.jtr}
@@ -294,6 +298,16 @@ export default function PanelObjek(p: Props) {
             if (ok) setTanyaLepas(false);
             return ok;
           }}
+        />
+      )}
+
+      {lepasJtm && tiang && (
+        <LepasTumpangJtm
+          tiangId={tiang.id}
+          batang={tiang.kode}
+          penyulang={lepasJtm}
+          onTutup={() => setLepasJtm(null)}
+          onLepas={(a) => p.onLepasTumpangJtm(lepasJtm, a)}
         />
       )}
 
