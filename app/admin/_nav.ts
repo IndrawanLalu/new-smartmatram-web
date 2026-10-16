@@ -71,7 +71,7 @@ export const NAV_GROUPS: NavGroup[] = [
     // Rekap Kinerja ditaruh PALING ATAS: dialah yang menyebut mana di antara
     // kedelapan yang sudah ada dan mana yang belum.
     key: "yantek",
-    label: "Kinerja Pelayanan Teknik",
+    label: "Kinerja Yantek",
     items: [
       { href: "/admin/kinerja-yantek",   label: "Rekap Kinerja",             icon: Activity, keterangan: "Monitoring kinerja pekerjaan teknis dan pelayanan pada jaringan distribusi." },
       { href: "/admin/wo-perabasan",     label: "Perabasan Pohon",           icon: Trees, keterangan: "Monitoring dan rekap kegiatan perabasan pohon pada jaringan distribusi." },
