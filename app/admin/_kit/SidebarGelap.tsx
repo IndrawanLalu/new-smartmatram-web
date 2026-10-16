@@ -10,7 +10,8 @@ import { IKON_STROKE } from "@/lib/ikonUi";
 
 /**
  * Sidebar UI baru (rencana-ui-baru.md §2A): bidang navy gelap, teks putih/80
- * (8:1), judul grup putih/45 kecil kapital, item aktif pil navy terang
+ * (8:1), judul grup putih/75 12px kapital dengan garis pemisah antar grup
+ * (16 Okt 2026 — putih/45 10,5px tak terbaca), item aktif pil navy terang
  * (brand-600). Isi menu tetap dari `_nav.ts` — satu sumber nama halaman.
  */
 
@@ -57,18 +58,18 @@ export default function SidebarGelap({ userUnit }: { userUnit: string | null }) 
         </button>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-5 [scrollbar-width:thin]">
-        {NAV_GROUPS.map((g) => {
+      <nav className="flex-1 overflow-y-auto px-3 py-4 [scrollbar-width:thin]">
+        {NAV_GROUPS.map((g, i) => {
           const buka = !tutup[g.key];
           return (
-            <div key={g.key}>
+            <div key={g.key} className={i ? "mt-4 pt-4 border-t border-white/15" : ""}>
               {!ringkas && (
                 <button
                   onClick={() => setTutup((t) => ({ ...t, [g.key]: buka }))}
-                  className="w-full flex items-center justify-between px-3 pb-2 text-[10.5px] font-bold uppercase tracking-[0.1em] text-white/45 hover:text-white/70"
+                  className="w-full flex items-center justify-between px-3 pb-2 text-xs font-bold uppercase tracking-[0.08em] text-white/75 hover:text-white"
                 >
                   {g.label}
-                  <ChevronDown size={13} className={`transition-transform ${buka ? "" : "-rotate-90"}`} />
+                  <ChevronDown size={14} className={`text-white/60 transition-transform ${buka ? "" : "-rotate-90"}`} />
                 </button>
               )}
               {(buka || ringkas) && (
