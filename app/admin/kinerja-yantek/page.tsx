@@ -14,6 +14,7 @@ import CetakWoModal from "./_components/CetakWoModal";
 import RealisasiBulananModal from "./_components/RealisasiBulananModal";
 import CentangRealisasiModal from "./_components/CentangRealisasiModal";
 import RealisasiHarian from "./_components/RealisasiHarian";
+import UnduhGambarTombol from "./_components/UnduhGambarTombol";
 import { PilihPeriode, PilihUlp } from "@/app/admin/_kit/Saringan";
 
 /**
@@ -82,6 +83,7 @@ export default function KinerjaYantekPage() {
         <Tombol onClick={muatUlang} disabled={loading} ikon={<RefreshCw size={15} className={loading ? "animate-spin" : ""} />}>
           Muat ulang
         </Tombol>
+        <UnduhGambarTombol ulp={ulp} tahun={tahun} bulan={bulan} />
       </IsiTopbar>
 
       {bolehSla && (

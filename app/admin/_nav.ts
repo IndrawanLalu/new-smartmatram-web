@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, Spline, Trees, Activity, HardHat, ArrowUpDown,
+  Globe, Zap, Spline, Trees, Activity, HardHat, ArrowUpDown, Images,
   type LucideIcon,
 } from "lucide-react";
 
@@ -99,6 +99,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/admin/work-order",            label: "Work Order",           icon: ClipboardList, keterangan: "Buat WO bulanan, petugas kerjakan di mobile, realisasi terhitung otomatis." },
       { href: "/admin/morning-brief",         label: "Morning Brief",        icon: FileText, keterangan: "Rangkuman kejadian kemarin yang dikirim ke grup setiap pagi." },
+      { href: "/admin/gambar-laporan",        label: "Gambar Laporan",       icon: Images, keterangan: "Infografis laporan siap bagi (PNG): pilih jenis, ULP, dan bulan." },
       { href: "/admin/scoreboard",            label: "Score Board LM",       icon: Target, keterangan: "Lead measure tim dan rekap gangguan penyulang per bulan." },
       { href: "/admin/yantek",                label: "Analisis Yantek",      icon: Wrench, keterangan: "Analisis gangguan dan kinerja pelayanan teknik." },
       { href: "/admin/padam-apkt",            label: "Rekap Padam APKT",     icon: ZapOff, keterangan: "Import & analisis data gangguan penyulang dari APKT." },
