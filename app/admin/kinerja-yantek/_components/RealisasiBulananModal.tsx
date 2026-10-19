@@ -159,7 +159,7 @@ export default function RealisasiBulananModal({ ulp, tahun, bulan, rekap, onTutu
           )}
           <p className="text-xs text-ink-muted">
             Lembar pertama = Rekap Realisasi seperti tabel di layar; lembar berikutnya = rincian tiap jenis dengan format
-            unduhan modulnya. JTM per segmen & JTR per gardu, masing-masing disusul hasil inspeksi per tiang.
+            unduhan modulnya. JTM per segmen, JTR per gardu.
           </p>
         </div>
       )}

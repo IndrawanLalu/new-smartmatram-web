@@ -73,7 +73,9 @@ di Rekap; bila beda → peringatan per jenis (unduh tetap boleh).
   ULP sendiri.
 
 ## Jawaban tambahan user (16 Okt 2026)
-- JTM ringkas **per segmen**, JTR **per gardu**, lalu rincian per tiang.
+- JTM **per segmen**, JTR **per gardu** SAJA — tanpa hasil per tiang & rekap
+  temuan (dikoreksi user 16 Okt sesudah dibangun; perubahan rute & lib hasil
+  inspeksi dibatalkan).
 - Pengukuran & tegangan ujung **satu lembar** (yang masuk realisasi =
   pengukuran yang tegangan ujungnya sudah ada) — unduhan Pengukuran Gardu
   memang sudah memuat kolom tegangan ujung (`denganUjungLapangan`).
@@ -83,9 +85,6 @@ di Rekap; bila beda → peringatan per jenis (unduh tetap boleh).
 - `scripts/realisasi-bulanan-lampiran.sql` — `realisasi_rentang` + `sumber`,
   `sumber_id` (JTM Tier 2 dari dua tabel, jadi id saja tidak cukup).
 - `lembarX(wb, baris, nama)` dipisah dari 8 unduhan modul (tombol modul tetap).
-- `lib/hasilInspeksiExcel.tambahHasilInspeksi` (tanpa kolom foto) +
-  `isiHasilJtm/isiHasilJtr`; rute `/api/export/jtm?bentuk=isi&segmen=…` dan
-  `/api/export/jtr?bentuk=isi&gardu_daftar=…&ulp=…` memulangkan JSON.
 - `kinerja-yantek/_lib/ambilLampiran.ts` (baca per id) +
   `_lib/unduhRealisasiBulanan.ts` + `_components/RealisasiBulananModal.tsx`;
   tombol "Realisasi Bulanan" di samping Cetak / Kirim WO. ULP & bulan =

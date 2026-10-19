@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { fetchAllRows } from "@/lib/supabasePaginate";
-import { isiHasilJtr, susunHasilJtr, type KabelJtr, type TiangJtrExcel } from "@/lib/jtrHasilExcel";
+import { susunHasilJtr, type KabelJtr, type TiangJtrExcel } from "@/lib/jtrHasilExcel";
 
 /**
  * Ekspor hasil inspeksi JTR per tiang — bentuknya sama dengan JTM
@@ -32,11 +32,6 @@ export async function GET(req: NextRequest) {
   const bulan = Number(sp.get("bulan") ?? 0);
   const penyulang = sp.get("penyulang") ?? "";
   const garduFilter = sp.get("gardu") ?? "";
-  // Realisasi Bulanan (Rekap Kinerja): semua tiang aktif gardu yang ditagih —
-  // tanpa saringan tanggal tiang — dipulangkan sebagai JSON.
-  const garduDaftar = (sp.get("gardu_daftar") ?? "").split(",").map((x) => x.trim()).filter(Boolean);
-  const bentukIsi = sp.get("bentuk") === "isi";
-  const ulpPilih = user.role === "UP3" ? (sp.get("ulp") ?? "").toUpperCase() : "";
 
   // Rentang waktu dihitung di server supaya klien tidak perlu tahu kolom mana
   // yang dipakai menyaring.
@@ -67,9 +62,7 @@ export async function GET(req: NextRequest) {
           .select(KOLOM)
           .eq("status_hidup", "aktif");
         if (user.role !== "UP3" && user.unit) q = q.eq("ulp", user.unit);
-        else if (ulpPilih) q = q.eq("ulp", ulpPilih);
         if (garduFilter) q = q.eq("gardu_kode", garduFilter);
-        if (garduDaftar.length) q = q.in("gardu_kode", garduDaftar);
         return q.order("dikonfirmasi_at", { ascending: false }).order("id").order("gardu_kode");
       }),
       // Penyulang tinggal di master gardu, bukan di tiang — diambil terpisah lalu
@@ -91,7 +84,7 @@ export async function GET(req: NextRequest) {
     const iso = (t.dikonfirmasi_at as string) ?? (t.created_at as string);
     if (!iso) return false;
     const d = new Date(iso);
-    if (garduDaftar.length === 0 && (d < mulai || d >= sampai)) return false;
+    if (d < mulai || d >= sampai) return false;
     if (penyulang) {
       const g = petaGardu.get(
         `${String(t.gardu_kode).toUpperCase()}|${String(t.ulp).toUpperCase()}`,
@@ -152,7 +145,7 @@ export async function GET(req: NextRequest) {
         a.kode.localeCompare(b.kode, "id", { numeric: true }),
     );
 
-  const ulpJudul = user.role !== "UP3" && user.unit ? `ULP ${user.unit}` : ulpPilih ? `ULP ${ulpPilih}` : "SEMUA ULP";
+  const ulpJudul = user.role !== "UP3" && user.unit ? `ULP ${user.unit}` : "SEMUA ULP";
   const periode = tanggal
     ? new Date(`${tanggal}T00:00:00`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
     : new Date(tahun, bulan - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
@@ -163,7 +156,6 @@ export async function GET(req: NextRequest) {
     garduFilter ? `GARDU ${garduFilter}` : null,
     periode,
   ].filter(Boolean).join(" — ");
-  if (bentukIsi) return NextResponse.json(isiHasilJtr(tiang, adalahTemuan, judul));
   const wb = susunHasilJtr(tiang, adalahTemuan, judul);
 
   const buf = await wb.xlsx.writeBuffer();

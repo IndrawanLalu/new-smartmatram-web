@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getCurrentUser } from "@/lib/auth";
 import { fetchAllRows } from "@/lib/supabasePaginate";
-import { isiHasilJtm, susunHasilJtm, type ItemJtm, type KondisiJtm, type TiangJtm } from "@/lib/jtmHasilExcel";
+import { susunHasilJtm, type ItemJtm, type KondisiJtm, type TiangJtm } from "@/lib/jtmHasilExcel";
 
 /**
  * Ekspor Hasil Inspeksi JTM: keadaan TERAKHIR tiap tiang, per penyulang
@@ -25,10 +25,6 @@ export async function GET(req: NextRequest) {
   const sp = new URL(req.url).searchParams;
   const ulp = user.role === "UP3" ? (sp.get("ulp") ?? "").toUpperCase() : (user.unit ?? "").toUpperCase();
   const penyulang = sp.get("penyulang") ?? "";
-  // Realisasi Bulanan (Rekap Kinerja): hanya tiang di segmen yang ditagih,
-  // dan isinya dipulangkan sebagai JSON untuk disusun di peramban.
-  const segmenSaja = new Set((sp.get("segmen") ?? "").split(",").map((x) => x.trim()).filter(Boolean));
-  const bentukIsi = sp.get("bentuk") === "isi";
 
   try {
     const [item, nama, batang, kondisi, anggota] = await Promise.all([
@@ -57,8 +53,8 @@ export async function GET(req: NextRequest) {
         if (ulp) q = q.eq("ulp", ulp);
         return q.order("tiang_id").order("item_kode").order("bagian").order("sirkit_segmen_id");
       }),
-      fetchAllRows<{ tiang_id: string; segmen_id: string; segmen: { nama: string; penyulang: string; status: string }[] | null }>(() =>
-        supabaseAdmin.from("segmen_tiang").select("tiang_id,segmen_id,segmen(nama,penyulang,status)").order("segmen_id").order("tiang_id"),
+      fetchAllRows<{ tiang_id: string; segmen: { nama: string; penyulang: string; status: string }[] | null }>(() =>
+        supabaseAdmin.from("segmen_tiang").select("tiang_id,segmen(nama,penyulang,status)").order("segmen_id").order("tiang_id"),
       ),
     ]);
 
@@ -109,9 +105,8 @@ export async function GET(req: NextRequest) {
       return null;
     };
 
-    const diSegmen = new Set(anggota.filter((a) => segmenSaja.has(a.segmen_id)).map((a) => a.tiang_id));
     const tiang: TiangJtm[] = nama
-      .filter((n) => perBatang.has(n.tiang_id) && (segmenSaja.size === 0 || diSegmen.has(n.tiang_id)))
+      .filter((n) => perBatang.has(n.tiang_id))
       .map((n) => {
         const b = perBatang.get(n.tiang_id)!;
         const ks = (kondisiPer.get(n.tiang_id) ?? []).filter((k) => !k.sirkit_penyulang || k.sirkit_penyulang === n.penyulang);
@@ -151,7 +146,6 @@ export async function GET(req: NextRequest) {
       penyulang ? `PENYULANG ${penyulang}` : "SEMUA PENYULANG",
       `keadaan terakhir per ${new Date(hariIni).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}`,
     ].join(" — ");
-    if (bentukIsi) return NextResponse.json(isiHasilJtm(tiang, item, judul));
     const wb = susunHasilJtm(tiang, item, judul);
     const buf = await wb.xlsx.writeBuffer();
     const berkas = `Hasil_Inspeksi_JTM_${ulp || "SemuaULP"}_${(penyulang || "SemuaPenyulang").replace(/[^A-Za-z0-9]+/g, "_")}_${hariIni}.xlsx`;

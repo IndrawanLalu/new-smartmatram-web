@@ -1,6 +1,5 @@
 import ExcelJS from "exceljs";
 import { CLR_HEADER, CLR_WHITE, downloadBuffer, mergeSet, styleCell, type GayaSel } from "@/lib/xlsxGaya";
-import { tambahHasilInspeksi, type IsiHasil } from "@/lib/hasilInspeksiExcel";
 import { lembarPerabasan } from "@/app/admin/wo-perabasan/_lib/unduhExcel";
 import { lembarPemeliharaan } from "@/app/admin/pemeliharaan-jaringan/_lib/unduhExcel";
 import { lembarHargardu } from "@/app/admin/hargardu/_lib/unduhExcel";
@@ -17,8 +16,8 @@ import type { BahanLampiran, BarisRealisasi } from "./ambilLampiran";
  *   "Rekap Realisasi"   tabel yang sama dengan Rekap Kinerja di layar.
  *   satu lembar / jenis  format unduhan MODULNYA (lembarX yang sama dengan
  *                        tombol Excel di modul itu), hanya pekerjaan disetujui.
- *   JTM & JTR            ringkas per segmen / per gardu, lalu Hasil Inspeksi
- *                        per tiang + Rekap Temuan (rute /api/export, bentuk=isi).
+ *   JTM & JTR            per segmen / per gardu saja (keputusan user 16 Okt
+ *                        2026 — tanpa hasil per tiang & rekap temuan).
  *
  * Tanpa tautan foto (keputusan user 16 Okt 2026). Dimuat lewat import() saat
  * tombol ditekan — exceljs berukuran ratusan KB.
@@ -115,13 +114,6 @@ const KOLOM_MANUAL = [
 const isiManual = (rows: BarisRealisasi[]) =>
   rows.map((m, i) => [i + 1, m.tgl, m.objek, m.rincian ?? "", m.km === null ? "" : m.km.toFixed(2).replace(".", ","), m.petugas ?? ""]);
 
-async function isiPerTiang(url: string): Promise<IsiHasil | null> {
-  const res = await fetch(url);
-  if (res.status === 404) return null; // belum ada tiang untuk pilihan ini
-  if (!res.ok) throw new Error(`Hasil inspeksi per tiang gagal dibaca (${res.status}).`);
-  return (await res.json()) as IsiHasil;
-}
-
 export async function unduhRealisasiBulanan(
   ulp: string,
   tahun: number,
@@ -162,24 +154,12 @@ export async function unduhRealisasiBulanan(
 
   const jtm1 = b.jtm.filter((d) => d.tier !== "2");
   const jtm2 = b.jtm.filter((d) => d.tier === "2");
-  for (const [daftar, label] of [[jtm1, "JTM"], [jtm2, "JTM Tier 2"]] as const) {
-    if (!daftar.length) continue;
-    lembarJtm(wb, daftar, `Inspeksi ${label} per Segmen`);
-    const segmen = [...new Set(daftar.map((d) => d.segmen_id).filter((x): x is string => !!x))];
-    const isi = await isiPerTiang(`/api/export/jtm?bentuk=isi&ulp=${encodeURIComponent(ulp)}&segmen=${segmen.join(",")}`);
-    if (isi) tambahHasilInspeksi(wb, isi, `${label} Hasil per Tiang`, `${label} Rekap Temuan`);
-  }
+  if (jtm1.length) lembarJtm(wb, jtm1, "Inspeksi JTM per Segmen");
+  if (jtm2.length) lembarJtm(wb, jtm2, "Inspeksi JTM Tier 2 per Segmen");
   const manualJtm2 = b.manual.filter((m) => m.kunci === "jtm2");
   if (manualJtm2.length) lembarSederhana(wb, "JTM Tier 2 (dicentang)", KOLOM_MANUAL, isiManual(manualJtm2));
 
-  if (b.jtr.length) {
-    lembarJtr(wb, b.jtr, "Inspeksi JTR per Gardu");
-    const gardu = [...new Set(b.jtr.map((d) => d.gardu_kode))];
-    const isi = await isiPerTiang(
-      `/api/export/jtr?bentuk=isi&ulp=${encodeURIComponent(ulp)}&tahun=${tahun}&bulan=${bulan}&gardu_daftar=${gardu.map(encodeURIComponent).join(",")}`,
-    );
-    if (isi) tambahHasilInspeksi(wb, isi, "JTR Hasil per Tiang", "JTR Rekap Temuan");
-  }
+  if (b.jtr.length) lembarJtr(wb, b.jtr, "Inspeksi JTR per Gardu");
 
   for (const [kunci, nama] of [["igardu1", "Inspeksi Gardu Tier 1"], ["igardu2", "Inspeksi Gardu Tier 2"]] as const) {
     const rows = b.manual.filter((m) => m.kunci === kunci);
