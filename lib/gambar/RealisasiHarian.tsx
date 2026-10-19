@@ -9,7 +9,7 @@ import { Sel } from "./Tabel";
 
 /**
  * Gambar Realisasi Harian SMART Mataram — 11 jenis pekerjaan × 4 ULP + UP3.
- * Tiap sel: angka besar = hari itu, angka kecil = total bulan berjalan s.d.
+ * Tiap sel berjajar: angka besar = hari itu │ total bulan berjalan s.d.
  * hari itu. Bintang = ULP unggul hari itu per jenis (aturannya sama dengan
  * bintang rekap bulanan: yang seri tidak dapat bintang).
  *
@@ -31,8 +31,8 @@ const IKON: Record<string, NamaIkon> = {
 const KIRI = 24;
 const LEBAR = G_LEBAR - 2 * KIRI;
 const BAWAH = G_TINGGI - TINGGI_FOOTER - 12;
-const L_JENIS = 410;
-const L_ULP = 300;
+const L_JENIS = 400;
+const L_ULP = 290;
 const L_UP3 = LEBAR - 32 - L_JENIS - ULP.length * L_ULP;
 const T_KEPALA = 58;
 const T_BARIS = 50;
@@ -132,7 +132,7 @@ export function RealisasiHarian({ gambar, tgl, jam, baris }: Props) {
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <span>Angka besar = hari ini</span>
           <span>·</span>
-          <span>{`angka kecil = total ${BULAN[m - 1]} s.d. tanggal ${d}`}</span>
+          <span>{`di sampingnya = total ${BULAN[m - 1]} s.d. tanggal ${d}`}</span>
           <span>·</span>
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <Ikon nama="bintang" ukuran={24} warna={C.amber} />
@@ -176,11 +176,11 @@ export function RealisasiHarian({ gambar, tgl, jam, baris }: Props) {
               </Sel>
               {ULP.map((u) => (
                 <Sel key={u} k={{ lebar: L_ULP }} style={{ borderLeft: `1px solid ${C.garis}`, ...(juara === u ? { background: LATAR_UNGGUL } : {}) }}>
-                  <Isi sel={perUlp[u]} desimal={jenis.desimal} bln={bln} bintang={juara === u} />
+                  <Isi sel={perUlp[u]} desimal={jenis.desimal} bln={bln} lebar={L_ULP} bintang={juara === u} />
                 </Sel>
               ))}
               <Sel k={{ lebar: L_UP3 }} style={{ borderLeft: `2px solid ${C.hijau}55`, background: C.hijauMuda }}>
-                <Isi sel={up3} desimal={jenis.desimal} bln={bln} warna={C.hijauTua} />
+                <Isi sel={up3} desimal={jenis.desimal} bln={bln} lebar={L_UP3} warna={C.hijauTua} />
               </Sel>
             </div>
           ))}
@@ -203,7 +203,7 @@ function NamaJenis({ jenis }: { jenis: Jenis }) {
         <Ikon nama={IKON[jenis.kunci] ?? "lapisan"} ukuran={21} warna={C.biru} />
       </div>
       <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-        <div style={{ display: "block", fontSize: jenis.jenis.length > 30 ? 16 : 18.5, fontWeight: 700, color: C.tinta, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 330 }}>
+        <div style={{ display: "block", fontSize: jenis.jenis.length > 30 ? 15 : 18.5, fontWeight: 700, color: C.tinta, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 322 }}>
           {jenis.jenis}
         </div>
         <div style={{ display: "flex", fontSize: 13, fontWeight: 600, color: C.pudar }}>{`satuan ${jenis.satuan}`}</div>
@@ -212,23 +212,23 @@ function NamaJenis({ jenis }: { jenis: Jenis }) {
   );
 }
 
-/** Satu sel: [★] angka hari ini [+tambahan], di bawahnya total bulan. */
-function Isi({ sel, desimal, bln, bintang, warna = C.tinta }: { sel: SelUlp; desimal: boolean; bln: string; bintang?: boolean; warna?: string }) {
+/** Satu sel, berjajar: [★] angka hari ini [+tambahan] │ total bulan. */
+function Isi({ sel, desimal, bln, lebar, bintang, warna = C.tinta }: { sel: SelUlp; desimal: boolean; bln: string; lebar: number; bintang?: boolean; warna?: string }) {
   const { hari, bulan } = sel;
   const adaBulan = bulan.nilai || bulan.luar || bulan.ujung;
   if (!adaBulan) return <span style={{ fontSize: 22, color: C.pudar }}>–</span>;
   const tbHari = tambahan(hari);
   const tbBulan = tambahan(bulan);
+  const kiri = Math.round(lebar * 0.46);
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+    <div style={{ display: "flex", alignItems: "center", width: lebar }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, width: kiri, flexShrink: 0 }}>
         {bintang && <Ikon nama="bintang" ukuran={23} warna={C.amber} />}
-        <span style={{ fontSize: 23, fontWeight: 800, lineHeight: 1, color: hari.nilai ? warna : C.pudar }}>
-          {hari.nilai ? teks(hari.nilai, desimal) : "–"}
-        </span>
+        <span style={{ fontSize: 24, fontWeight: 800, color: hari.nilai ? warna : C.pudar }}>{hari.nilai ? teks(hari.nilai, desimal) : "–"}</span>
         {tbHari && <Pil teks={tbHari} />}
       </div>
-      <span style={{ fontSize: 13.5, fontWeight: 600, color: C.tintaLembut, marginTop: 3 }}>
+      <div style={{ width: 0, height: 26, borderLeft: `1px solid ${C.pudar}66`, margin: "0 10px", flexShrink: 0 }} />
+      <span style={{ fontSize: 15, fontWeight: 600, color: C.tintaLembut, whiteSpace: "nowrap" }}>
         {`${bln} ${teks(bulan.nilai, desimal)}${tbBulan ? ` · ${tbBulan}` : ""}`}
       </span>
     </div>
@@ -247,12 +247,9 @@ interface Kaki {
 }
 
 function BarisKaki({ ikon, warnaIkon, label, data, bln, warna }: { ikon: NamaIkon; warnaIkon: string; label: string; data: Kaki; bln: string; warna: string }) {
-  const sel = (v: { hari: number; bulan: number }, w: string): React.ReactNode =>
+  const sel = (v: { hari: number; bulan: number }, w: string, lebar: number): React.ReactNode =>
     v.bulan ? (
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-        <span style={{ fontSize: 22, fontWeight: 800, color: v.hari ? w : C.pudar }}>{v.hari ? teks(v.hari, false) : "–"}</span>
-        <span style={{ fontSize: 13.5, fontWeight: 600, color: C.tintaLembut }}>{`${bln} ${teks(v.bulan, false)}`}</span>
-      </div>
+      <Isi sel={{ hari: { nilai: v.hari, luar: 0, ujung: 0 }, bulan: { nilai: v.bulan, luar: 0, ujung: 0 } }} desimal={false} bln={bln} lebar={lebar} warna={w} />
     ) : (
       <span style={{ fontSize: 22, color: C.pudar }}>–</span>
     );
@@ -264,11 +261,11 @@ function BarisKaki({ ikon, warnaIkon, label, data, bln, warna }: { ikon: NamaIko
       </Sel>
       {ULP.map((u) => (
         <Sel key={u} k={{ lebar: L_ULP }} style={{ borderLeft: "1px solid #C6DBF3" }}>
-          {sel(data.perUlp[u], warna)}
+          {sel(data.perUlp[u], warna, L_ULP)}
         </Sel>
       ))}
       <Sel k={{ lebar: L_UP3 }} style={{ borderLeft: `2px solid ${C.hijau}55` }}>
-        {sel(data.up3, C.hijauTua)}
+        {sel(data.up3, C.hijauTua, L_UP3)}
       </Sel>
     </div>
   );
