@@ -17,9 +17,8 @@ export interface Hasil {
 
 interface Permintaan {
   jenis: string;
-  ulp: string;
-  /** YYYY-MM */
-  bulan: string;
+  /** Per bulan: `{ ulp, bulan: "YYYY-MM" }`; per tanggal: `{ tgl: "YYYY-MM-DD" }`. */
+  saringan: Record<string, string>;
 }
 
 export function useGambarLaporan() {
@@ -36,11 +35,11 @@ export function useGambarLaporan() {
   };
   useEffect(() => () => { if (urlLama.current) URL.revokeObjectURL(urlLama.current); }, []);
 
-  async function buat({ jenis, ulp, bulan }: Permintaan, halaman = 1) {
+  async function buat({ jenis, saringan }: Permintaan, halaman = 1) {
     setMembuat(true);
     setGalat(null);
     try {
-      const p = new URLSearchParams({ ulp, bulan, halaman: String(halaman), unduh: "1" });
+      const p = new URLSearchParams({ ...saringan, halaman: String(halaman), unduh: "1" });
       const res = await fetch(`/api/gambar/${jenis}?${p.toString()}`);
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Gagal membuat gambar");
       const nama = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `${jenis}.png`;

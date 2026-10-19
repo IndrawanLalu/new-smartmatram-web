@@ -5,7 +5,7 @@ import { CalendarDays, ChevronLeft, ChevronRight, Download, FileImage, ImagePlus
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import Tombol from "@/app/admin/_kit/Tombol";
-import { PilihField } from "@/app/admin/_kit/Field";
+import { PilihField, PilihTanggal } from "@/app/admin/_kit/Field";
 import { PilihUlp } from "@/app/admin/_kit/Saringan";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { JENIS_LAPORAN } from "@/lib/gambar/laporan";
@@ -17,7 +17,8 @@ import { useGambarLaporan } from "./_hooks/useGambarLaporan";
  * pratinjau → Unduh. Desainnya tetap (lib/gambar, patokan smart-video
  * `Prompt/Promt.md`); yang berubah hanya datanya.
  *
- * Gambarnya per ULP per bulan, jadi tidak ada "Semua ULP" atau "sepanjang tahun".
+ * Jenis "per bulan" = satu ULP satu bulan (tanpa "Semua ULP"). Jenis "per
+ * tanggal" (Realisasi Harian) = keempat ULP satu tanggal, khusus UP3.
  */
 
 const NAMA_BULAN = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
@@ -32,6 +33,9 @@ function daftarBulan() {
   });
 }
 
+/** Hari ini di WITA, YYYY-MM-DD. */
+const hariIniWita = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
+
 function unduh(url: string, nama: string) {
   const a = document.createElement("a");
   a.href = url;
@@ -41,36 +45,50 @@ function unduh(url: string, nama: string) {
 
 export default function GambarLaporanPage() {
   const user = useCurrentUser();
-  const daftarUlp = canSeeAllUnits(user.role) ? UNITS.map((u) => u.value) : [user.unit ?? ""];
+  const semuaUnit = canSeeAllUnits(user.role);
+  const daftarUlp = semuaUnit ? UNITS.map((u) => u.value) : [user.unit ?? ""];
+  const daftarJenis = JENIS_LAPORAN.filter((j) => j.per === "bulan" || semuaUnit);
   const [pilihanBulan] = useState(daftarBulan);
 
   const [jenis, setJenis] = useState<string>(JENIS_LAPORAN[0].kunci);
   const [ulp, setUlp] = useState(daftarUlp[0]);
   const [bulan, setBulan] = useState(pilihanBulan[0].nilai);
+  const [tgl, setTgl] = useState(hariIniWita);
   const { hasil, membuat, galat, buat, kosongkan } = useGambarLaporan();
 
   // Saringan berubah → pratinjau lama tidak lagi sesuai pilihan.
   const ganti = <T,>(set: (v: T) => void) => (v: T) => { set(v); kosongkan(); };
-  const minta = { jenis, ulp, bulan };
   const info = JENIS_LAPORAN.find((j) => j.kunci === jenis)!;
+  const perTanggal = info.per === "tanggal";
+  const saringan: Record<string, string> = perTanggal ? { tgl } : { ulp, bulan };
+  const minta = { jenis, saringan };
+  const periode = perTanggal
+    ? `Semua ULP · ${new Date(`${tgl}T00:00:00`).toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}`
+    : `ULP ${ulp} · ${pilihanBulan.find((b) => b.nilai === bulan)?.label}`;
 
   return (
     <div className="text-ink flex flex-col gap-4">
       <IsiTopbar>
         <PilihField ikon={FileImage} label="Jenis laporan" lebar="w-[290px]" nilai={jenis} onUbah={ganti(setJenis)}>
-          {JENIS_LAPORAN.map((j) => <option key={j.kunci} value={j.kunci}>{j.label}</option>)}
+          {daftarJenis.map((j) => <option key={j.kunci} value={j.kunci}>{j.label}</option>)}
         </PilihField>
-        <PilihUlp nilai={ulp} onUbah={ganti(setUlp)} daftar={daftarUlp} />
-        <PilihField ikon={CalendarDays} label="Bulan" lebar="w-[185px]" nilai={bulan} onUbah={ganti(setBulan)}>
-          {pilihanBulan.map((b) => <option key={b.nilai} value={b.nilai}>{b.label}</option>)}
-        </PilihField>
+        {perTanggal ? (
+          <PilihTanggal label="Tanggal" nilai={tgl} onUbah={ganti((v: string) => { if (v) setTgl(v > hariIniWita() ? hariIniWita() : v); })} />
+        ) : (
+          <>
+            <PilihUlp nilai={ulp} onUbah={ganti(setUlp)} daftar={daftarUlp} />
+            <PilihField ikon={CalendarDays} label="Bulan" lebar="w-[185px]" nilai={bulan} onUbah={ganti(setBulan)}>
+              {pilihanBulan.map((b) => <option key={b.nilai} value={b.nilai}>{b.label}</option>)}
+            </PilihField>
+          </>
+        )}
       </IsiTopbar>
 
       <div className="bg-white rounded-xl border border-line shadow-sm p-4 flex flex-wrap items-center gap-3">
         <div className="flex-1 min-w-[240px]">
           <p className="font-semibold">{info.label}</p>
           <p className="text-sm text-ink-soft">
-            {info.keterangan} ULP {ulp} · {pilihanBulan.find((b) => b.nilai === bulan)?.label}
+            {info.keterangan} {periode}
           </p>
         </div>
         <Tombol ragam="utama" onClick={() => buat(minta)} disabled={membuat} ikon={membuat ? <Loader2 size={15} className="animate-spin" /> : <ImagePlus size={15} />}>
@@ -102,7 +120,7 @@ export default function GambarLaporanPage() {
       ) : (
         !galat && (
           <div className="aspect-video w-full rounded-xl border-2 border-dashed border-line bg-white/60 grid place-items-center text-sm text-ink-muted">
-            {membuat ? "Sedang membuat gambar…" : "Pilih jenis laporan, ULP, dan bulan, lalu tekan Buat Gambar."}
+            {membuat ? "Sedang membuat gambar…" : `Pilih jenis laporan, ${perTanggal ? "tanggal" : "ULP, dan bulan"}, lalu tekan Buat Gambar.`}
           </div>
         )
       )}

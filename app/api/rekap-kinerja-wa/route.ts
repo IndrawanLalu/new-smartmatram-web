@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { gatewayEnabled, gatewaySend } from "@/lib/wa/gateway";
+import { buatGambarRealisasiHarian } from "@/lib/gambar/buatRealisasiHarian";
 import { BULAN, META } from "@/app/admin/kinerja-yantek/_lib/kinerjaMeta";
 import { tanggalPanjang } from "@/app/admin/kinerja-yantek/_lib/realisasiHarian";
 import { bulanIniWita, keBarisBulanan, rekapBulanan, teksWaBulanan } from "@/app/admin/kinerja-yantek/_lib/realisasiBulanan";
@@ -13,6 +14,13 @@ import { bulanIniWita, keBarisBulanan, rekapBulanan, teksWaBulanan } from "@/app
  *   POST /api/rekap-kinerja-wa   header X-Cron-Secret: <CRON_SECRET>
  *   ?coba=1  → hanya mengembalikan teksnya, tidak mengirim.
  * Teksnya sama persis dengan tombol "Kirim ke WA" di Rekap Kinerja → Per bulan.
+ *
+ * Sesudah teks, gambar Realisasi Harian SMART Mataram hari ini (lib/gambar,
+ * sama dengan halaman Gambar Laporan) ikut dikirim ke grup yang sama. Gateway
+ * menerima gambar lewat URL, jadi PNG-nya disimpan dulu di bucket publik
+ * `inspections/gambar-laporan/`. Gambar gagal tidak membatalkan teks yang
+ * sudah terkirim — dilaporkan di `gambarGagal`, supaya pemicu tidak mengulang
+ * (dan menggandakan) teksnya.
  */
 
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
@@ -69,5 +77,25 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `kirim ke ${group_id} gagal: ${(e as Error).message}`, terkirim }, { status: 502 });
     }
   }
-  return NextResponse.json({ ok: true, terkirim, periode: `${tahun}-${String(bulan).padStart(2, "0")}` });
+  const periode = `${tahun}-${String(bulan).padStart(2, "0")}`;
+  try {
+    const url = await simpanGambarHarian(hariIni, jam);
+    const caption = `*REALISASI HARIAN SMART MATARAM*
+${tanggalPanjang(hariIni)} · data pukul ${jam} WITA`;
+    for (const group_id of terkirim) await gatewaySend({ to: group_id, mediaUrl: url, caption });
+  } catch (e) {
+    return NextResponse.json({ ok: true, terkirim, periode, gambarGagal: (e as Error).message });
+  }
+  return NextResponse.json({ ok: true, terkirim, periode, gambar: true });
+}
+
+/** Buat PNG Realisasi Harian lalu simpan di bucket publik; kembalikan URL-nya. */
+async function simpanGambarHarian(tgl: string, jam: string) {
+  const { gambar } = await buatGambarRealisasiHarian(tgl);
+  const isi = Buffer.from(await gambar.arrayBuffer());
+  // Nama berjam: URL baru tiap kirim, jadi tembolok CDN tidak menyajikan gambar lama.
+  const jalur = `gambar-laporan/realisasi-harian/${tgl}-${jam.replace(".", "")}.png`;
+  const { error } = await supabaseAdmin.storage.from("inspections").upload(jalur, isi, { contentType: "image/png", upsert: true });
+  if (error) throw new Error(`simpan gambar gagal: ${error.message}`);
+  return supabaseAdmin.storage.from("inspections").getPublicUrl(jalur).data.publicUrl;
 }
