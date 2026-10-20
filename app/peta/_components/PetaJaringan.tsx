@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { Loader2, PanelLeftOpen } from "lucide-react";
 import type { CurrentUser } from "@/lib/roles";
 import { useMilikPenanda } from "@/lib/milikPenanda";
-import { bingkaiBatas, bingkaiSekitar, DEKAT, type Bingkai } from "../_lib/bingkai";
+import { bingkaiBatas, bingkaiSekitar, bingkaiTitik, DEKAT, type Bingkai } from "../_lib/bingkai";
 import { useLapisanNyala, type AwalPeta } from "../_hooks/useLapisanNyala";
 import { useLatarPeta } from "../_hooks/useLatarPeta";
 import { useModeSld } from "../_hooks/useModeSld";
@@ -22,6 +22,7 @@ import { useIndukLoncat } from "../_hooks/useIndukLoncat";
 import { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useAntreanPeta } from "../_hooks/useAntreanPeta";
+import { useCariLokasi } from "../_hooks/useCariLokasi";
 import { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks/useLapisanTambahan";
 import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
@@ -30,6 +31,7 @@ import { GARIS, PANEL } from "../_ui";
 import BilahAtas from "./BilahAtas";
 import BilahAtasSld from "./BilahAtasSld";
 import BilahKeadaan from "./BilahKeadaan";
+import CariLokasi from "./CariLokasi";
 import LegendaIsian from "./LegendaIsian";
 import ObjekTerpilih from "./ObjekTerpilih";
 import PanelGarduJanggal from "./PanelGarduJanggal";
@@ -229,6 +231,23 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   }, []);
   const lompatDekat = (lat: number, lng: number) => setFokus(bingkaiSekitar(lat, lng, DEKAT));
 
+  // ── Cari lokasi/koordinat (20 Okt 2026) ────────────────────────────────────
+  // Peta dibingkai ke titik + semua objek terdekatnya. Klik hasil = nyalakan
+  // lapisannya lalu buka objeknya, seperti mengklik di peta.
+  const cari = useCariLokasi();
+  const { titik: titikCari, hasil: hasilCari } = cari;
+  useEffect(() => {
+    if (!titikCari) return;
+    const semua = hasilCari ? [titikCari, ...hasilCari.jtm, ...hasilCari.gardu, ...hasilCari.jtr] : [titikCari];
+    setFokus(bingkaiTitik(semua, 0.0004));
+  }, [titikCari, hasilCari]);
+  const bukaHasil = (kunci: string, t: NonNullable<typeof terpilih>) => {
+    setSegmenTampil(null);
+    nyalakan(kunci);
+    setTerpilih(t);
+    lompatDekat(t.lat, t.lng);
+  };
+
   const zoom = kotak?.zoom ?? 0;
   const jumlahObjek =
     rute.reduce((n, r) => n + r.bentang.length, 0) + tiang.length * 2 + gardu.length + ujung.titik.length * 2 + kesehatan.gardu.length
@@ -310,6 +329,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           tandaMilik={tandaMilik}
           latar={latar}
           sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
+          cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
@@ -429,6 +449,13 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         )}
 
         <PenelusurPeta antrean={antrean} />
+
+        <CariLokasi
+          c={cari}
+          onJtm={(x) => bukaHasil(`jtm:${x.penyulang}`, { jenis: "tiang", id: x.tiang_id, kelompok: x.penyulang, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: "jtm" })}
+          onGardu={(x) => bukaHasil(`gardu:${x.kode}`, { jenis: "gardu", kode: x.kode, ulp: x.ulp, lat: x.lat, lng: x.lng })}
+          onJtr={(x) => bukaHasil(`jtr:${x.gardu_kode}`, { jenis: "tiang", id: x.tiang_id, kelompok: x.gardu_kode, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: "jtr" })}
+        />
 
         <BilahAtas
           boleh={boleh}

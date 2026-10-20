@@ -33,6 +33,9 @@ import LapisanNama from "./LapisanNama";
 import PemilihTiang, { type CalonTiang, type PilihanTiang } from "./PemilihTiang";
 import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
+import LapisanCariLokasi from "./LapisanCariLokasi";
+import type { HasilCari } from "../_hooks/useCariLokasi";
+import type { Titik } from "@/lib/koordinat";
 import type { PohonCek, PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { SorotJtm } from "./PersetujuanJtmPeta";
@@ -112,6 +115,8 @@ interface Props {
   latar: Latar;
   /** Mode SLD menyala: garis ringkas per penyulang (null = mode biasa). */
   sld: { graf: GrafSld[]; warna: Map<string, string>; gardu: Map<string, GarduInfo>; label: boolean } | null;
+  /** Cari lokasi/koordinat: pin + garis ke objek terdekat (titik null = padam). */
+  cari: { titik: Titik | null; hasil: HasilCari | null };
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -168,7 +173,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -218,6 +223,7 @@ export default function PetaInner({
       <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} cek={pohonCek} onTugaskan={onTugaskanPohon} />
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
       <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />
+      <LapisanCariLokasi titik={cari.titik} hasil={cari.hasil} />
     </MapContainer>
   );
 }
