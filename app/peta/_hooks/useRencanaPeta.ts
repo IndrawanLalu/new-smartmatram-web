@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { bacaBahanRencana, keGawang, keJurusan, type JurusanJtr, type PengaturanJtr } from "@/app/admin/pengukuran-gardu/_hooks/useAnalisisJtr";
-import { buatRencana, opsiDiTiang, type GawangJtr, type OpsiPecah, type PeranTitik, type Rencana } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
+import { buatRencana, opsiDiTiang, tiangKunciSendiri, type GawangJtr, type OpsiPecah, type PeranTitik, type Rencana } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
 
 /**
  * Rencana perbaikan JTR di peta — dibuka dari Analisis JTR ("Lihat di peta",
@@ -38,7 +38,7 @@ export interface RencanaPeta {
   opsi: OpsiPeta[];
   pindah: GarisPindah[];
   /** Semua tiang jurusan itu — sasaran klik mode pilih. */
-  tiang: (Koord & { id: string; kode: string | null })[];
+  tiang: (Koord & { id: string; kode: string | null; sr: number })[];
 }
 
 interface Dasar {
@@ -85,11 +85,11 @@ export function useRencanaPeta(awal: Buka | null) {
       if (batal) return;
 
       // Opsi dari alamat: pilihan sistem, atau "pilihan sendiri" yang
-      // dihitung ulang dari tiang hulu cabangnya.
+      // dihitung ulang di tiangnya (hulu cabang / ujung kabel pindah SR).
       let awalSendiri: OpsiPecah[] = [];
       if (buka.opsi?.endsWith("|sendiri")) {
-        const hulu = gawang.find((x) => x.tiang_id === buka.opsi!.split("|")[0])?.hulu_id;
-        if (hulu) awalSendiri = opsiDiTiang(r, gawang, bahan.pengaturan, hulu);
+        const t = tiangKunciSendiri(buka.opsi, gawang);
+        if (t) awalSendiri = opsiDiTiang(r, gawang, bahan.pengaturan, t);
       }
       const semua = [...(rencana?.pilihan ?? []), ...awalSendiri];
       setSendiri(awalSendiri);
@@ -116,7 +116,13 @@ export function useRencanaPeta(awal: Buka | null) {
     const aktif = opsi.find((o) => o.kunci === terpilih);
     const hulu = new Map(gawang.map((x) => [x.tiang_id, x.hulu_id]));
     const pindah: GarisPindah[] = [];
-    for (const id of aktif ? aktif.pindah : (rencana?.pindah ?? [])) {
+    // Pindah SR: yang disorot seluruh jalur kabel baru (gardu → X), bukan
+    // hanya gawang tiang ber-SR.
+    const jalur: string[] = [];
+    if (aktif?.cara === "pindah-sr") {
+      for (let id: string | null | undefined = aktif.titikId; id && !jalur.includes(id); id = hulu.get(id)) jalur.push(id);
+    }
+    for (const id of jalur.length ? jalur : aktif ? aktif.pindah : (rencana?.pindah ?? [])) {
       const a = koord.get(id);
       const h = hulu.get(id);
       const b = h ? koord.get(h) : undefined;
@@ -130,7 +136,7 @@ export function useRencanaPeta(awal: Buka | null) {
       });
     const tiang = gawang.flatMap((x) => {
       const k = koord.get(x.tiang_id);
-      return k ? [{ id: x.tiang_id, kode: x.kode, ...k }] : [];
+      return k ? [{ id: x.tiang_id, kode: x.kode, sr: x.tarikan_sr, ...k }] : [];
     });
     return { r, rencana, titik, opsi, pindah, tiang };
   }, [dasar, sendiri, terpilih]);
@@ -144,12 +150,12 @@ export function useRencanaPeta(awal: Buka | null) {
     const o = opsiDiTiang(dasar.r, dasar.gawang, dasar.pengaturan, tiangId);
     const kode = dasar.gawang.find((x) => x.tiang_id === tiangId)?.kode ?? "tiang";
     if (!o.length) {
-      setPesan(`${kode} tiang ujung — tidak ada cabang yang bisa dipindah.`);
+      setPesan(`${kode}: tidak ada pilihan — tanpa SR di jalurnya dan tanpa cabang.`);
       return;
     }
     setSendiri(o);
     setTerpilih(o[0].kunci);
-    setPesan(o.length > 1 ? `${kode} bercabang ${o.length} — pilih cabang yang dipindah di daftar.` : null);
+    setPesan(o.length > 1 ? `${kode}: ${o.length} pilihan (potong cabang / pindah SR) — pilih di daftar.` : null);
     setModePilih(false);
   };
 

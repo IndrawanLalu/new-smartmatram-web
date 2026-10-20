@@ -6,8 +6,8 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { JurusanJtr } from "../_hooks/useAnalisisJtr";
-import { TUJUAN_WO, type PekerjaanUsulan, type SimpanUsulan } from "../_hooks/useUsulanJtr";
-import { besaranUsulan, perkiraanMaterial, type BarisMaterial, type MaterialRef } from "../_lib/materialJtr";
+import { susunDasar, TUJUAN_WO, type PekerjaanUsulan, type SimpanUsulan } from "../_hooks/useUsulanJtr";
+import { materialAwal, type BarisMaterial, type MaterialRef } from "../_lib/materialJtr";
 import { LABEL_RENCANA, ringkasOpsi, rinciOpsi, type OpsiPecah, type Rencana } from "../_lib/rencanaJtr";
 import TabelMaterial from "./TabelMaterial";
 
@@ -32,13 +32,7 @@ export default function FormUsulanJtr({ r, rencana, opsi, materialRef, onSimpan,
   const pekerjaan = (opsi ? "tambah-jurusan" : rencana.jenis) as PekerjaanUsulan;
   const ringkas = opsi ? ringkasOpsi(opsi) : rencana.ringkas;
   const rinci = opsi ? rinciOpsi(opsi, Number(r.jumlah_sr ?? 0)) : rencana.rinci;
-  const [material, setMaterial] = useState<BarisMaterial[]>(() => {
-    const b = besaranUsulan(r, rencana, opsi);
-    return [
-      ...perkiraanMaterial(materialRef, pekerjaan, b, r.kabel),
-      ...(opsi?.pemerataan ? perkiraanMaterial(materialRef, "pemerataan", b, r.kabel) : []),
-    ];
-  });
+  const [material, setMaterial] = useState<BarisMaterial[]>(() => materialAwal(materialRef, r, rencana, opsi));
   const [catatan, setCatatan] = useState("");
   const [sibuk, setSibuk] = useState(false);
 
@@ -55,11 +49,7 @@ export default function FormUsulanJtr({ r, rencana, opsi, materialRef, onSimpan,
         penyulang: r.penyulang,
         pekerjaan,
         ringkas,
-        dasar: {
-          a_r: r.a_r, a_s: r.a_s, a_t: r.a_t, arus_maks: r.arus_maks, kva: r.kva, persen_beban: r.persen_beban,
-          kabel: r.kabel, kha_a: r.kha_a, terjauh_m: r.terjauh_m, jumlah_sr: r.jumlah_sr,
-          tanggal_pengukuran: r.tanggal_pengukuran, alasan: rencana.alasan, rinci,
-        },
+        dasar: susunDasar(r, rencana.alasan, rinci),
         opsi,
         titik_tiang_id: opsi?.titikId ?? rencana.titik?.[0]?.tiang_id ?? null,
         material: material.map((x) => ({ ...x, nama: x.nama.trim() })),

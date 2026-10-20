@@ -8,7 +8,7 @@
  * jadi tidak mungkin menutupi JTR.
  */
 
-import type { GawangJtr } from "./rencanaJtr";
+import type { CaraPecah, GawangJtr } from "./rencanaJtr";
 
 /** Ruang gambar di kertas A3 mendatar (pt), kolom kanan di luar ini. */
 export const GAMBAR_W = 878;
@@ -27,13 +27,15 @@ export interface GarisGambar {
   jenis: JenisGaris;
 }
 
-export type JenisTiang = "lain" | "utama" | "pindah";
+/** "sr" = tiang yang SR-nya dipindah ke kabel baru (cara pindah SR). */
+export type JenisTiang = "lain" | "utama" | "pindah" | "sr";
 export interface TiangGambar extends Titik {
   id: string;
   jenis: JenisTiang;
 }
 
-export type JenisLabel = "kabel" | "pecah" | "gardu" | "jurusan" | "sisip" | "ujung-merah" | "ujung-kuning" | "ujung-hijau" | "tiang" | "tiang-lain";
+export type JenisLabel =
+  | "kabel" | "pecah" | "gardu" | "jurusan" | "sisip" | "ujung-merah" | "ujung-kuning" | "ujung-hijau" | "sr" | "tiang" | "tiang-lain";
 
 /** Nada tegangan ujung — batasnya sama dengan lapisan Tegangan ujung di peta. */
 export type NadaUjung = "merah" | "kuning" | "hijau";
@@ -71,6 +73,8 @@ export interface Gambar {
   ruang: { x0: number; y0: number; skala: number };
   /** Tiang usulan yang sudah tidak ada di data JTR sekarang. */
   hilang: boolean;
+  /** Usulan cara pindah SR (kabel lama tidak dipotong). */
+  caraSr: boolean;
 }
 
 export interface BahanGambar {
@@ -79,8 +83,8 @@ export interface BahanGambar {
   gardu: Koord | null;
   garduKode: string;
   jurusan: string;
-  /** Usulan tambah jurusan: titik pecah + tiang yang pindah + panjang kabel baru. */
-  pecah: { titikId: string; pindah: string[]; kabelBaru: number } | null;
+  /** Usulan tambah jurusan: titik pecah + tiang yang pindah / yang SR-nya dipindah + panjang kabel baru. */
+  pecah: { titikId: string; pindah: string[]; kabelBaru: number; cara: CaraPecah } | null;
   sisip: Koord | null;
   ujung: (Koord & UjungGambar)[];
 }
@@ -212,6 +216,7 @@ export function susunGambar(b: BahanGambar): Gambar {
 
   const gardu = b.gardu ? ke(b.gardu) : null;
   const pindah = new Set(b.pecah?.pindah ?? []);
+  const caraSr = b.pecah?.cara === "pindah-sr";
   const perJurusan = new Map<string, Map<string, GawangJtr>>();
   for (const g of b.gawang) {
     const j = perJurusan.get(g.jurusan) ?? new Map<string, GawangJtr>();
@@ -237,13 +242,22 @@ export function susunGambar(b: BahanGambar): Gambar {
       const hulu = g.hulu_id && g.hulu_id !== g.tiang_id ? peta.get(g.hulu_id) : undefined;
       const kh = hulu ? b.koord.get(hulu.tiang_id) : undefined;
       const asal = hulu ? (kh ? ke(kh) : null) : gardu;
-      const jenis: JenisGaris = !utama ? "lain" : pindah.has(g.tiang_id) ? "pindah" : "utama";
+      // Pindah SR: kabel lama tetap di jurusannya, hanya tiangnya yang ditandai.
+      const pindahIni = utama && pindah.has(g.tiang_id);
+      const jenis: JenisGaris = !utama ? "lain" : pindahIni && !caraSr ? "pindah" : "utama";
       if (asal) garis.push({ a: asal, b: p, jenis });
-      if (!tiang.has(g.tiang_id) || utama) tiang.set(g.tiang_id, { id: g.tiang_id, ...p, jenis });
+      if (!tiang.has(g.tiang_id) || utama) tiang.set(g.tiang_id, { id: g.tiang_id, ...p, jenis: pindahIni && caraSr ? "sr" : jenis });
       if (!hulu) akarLabel.push({ ...p, teks: `Jur. ${j}`, jenis: "jurusan", ukuran: 6.5, wajib: utama });
       if (!g.kode) continue;
+      const kode = pendek(g.kode, b.garduKode);
+      if (pindahIni && caraSr) {
+        calon.push({ ...p, teks: `${kode} · ${g.tarikan_sr} SR ke kabel baru`, jenis: "sr", ukuran: 5.5, wajib: true });
+        continue;
+      }
       const penting = utama && (g.percabangan || (punyaAnak.get(g.tiang_id) ?? 0) !== 1);
-      calon.push({ ...p, teks: pendek(g.kode, b.garduKode), jenis: utama ? "tiang" : "tiang-lain", ukuran: utama ? 5 : 4.5, wajib: penting });
+      // Jumlah SR ditulis di jurusan usulan saja — jurusan lain hanya patokan.
+      const teks = utama && g.tarikan_sr > 0 ? `${kode} · ${g.tarikan_sr} SR` : kode;
+      calon.push({ ...p, teks, jenis: utama ? "tiang" : "tiang-lain", ukuran: utama ? 5 : 4.5, wajib: penting });
     }
   }
 
@@ -276,7 +290,7 @@ export function susunGambar(b: BahanGambar): Gambar {
     wajib.push({ ...tengah, teks: `Kabel baru ±${Math.round(b.pecah!.kabelBaru).toLocaleString("id-ID")} m`, jenis: "kabel", ukuran: 7, wajib: true });
   }
   if (gardu) wajib.push({ ...gardu, teks: b.garduKode, jenis: "gardu", ukuran: 8, wajib: true });
-  if (pecah) wajib.push({ ...pecah, teks: "TITIK PECAH", jenis: "pecah", ukuran: 7, wajib: true });
+  if (pecah) wajib.push({ ...pecah, teks: caraSr ? "UJUNG KABEL BARU" : "TITIK PECAH", jenis: "pecah", ukuran: 7, wajib: true });
   if (sisip) wajib.push({ ...sisip, teks: "USULAN GARDU SISIP", jenis: "sisip", ukuran: 7, wajib: true });
   for (const x of ujung) {
     const v = `${Math.round(x.v_rn)}/${Math.round(x.v_sn)}/${Math.round(x.v_tn)} V`;
@@ -299,7 +313,7 @@ export function susunGambar(b: BahanGambar): Gambar {
   const hilang = !!b.pecah && (!ada(b.pecah.titikId) || b.pecah.pindah.some((id) => !ada(id)));
 
   return {
-    garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, ujung, label, hilang,
+    garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, ujung, label, hilang, caraSr,
     skala: skala / meterPerDunia,
     ruang: { x0: -ox / skala, y0: -oy / skala, skala },
   };

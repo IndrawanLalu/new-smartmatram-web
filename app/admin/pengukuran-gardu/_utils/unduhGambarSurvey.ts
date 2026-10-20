@@ -113,7 +113,7 @@ export async function unduhGambarSurvey(u: UsulanJtr) {
     gardu: g?.lat != null && g?.lng != null ? { lat: Number(g.lat), lng: Number(g.lng) } : null,
     garduKode: kode,
     jurusan: u.jurusan,
-    pecah: u.opsi ? { titikId: u.opsi.titikId, pindah: u.opsi.pindah, kabelBaru: u.opsi.kabelBaru } : null,
+    pecah: u.opsi ? { titikId: u.opsi.titikId, pindah: u.opsi.pindah, kabelBaru: u.opsi.kabelBaru, cara: u.opsi.cara ?? "potong" } : null,
     sisip: u.pekerjaan === "sisip" && u.titik_lat !== null && u.titik_lng !== null ? { lat: u.titik_lat, lng: u.titik_lng } : null,
     ujung,
   });

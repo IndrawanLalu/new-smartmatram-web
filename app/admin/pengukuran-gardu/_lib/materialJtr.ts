@@ -5,9 +5,16 @@
  */
 
 import type { JurusanJtr } from "../_hooks/useAnalisisJtr";
-import type { OpsiPecah, Rencana } from "./rencanaJtr";
+import { pindahSr, type OpsiPecah, type Rencana } from "./rencanaJtr";
 
-export type PekerjaanMaterial = "tambah-jurusan" | "ganti-kabel" | "pemerataan";
+export type PekerjaanMaterial = "tambah-jurusan" | "pindah-sr" | "ganti-kabel" | "pemerataan";
+
+export const LABEL_MATERIAL: Record<PekerjaanMaterial, string> = {
+  "tambah-jurusan": "Tambah jurusan — potong & sambung cabang",
+  "pindah-sr": "Tambah jurusan — pindah SR ke kabel baru",
+  "ganti-kabel": "Ganti kabel",
+  pemerataan: "Pemerataan beban",
+};
 export type DasarMaterial = "tetap" | "kabel_m" | "tiang" | "sr";
 
 export const LABEL_DASAR: Record<DasarMaterial, string> = {
@@ -53,12 +60,25 @@ export function srPindahFasa(r: JurusanJtr): number {
   return Math.ceil(lebih / (total / sr));
 }
 
-export function besaranUsulan(r: JurusanJtr, rencana: Rencana, opsi: OpsiPecah | null): Besaran {
+export function besaranUsulan(r: JurusanJtr, rencana: Rencana | null, opsi: OpsiPecah | null): Besaran {
   return {
-    kabel_m: opsi?.kabelBaru ?? rencana.besaran?.kabel_m ?? 0,
-    tiang: opsi?.tiangLintas ?? rencana.besaran?.tiang ?? 0,
-    sr: rencana.jenis === "pemerataan" || opsi?.pemerataan ? srPindahFasa(r) : 0,
+    kabel_m: opsi?.kabelBaru ?? rencana?.besaran?.kabel_m ?? 0,
+    tiang: opsi?.tiangLintas ?? rencana?.besaran?.tiang ?? 0,
+    sr: opsi && pindahSr(opsi) ? opsi.srPindah : rencana?.jenis === "pemerataan" || opsi?.pemerataan ? srPindahFasa(r) : 0,
   };
+}
+
+/**
+ * Isian material awal satu usulan: daftar bawaan pekerjaannya (pindah SR
+ * punya daftar sendiri), ditambah pemerataan bila titik pecah memerlukannya.
+ */
+export function materialAwal(ref: MaterialRef[], r: JurusanJtr, rencana: Rencana | null, opsi: OpsiPecah | null): BarisMaterial[] {
+  const b = besaranUsulan(r, rencana, opsi);
+  const pekerjaan = opsi ? (pindahSr(opsi) ? "pindah-sr" : "tambah-jurusan") : (rencana?.jenis ?? "");
+  return [
+    ...perkiraanMaterial(ref, pekerjaan, b, r.kabel),
+    ...(opsi?.pemerataan ? perkiraanMaterial(ref, "pemerataan", b, r.kabel) : []),
+  ];
 }
 
 export function perkiraanMaterial(

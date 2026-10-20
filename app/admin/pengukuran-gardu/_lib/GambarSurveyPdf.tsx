@@ -5,9 +5,11 @@
 import { Circle, Document, Image, Line, Page, Polygon, Polyline, Rect, StyleSheet, Svg, Text, View, type Styles } from "@react-pdf/renderer";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
 import { GAMBAR_H, GAMBAR_W, skalaGrafis, type Gambar, type JenisLabel, type NadaUjung } from "./gambarSurvey";
-import { LABEL_RENCANA } from "./rencanaJtr";
+import { LABEL_RENCANA, pindahSr } from "./rencanaJtr";
 
 const GARIS = { lain: "#B0B8C4", utama: "#1F2937", pindah: "#7C3AED" } as const;
+/** Tiang yang SR-nya dipindah ke kabel baru (cara pindah SR). */
+const JINGGA = "#EA580C";
 const TEBAL = { lain: 0.7, utama: 1.3, pindah: 1.6 } as const;
 const MERAH = "#DC2626";
 const TEAL = "#00897B";
@@ -17,6 +19,7 @@ const WARNA_LABEL: Record<JenisLabel, string> = {
   "ujung-merah": WARNA_UJUNG.merah,
   "ujung-kuning": WARNA_UJUNG.kuning,
   "ujung-hijau": WARNA_UJUNG.hijau,
+  sr: JINGGA,
   kabel: MERAH,
   pecah: MERAH,
   sisip: MERAH,
@@ -25,7 +28,7 @@ const WARNA_LABEL: Record<JenisLabel, string> = {
   tiang: "#1F2937",
   "tiang-lain": "#9CA3AF",
 };
-const LABEL_TEBAL: JenisLabel[] = ["kabel", "pecah", "sisip", "gardu", "jurusan", "ujung-merah", "ujung-kuning", "ujung-hijau"];
+const LABEL_TEBAL: JenisLabel[] = ["kabel", "pecah", "sisip", "gardu", "jurusan", "ujung-merah", "ujung-kuning", "ujung-hijau", "sr"];
 const KOLOM_W = 270;
 
 const S = StyleSheet.create({
@@ -90,16 +93,19 @@ function Legenda({ g, jurusan, garduKode }: { g: Gambar; jurusan: string; garduK
     <View style={S.blok}>
       <Text style={S.eyebrow}>KETERANGAN</Text>
       <Contoh teks={`Kabel jurusan ${jurusan} (yang ada)`}><Line x1={1} y1={5} x2={25} y2={5} stroke={GARIS.utama} strokeWidth={TEBAL.utama} /></Contoh>
-      {g.pecah && (
+      {g.garis.some((x) => x.jenis === "pindah") && (
         <Contoh teks="Pindah ke jurusan baru"><Line x1={1} y1={5} x2={25} y2={5} stroke={GARIS.pindah} strokeWidth={TEBAL.pindah} /></Contoh>
+      )}
+      {g.tiang.some((t) => t.jenis === "sr") && (
+        <Contoh teks="Tiang yang SR-nya dipindah ke kabel baru"><Circle cx={13} cy={5} r={3.2} fill={JINGGA} stroke="#fff" strokeWidth={0.8} /></Contoh>
       )}
       {g.kabelBaru.length > 1 && (
         <Contoh teks="Jalur kabel baru (rencana)"><Line x1={1} y1={5} x2={25} y2={5} stroke={MERAH} strokeWidth={1.4} strokeDasharray="4 2.5" /></Contoh>
       )}
       <Contoh teks="Kabel jurusan lain"><Line x1={1} y1={5} x2={25} y2={5} stroke={GARIS.lain} strokeWidth={TEBAL.lain} /></Contoh>
-      <Contoh teks={`Tiang (kode tanpa awalan ${garduKode}-)`}><Circle cx={13} cy={5} r={2.8} fill="#fff" stroke={GARIS.utama} strokeWidth={0.9} /></Contoh>
+      <Contoh teks={`Tiang — kode tanpa awalan ${garduKode}-, "· n SR" = tarikan SR`}><Circle cx={13} cy={5} r={2.8} fill="#fff" stroke={GARIS.utama} strokeWidth={0.9} /></Contoh>
       <Contoh teks="Gardu (di tiang)"><SimbolGardu x={13} y={5.5} r={5} /></Contoh>
-      {g.pecah && <Contoh teks="Titik pecah"><Circle cx={13} cy={5} r={4} fill="none" stroke={MERAH} strokeWidth={1.2} /></Contoh>}
+      {g.pecah && <Contoh teks={g.caraSr ? "Ujung kabel baru" : "Titik pecah"}><Circle cx={13} cy={5} r={4} fill="none" stroke={MERAH} strokeWidth={1.2} /></Contoh>}
       {g.sisip && <Contoh teks="Usulan gardu sisip"><Polygon points="13,1 18,9 8,9" fill={MERAH} /></Contoh>}
       {g.ujung.length > 0 && (
         <Contoh teks="Titik ukur tegangan ujung R/S/T–N (merah < 198 V, kuning < 207 V)">
@@ -180,10 +186,17 @@ function Kolom({ u, g, garduNama, logo }: Props) {
         ))}
         {o && (
           <>
-            <Baris l="Titik pecah" v={`${o.titikKode ?? "—"}, cabang ${o.cabangKode ?? "—"} pindah`} />
+            {pindahSr(o) ? (
+              <Baris l="Cara" v={`pindah SR ke kabel baru sampai ${o.titikKode ?? "—"} — kabel lama tidak dipotong`} />
+            ) : (
+              <Baris l="Titik pecah" v={`${o.titikKode ?? "—"}, cabang ${o.cabangKode ?? "—"} pindah`} />
+            )}
             <Baris l="Kabel baru" v={`± ${angka(o.kabelBaru)} m (${angka(o.tiangLintas)} tiang dilalui)`} />
             <Baris l="Arus sesudah" v={`jurusan baru ${angka(o.iBaru)} A · lama ${angka(o.iLama)} A`} />
-            <Baris l="Pindah" v={`${angka(o.tiangPindah)} tiang · ${angka(o.srPindah)} SR`} />
+            <Baris
+              l={pindahSr(o) ? "SR dipindah" : "Pindah"}
+              v={`${angka(o.srPindah)} SR${o.srTotal ? ` dari ${angka(o.srTotal)}` : ""} · ${angka(o.tiangPindah)} tiang`}
+            />
             <Baris l="Tegangan" v={`jatuh tegangan terburuk turun ± ${angka(o.turunPct)}%`} />
           </>
         )}
@@ -230,8 +243,9 @@ function Jtr({ g, latar }: { g: Gambar; latar: string | null }) {
         )}
         {g.tiang.map((t) => (
           <Circle
-            key={t.id} cx={t.x} cy={t.y} r={t.jenis === "lain" ? 2.1 : 2.8}
-            fill={t.jenis === "pindah" ? GARIS.pindah : "#fff"} stroke={GARIS[t.jenis]} strokeWidth={0.9}
+            key={t.id} cx={t.x} cy={t.y} r={t.jenis === "lain" ? 2.1 : t.jenis === "sr" ? 3.4 : 2.8}
+            fill={t.jenis === "pindah" ? GARIS.pindah : t.jenis === "sr" ? JINGGA : "#fff"}
+            stroke={t.jenis === "sr" ? "#fff" : GARIS[t.jenis]} strokeWidth={0.9}
           />
         ))}
         {g.pecah && <Circle cx={g.pecah.x} cy={g.pecah.y} r={5.5} fill="none" stroke={MERAH} strokeWidth={1.4} />}

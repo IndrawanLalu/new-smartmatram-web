@@ -4,7 +4,9 @@
  * Satu jurusan → satu rencana, diurutkan dari tindakan TERMURAH:
  *   1. Pemerataan beban  — fasa terbesar lewat batas, rata-rata fasa tidak
  *   2. Tambah jurusan    — pecah di tiang X (percabangan dulu; kalau tidak ada
- *                          yang layak, tiang mana pun), kabel baru ≤ batas
+ *                          yang layak, tiang mana pun), kabel baru ≤ batas;
+ *                          atau tanpa potong kabel: SR sepanjang jalur sampai
+ *                          X dipindah ke kabel baru (21 Okt, cara "pindah-sr")
  *   3. Sisip gardu       — tambah jurusan tidak bisa (trafo > batas, slot
  *                          penuh, titik pecah terlalu jauh / tidak ada)
  *   4. Ganti kabel       — jurusan aman, tapi potongan kabel kecil kelebihan
@@ -154,12 +156,24 @@ function momen(simpul: Simpul[], perSr: number, kurangi?: { c: Simpul; leluhur: 
 export type NadaOpsi = "aman" | "mendekati" | "lewat";
 
 /**
+ * potong    — kabel lama DIPOTONG di titik pecah, satu cabang hilirnya
+ *             disambung ke kabel baru.
+ * pindah-sr — kabel lama TIDAK dipotong; kabel baru ditarik sejajar sampai
+ *             tiang X dan SR di tiang-tiang sepanjang jalur itu dipindah ke
+ *             kabel baru (JTR pendek, tarikan SR menumpuk di pangkal).
+ */
+export type CaraPecah = "potong" | "pindah-sr";
+
+/**
  * Satu cara memecah jurusan: kabel baru dari gardu menyusuri jalur sampai
  * TITIK PECAH, lalu satu CABANG hilirnya dilepas dari kabel lama dan
- * disambung ke kabel baru. Cabang itu (dan seluruh hilirnya) pindah jurusan.
+ * disambung ke kabel baru (potong), atau SR sepanjang jalur itu yang
+ * dipindah ke kabel baru (pindah-sr).
  */
 export interface OpsiPecah {
-  /** id tiang cabang (+ "|rata" untuk varian pemerataan) — unik per opsi. */
+  /** Usulan sebelum 21 Okt tidak punya — artinya "potong". */
+  cara?: CaraPecah;
+  /** id tiang cabang (+ "|rata" pemerataan, "|sr" pindah SR) — unik per opsi. */
   kunci: string;
   titikId: string;
   titikKode: string | null;
@@ -170,6 +184,9 @@ export interface OpsiPecah {
   iBaru: number;
   iLama: number;
   srPindah: number;
+  /** Tarikan SR seluruh jurusan sebelum dipecah (usulan lama: tidak ada). */
+  srTotal?: number;
+  /** potong: tiang yang pindah jurusan; pindah-sr: tiang yang SR-nya dipindah. */
   tiangPindah: number;
   /** Tiang yang dilalui kabel baru dari gardu sampai titik pecah. */
   tiangLintas: number;
@@ -184,7 +201,7 @@ export interface OpsiPecah {
   /** Mengapa lewat / mendekati batas. */
   peringatan: string[];
   label: string[];
-  /** Tiang yang pindah — disorot di peta. */
+  /** Tiang yang pindah (potong) / yang SR-nya dipindah (pindah-sr) — disorot di peta. */
   pindah: string[];
   momenMaks: number;
 }
@@ -199,6 +216,19 @@ interface KonteksPecah {
 }
 
 const BATAS_MENDEKATI = 0.8;
+
+/** Peringatan & nada satu pilihan — sama untuk kedua cara. */
+function nilai(k: KonteksPecah, iBaru: number, iLama: number, kabelBaru: number) {
+  const peringatan: string[] = [];
+  if (iBaru > k.batasI) peringatan.push(`Jurusan baru ${a(iBaru)} > batas ${a(k.batasI)}.`);
+  if (iLama > k.batasI) peringatan.push(`Jurusan lama ${a(iLama)} > batas ${a(k.batasI)}.`);
+  if (kabelBaru > k.batasKabel) peringatan.push(`Kabel baru ${m(kabelBaru)} > batas ${m(k.batasKabel)}.`);
+  const lewat = peringatan.length > 0;
+  const dekat = !lewat && Math.max(iBaru, iLama) >= k.batasI * BATAS_MENDEKATI;
+  if (dekat) peringatan.push(`Sisi terberat ${a(Math.max(iBaru, iLama))} sudah ≥ ${BATAS_MENDEKATI * 100}% batas.`);
+  const nada: NadaOpsi = lewat ? "lewat" : dekat ? "mendekati" : "aman";
+  return { peringatan, nada };
+}
 
 function hitungOpsi(k: KonteksPecah, c: Simpul, pemerataan: boolean): OpsiPecah | null {
   const titik = k.hulu.get(c);
@@ -217,15 +247,8 @@ function hitungOpsi(k: KonteksPecah, c: Simpul, pemerataan: boolean): OpsiPecah 
   const mLama = momen(lama, perSr, { c, leluhur });
   const momenMaks = Math.max(mBaru, mLama);
 
-  const peringatan: string[] = [];
-  if (iBaru > k.batasI) peringatan.push(`Jurusan baru ${a(iBaru)} > batas ${a(k.batasI)}.`);
-  if (iLama > k.batasI) peringatan.push(`Jurusan lama ${a(iLama)} > batas ${a(k.batasI)}.`);
-  if (kabelBaru > k.batasKabel) peringatan.push(`Kabel baru ${m(kabelBaru)} > batas ${m(k.batasKabel)}.`);
-  const lewat = peringatan.length > 0;
-  const dekat = !lewat && Math.max(iBaru, iLama) >= k.batasI * BATAS_MENDEKATI;
-  if (dekat) peringatan.push(`Sisi terberat ${a(Math.max(iBaru, iLama))} sudah ≥ ${BATAS_MENDEKATI * 100}% batas.`);
-
   return {
+    cara: "potong",
     kunci: pemerataan ? `${c.tiang_id}|rata` : c.tiang_id,
     titikId: titik.tiang_id,
     titikKode: titik.kode,
@@ -236,16 +259,66 @@ function hitungOpsi(k: KonteksPecah, c: Simpul, pemerataan: boolean): OpsiPecah 
     iBaru,
     iLama,
     srPindah: c.srHilir,
+    srTotal: p.sr,
     tiangPindah: hilir.size,
     tiangLintas: leluhur.size,
     jauhBaru: c.jauh,
     jauhLama: Math.max(0, ...lama.map((s) => s.d)),
     turunPct: Math.round((1 - momenMaks / momen(p.simpul, perSr)) * 100),
     pemerataan,
-    nada: lewat ? "lewat" : dekat ? "mendekati" : "aman",
-    peringatan,
+    ...nilai(k, iBaru, iLama, kabelBaru),
     label: [],
     pindah: [...hilir].map((x) => x.tiang_id),
+    momenMaks,
+  };
+}
+
+/**
+ * Pindah SR ke kabel baru yang ditarik sampai tiang X: SR di setiap tiang
+ * gardu → X pindah, kabel lama utuh dan tetap melayani sisanya. Arus kabel
+ * baru di tiap gawang = SR yang dipindah dari tiang itu sampai X.
+ */
+function hitungPindahSr(k: KonteksPecah, x: Simpul): OpsiPecah | null {
+  const { pohon: p } = k;
+  const jalur: Simpul[] = [];
+  for (let s: Simpul | undefined = x; s && !jalur.includes(s); s = k.hulu.get(s)) jalur.push(s);
+  // SR yang dipindah dari tiang itu sampai X (dijumlah dari X ke arah gardu).
+  const kum = new Map<Simpul, number>();
+  let n = 0;
+  for (const s of jalur) {
+    n += s.tarikan_sr;
+    kum.set(s, n);
+  }
+  if (n === 0 || n === p.sr) return null;
+  const perSr = k.arus / p.sr;
+  const iBaru = n * perSr;
+  const iLama = k.arus - iBaru;
+  const mBaru = jalur.reduce((t, s) => t + kum.get(s)! * perSr * s.panjang_m, 0);
+  const mLama = p.simpul.reduce((t, s) => t + (s.srHilir - (kum.get(s) ?? 0)) * perSr * s.panjang_m, 0);
+  const momenMaks = Math.max(mBaru, mLama);
+  const pindah = jalur.filter((s) => s.tarikan_sr > 0);
+  return {
+    cara: "pindah-sr",
+    kunci: `${x.tiang_id}|sr`,
+    titikId: x.tiang_id,
+    titikKode: x.kode,
+    percabangan: false,
+    cabangId: "",
+    cabangKode: null,
+    kabelBaru: x.d,
+    iBaru,
+    iLama,
+    srPindah: n,
+    srTotal: p.sr,
+    tiangPindah: pindah.length,
+    tiangLintas: jalur.length,
+    jauhBaru: x.d,
+    jauhLama: Math.max(0, ...p.simpul.map((s) => s.d)),
+    turunPct: Math.round((1 - momenMaks / momen(p.simpul, perSr)) * 100),
+    pemerataan: false,
+    ...nilai(k, iBaru, iLama, x.d),
+    label: [],
+    pindah: pindah.map((s) => s.tiang_id),
     momenMaks,
   };
 }
@@ -288,6 +361,13 @@ function susunPilihan(k: KonteksPecah): OpsiPecah[] {
   tambah(terkecil(layak, (o) => Math.abs(o.iBaru - o.iLama)), "Paling seimbang");
   tambah(terkecil(layak, (o) => o.momenMaks), "Tegangan terbaik");
 
+  // Tanpa potong kabel: SR sepanjang jalur dipindah ke kabel baru. Tanpa
+  // pilihan potong yang layak, inilah usulan sistemnya.
+  const sr = k.pohon.simpul.flatMap((x) => hitungPindahSr(k, x) ?? []).filter((o) => o.nada !== "lewat");
+  const terbaikSr = terkecil(sr, (o) => Math.abs(o.iBaru - o.iLama));
+  if (terbaikSr && !hasil.size) terbaikSr.label.push("Usulan sistem");
+  tambah(terbaikSr, "Pindah SR ke kabel baru");
+
   // Pecah lebih dekat gardu bila fasanya sekalian diratakan.
   if (k.rata < k.arus) {
     const pendek = terkecil(layak, (o) => o.kabelBaru)?.kabelBaru ?? Infinity;
@@ -312,21 +392,36 @@ export function opsiDiTiang(
   const k = konteksPecah(r, gawang, s);
   const t = k?.pohon.simpul.find((x) => x.tiang_id === tiangId);
   if (!k || !t) return [];
-  return t.anak.flatMap((c) => {
-    const o = hitungOpsi(k, c, false);
-    return o ? [{ ...o, kunci: `${o.kunci}|sendiri`, label: ["Pilihan sendiri"] }] : [];
-  });
+  const sendiri = (o: OpsiPecah | null) => (o ? [{ ...o, kunci: `${o.kunci}|sendiri`, label: ["Pilihan sendiri"] }] : []);
+  return [...t.anak.flatMap((c) => sendiri(hitungOpsi(k, c, false))), ...sendiri(hitungPindahSr(k, t))];
 }
 
-/** "Pecah di B3 → cabang B3_B1" */
-export const namaOpsi = (o: OpsiPecah) => `${o.titikKode ?? "tiang"} → cabang ${o.cabangKode ?? "tiang"}`;
+/** Tiang tempat "pilihan sendiri" dihitung ulang, dibaca dari kuncinya. */
+export const tiangKunciSendiri = (kunci: string, gawang: GawangJtr[]) => {
+  const [id, cara] = kunci.split("|");
+  return cara === "sr" ? id : gawang.find((x) => x.tiang_id === id)?.hulu_id;
+};
+
+export const pindahSr = (o: OpsiPecah) => o.cara === "pindah-sr";
+
+/** "B3 → cabang B3_B1" / "sampai B3, SR 4 tiang dipindah" */
+export const namaOpsi = (o: OpsiPecah) =>
+  pindahSr(o)
+    ? `sampai ${o.titikKode ?? "tiang"}, SR ${o.tiangPindah} tiang dipindah`
+    : `${o.titikKode ?? "tiang"} → cabang ${o.cabangKode ?? "tiang"}`;
 
 /** Satu baris ringkas tambah jurusan — kolom tabel & judul usulan/WO. */
 export const ringkasOpsi = (o: OpsiPecah) =>
-  `Tambah jurusan, pecah di ${o.titikKode} (${m(o.kabelBaru)})${o.pemerataan ? " + pemerataan" : ""}`;
+  pindahSr(o)
+    ? `Tambah jurusan, pindah SR ke kabel baru sampai ${o.titikKode} (${m(o.kabelBaru)})`
+    : `Tambah jurusan, pecah di ${o.titikKode} (${m(o.kabelBaru)})${o.pemerataan ? " + pemerataan" : ""}`;
 
 /** Rincian tambah jurusan untuk satu pilihan titik pecah. */
-export const rinciOpsi = (o: OpsiPecah, srTotal: number) => [
+export const rinciOpsi = (o: OpsiPecah, srTotal: number) => pindahSr(o) ? [
+  `Kabel baru dari gardu ±${m(o.kabelBaru)} menyusuri jalur sampai tiang ${o.titikKode} (${o.tiangLintas} tiang); kabel lama TIDAK dipotong.`,
+  `SR di ${o.tiangPindah} tiang sepanjang jalur itu (${o.srPindah} dari ${srTotal} tarikan) dipindah ke kabel baru → kabel baru ±${a(o.iBaru)}, kabel lama ±${a(o.iLama)}.`,
+  `Perkiraan jatuh tegangan terburuk turun ±${o.turunPct}%.`,
+] : [
   `Pecah di tiang ${o.titikKode}${o.percabangan ? " (percabangan)" : ""}: cabang ${o.cabangKode} dilepas dan disambung ke jurusan baru.`,
   `Kabel baru dari gardu ±${m(o.kabelBaru)} (menyusuri jalur yang ada, ${o.tiangLintas} tiang).`,
   `Pindah ${o.srPindah} dari ${srTotal} tarikan SR → jurusan baru ±${a(o.iBaru)}, jurusan lama ±${a(o.iLama)}${o.pemerataan ? " — setelah fasa diratakan" : ""}.`,

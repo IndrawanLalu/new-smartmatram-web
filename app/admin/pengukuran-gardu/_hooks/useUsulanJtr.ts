@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { BarisMaterial, MaterialRef } from "../_lib/materialJtr";
+import type { JurusanJtr } from "./useAnalisisJtr";
 import type { JenisRencana, OpsiPecah } from "../_lib/rencanaJtr";
 
 /**
@@ -56,6 +57,13 @@ export interface DasarUsulan {
   rinci: string[];
 }
 
+/** Dasar usulan dari baris analisis saat ini. */
+export const susunDasar = (r: JurusanJtr, alasan: string[], rinci: string[]): DasarUsulan => ({
+  a_r: r.a_r, a_s: r.a_s, a_t: r.a_t, arus_maks: r.arus_maks, kva: r.kva, persen_beban: r.persen_beban,
+  kabel: r.kabel, kha_a: r.kha_a, terjauh_m: r.terjauh_m, jumlah_sr: r.jumlah_sr,
+  tanggal_pengukuran: r.tanggal_pengukuran, alasan, rinci,
+});
+
 export interface UsulanJtr {
   id: string;
   ulp: string;
@@ -98,15 +106,29 @@ export interface SimpanUsulan {
   catatan: string;
 }
 
+/** Ganti titik pecah usulan yang belum di-WO-kan. */
+export type UbahPecah = Pick<SimpanUsulan, "ringkas" | "dasar" | "opsi" | "titik_tiang_id" | "material" | "catatan">;
+
 export const PESAN_SQL_USULAN = "Usulan perbaikan belum ada di database — jalankan scripts/jtr-usulan-perbaikan.sql di Supabase.";
+const PESAN_SQL_PECAH = "Ubah titik pecah belum ada di database — jalankan scripts/jtr-usulan-ubah-pecah.sql di Supabase.";
 
 const keUsulan = (x: Record<string, unknown>) =>
   ({ ...x, titik_lat: x.titik_lat === null ? null : Number(x.titik_lat), titik_lng: x.titik_lng === null ? null : Number(x.titik_lng) }) as UsulanJtr;
 
 const pesan = (e: unknown) => {
   const x = e as { message?: string; code?: string };
+  if (/ubah_pecah_usulan_jtr/.test(x.message ?? "")) return PESAN_SQL_PECAH;
   return x.code === "PGRST205" || x.code === "PGRST202" || /jtr_usulan|jtr_material/.test(x.message ?? "") ? PESAN_SQL_USULAN : (x.message ?? "Gagal");
 };
+
+/** Koordinat tiang lokasi kerja (titik pecah / sisip). */
+async function koordTiang(id: string | null) {
+  if (!id) return { titik_lat: null, titik_lng: null };
+  const { data } = await supabaseBrowser.from("tiang").select("lat,lng").eq("id", id).maybeSingle();
+  return data?.lat != null && data?.lng != null
+    ? { titik_lat: Number(data.lat), titik_lng: Number(data.lng) }
+    : { titik_lat: null, titik_lng: null };
+}
 
 export function useUsulanJtr(ulp: string) {
   const [usulan, setUsulan] = useState<UsulanJtr[]>([]);
@@ -151,15 +173,12 @@ export function useUsulanJtr(ulp: string) {
   };
 
   const simpan = async ({ titik_tiang_id, ...isi }: SimpanUsulan, oleh: string) => {
-    let titik: { lat: number; lng: number } | null = null;
-    if (titik_tiang_id) {
-      const { data } = await supabaseBrowser.from("tiang").select("lat,lng").eq("id", titik_tiang_id).maybeSingle();
-      if (data?.lat != null && data?.lng != null) titik = { lat: Number(data.lat), lng: Number(data.lng) };
-    }
-    const id = (await rpc("simpan_usulan_jtr", {
-      p: { ...isi, titik_lat: titik?.lat ?? null, titik_lng: titik?.lng ?? null },
-      p_nama: oleh,
-    })) as string;
+    const id = (await rpc("simpan_usulan_jtr", { p: { ...isi, ...(await koordTiang(titik_tiang_id)) }, p_nama: oleh })) as string;
+    return tambal(id);
+  };
+
+  const ubahPecah = async (id: string, { titik_tiang_id, ...isi }: UbahPecah, oleh: string) => {
+    await rpc("ubah_pecah_usulan_jtr", { p_id: id, p: { ...isi, ...(await koordTiang(titik_tiang_id)) }, p_nama: oleh });
     return tambal(id);
   };
 
@@ -178,7 +197,7 @@ export function useUsulanJtr(ulp: string) {
     return tambal(id);
   };
 
-  return { usulan, materialRef, galat, muatUlang: muat, simpan, ubah, jadikanWo, batalkan, setMaterialRef };
+  return { usulan, materialRef, galat, muatUlang: muat, simpan, ubah, ubahPecah, jadikanWo, batalkan, setMaterialRef };
 }
 
 export type UsulanJtrState = ReturnType<typeof useUsulanJtr>;

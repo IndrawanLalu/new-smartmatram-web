@@ -4,10 +4,11 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ChevronLeft, ChevronRight, Download, Search } from "lucide-react";
 import { BTN_GHOST, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { useToast } from "@/app/admin/_components/Toast";
-import { NADA_TAHAP, PEKERJAAN_USULAN, TAHAP_USULAN, type PekerjaanUsulan, type TahapUsulan, type UsulanJtrState } from "../_hooks/useUsulanJtr";
+import { NADA_TAHAP, PEKERJAAN_USULAN, TAHAP_USULAN, type PekerjaanUsulan, type TahapUsulan, type UsulanJtr, type UsulanJtrState } from "../_hooks/useUsulanJtr";
 import { LABEL_RENCANA } from "../_lib/rencanaJtr";
 import { unduhUsulanJtr } from "../_utils/unduhUsulanJtr";
 import RincianUsulanJtr from "./RincianUsulanJtr";
+import type { BahanPecah } from "./UbahPecahUsulan";
 
 /**
  * Daftar Usulan Perbaikan JTR — usulan yang disimpan dari Analisis JTR,
@@ -24,12 +25,14 @@ interface Props {
   /** Usulan yang dibuka dari luar (mis. "Sudah diusulkan" di rincian rencana). */
   buka: string | null;
   onBuka: (id: string | null) => void;
+  /** Bahan ubah titik pecah satu usulan (dari data Analisis). */
+  bahanPecah: (u: UsulanJtr) => BahanPecah | null;
 }
 
 const PAGE = 20;
 const TH = "px-3 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap";
 
-export default function UsulanJtrTab({ st, boleh, oleh, saklar, buka, onBuka }: Props) {
+export default function UsulanJtrTab({ st, boleh, oleh, saklar, buka, onBuka, bahanPecah }: Props) {
   const toast = useToast();
   const [tahap, setTahap] = useState<TahapUsulan | "semua">("Usulan");
   const [pekerjaan, setPekerjaan] = useState<PekerjaanUsulan | "">("");
@@ -155,7 +158,12 @@ export default function UsulanJtrTab({ st, boleh, oleh, saklar, buka, onBuka }: 
         </>
       )}
 
-      {terbuka && <RincianUsulanJtr key={terbuka.id + terbuka.tahap} u={terbuka} boleh={boleh} oleh={oleh} st={st} onTutup={() => onBuka(null)} />}
+      {terbuka && (
+        <RincianUsulanJtr
+          key={terbuka.id + terbuka.tahap} u={terbuka} boleh={boleh} oleh={oleh} st={st}
+          bahanPecah={bahanPecah(terbuka)} onTutup={() => onBuka(null)}
+        />
+      )}
     </>
   );
 }

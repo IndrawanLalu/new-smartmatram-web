@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, ClipboardCheck, FileDown, Loader2, Map as IkonPeta, Save } from "lucide-react";
+import { Ban, ClipboardCheck, FileDown, Loader2, Map as IkonPeta, Save, Split } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -11,6 +11,7 @@ import { alamatPetaRencana, LABEL_RENCANA } from "../_lib/rencanaJtr";
 import { labelBulanWo, pilihanBulanWo } from "../_utils/bulanWo";
 import { unduhGambarSurvey } from "../_utils/unduhGambarSurvey";
 import TabelMaterial from "./TabelMaterial";
+import UbahPecahUsulan, { type BahanPecah } from "./UbahPecahUsulan";
 
 /**
  * Satu usulan tersimpan: dasar keputusan (dibekukan), material, tahap WO.
@@ -22,19 +23,22 @@ interface Props {
   u: UsulanJtr;
   boleh: boolean;
   oleh: string;
-  st: Pick<UsulanJtrState, "ubah" | "jadikanWo" | "batalkan">;
+  st: Pick<UsulanJtrState, "ubah" | "ubahPecah" | "jadikanWo" | "batalkan" | "materialRef">;
+  /** Data JTR & analisis jurusan ini — null bila belum ada (titik pecah tidak bisa diubah). */
+  bahanPecah: BahanPecah | null;
   onTutup: () => void;
 }
 
 const tgl = (s: string | null) => (s ? new Date(s).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—");
 const angka = (v: number | null) => (v === null ? "—" : Math.round(v).toLocaleString("id-ID"));
 
-export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props) {
+export default function RincianUsulanJtr({ u, boleh, oleh, st, bahanPecah, onTutup }: Props) {
   const toast = useToast();
   const bisaUbah = boleh && u.status === "Usulan";
   const [material, setMaterial] = useState<BarisMaterial[]>(u.material);
   const [catatan, setCatatan] = useState(u.catatan ?? "");
-  const [mode, setMode] = useState<"lihat" | "wo" | "batal">("lihat");
+  const [mode, setMode] = useState<"lihat" | "wo" | "batal" | "pecah">("lihat");
+  const bisaPecah = bisaUbah && !!bahanPecah && (u.pekerjaan === "tambah-jurusan" || u.pekerjaan === "sisip");
   const [bulan, setBulan] = useState(() => pilihanBulanWo()[0].nilai);
   const [alasan, setAlasan] = useState("");
   const [sibuk, setSibuk] = useState(false);
@@ -99,6 +103,9 @@ export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props)
     return (
       <>
         <button onClick={() => setMode("batal")} className={`${BTN_GHOST} text-red-600`}><Ban size={14} /> Batalkan</button>
+        {bisaPecah && (
+          <button onClick={() => setMode("pecah")} className={BTN_GHOST}><Split size={14} /> Ubah titik pecah</button>
+        )}
         {berubah && (
           <button disabled={sibuk} onClick={() => void jalankan(() => st.ubah(u.id, material, catatan, oleh), "Usulan diperbarui.")} className={BTN_GHOST}>
             <Save size={14} /> Simpan perubahan
@@ -110,6 +117,19 @@ export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props)
       </>
     );
   })();
+
+  if (mode === "pecah" && bahanPecah) {
+    return (
+      <UbahPecahUsulan
+        u={u} bahan={bahanPecah} materialRef={st.materialRef}
+        onSimpan={async (isi) => {
+          await st.ubahPecah(u.id, isi, oleh);
+          setMaterial(isi.material);
+        }}
+        onKembali={() => setMode("lihat")}
+      />
+    );
+  }
 
   return (
     <ModalShell

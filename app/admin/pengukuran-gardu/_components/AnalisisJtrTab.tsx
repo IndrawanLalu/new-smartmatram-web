@@ -158,7 +158,14 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, bolehUsul, oleh }: Prop
   if (lihat === "usulan") {
     return (
       <div className={`${CARD} overflow-hidden`}>
-        <UsulanJtrTab st={usulan} boleh={bolehUsul} oleh={oleh} saklar={saklar} buka={bukaUsulan} onBuka={setBukaUsulan} />
+        <UsulanJtrTab
+          st={usulan} boleh={bolehUsul} oleh={oleh} saklar={saklar} buka={bukaUsulan} onBuka={setBukaUsulan}
+          bahanPecah={(u) => {
+            const r = baris.find((x) => x.gardu_kode === u.gardu_kode && x.jurusan === u.jurusan);
+            const g = r && gawang.get(kunciBaris(r));
+            return r && g?.length && pengaturan ? { r, rencana: rencana.get(kunciBaris(r)) ?? null, gawang: g, pengaturan } : null;
+          }}
+        />
       </div>
     );
   }

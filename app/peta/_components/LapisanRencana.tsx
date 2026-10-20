@@ -97,7 +97,7 @@ export default function LapisanRencana({ s }: { s: RencanaPetaState | null }) {
               eventHandlers={{ click: () => s.hitungDi(t.id) }}
             >
               <Tooltip direction="top" offset={[0, -8]}>
-                <span className="text-[11px]">Pecah di {t.kode ?? "tiang"}</span>
+                <span className="text-[11px]">Pecah di {t.kode ?? "tiang"} · {t.sr} SR</span>
               </Tooltip>
             </CircleMarker>
           ))}

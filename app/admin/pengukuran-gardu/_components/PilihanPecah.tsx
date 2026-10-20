@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { JurusanJtr, PengaturanJtr } from "../_hooks/useAnalisisJtr";
-import { namaOpsi, opsiDiTiang, type GawangJtr, type NadaOpsi, type OpsiPecah } from "../_lib/rencanaJtr";
+import { namaOpsi, opsiDiTiang, pindahSr, type GawangJtr, type NadaOpsi, type OpsiPecah } from "../_lib/rencanaJtr";
 
 /**
  * Perbandingan titik pecah tambah jurusan + "pilih sendiri" di tiang mana
@@ -52,11 +52,12 @@ export default function PilihanPecah({ r, gawang, pengaturan, pilihan, terpilih,
           <thead className="kepala-kit">
             <tr className="bg-navy-50 text-left">
               <th className={TH}>Pilihan</th>
-              <th className={TH}>Titik pecah → cabang pindah</th>
+              <th className={TH}>Titik pecah / cara</th>
               <th className={`${TH} text-right`}>Kabel baru</th>
               <th className={`${TH} text-right`}>Jur. baru</th>
               <th className={`${TH} text-right`}>Jur. lama</th>
-              <th className={`${TH} text-right`}>Pindah SR · tiang</th>
+              <th className={`${TH} text-right`} title="Tarikan SR kabel baru / kabel lama sesudah dipecah">SR baru / lama</th>
+              <th className={`${TH} text-right`} title="Potong: tiang yang pindah jurusan. Pindah SR: tiang yang SR-nya dipindah.">Tiang pindah</th>
               <th className={`${TH} text-right`} title="Lintasan terjauh jurusan baru / lama">Terjauh baru/lama</th>
               <th className={`${TH} text-right`} title="Perkiraan jatuh tegangan terburuk turun">Tegangan turun</th>
             </tr>
@@ -80,7 +81,11 @@ export default function PilihanPecah({ r, gawang, pengaturan, pilihan, terpilih,
                 <td className="px-2.5 py-2 min-w-48">
                   <span className="block text-ink">{namaOpsi(o)}</span>
                   <span className="block text-[11px] text-ink-muted">
-                    {[o.percabangan && "percabangan", o.pemerataan && "+ pemerataan fasa"].filter(Boolean).join(" · ")}
+                    {[
+                      pindahSr(o) ? "pindah SR ke kabel baru, tanpa potong kabel" : "potong & sambung cabang",
+                      o.percabangan && "percabangan",
+                      o.pemerataan && "+ pemerataan fasa",
+                    ].filter(Boolean).join(" · ")}
                   </span>
                   {o.peringatan.map((p) => (
                     <span key={p} className={`block text-[11px] ${o.nada === "lewat" ? "text-red-600" : "text-amber-700"}`}>{p}</span>
@@ -89,7 +94,8 @@ export default function PilihanPecah({ r, gawang, pengaturan, pilihan, terpilih,
                 <td className={`${TD} text-right font-semibold text-ink`}>{m(o.kabelBaru)}</td>
                 <td className={`${TD} text-right`}>{a(o.iBaru)}</td>
                 <td className={`${TD} text-right`}>{a(o.iLama)}</td>
-                <td className={`${TD} text-right text-ink-soft`}>{o.srPindah} · {o.tiangPindah}</td>
+                <td className={`${TD} text-right`}>{o.srPindah} / {(o.srTotal ?? 0) - o.srPindah}</td>
+                <td className={`${TD} text-right text-ink-soft`}>{o.tiangPindah}</td>
                 <td className={`${TD} text-right text-ink-soft`}>{m(o.jauhBaru)} / {m(o.jauhLama)}</td>
                 <td className={`${TD} text-right`}>±{o.turunPct}%</td>
               </tr>
@@ -112,12 +118,13 @@ export default function PilihanPecah({ r, gawang, pengaturan, pilihan, terpilih,
           {[...kodeTiang.keys()].sort().map((k) => <option key={k} value={k} />)}
         </datalist>
         {kode.trim() && !tiangId && <span className="text-amber-700">Tiang tidak ada di jurusan {r.jurusan}.</span>}
-        {tiangId && !sendiri.length && <span className="text-amber-700">Tiang ujung — tidak ada cabang yang bisa dipindah.</span>}
+        {tiangId && !sendiri.length && <span className="text-amber-700">Tidak ada pilihan di tiang ini (tanpa SR di jalurnya / ujung tanpa cabang).</span>}
         <span className="text-ink-muted">atau klik tiangnya di peta.</span>
       </div>
       <p className="text-[11px] text-ink-muted">
-        Arus dihitung dari pembagian tarikan SR. &quot;+ pemerataan fasa&quot; memakai rata-rata ketiga fasa, jadi baru berlaku bila fasanya
-        diratakan sekalian.
+        Arus dihitung dari pembagian tarikan SR. &quot;Pindah SR&quot;: kabel baru ditarik sampai tiang itu dan SR sepanjang jalurnya
+        dipindah ke kabel baru, kabel lama tidak dipotong. &quot;+ pemerataan fasa&quot; memakai rata-rata ketiga fasa, jadi baru berlaku
+        bila fasanya diratakan sekalian.
       </p>
     </section>
   );

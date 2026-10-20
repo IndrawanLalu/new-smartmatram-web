@@ -12,16 +12,17 @@ import type { BarisMaterial } from "../_lib/materialJtr";
 interface Props {
   isi: BarisMaterial[];
   onUbah?: (isi: BarisMaterial[]) => void;
+  judul?: string;
 }
 
 const SEL = `${FIELD} py-1 text-xs`;
 
-export default function TabelMaterial({ isi, onUbah }: Props) {
+export default function TabelMaterial({ isi, onUbah, judul }: Props) {
   const ubah = (i: number, x: Partial<BarisMaterial>) => onUbah?.(isi.map((b, j) => (j === i ? { ...b, ...x } : b)));
 
   return (
     <section className="space-y-1.5">
-      <p className={EYEBROW}>Material {onUbah && "— periksa dan sesuaikan"}</p>
+      <p className={EYEBROW}>{judul ?? `Material ${onUbah ? "— periksa dan sesuaikan" : ""}`}</p>
       {isi.length === 0 && !onUbah ? (
         <p className="text-sm text-ink-muted">Tidak ada material.</p>
       ) : (

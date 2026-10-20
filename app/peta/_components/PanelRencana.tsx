@@ -1,7 +1,7 @@
 "use client";
 
 import { Crosshair, Loader2, Wrench, X } from "lucide-react";
-import { LABEL_RENCANA, namaOpsi, type NadaOpsi } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
+import { LABEL_RENCANA, namaOpsi, pindahSr, type NadaOpsi } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
 import type { OpsiPeta, RencanaPetaState } from "../_hooks/useRencanaPeta";
 import { GARIS, PANEL } from "../_ui";
 import { WARNA_PINDAH } from "./LapisanRencana";
@@ -21,7 +21,9 @@ function RincianOpsi({ o }: { o: OpsiPeta }) {
         <b className="text-white">{a(o.iLama)}</b>
       </p>
       <p className="text-gray-400">
-        Pindah {o.srPindah} SR · {o.tiangPindah} tiang · terjauh {m(o.jauhBaru)} / {m(o.jauhLama)} · tegangan turun ±{o.turunPct}%
+        SR baru {o.srPindah}{o.srTotal !== undefined ? ` / lama ${o.srTotal - o.srPindah}` : ""} ·{" "}
+        {pindahSr(o) ? `SR dari ${o.tiangPindah} tiang dipindah, kabel lama tidak dipotong` : `${o.tiangPindah} tiang pindah`} · terjauh{" "}
+        {m(o.jauhBaru)} / {m(o.jauhLama)} · tegangan turun ±{o.turunPct}%
       </p>
       {o.pemerataan && <p className="text-[#FCD34D]">Berlaku bila fasa diratakan sekalian.</p>}
       {o.peringatan.map((p) => <p key={p} className={NADA[o.nada]}>{p}</p>)}
@@ -107,7 +109,11 @@ export default function PanelRencana({ s }: { s: RencanaPetaState }) {
           {data.pindah.length > 0 && (
             <p className="flex items-center gap-2 text-gray-400">
               <span className="inline-block w-6 h-1.5 rounded-full" style={{ background: WARNA_PINDAH }} />
-              {r.jenis === "sisip" && !aktif ? "beban yang pindah ke gardu sisip" : "beban yang pindah ke jurusan baru"}
+              {r.jenis === "sisip" && !aktif
+                ? "beban yang pindah ke gardu sisip"
+                : aktif && pindahSr(aktif)
+                  ? "jalur kabel baru — SR di tiangnya dipindah"
+                  : "beban yang pindah ke jurusan baru"}
             </p>
           )}
           {r.catatan.map((x) => <p key={x} className="text-[#FCD34D]">{x}</p>)}

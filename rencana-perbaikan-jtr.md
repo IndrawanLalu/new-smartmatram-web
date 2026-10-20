@@ -118,3 +118,14 @@ material perlu tampil rapi di tugas → OTA) → P5.
 2. Material: mulai dari daftar bawaan, user menyunting di Pengaturan.
 3. Pekerjaan PHB-TR saat tambah jurusan ikut tugas HARJAR (satu WO).
 4. Naik daya / mutasi trafo → WO Optimasi Trafo.
+
+## Tambahan 21 Okt
+
+- **Ubah titik pecah** selama usulan belum di-WO-kan (rincian usulan → "Ubah titik pecah"): angka dihitung
+  ulang dari analisis saat ini, material diperkirakan ulang (material lama tampil sebagai pembanding).
+  SQL `scripts/jtr-usulan-ubah-pecah.sql` (fungsi `ubah_pecah_usulan_jtr`).
+- **Jumlah SR** tampil di tabel pilihan (SR baru / lama), tooltip klik tiang di peta, dan kode tiang di gambar survey.
+- **Cara baru "pindah SR ke kabel baru"** (tanpa potong sambung): kabel baru ditarik sejajar sampai tiang X,
+  SR di setiap tiang sepanjang jalur itu dipindah ke kabel baru, kabel lama utuh melayani sisanya. Untuk JTR
+  pendek dengan SR menumpuk di pangkal / jurusan lurus. Tampil berdampingan dengan pilihan potong; usulan
+  sistem bila tidak ada potong yang layak. Material bawaan sendiri (`pekerjaan = 'pindah-sr'`), WO tetap HARJAR.

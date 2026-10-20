@@ -3,8 +3,7 @@
 import { Plus, Trash2 } from "lucide-react";
 import { EYEBROW, FIELD } from "@/app/admin/_ui";
 import type { MaterialRefIsian } from "../_hooks/useUsulanJtr";
-import { LABEL_DASAR, type DasarMaterial, type PekerjaanMaterial } from "../_lib/materialJtr";
-import { LABEL_RENCANA } from "../_lib/rencanaJtr";
+import { LABEL_DASAR, LABEL_MATERIAL, type DasarMaterial, type PekerjaanMaterial } from "../_lib/materialJtr";
 
 /**
  * Daftar material bawaan usulan perbaikan JTR (Pengaturan, UP3). Jumlah di
@@ -17,7 +16,7 @@ interface Props {
   onUbah: (isi: MaterialRefIsian[]) => void;
 }
 
-const PEKERJAAN: PekerjaanMaterial[] = ["tambah-jurusan", "ganti-kabel", "pemerataan"];
+const PEKERJAAN = Object.keys(LABEL_MATERIAL) as PekerjaanMaterial[];
 const SEL = `${FIELD} h-8 text-xs`;
 
 export default function MaterialBawaanJtr({ isi, boleh, onUbah }: Props) {
@@ -28,7 +27,7 @@ export default function MaterialBawaanJtr({ isi, boleh, onUbah }: Props) {
       <p className={EYEBROW}>Material bawaan usulan</p>
       {PEKERJAAN.map((p) => (
         <div key={p} className="space-y-1.5">
-          <p className="text-sm font-semibold text-ink">{LABEL_RENCANA[p]}</p>
+          <p className="text-sm font-semibold text-ink">{LABEL_MATERIAL[p]}</p>
           {isi.map((m, i) =>
             m.pekerjaan !== p ? null : (
               <div key={i} className="flex items-center gap-1.5">
