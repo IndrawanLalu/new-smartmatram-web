@@ -53,6 +53,8 @@ export interface Gambar {
   label: LabelGambar[];
   /** pt per meter — untuk skala grafis. */
   skala: number;
+  /** Letak kertas di dunia ubin: titik (0,0) gambar = (x0, y0) zoom 0; `skala` pt per satuan. */
+  ruang: { x0: number; y0: number; skala: number };
   /** Tiang usulan yang sudah tidak ada di data JTR sekarang. */
   hilang: boolean;
 }
@@ -164,23 +166,32 @@ function tempatkan(calon: CalonLabel[], penghalang: Kotak[], ruas: [Titik, Titik
 /** Kode tiang tanpa awalan "<gardu>-" — awalannya disebut sekali di keterangan. */
 const pendek = (kode: string, gardu: string) => (kode.toUpperCase().startsWith(`${gardu}-`) ? kode.slice(gardu.length + 1) : kode);
 
+/** Koordinat → piksel ubin zoom 0 (Web Mercator). */
+const dunia = (k: Koord): Titik => {
+  const s = Math.sin((k.lat * Math.PI) / 180);
+  return { x: ((k.lng + 180) / 360) * 256, y: (0.5 - Math.log((1 + s) / (1 - s)) / (4 * Math.PI)) * 256 };
+};
+
 export function susunGambar(b: BahanGambar): Gambar {
-  // Proyeksi datar (cukup untuk jaringan beberapa km), utara di atas.
+  // Web Mercator — sama dengan ubin peta, supaya tiang tepat di atas latar.
+  // Satuan "dunia" = piksel ubin pada zoom 0 (256 × 256 untuk seluruh bumi).
   const semua = [...b.koord.values(), ...(b.gardu ? [b.gardu] : []), ...(b.sisip ? [b.sisip] : [])];
   const lat0 = semua.reduce((t, k) => t + k.lat, 0) / (semua.length || 1);
-  const lng0 = semua.reduce((t, k) => t + k.lng, 0) / (semua.length || 1);
-  const kx = Math.cos((lat0 * Math.PI) / 180) * 111_320;
-  const meter = (k: Koord) => ({ x: (k.lng - lng0) * kx, y: (lat0 - k.lat) * 110_574 });
-  const m = semua.map(meter);
+  const meterPerDunia = (Math.cos((lat0 * Math.PI) / 180) * 40_075_016.686) / 256;
+  const m = semua.map(dunia);
   const minX = Math.min(...m.map((p) => p.x));
   const maxX = Math.max(...m.map((p) => p.x));
   const minY = Math.min(...m.map((p) => p.y));
   const maxY = Math.max(...m.map((p) => p.y));
-  const skala = Math.min((GAMBAR_W - 2 * TEPI) / (maxX - minX || 1), (GAMBAR_H - 2 * TEPI) / (maxY - minY || 1), SKALA_MAKS);
+  const skala = Math.min(
+    (GAMBAR_W - 2 * TEPI) / (maxX - minX || 1e-9),
+    (GAMBAR_H - 2 * TEPI) / (maxY - minY || 1e-9),
+    SKALA_MAKS * meterPerDunia,
+  );
   const ox = (GAMBAR_W - (maxX - minX) * skala) / 2 - minX * skala;
   const oy = (GAMBAR_H - (maxY - minY) * skala) / 2 - minY * skala;
   const ke = (k: Koord): Titik => {
-    const p = meter(k);
+    const p = dunia(k);
     return { x: ox + p.x * skala, y: oy + p.y * skala };
   };
 
@@ -266,7 +277,11 @@ export function susunGambar(b: BahanGambar): Gambar {
   const ada = (id: string) => utama.has(id) && b.koord.has(id);
   const hilang = !!b.pecah && (!ada(b.pecah.titikId) || b.pecah.pindah.some((id) => !ada(id)));
 
-  return { garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, label, skala, hilang };
+  return {
+    garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, label, hilang,
+    skala: skala / meterPerDunia,
+    ruang: { x0: -ox / skala, y0: -oy / skala, skala },
+  };
 }
 
 /** Panjang skala grafis yang bulat dan muat di kolom kanan. */
@@ -274,4 +289,37 @@ export function skalaGrafis(skala: number, maksPt = 150): { meter: number; pt: n
   const bulat = [5, 10, 20, 25, 50, 100, 200, 250, 500, 1000, 2000];
   const meter = [...bulat].reverse().find((x) => x * skala <= maksPt) ?? bulat[0];
   return { meter, pt: meter * skala };
+}
+
+/** Ubin OpenStreetMap — sama dengan latar "Peta jalan" di /peta. */
+export const UBIN_OSM = (z: number, x: number, y: number) => `https://${"abc"[(x + y) % 3]}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+const ZOOM_MAKS = 19;
+
+export interface RencanaUbin {
+  /** Ukuran gambar latar (piksel) — menutup seluruh ruang gambar. */
+  lebar: number;
+  tinggi: number;
+  ubin: { url: string; dx: number; dy: number }[];
+}
+
+/**
+ * Ubin peta yang menutup ruang gambar. Zoom dipilih supaya ±1,4–2,8 piksel per
+ * pt (tajam dicetak A3) tanpa mengunduh ubin berlebihan.
+ */
+export function rencanaUbin(ruang: Gambar["ruang"]): RencanaUbin {
+  const z = Math.max(0, Math.min(ZOOM_MAKS, Math.round(Math.log2(ruang.skala * 2))));
+  const k = 2 ** z;
+  const pxPerPt = k / ruang.skala;
+  const lebar = Math.round(GAMBAR_W * pxPerPt);
+  const tinggi = Math.round(GAMBAR_H * pxPerPt);
+  const gx = ruang.x0 * k;
+  const gy = ruang.y0 * k;
+  const ubin: RencanaUbin["ubin"] = [];
+  for (let ty = Math.floor(gy / 256); ty <= Math.floor((gy + tinggi) / 256); ty++) {
+    if (ty < 0 || ty >= k) continue;
+    for (let tx = Math.floor(gx / 256); tx <= Math.floor((gx + lebar) / 256); tx++) {
+      ubin.push({ url: UBIN_OSM(z, ((tx % k) + k) % k, ty), dx: Math.round(tx * 256 - gx), dy: Math.round(ty * 256 - gy) });
+    }
+  }
+  return { lebar, tinggi, ubin };
 }

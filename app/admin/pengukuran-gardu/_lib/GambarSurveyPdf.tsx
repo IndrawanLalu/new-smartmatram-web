@@ -191,10 +191,13 @@ function Kolom({ u, g, garduNama, logo }: Props) {
   );
 }
 
-function Jtr({ g }: { g: Gambar }) {
+const PENUH = { position: "absolute", left: 0, top: 0, width: GAMBAR_W, height: GAMBAR_H } as const;
+
+function Jtr({ g, latar }: { g: Gambar; latar: string | null }) {
   return (
     <View style={S.gambar}>
-      <Svg width={GAMBAR_W} height={GAMBAR_H} viewBox={`0 0 ${GAMBAR_W} ${GAMBAR_H}`}>
+      {latar && <Image src={latar} style={PENUH} />}
+      <Svg width={GAMBAR_W} height={GAMBAR_H} viewBox={`0 0 ${GAMBAR_W} ${GAMBAR_H}`} style={PENUH}>
         {g.garis.map((x, i) => (
           <Line key={i} x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y} stroke={GARIS[x.jenis]} strokeWidth={TEBAL[x.jenis]} />
         ))}
@@ -222,11 +225,18 @@ function Jtr({ g }: { g: Gambar }) {
           style={{
             position: "absolute", left: l.x, top: l.y, fontSize: l.ukuran, lineHeight: 1,
             color: WARNA_LABEL[l.jenis], fontFamily: LABEL_TEBAL.includes(l.jenis) ? "Helvetica-Bold" : "Helvetica",
+            // Di atas peta jalan, tulisan diberi alas putih supaya tetap terbaca.
+            ...(latar ? { backgroundColor: "rgba(255,255,255,0.8)" } : {}),
           }}
         >
           {l.teks}
         </Text>
       ))}
+      {latar && (
+        <Text style={{ position: "absolute", right: 4, bottom: 3, fontSize: 5.5, color: "#4B5563", backgroundColor: "rgba(255,255,255,0.8)" }}>
+          Latar © kontributor OpenStreetMap
+        </Text>
+      )}
       {g.hilang && (
         <Text style={{ position: "absolute", left: 8, bottom: 6, fontSize: 7, color: MERAH }}>
           Sebagian tiang usulan sudah tidak ada di data JTR sekarang — JTR berubah sejak usulan disimpan.
@@ -241,13 +251,15 @@ interface Props {
   g: Gambar;
   garduNama: string | null;
   logo: string | null;
+  /** Latar peta jalan (JPEG data URL); null = latar putih. */
+  latar: string | null;
 }
 
 export default function GambarSurveyPdf(p: Props) {
   return (
     <Document title={`Gambar survey ${p.u.gardu_kode}-${p.u.jurusan}`}>
       <Page size="A3" orientation="landscape" style={S.hal}>
-        <Jtr g={p.g} />
+        <Jtr g={p.g} latar={p.latar} />
         <Kolom {...p} />
       </Page>
     </Document>
