@@ -48,6 +48,7 @@ import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
 import EditPengukuranModal from "./_components/EditPengukuranModal";
 import FilterGarduTab from "./_components/FilterGarduTab";
+import SelUnbalance from "./_components/SelUnbalance";
 import PersetujuanUkurTab from "./_components/PersetujuanUkurTab";
 import TeganganUjungTab from "./_components/TeganganUjungTab";
 import { useTahanAmg, labelTahan } from "./_hooks/useTahanAmg";
@@ -725,6 +726,7 @@ export default function PengukuranGarduPage() {
                   <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32"><IkonKolom teks="% Beban" />% Beban</th>
                   <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Beban KVA" />Beban KVA</th>
                   <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus R/S/T (A)" />Arus R/S/T (A)</th>
+                  <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Unbalance" />Unbalance</th>
                   <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Suhu (°C)" />Suhu (°C)</th>
                   <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
                   <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Petugas" />Petugas</th>
@@ -734,7 +736,7 @@ export default function PengukuranGarduPage() {
                 {loading ? (
                   Array.from({ length: 5 }).map((_, i) => (
                     <tr key={i}>
-                      {Array.from({ length: 11 }).map((_, j) => (
+                      {Array.from({ length: 12 }).map((_, j) => (
                         <td key={j} className="px-4 py-3">
                           <div className="h-4 bg-line animate-pulse rounded" />
                         </td>
@@ -743,7 +745,7 @@ export default function PengukuranGarduPage() {
                   ))
                 ) : paginatedData.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="text-center py-12 text-ink-soft text-sm">
+                    <td colSpan={12} className="text-center py-12 text-ink-soft text-sm">
                       Tidak ada data pengukuran untuk periode ini
                     </td>
                   </tr>
@@ -822,6 +824,7 @@ export default function PengukuranGarduPage() {
                         <td className="px-4 py-3 text-center">
                           <ArusCell r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} kva={row.kva_trafo} />
                         </td>
+                        <SelUnbalance r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} />
                         <td className={`px-4 py-3 text-center font-mono font-medium ${isHighTemp ? "text-amber-600" : "text-ink-soft"}`}>
                           {row.suhu_trafo}{isHighTemp && " 🌡"}
                         </td>

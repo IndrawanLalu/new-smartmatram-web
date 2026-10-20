@@ -12,7 +12,7 @@ import {
   statusAmg,
 } from "../_hooks/usePengukuranGardu";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
-import { calcUnbalancePct } from "@/lib/anomaliGardu";
+import SelUnbalance, { UNBALANCE_BATAS } from "./SelUnbalance";
 import GarduDetailModal from "./GarduDetailModal";
 import EditPengukuranModal from "./EditPengukuranModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -38,10 +38,8 @@ const BEBAN_QUICK = [
   { label: "Rendah <20%", min: "", max: "20" },
 ];
 
-/** Unbalance arus fasa: chip cepat, dan batas merah di kolom tabel bila
- *  isian unbalance kosong (sama dengan batas kuning lapisan Kesehatan peta). */
+/** Unbalance arus fasa: chip cepat. */
 const UNBALANCE_QUICK = ["20", "25", "30"];
-const UNBALANCE_BATAS = 20;
 
 const FLAG_OPTIONS = [
   { key: "onlyOverload" as const, label: `Trafo Overload (beban ≥ ${OVERLOAD_PCT}%)` },
@@ -407,8 +405,6 @@ export default function FilterGarduTab({ user }: Props) {
                     const isHighTemp = row.suhu_trafo > HIGH_TEMP_C;
                     const isHighCurrent = maxArus > HIGH_CURRENT_A;
                     const isPhaseOl = maxArus >= iNom;
-                    const terukur = row.total_arus_r + row.total_arus_s + row.total_arus_t > 0;
-                    const unb = calcUnbalancePct(row.total_arus_r, row.total_arus_s, row.total_arus_t);
 
                     const arusCls = (v: number) => {
                       if (v > HIGH_CURRENT_A) return "text-red-600 font-bold";
@@ -460,9 +456,7 @@ export default function FilterGarduTab({ user }: Props) {
                             <AlertTriangle size={10} className="inline ml-1" />
                           )}
                         </td>
-                        <td className={`px-4 py-3 text-center font-mono text-xs ${terukur && unb >= batasUnb ? "text-red-600 font-semibold" : "text-ink-soft"}`}>
-                          {terukur ? `${unb.toFixed(1).replace(".", ",")}%` : "—"}
-                        </td>
+                        <SelUnbalance r={row.total_arus_r} s={row.total_arus_s} t={row.total_arus_t} batas={batasUnb} />
                         <td className={`px-4 py-3 text-center font-mono text-xs ${isHighTemp ? "text-amber-600 font-medium" : "text-ink-soft"}`}>
                           {row.suhu_trafo}°C
                         </td>
