@@ -21,19 +21,26 @@ interface Props {
   onTersimpan: () => void;
 }
 
-const BATAS: { kunci: keyof PengaturanJtr; label: string; satuan: string; ket: string }[] = [
+interface Batas { kunci: keyof PengaturanJtr; label: string; satuan: string; ket: string }
+
+const BATAS: Batas[] = [
   { kunci: "batas_arus_jurusan_a", label: "Arus jurusan maksimum", satuan: "A", ket: "Arus fasa terbesar di satu jurusan" },
   { kunci: "batas_kha_pct", label: "Beban kabel maksimum", satuan: "% KHA", ket: "Arus dibanding KHA kabel terkecil di jurusan" },
   { kunci: "batas_panjang_m", label: "Lintasan terjauh maksimum", satuan: "m", ket: "Dari gardu ke tiang ujung, lewat kabel" },
 ];
 
+const BATAS_RENCANA: Batas[] = [
+  { kunci: "batas_kabel_baru_m", label: "Kabel baru tambah jurusan maksimum", satuan: "m", ket: "Titik pecah lebih jauh dari ini → disarankan sisip gardu" },
+  { kunci: "batas_trafo_pct", label: "Beban trafo maksimum", satuan: "%", ket: "Di atas ini tidak disarankan tambah jurusan → sisip / naik daya" },
+];
+
+const SEMUA_BATAS = [...BATAS, ...BATAS_RENCANA];
+
 export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTersimpan }: Props) {
   const toast = useToast();
-  const [batas, setBatas] = useState<Record<keyof PengaturanJtr, string>>({
-    batas_arus_jurusan_a: String(awal.batas_arus_jurusan_a),
-    batas_kha_pct: String(awal.batas_kha_pct),
-    batas_panjang_m: String(awal.batas_panjang_m),
-  });
+  const [batas, setBatas] = useState(
+    () => Object.fromEntries(SEMUA_BATAS.map((b) => [b.kunci, String(awal[b.kunci])])) as Record<keyof PengaturanJtr, string>,
+  );
   const [kha, setKha] = useState<(KhaKabel & { isi: string })[] | null>(null);
   const [sibuk, setSibuk] = useState(false);
 
@@ -47,11 +54,7 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
   }, [toast]);
 
   const simpan = async () => {
-    const p = {
-      batas_arus_jurusan_a: Number(batas.batas_arus_jurusan_a),
-      batas_kha_pct: Number(batas.batas_kha_pct),
-      batas_panjang_m: Number(batas.batas_panjang_m),
-    };
+    const p = Object.fromEntries(SEMUA_BATAS.map((b) => [b.kunci, Number(batas[b.kunci])])) as unknown as PengaturanJtr;
     if (Object.values(p).some((v) => !(v > 0))) {
       toast.error("Semua batas wajib diisi angka lebih dari 0.");
       return;
@@ -73,6 +76,21 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
     }
   };
 
+  const isianBatas = (b: Batas) => (
+    <label key={b.kunci} className="flex items-center gap-3">
+      <span className="flex-1 min-w-0">
+        <span className="block text-sm font-medium text-ink">{b.label}</span>
+        <span className="block text-xs text-ink-muted">{b.ket}</span>
+      </span>
+      <input
+        type="number" min={1} value={batas[b.kunci]} disabled={!boleh}
+        onChange={(e) => setBatas((x) => ({ ...x, [b.kunci]: e.target.value }))}
+        className={`${FIELD} w-24 text-right`}
+      />
+      <span className="w-12 text-xs text-ink-soft">{b.satuan}</span>
+    </label>
+  );
+
   return (
     <ModalShell
       title="Pengaturan Analisis JTR"
@@ -93,21 +111,13 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
       <div className="space-y-5">
         <section className="space-y-2.5">
           <p className={EYEBROW}>Batas merah</p>
-          {BATAS.map((b) => (
-            <label key={b.kunci} className="flex items-center gap-3">
-              <span className="flex-1 min-w-0">
-                <span className="block text-sm font-medium text-ink">{b.label}</span>
-                <span className="block text-xs text-ink-muted">{b.ket}</span>
-              </span>
-              <input
-                type="number" min={1} value={batas[b.kunci]} disabled={!boleh}
-                onChange={(e) => setBatas((x) => ({ ...x, [b.kunci]: e.target.value }))}
-                className={`${FIELD} w-24 text-right`}
-              />
-              <span className="w-12 text-xs text-ink-soft">{b.satuan}</span>
-            </label>
-          ))}
+          {BATAS.map(isianBatas)}
           <p className="text-xs text-ink-muted">Kuning = sudah mencapai 80% dari batas arus atau batas % KHA.</p>
+        </section>
+
+        <section className="space-y-2.5">
+          <p className={EYEBROW}>Rencana perbaikan</p>
+          {BATAS_RENCANA.map(isianBatas)}
         </section>
 
         <section className="space-y-2">

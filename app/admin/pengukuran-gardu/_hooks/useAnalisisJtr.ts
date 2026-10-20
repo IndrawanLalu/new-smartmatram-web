@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import type { GawangJtr } from "../_lib/rencanaJtr";
 
 /**
  * Analisis JTR (F1, 20 Okt 2026) — satu baris per gardu + jurusan dari view
@@ -50,7 +51,13 @@ export interface PengaturanJtr {
   batas_arus_jurusan_a: number;
   batas_panjang_m: number;
   batas_kha_pct: number;
+  /** Rencana: kabel baru tambah jurusan maksimum; lebih dari ini → sisip. */
+  batas_kabel_baru_m: number;
+  /** Rencana: beban trafo di atas ini → tidak tambah jurusan, sisip/naik daya. */
+  batas_trafo_pct: number;
 }
+
+const KOLOM_PENGATURAN = "batas_arus_jurusan_a,batas_panjang_m,batas_kha_pct,batas_kabel_baru_m,batas_trafo_pct";
 
 export interface KhaKabel {
   jenis: string;
@@ -71,11 +78,15 @@ function keJurusan(r: Record<string, unknown>): JurusanJtr {
   return x as unknown as JurusanJtr;
 }
 
-const PESAN_SQL = "View analisis belum ada — jalankan scripts/analisis-jtr.sql di Supabase.";
+const PESAN_SQL = "Analisis JTR belum lengkap di database — jalankan scripts/analisis-jtr.sql lalu analisis-jtr-rencana.sql di Supabase.";
 
 export function useAnalisisJtr(ulp: string) {
   const [baris, setBaris] = useState<JurusanJtr[]>([]);
   const [pengaturan, setPengaturan] = useState<PengaturanJtr | null>(null);
+  /** Gawang per "GARDU|JURUSAN" — bahan rencana perbaikan. */
+  const [gawang, setGawang] = useState<Map<string, GawangJtr[]>>(new Map());
+  /** KHA per "JENIS|UKURAN". */
+  const [kha, setKha] = useState<Map<string, number>>(new Map());
   const [memuat, setMemuat] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
 
@@ -83,23 +94,33 @@ export function useAnalisisJtr(ulp: string) {
     setMemuat(true);
     setGalat(null);
     try {
-      const [rows, atur] = await Promise.all([
+      const [rows, atur, gw, kh] = await Promise.all([
         fetchAllRows<Record<string, unknown>>(() => {
           const q = supabaseBrowser.from("analisis_jtr_jurusan").select("*").order("gardu_kode").order("jurusan");
           return ulp === "ALL" ? q : q.eq("ulp", ulp);
         }),
-        supabaseBrowser.from("jtr_analisis_pengaturan").select("batas_arus_jurusan_a,batas_panjang_m,batas_kha_pct").eq("id", 1).single(),
+        supabaseBrowser.from("jtr_analisis_pengaturan").select(KOLOM_PENGATURAN).eq("id", 1).single(),
+        fetchAllRows<Record<string, unknown>>(() =>
+          supabaseBrowser.from("analisis_jtr_gawang").select("*").order("gardu_kode").order("jurusan").order("tiang_id"),
+        ),
+        supabaseBrowser.from("jtr_kha_ref").select("jenis,ukuran,kha_a").not("kha_a", "is", null),
       ]);
       if (atur.error) throw atur.error;
+      if (kh.error) throw kh.error;
       setBaris(rows.map(keJurusan));
-      setPengaturan({
-        batas_arus_jurusan_a: Number(atur.data.batas_arus_jurusan_a),
-        batas_panjang_m: Number(atur.data.batas_panjang_m),
-        batas_kha_pct: Number(atur.data.batas_kha_pct),
-      });
+      setPengaturan(Object.fromEntries(KOLOM_PENGATURAN.split(",").map((k) => [k, Number((atur.data as Record<string, unknown>)[k])])) as unknown as PengaturanJtr);
+      const g = new Map<string, GawangJtr[]>();
+      for (const x of gw) {
+        const kunci = `${x.gardu_kode}|${x.jurusan}`;
+        const daftar = g.get(kunci) ?? [];
+        daftar.push({ ...(x as unknown as GawangJtr), panjang_m: Number(x.panjang_m), tarikan_sr: Number(x.tarikan_sr) });
+        g.set(kunci, daftar);
+      }
+      setGawang(g);
+      setKha(new Map((kh.data ?? []).map((k) => [`${k.jenis}|${k.ukuran}`, Number(k.kha_a)])));
     } catch (e) {
       const pesan = (e as { message?: string; code?: string });
-      setGalat(pesan.code === "PGRST205" || /analisis_jtr|jtr_analisis/.test(pesan.message ?? "") ? PESAN_SQL : (pesan.message ?? "Gagal memuat"));
+      setGalat(pesan.code === "PGRST205" || /analisis_jtr|jtr_analisis|batas_kabel_baru|batas_trafo/.test(pesan.message ?? "") ? PESAN_SQL : (pesan.message ?? "Gagal memuat"));
       setBaris([]);
     } finally {
       setMemuat(false);
@@ -110,7 +131,7 @@ export function useAnalisisJtr(ulp: string) {
     void muat();
   }, [muat]);
 
-  return { baris, pengaturan, memuat, galat, muatUlang: muat };
+  return { baris, pengaturan, gawang, kha, memuat, galat, muatUlang: muat };
 }
 
 /** Daftar kabel terpasang + KHA-nya, untuk Pengaturan. */

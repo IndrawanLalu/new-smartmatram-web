@@ -6,12 +6,14 @@ import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 import { useAnalisisJtr, type JurusanJtr, type PengaturanJtr, type StatusJurusan } from "../_hooks/useAnalisisJtr";
 import PengaturanAnalisisJtr from "./PengaturanAnalisisJtr";
+import RincianRencanaJtr from "./RincianRencanaJtr";
+import { buatRencana, LABEL_RENCANA, type JenisRencana, type Rencana } from "../_lib/rencanaJtr";
 
 /**
  * Tab "Analisis JTR" (F1, 20 Okt 2026). Satu baris per gardu + jurusan:
  * arus terukur dipasangkan dengan bentuk jaringannya dari inspeksi JTR —
- * untuk menjawab "gardu/jurusan mana yang harus diperbaiki". Rekomendasi
- * (tambah jurusan / sisip) menyusul di F3, setelah angka ini dipercaya.
+ * untuk menjawab "gardu/jurusan mana yang harus diperbaiki", lalu kolom
+ * Rencana perbaikan (F3, `_lib/rencanaJtr.ts`) menjawab "diapakan".
  *
  * Berangkat dari "Merah": yang dicari orang di sini adalah yang harus
  * dikerjakan, bukan daftar 3.000 jurusan yang sebagian besar sehat.
@@ -42,6 +44,18 @@ const angka = (v: number | null | undefined, d = 0) =>
 
 const TH = "px-3 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap";
 
+const NADA_RENCANA: Record<JenisRencana, string> = {
+  pemerataan: "text-sky-700",
+  "tambah-jurusan": "text-navy-600",
+  sisip: "text-red-700",
+  "ganti-kabel": "text-amber-700",
+  "naik-daya": "text-red-700",
+  "ukur-ujung": "text-ink-soft",
+  "inspeksi-jtr": "text-ink-soft",
+};
+
+const kunciBaris = (r: JurusanJtr) => `${r.gardu_kode}|${r.jurusan}`;
+
 interface Props {
   ulp: string;
   bolehAtur: boolean;
@@ -49,7 +63,35 @@ interface Props {
 }
 
 export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
-  const { baris, pengaturan, memuat, galat, muatUlang } = useAnalisisJtr(ulp);
+  const { baris, pengaturan, gawang, kha, memuat, galat, muatUlang } = useAnalisisJtr(ulp);
+  const [jenisRencana, setJenisRencana] = useState<JenisRencana | "">("");
+  const [buka, setBuka] = useState<JurusanJtr | null>(null);
+
+  const rencana = useMemo(() => {
+    const h = new Map<string, Rencana>();
+    if (!pengaturan) return h;
+    // "Naik daya" adalah rencana GARDU, bukan jurusan — cukup sekali, di
+    // jurusan berarus terbesar; tanpa ini satu trafo muncul empat kali.
+    const naikDaya = new Map<string, JurusanJtr>();
+    for (const r of baris) {
+      const x = buatRencana(r, gawang.get(kunciBaris(r)), pengaturan, kha);
+      if (!x) continue;
+      if (x.jenis === "naik-daya") {
+        const lain = naikDaya.get(r.gardu_kode);
+        if (lain && (lain.arus_maks ?? 0) >= (r.arus_maks ?? 0)) continue;
+        if (lain) h.delete(kunciBaris(lain));
+        naikDaya.set(r.gardu_kode, r);
+      }
+      h.set(kunciBaris(r), x);
+    }
+    return h;
+  }, [baris, gawang, kha, pengaturan]);
+
+  const cacahRencana = useMemo(() => {
+    const c = new Map<JenisRencana, number>();
+    for (const x of rencana.values()) c.set(x.jenis, (c.get(x.jenis) ?? 0) + 1);
+    return c;
+  }, [rencana]);
   const [status, setStatus] = useState<StatusJurusan | "semua">("merah");
   const [sebab, setSebab] = useState<Sebab>("semua");
   const [cari, setCari] = useState("");
@@ -67,9 +109,10 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
     const cocokSebab = SEBAB.find((s) => s.kunci === sebab)!.cocok;
     return baris
       .filter((r) => (status === "semua" || r.status === status) && cocokSebab(r))
+      .filter((r) => !jenisRencana || rencana.get(kunciBaris(r))?.jenis === jenisRencana)
       .filter((r) => !q || [r.gardu_kode, r.penyulang ?? "", r.gardu_nama ?? ""].some((v) => v.toUpperCase().includes(q)))
       .sort((a, b) => URUT[a.status] - URUT[b.status] || (b.beban_kha_pct ?? -1) - (a.beban_kha_pct ?? -1) || (b.arus_maks ?? 0) - (a.arus_maks ?? 0) || (b.terjauh_m ?? 0) - (a.terjauh_m ?? 0));
-  }, [baris, status, sebab, cari]);
+  }, [baris, status, sebab, cari, jenisRencana, rencana]);
 
   const halaman = Math.max(1, Math.ceil(tampil.length / PAGE));
   const isi = tampil.slice((hal - 1) * PAGE, hal * PAGE);
@@ -85,7 +128,17 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
               <span className={`tabular-nums ${status === k ? "text-white/70" : "text-ink-muted"}`}>{cacah[k]}</span>
             </button>
           ))}
-          <div className="relative ml-auto w-64">
+          <select
+            value={jenisRencana}
+            onChange={(e) => ganti(setJenisRencana)(e.target.value as JenisRencana | "")}
+            className={`${FIELD} ml-auto`}
+          >
+            <option value="">Semua rencana</option>
+            {(Object.keys(LABEL_RENCANA) as JenisRencana[]).map((k) => (
+              <option key={k} value={k}>{LABEL_RENCANA[k]} ({cacahRencana.get(k) ?? 0})</option>
+            ))}
+          </select>
+          <div className="relative w-64">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
             <input value={cari} onChange={(e) => ganti(setCari)(e.target.value)} placeholder="Cari gardu atau penyulang…" className={`${FIELD} w-full pl-8`} />
           </div>
@@ -130,10 +183,13 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
                     Slot jurusan*
                   </th>
                   <th className={TH}>Status</th>
+                  <th className={TH}>Rencana perbaikan</th>
                 </tr>
               </thead>
               <tbody>
-                {isi.map((r) => <Baris key={`${r.gardu_kode}-${r.jurusan}`} r={r} />)}
+                {isi.map((r) => (
+                  <Baris key={kunciBaris(r)} r={r} rencana={rencana.get(kunciBaris(r))} onBuka={() => setBuka(r)} />
+                ))}
               </tbody>
             </table>
           </div>
@@ -156,6 +212,10 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
         </>
       )}
 
+      {buka && rencana.get(kunciBaris(buka)) && (
+        <RincianRencanaJtr r={buka} rencana={rencana.get(kunciBaris(buka))!} onTutup={() => setBuka(null)} />
+      )}
+
       {atur && pengaturan && (
         <PengaturanAnalisisJtr
           awal={pengaturan}
@@ -172,14 +232,14 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
   );
 }
 
-function Baris({ r }: { r: JurusanJtr }) {
+function Baris({ r, rencana, onBuka }: { r: JurusanJtr; rencana?: Rencana; onBuka: () => void }) {
   const merahArus = r.arus_lebih ? "text-red-600 font-bold" : "text-ink";
   const tanpaArus = r.jtr_ada && !(r.arus_maks && r.arus_maks > 0);
   const slotKosong = r.jurusan_tersedia !== null && r.jurusan_terpakai !== null ? r.jurusan_tersedia - r.jurusan_terpakai : null;
   const sebab = [r.arus_lebih && "arus", r.kha_lebih && "KHA", r.panjang_lebih && "panjang"].filter(Boolean).join(" · ");
 
   return (
-    <tr className="border-t border-line align-top hover:bg-navy-50/50">
+    <tr onClick={rencana ? onBuka : undefined} className={`border-t border-line align-top hover:bg-navy-50/50 ${rencana ? "cursor-pointer" : ""}`}>
       <td className="px-3 py-2.5">
         <span className="block font-semibold text-ink">{r.gardu_kode}</span>
         <span className="block text-[11px] text-ink-muted max-w-48 truncate">{[r.penyulang, r.gardu_nama].filter(Boolean).join(" · ")}</span>
@@ -240,6 +300,16 @@ function Baris({ r }: { r: JurusanJtr }) {
           {r.status === "merah" ? "Perlu diperbaiki" : r.status === "kuning" ? "Mendekati" : "Aman"}
         </span>
         {sebab && <span className="block text-[11px] text-red-600 mt-0.5">{sebab}</span>}
+      </td>
+      <td className="px-3 py-2.5 min-w-56">
+        {rencana ? (
+          <>
+            <span className={`block text-xs font-semibold ${NADA_RENCANA[rencana.jenis]}`}>{LABEL_RENCANA[rencana.jenis]}</span>
+            <span className="block text-[11px] text-ink-soft">{rencana.ringkas}</span>
+          </>
+        ) : (
+          <span className="text-[11px] text-ink-muted">—</span>
+        )}
       </td>
     </tr>
   );
