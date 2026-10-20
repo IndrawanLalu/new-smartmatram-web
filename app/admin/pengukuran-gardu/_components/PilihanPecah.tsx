@@ -17,7 +17,7 @@ interface Props {
   pengaturan: PengaturanJtr;
   pilihan: OpsiPecah[];
   terpilih: string;
-  onPilih: (kunci: string) => void;
+  onPilih: (o: OpsiPecah) => void;
 }
 
 export const NADA_OPSI: Record<NadaOpsi, { label: string; kelas: string }> = {
@@ -65,7 +65,7 @@ export default function PilihanPecah({ r, gawang, pengaturan, pilihan, terpilih,
             {baris.map((o) => (
               <tr
                 key={o.kunci}
-                onClick={() => onPilih(o.kunci)}
+                onClick={() => onPilih(o)}
                 className={`border-t border-line align-top cursor-pointer ${terpilih === o.kunci ? "bg-navy-50" : "hover:bg-surface"}`}
               >
                 <td className="px-2.5 py-2 min-w-36">

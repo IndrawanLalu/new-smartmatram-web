@@ -69,6 +69,8 @@ export interface Rencana {
   pindah?: string[];
   /** Pilihan titik pecah untuk dibandingkan; [0] = usulan sistem. */
   pilihan?: OpsiPecah[];
+  /** Ganti kabel: panjang & jumlah gawang yang diganti — dasar material. */
+  besaran?: { kabel_m: number; tiang: number };
 }
 
 interface Simpul extends GawangJtr {
@@ -169,6 +171,8 @@ export interface OpsiPecah {
   iLama: number;
   srPindah: number;
   tiangPindah: number;
+  /** Tiang yang dilalui kabel baru dari gardu sampai titik pecah. */
+  tiangLintas: number;
   /** Lintasan terjauh (m dari gardu) jurusan baru / lama sesudah dipecah. */
   jauhBaru: number;
   jauhLama: number;
@@ -233,6 +237,7 @@ function hitungOpsi(k: KonteksPecah, c: Simpul, pemerataan: boolean): OpsiPecah 
     iLama,
     srPindah: c.srHilir,
     tiangPindah: hilir.size,
+    tiangLintas: leluhur.size,
     jauhBaru: c.jauh,
     jauhLama: Math.max(0, ...lama.map((s) => s.d)),
     turunPct: Math.round((1 - momenMaks / momen(p.simpul, perSr)) * 100),
@@ -315,6 +320,18 @@ export function opsiDiTiang(
 
 /** "Pecah di B3 → cabang B3_B1" */
 export const namaOpsi = (o: OpsiPecah) => `${o.titikKode ?? "tiang"} → cabang ${o.cabangKode ?? "tiang"}`;
+
+/** Satu baris ringkas tambah jurusan — kolom tabel & judul usulan/WO. */
+export const ringkasOpsi = (o: OpsiPecah) =>
+  `Tambah jurusan, pecah di ${o.titikKode} (${m(o.kabelBaru)})${o.pemerataan ? " + pemerataan" : ""}`;
+
+/** Rincian tambah jurusan untuk satu pilihan titik pecah. */
+export const rinciOpsi = (o: OpsiPecah, srTotal: number) => [
+  `Pecah di tiang ${o.titikKode}${o.percabangan ? " (percabangan)" : ""}: cabang ${o.cabangKode} dilepas dan disambung ke jurusan baru.`,
+  `Kabel baru dari gardu ±${m(o.kabelBaru)} (menyusuri jalur yang ada, ${o.tiangLintas} tiang).`,
+  `Pindah ${o.srPindah} dari ${srTotal} tarikan SR → jurusan baru ±${a(o.iBaru)}, jurusan lama ±${a(o.iLama)}${o.pemerataan ? " — setelah fasa diratakan" : ""}.`,
+  `Perkiraan jatuh tegangan terburuk turun ±${o.turunPct}%.`,
+];
 
 /** Tiang di titik tengah beban: separuh tarikan SR ada sebelum/sesudahnya. */
 function titikBerat(p: Pohon): Simpul | null {
@@ -418,14 +435,9 @@ export function buatRencana(
     const t = pilihan[0];
     return {
       jenis: "tambah-jurusan",
-      ringkas: `Tambah jurusan, pecah di ${t.titikKode} (${m(t.kabelBaru)})${t.pemerataan ? " + pemerataan" : ""}`,
+      ringkas: ringkasOpsi(t),
       alasan: [sebab, `Rata-rata fasa ${a(rata)} juga di atas batas — pemerataan saja tidak cukup.`],
-      rinci: [
-        `Pecah di tiang ${t.titikKode}${t.percabangan ? " (percabangan)" : ""}: cabang ${t.cabangKode} dilepas dan disambung ke jurusan baru.`,
-        `Kabel baru dari gardu ±${m(t.kabelBaru)} (menyusuri jalur yang ada).`,
-        `Pindah ${t.srPindah} dari ${pohon.sr} tarikan SR → jurusan baru ±${a(t.iBaru)}, jurusan lama ±${a(t.iLama)}${t.pemerataan ? " — setelah fasa diratakan" : ""}.`,
-        `Perkiraan jatuh tegangan terburuk turun ±${t.turunPct}%.`,
-      ],
+      rinci: rinciOpsi(t, pohon.sr),
       pilihanLain: [],
       catatan,
       titik: [{ tiang_id: t.titikId, kode: t.titikKode, peran: "pecah" }],
@@ -452,6 +464,7 @@ export function buatRencana(
         pilihanLain: [],
         catatan: [],
         titik: leher.map((x) => ({ tiang_id: x.tiang_id, kode: x.kode, peran: "kabel" as const })),
+        besaran: { kabel_m: panjang, tiang: leher.length },
       };
     }
   }

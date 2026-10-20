@@ -6,10 +6,13 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { bacaKha, simpanPengaturan, type KhaKabel, type PengaturanJtr } from "../_hooks/useAnalisisJtr";
+import { bacaMaterialRef, simpanMaterialRef, type MaterialRefIsian } from "../_hooks/useUsulanJtr";
+import type { MaterialRef } from "../_lib/materialJtr";
+import MaterialBawaanJtr from "./MaterialBawaanJtr";
 
 /**
- * Pengaturan Analisis JTR — batas arus jurusan, panjang lintasan, % KHA, dan
- * KHA tiap kabel yang terpasang. Berlaku seluruh UP3, jadi hanya akun UP3 yang
+ * Pengaturan Analisis JTR — batas arus jurusan, panjang lintasan, % KHA,
+ * KHA tiap kabel yang terpasang, dan material bawaan usulan perbaikan. Berlaku seluruh UP3, jadi hanya akun UP3 yang
  * bisa menyimpan (RLS di scripts/analisis-jtr.sql); role lain hanya melihat.
  */
 
@@ -43,6 +46,18 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
   );
   const [kha, setKha] = useState<(KhaKabel & { isi: string })[] | null>(null);
   const [sibuk, setSibuk] = useState(false);
+  const [materialAwal, setMaterialAwal] = useState<MaterialRef[]>([]);
+  const [material, setMaterial] = useState<MaterialRefIsian[] | null>(null);
+
+  useEffect(() => {
+    bacaMaterialRef()
+      .then((d) => {
+        setMaterialAwal(d);
+        setMaterial(d);
+      })
+      // Tabelnya belum ada (SQL usulan belum jalan) — pengaturan lain tetap bisa disimpan.
+      .catch(() => setMaterial(null));
+  }, []);
 
   useEffect(() => {
     bacaKha()
@@ -64,9 +79,14 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
       toast.error("KHA harus angka lebih dari 0, atau dikosongkan.");
       return;
     }
+    if (material?.some((m) => !m.nama.trim() || !m.satuan.trim())) {
+      toast.error("Nama dan satuan material wajib diisi — hapus barisnya bila tidak dipakai.");
+      return;
+    }
     setSibuk(true);
     try {
       await simpanPengaturan(p, k, oleh);
+      if (material) await simpanMaterialRef(materialAwal, material.map((m) => ({ ...m, nama: m.nama.trim(), satuan: m.satuan.trim() })));
       toast.success("Pengaturan Analisis JTR tersimpan.");
       onTersimpan();
     } catch (e) {
@@ -119,6 +139,8 @@ export default function PengaturanAnalisisJtr({ awal, boleh, oleh, onTutup, onTe
           <p className={EYEBROW}>Rencana perbaikan</p>
           {BATAS_RENCANA.map(isianBatas)}
         </section>
+
+        {material && <MaterialBawaanJtr isi={material} boleh={boleh} onUbah={setMaterial} />}
 
         <section className="space-y-2">
           <p className={EYEBROW}>KHA kabel terpasang</p>

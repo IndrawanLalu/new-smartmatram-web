@@ -926,7 +926,7 @@ export default function PengukuranGarduPage() {
       )}
 
       {activeTab === "analisis-jtr" && (
-        <AnalisisJtrTab ulp={activeUlp} bolehAtur={user.role === "UP3"} oleh={user.name ?? user.email ?? ""} />
+        <AnalisisJtrTab ulp={activeUlp} bolehAtur={user.role === "UP3"} bolehUsul={user.role === "UP3" || user.role === "admin"} oleh={user.name ?? user.email ?? ""} />
       )}
 
     </div>

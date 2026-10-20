@@ -1,7 +1,7 @@
 # Rencana — Usulan Perbaikan JTR → pilih titik pecah → material → WO
 
-20 Okt 2026. Lanjutan Analisis JTR (F1 anomali, F3 rencana, peta). Belum dibangun —
-menunggu persetujuan user.
+20 Okt 2026. Lanjutan Analisis JTR (F1 anomali, F3 rencana, peta).
+Status: P1 dibangun (a794ff5). P2–P4 dibangun 20 Okt — SQL `scripts/jtr-usulan-perbaikan.sql`. P5 belum.
 
 ## Alur besar
 
@@ -112,11 +112,9 @@ material (bisa diubah), catatan.
 P1 (web saja, tanpa SQL) → user coba → P2+P3 (SQL + web) → P4 (web; HP hanya bila
 material perlu tampil rapi di tugas → OTA) → P5.
 
-## Pertanyaan terbuka
+## Keputusan user (20 Okt)
 
-1. Sisip gardu: cukup jadi Usulan Sisip (Excel untuk perencanaan), bukan WO yantek?
-2. Material: apakah ada daftar material standar (nama + satuan, mungkin kode
-   material) yang mau dipakai, atau mulai dari daftar bawaan lalu disunting?
-3. Tambah jurusan: pekerjaan di PHB-TR (NH fuse/rel) ikut tugas HARJAR atau WO terpisah
-   ke HARGAR?
-4. Naik daya / mutasi trafo: diarahkan ke Optimasi Trafo?
+1. Sisip gardu = daftar usulan saja (Excel untuk perencanaan), tidak di-WO-kan.
+2. Material: mulai dari daftar bawaan, user menyunting di Pengaturan.
+3. Pekerjaan PHB-TR saat tambah jurusan ikut tugas HARJAR (satu WO).
+4. Naik daya / mutasi trafo → WO Optimasi Trafo.

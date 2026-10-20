@@ -7,6 +7,8 @@ import IkonKolom from "@/app/admin/_kit/IkonKolom";
 import { useAnalisisJtr, type JurusanJtr, type PengaturanJtr, type StatusJurusan } from "../_hooks/useAnalisisJtr";
 import PengaturanAnalisisJtr from "./PengaturanAnalisisJtr";
 import RincianRencanaJtr from "./RincianRencanaJtr";
+import UsulanJtrTab from "./UsulanJtrTab";
+import { NADA_TAHAP, useUsulanJtr, type UsulanJtr } from "../_hooks/useUsulanJtr";
 import { alamatPetaRencana, buatRencana, LABEL_RENCANA, type JenisRencana, type Rencana } from "../_lib/rencanaJtr";
 
 /**
@@ -59,11 +61,32 @@ const kunciBaris = (r: JurusanJtr) => `${r.gardu_kode}|${r.jurusan}`;
 interface Props {
   ulp: string;
   bolehAtur: boolean;
+  /** UP3 & admin: simpan usulan, jadikan WO (hak ULP diperiksa di SQL). */
+  bolehUsul: boolean;
   oleh: string;
 }
 
-export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
+/** Usulan yang masih berjalan — jurusan ini tidak perlu diusulkan lagi. */
+const BERJALAN = new Set(["Usulan", "Di-WO-kan", "Dikerjakan"]);
+
+export default function AnalisisJtrTab({ ulp, bolehAtur, bolehUsul, oleh }: Props) {
   const { baris, pengaturan, gawang, kha, memuat, galat, muatUlang } = useAnalisisJtr(ulp);
+  const usulan = useUsulanJtr(ulp);
+  const [lihat, setLihat] = useState<"analisis" | "usulan">("analisis");
+  const [bukaUsulan, setBukaUsulan] = useState<string | null>(null);
+  const usulanJalan = useMemo(() => {
+    const h = new Map<string, UsulanJtr>();
+    for (const u of usulan.usulan) {
+      const k = `${u.gardu_kode}|${u.jurusan}`;
+      if (BERJALAN.has(u.tahap) && !h.has(k)) h.set(k, u);
+    }
+    return h;
+  }, [usulan.usulan]);
+  const keUsulan = (id: string) => {
+    setBuka(null);
+    setLihat("usulan");
+    setBukaUsulan(id);
+  };
   const [jenisRencana, setJenisRencana] = useState<JenisRencana | "">("");
   const [buka, setBuka] = useState<JurusanJtr | null>(null);
 
@@ -118,10 +141,33 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
   const isi = tampil.slice((hal - 1) * PAGE, hal * PAGE);
   const ganti = <T,>(f: (v: T) => void) => (v: T) => { f(v); setHal(1); };
 
+  const saklar = (
+    <div className="flex rounded-xl border border-line p-0.5 bg-surface">
+      {(["analisis", "usulan"] as const).map((k) => (
+        <button
+          key={k}
+          onClick={() => setLihat(k)}
+          className={`px-3 h-8 rounded-lg text-sm font-semibold ${lihat === k ? "bg-white text-navy-600 shadow-sm" : "text-ink-soft hover:text-ink"}`}
+        >
+          {k === "analisis" ? "Analisis" : `Usulan${usulanJalan.size ? ` (${usulanJalan.size})` : ""}`}
+        </button>
+      ))}
+    </div>
+  );
+
+  if (lihat === "usulan") {
+    return (
+      <div className={`${CARD} overflow-hidden`}>
+        <UsulanJtrTab st={usulan} boleh={bolehUsul} oleh={oleh} saklar={saklar} buka={bukaUsulan} onBuka={setBukaUsulan} />
+      </div>
+    );
+  }
+
   return (
     <div className={`${CARD} overflow-hidden`}>
       <div className="px-5 py-4 border-b border-line space-y-3">
         <div className="flex flex-wrap items-center gap-2">
+          {saklar}
           {(["merah", "kuning", "baik", "semua"] as const).map((k) => (
             <button key={k} onClick={() => ganti(setStatus)(k)} className={`${CHIP} ${status === k ? CHIP_ON : CHIP_OFF}`}>
               {k === "semua" ? "Semua" : k === "merah" ? "Perlu diperbaiki" : k === "kuning" ? "Mendekati batas" : "Aman"}
@@ -188,7 +234,7 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
               </thead>
               <tbody>
                 {isi.map((r) => (
-                  <Baris key={kunciBaris(r)} r={r} rencana={rencana.get(kunciBaris(r))} onBuka={() => setBuka(r)} />
+                  <Baris key={kunciBaris(r)} r={r} rencana={rencana.get(kunciBaris(r))} usulan={usulanJalan.get(kunciBaris(r))} onBuka={() => setBuka(r)} />
                 ))}
               </tbody>
             </table>
@@ -218,6 +264,11 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
           rencana={rencana.get(kunciBaris(buka))!}
           gawang={gawang.get(kunciBaris(buka))}
           pengaturan={pengaturan}
+          materialRef={usulan.materialRef}
+          usulanAda={usulanJalan.get(kunciBaris(buka))}
+          bolehUsul={bolehUsul}
+          onSimpanUsulan={async (u) => keUsulan((await usulan.simpan(u, oleh)).id)}
+          onBukaUsulan={(u) => keUsulan(u.id)}
           onTutup={() => setBuka(null)}
         />
       )}
@@ -231,6 +282,7 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
           onTersimpan={() => {
             setAtur(false);
             void muatUlang();
+            void usulan.muatUlang();
           }}
         />
       )}
@@ -238,7 +290,7 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
   );
 }
 
-function Baris({ r, rencana, onBuka }: { r: JurusanJtr; rencana?: Rencana; onBuka: () => void }) {
+function Baris({ r, rencana, usulan, onBuka }: { r: JurusanJtr; rencana?: Rencana; usulan?: UsulanJtr; onBuka: () => void }) {
   const merahArus = r.arus_lebih ? "text-red-600 font-bold" : "text-ink";
   const tanpaArus = r.jtr_ada && !(r.arus_maks && r.arus_maks > 0);
   const slotKosong = r.jurusan_tersedia !== null && r.jurusan_terpakai !== null ? r.jurusan_tersedia - r.jurusan_terpakai : null;
@@ -313,6 +365,11 @@ function Baris({ r, rencana, onBuka }: { r: JurusanJtr; rencana?: Rencana; onBuk
             <div className="flex-1 min-w-0">
               <span className={`block text-xs font-semibold ${NADA_RENCANA[rencana.jenis]}`}>{LABEL_RENCANA[rencana.jenis]}</span>
               <span className="block text-[11px] text-ink-soft">{rencana.ringkas}</span>
+              {usulan && (
+                <span className={`inline-block mt-1 px-1.5 py-px rounded-full text-[10px] font-semibold border ${NADA_TAHAP[usulan.tahap]}`}>
+                  {usulan.tahap === "Usulan" ? "Sudah diusulkan" : usulan.tahap}
+                </span>
+              )}
             </div>
             {r.jtr_ada && (
               <a
