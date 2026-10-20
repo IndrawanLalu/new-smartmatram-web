@@ -18,6 +18,9 @@ export interface AwalPeta {
   pohon?: boolean;
   /** `/peta?mode=sld` (juga tujuan alamat lama Peta SLD): Mode SLD menyala. */
   sld?: boolean;
+  /** Dibuka dari Analisis JTR (/peta?rencana=GS219&jurusan=B): lapisan JTR
+   *  gardu itu menyala, rencana perbaikannya digambar. */
+  rencana?: { gardu: string; jurusan: string };
 }
 
 export function useLapisanNyala(user: CurrentUser, awal?: AwalPeta) {
@@ -25,7 +28,7 @@ export function useLapisanNyala(user: CurrentUser, awal?: AwalPeta) {
     canSeeAllUnits(user.role) ? (awal?.ulp?.toUpperCase() ?? "") : (user.unit ?? ""),
   );
   const [nyala, setNyala] = useState<Set<string>>(
-    () => new Set(awal?.jtr ? [`jtr:${awal.jtr.toUpperCase()}`] : []),
+    () => new Set([awal?.jtr, awal?.rencana?.gardu].filter(Boolean).map((k) => `jtr:${k!.toUpperCase()}`)),
   );
 
   // Kunci `pohon:` milik lapisan pohon (usePohonPeta), bukan jaringan yang

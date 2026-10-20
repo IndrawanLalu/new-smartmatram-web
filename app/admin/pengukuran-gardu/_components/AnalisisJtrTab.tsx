@@ -1,13 +1,13 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Loader2, Search, Settings2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Map as IkonPeta, Search, Settings2 } from "lucide-react";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 import { useAnalisisJtr, type JurusanJtr, type PengaturanJtr, type StatusJurusan } from "../_hooks/useAnalisisJtr";
 import PengaturanAnalisisJtr from "./PengaturanAnalisisJtr";
 import RincianRencanaJtr from "./RincianRencanaJtr";
-import { buatRencana, LABEL_RENCANA, type JenisRencana, type Rencana } from "../_lib/rencanaJtr";
+import { alamatPetaRencana, buatRencana, LABEL_RENCANA, type JenisRencana, type Rencana } from "../_lib/rencanaJtr";
 
 /**
  * Tab "Analisis JTR" (F1, 20 Okt 2026). Satu baris per gardu + jurusan:
@@ -303,10 +303,24 @@ function Baris({ r, rencana, onBuka }: { r: JurusanJtr; rencana?: Rencana; onBuk
       </td>
       <td className="px-3 py-2.5 min-w-56">
         {rencana ? (
-          <>
-            <span className={`block text-xs font-semibold ${NADA_RENCANA[rencana.jenis]}`}>{LABEL_RENCANA[rencana.jenis]}</span>
-            <span className="block text-[11px] text-ink-soft">{rencana.ringkas}</span>
-          </>
+          <div className="flex items-start gap-2">
+            <div className="flex-1 min-w-0">
+              <span className={`block text-xs font-semibold ${NADA_RENCANA[rencana.jenis]}`}>{LABEL_RENCANA[rencana.jenis]}</span>
+              <span className="block text-[11px] text-ink-soft">{rencana.ringkas}</span>
+            </div>
+            {r.jtr_ada && (
+              <a
+                href={alamatPetaRencana(r.gardu_kode, r.jurusan)}
+                target="_blank"
+                rel="noopener"
+                onClick={(e) => e.stopPropagation()}
+                className="shrink-0 p-1.5 rounded-lg text-navy-600 hover:bg-navy-50"
+                title="Lihat di peta"
+              >
+                <IkonPeta size={15} />
+              </a>
+            )}
+          </div>
         ) : (
           <span className="text-[11px] text-ink-muted">—</span>
         )}

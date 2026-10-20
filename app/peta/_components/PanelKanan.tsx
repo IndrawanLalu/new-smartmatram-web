@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks/useLapisanTambahan";
 import PanelKesehatan from "./PanelKesehatan";
 import PanelPohon from "./PanelPohon";
@@ -23,12 +24,14 @@ interface Props {
   boleh: boolean;
   oleh: string;
   onFokus: (b: Bingkai) => void;
+  /** Kartu di puncak tumpukan (mis. rencana perbaikan JTR); null = tidak ada. */
+  atas?: ReactNode;
 }
 
 const MENUNGGU = "Menunggu verifikasi";
 
-export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon, ujung, boleh, oleh, onFokus }: Props) {
-  if (!ujung.aktif && !kesehatan.aktif && !pohonAktif) return null;
+export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon, ujung, boleh, oleh, onFokus, atas }: Props) {
+  if (!ujung.aktif && !kesehatan.aktif && !pohonAktif && !atas) return null;
   const antreanUjung = ujung.titik.filter((t) => t.status_tampil === MENUNGGU);
   // Peta menuju titik ukur dan gardunya sekaligus — garis di antaranya terlihat.
   const bukaUjung = (t: TitikUjungPeta) => {
@@ -41,6 +44,7 @@ export default function PanelKanan({ kesehatan, pohon, pohonAktif, onTutupPohon,
   };
   return (
     <div className="absolute z-[1050] top-14 right-3 bottom-3 flex flex-col gap-2 overflow-y-auto pointer-events-none [&>*]:pointer-events-auto">
+      {atas}
       {kesehatan.aktif && (
         <PanelKesehatan
           saring={kesehatan.saring}

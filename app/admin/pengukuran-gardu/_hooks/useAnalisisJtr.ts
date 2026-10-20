@@ -72,11 +72,33 @@ const ANGKA: (keyof JurusanJtr)[] = [
 ];
 
 /** PostgREST mengirim NUMERIC sebagai teks — dijadikan angka sekali di sini. */
-function keJurusan(r: Record<string, unknown>): JurusanJtr {
+export function keJurusan(r: Record<string, unknown>): JurusanJtr {
   const x = { ...r } as Record<string, unknown>;
   for (const k of ANGKA) x[k] = x[k] === null || x[k] === undefined ? null : Number(x[k]);
   return x as unknown as JurusanJtr;
 }
+
+/** Pengaturan + KHA terisi — bahan `buatRencana`, juga dipakai peta. */
+export async function bacaBahanRencana(): Promise<{ pengaturan: PengaturanJtr; kha: Map<string, number> }> {
+  const [atur, kh] = await Promise.all([
+    supabaseBrowser.from("jtr_analisis_pengaturan").select(KOLOM_PENGATURAN).eq("id", 1).single(),
+    supabaseBrowser.from("jtr_kha_ref").select("jenis,ukuran,kha_a").not("kha_a", "is", null),
+  ]);
+  if (atur.error) throw atur.error;
+  if (kh.error) throw kh.error;
+  return {
+    pengaturan: Object.fromEntries(
+      KOLOM_PENGATURAN.split(",").map((k) => [k, Number((atur.data as Record<string, unknown>)[k])]),
+    ) as unknown as PengaturanJtr,
+    kha: new Map((kh.data ?? []).map((k) => [`${k.jenis}|${k.ukuran}`, Number(k.kha_a)])),
+  };
+}
+
+export const keGawang = (x: Record<string, unknown>): GawangJtr => ({
+  ...(x as unknown as GawangJtr),
+  panjang_m: Number(x.panjang_m),
+  tarikan_sr: Number(x.tarikan_sr),
+});
 
 const PESAN_SQL = "Analisis JTR belum lengkap di database — jalankan scripts/analisis-jtr.sql lalu analisis-jtr-rencana.sql di Supabase.";
 
@@ -94,30 +116,27 @@ export function useAnalisisJtr(ulp: string) {
     setMemuat(true);
     setGalat(null);
     try {
-      const [rows, atur, gw, kh] = await Promise.all([
+      const [rows, bahan, gw] = await Promise.all([
         fetchAllRows<Record<string, unknown>>(() => {
           const q = supabaseBrowser.from("analisis_jtr_jurusan").select("*").order("gardu_kode").order("jurusan");
           return ulp === "ALL" ? q : q.eq("ulp", ulp);
         }),
-        supabaseBrowser.from("jtr_analisis_pengaturan").select(KOLOM_PENGATURAN).eq("id", 1).single(),
+        bacaBahanRencana(),
         fetchAllRows<Record<string, unknown>>(() =>
           supabaseBrowser.from("analisis_jtr_gawang").select("*").order("gardu_kode").order("jurusan").order("tiang_id"),
         ),
-        supabaseBrowser.from("jtr_kha_ref").select("jenis,ukuran,kha_a").not("kha_a", "is", null),
       ]);
-      if (atur.error) throw atur.error;
-      if (kh.error) throw kh.error;
       setBaris(rows.map(keJurusan));
-      setPengaturan(Object.fromEntries(KOLOM_PENGATURAN.split(",").map((k) => [k, Number((atur.data as Record<string, unknown>)[k])])) as unknown as PengaturanJtr);
+      setPengaturan(bahan.pengaturan);
       const g = new Map<string, GawangJtr[]>();
       for (const x of gw) {
         const kunci = `${x.gardu_kode}|${x.jurusan}`;
         const daftar = g.get(kunci) ?? [];
-        daftar.push({ ...(x as unknown as GawangJtr), panjang_m: Number(x.panjang_m), tarikan_sr: Number(x.tarikan_sr) });
+        daftar.push(keGawang(x));
         g.set(kunci, daftar);
       }
       setGawang(g);
-      setKha(new Map((kh.data ?? []).map((k) => [`${k.jenis}|${k.ukuran}`, Number(k.kha_a)])));
+      setKha(bahan.kha);
     } catch (e) {
       const pesan = (e as { message?: string; code?: string });
       setGalat(pesan.code === "PGRST205" || /analisis_jtr|jtr_analisis|batas_kabel_baru|batas_trafo/.test(pesan.message ?? "") ? PESAN_SQL : (pesan.message ?? "Gagal memuat"));

@@ -20,6 +20,10 @@
 
 import type { JurusanJtr, PengaturanJtr } from "../_hooks/useAnalisisJtr";
 
+/** Alamat peta yang menggambar rencana satu jurusan (useRencanaPeta). */
+export const alamatPetaRencana = (gardu: string, jurusan: string) =>
+  `/peta?rencana=${encodeURIComponent(gardu)}&jurusan=${encodeURIComponent(jurusan)}`;
+
 export interface GawangJtr {
   gardu_kode: string;
   jurusan: string;
@@ -46,6 +50,8 @@ export const LABEL_RENCANA: Record<JenisRencana, string> = {
   "inspeksi-jtr": "Inspeksi JTR dulu",
 };
 
+export type PeranTitik = "pecah" | "sisip" | "alternatif" | "kabel";
+
 export interface Rencana {
   jenis: JenisRencana;
   /** Satu baris untuk kolom tabel. */
@@ -57,6 +63,10 @@ export interface Rencana {
   pilihanLain: string[];
   /** Peringatan slot jurusan — selalu dipastikan di lapangan. */
   catatan: string[];
+  /** Tiang yang ditandai di peta. */
+  titik?: { tiang_id: string; kode: string | null; peran: PeranTitik }[];
+  /** Tiang yang pindah ke jurusan baru / gardu sisip — disorot di peta. */
+  pindah?: string[];
 }
 
 interface Simpul extends GawangJtr {
@@ -221,6 +231,8 @@ export function buatRencana(
         : ["Lokasi belum bisa dihitung — JTR jurusan ini belum diinspeksi."],
       pilihanLain,
       catatan: [],
+      titik: berat ? [{ tiang_id: berat.tiang_id, kode: berat.kode, peran: "sisip" }] : [],
+      pindah: berat ? [...hilirDari(berat)].map((x) => x.tiang_id) : [],
     };
   };
 
@@ -281,6 +293,11 @@ export function buatRencana(
       ],
       pilihanLain: calon.slice(1, 3).map(tulisCalon),
       catatan,
+      titik: [
+        { tiang_id: t.c.tiang_id, kode: t.c.kode, peran: "pecah" },
+        ...calon.slice(1, 3).map((c) => ({ tiang_id: c.c.tiang_id, kode: c.c.kode, peran: "alternatif" as const })),
+      ],
+      pindah: [...hilirDari(t.c)].map((x) => x.tiang_id),
     };
   }
 
@@ -301,6 +318,7 @@ export function buatRencana(
           .concat(leher.length > KABEL_KECIL_MAKS ? [`…dan ${leher.length - KABEL_KECIL_MAKS} gawang lain.`] : []),
         pilihanLain: [],
         catatan: [],
+        titik: leher.map((x) => ({ tiang_id: x.tiang_id, kode: x.kode, peran: "kabel" as const })),
       };
     }
   }

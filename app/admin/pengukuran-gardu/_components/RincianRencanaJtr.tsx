@@ -1,9 +1,10 @@
 "use client";
 
+import { Map as IkonPeta } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
-import { BTN_GHOST, EYEBROW } from "@/app/admin/_ui";
+import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
 import type { JurusanJtr } from "../_hooks/useAnalisisJtr";
-import { LABEL_RENCANA, type Rencana } from "../_lib/rencanaJtr";
+import { alamatPetaRencana, LABEL_RENCANA, type Rencana } from "../_lib/rencanaJtr";
 
 /** Rincian rencana perbaikan satu jurusan: alasan, angka, pilihan lain. */
 
@@ -33,8 +34,13 @@ export default function RincianRencanaJtr({ r, rencana, onTutup }: Props) {
       maxWidth="max-w-xl"
       onClose={onTutup}
       footer={
-        <div className="flex justify-end">
+        <div className="flex justify-end gap-2">
           <button onClick={onTutup} className={BTN_GHOST}>Tutup</button>
+          {r.jtr_ada && (
+            <a href={alamatPetaRencana(r.gardu_kode, r.jurusan)} target="_blank" rel="noopener" className={BTN_PRIMARY}>
+              <IkonPeta size={14} /> Lihat di peta
+            </a>
+          )}
         </div>
       }
     >

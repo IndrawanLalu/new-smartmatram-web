@@ -23,6 +23,7 @@ import { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import { useCariLokasi } from "../_hooks/useCariLokasi";
+import { useRencanaPeta } from "../_hooks/useRencanaPeta";
 import { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks/useLapisanTambahan";
 import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
@@ -37,6 +38,7 @@ import ObjekTerpilih from "./ObjekTerpilih";
 import PanelGarduJanggal from "./PanelGarduJanggal";
 import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelKanan from "./PanelKanan";
+import PanelRencana from "./PanelRencana";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
 import PanelSld from "./PanelSld";
@@ -241,6 +243,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     const semua = hasilCari ? [titikCari, ...hasilCari.jtm, ...hasilCari.gardu, ...hasilCari.jtr] : [titikCari];
     setFokus(bingkaiTitik(semua, 0.0004));
   }, [titikCari, hasilCari]);
+  // ── Rencana perbaikan JTR (dari Analisis JTR) ─────────────────────────────
+  // Peta dibingkai ke seluruh jurusan itu begitu rencananya selesai dihitung.
+  const rencana = useRencanaPeta(awal?.rencana ?? null);
+  const semuaRencana = rencana.data?.semua;
+  useEffect(() => {
+    if (semuaRencana?.length) setFokus(bingkaiTitik(semuaRencana, 0.0004));
+  }, [semuaRencana]);
+
   const bukaHasil = (kunci: string, t: NonNullable<typeof terpilih>) => {
     setSegmenTampil(null);
     nyalakan(kunci);
@@ -330,6 +340,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           latar={latar}
           sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
           cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
+          rencana={sembunyi ? null : rencana.data}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
@@ -441,6 +452,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             boleh={boleh}
             oleh={oleh}
             onFokus={setFokus}
+            atas={rencana.aktif ? <PanelRencana s={rencana} /> : null}
           />
         )}
 
