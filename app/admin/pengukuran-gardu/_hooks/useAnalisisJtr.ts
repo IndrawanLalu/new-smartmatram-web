@@ -1,0 +1,145 @@
+"use client";
+
+import { useCallback, useEffect, useState } from "react";
+import { supabaseBrowser } from "@/lib/supabase-browser";
+import { fetchAllRows } from "@/lib/supabasePaginate";
+
+/**
+ * Analisis JTR (F1, 20 Okt 2026) — satu baris per gardu + jurusan dari view
+ * `analisis_jtr_jurusan` (scripts/analisis-jtr.sql): arus terukur, lintasan
+ * terjauh, kabel ber-KHA terkecil, slot jurusan PHB TR, status merah/kuning.
+ *
+ * Dibaca sekali per ULP; angka di view sudah memakai pengaturan, jadi sesudah
+ * pengaturan disimpan cukup `muatUlang`.
+ */
+
+export type StatusJurusan = "merah" | "kuning" | "baik";
+
+export interface JurusanJtr {
+  gardu_kode: string;
+  jurusan: string;
+  ulp: string | null;
+  penyulang: string | null;
+  gardu_nama: string | null;
+  kva: number | null;
+  persen_beban: number | null;
+  tanggal_pengukuran: string | null;
+  a_r: number | null;
+  a_s: number | null;
+  a_t: number | null;
+  a_n: number | null;
+  arus_maks: number | null;
+  jtr_ada: boolean;
+  terjauh_m: number | null;
+  sirkuit_m: number | null;
+  jumlah_tiang: number | null;
+  jumlah_sr: number | null;
+  kabel: string | null;
+  kha_a: number | null;
+  beban_kha_pct: number | null;
+  jurusan_tersedia: number | null;
+  jurusan_terpakai: number | null;
+  tgl_pemeliharaan: string | null;
+  arus_lebih: boolean;
+  kha_lebih: boolean;
+  panjang_lebih: boolean;
+  status: StatusJurusan;
+}
+
+export interface PengaturanJtr {
+  batas_arus_jurusan_a: number;
+  batas_panjang_m: number;
+  batas_kha_pct: number;
+}
+
+export interface KhaKabel {
+  jenis: string;
+  ukuran: string;
+  kha_a: number | null;
+  jumlah_kabel: number;
+}
+
+const ANGKA: (keyof JurusanJtr)[] = [
+  "kva", "persen_beban", "a_r", "a_s", "a_t", "a_n", "arus_maks", "terjauh_m", "sirkuit_m",
+  "kha_a", "beban_kha_pct", "jurusan_tersedia", "jurusan_terpakai",
+];
+
+/** PostgREST mengirim NUMERIC sebagai teks — dijadikan angka sekali di sini. */
+function keJurusan(r: Record<string, unknown>): JurusanJtr {
+  const x = { ...r } as Record<string, unknown>;
+  for (const k of ANGKA) x[k] = x[k] === null || x[k] === undefined ? null : Number(x[k]);
+  return x as unknown as JurusanJtr;
+}
+
+const PESAN_SQL = "View analisis belum ada — jalankan scripts/analisis-jtr.sql di Supabase.";
+
+export function useAnalisisJtr(ulp: string) {
+  const [baris, setBaris] = useState<JurusanJtr[]>([]);
+  const [pengaturan, setPengaturan] = useState<PengaturanJtr | null>(null);
+  const [memuat, setMemuat] = useState(true);
+  const [galat, setGalat] = useState<string | null>(null);
+
+  const muat = useCallback(async () => {
+    setMemuat(true);
+    setGalat(null);
+    try {
+      const [rows, atur] = await Promise.all([
+        fetchAllRows<Record<string, unknown>>(() => {
+          const q = supabaseBrowser.from("analisis_jtr_jurusan").select("*").order("gardu_kode").order("jurusan");
+          return ulp === "ALL" ? q : q.eq("ulp", ulp);
+        }),
+        supabaseBrowser.from("jtr_analisis_pengaturan").select("batas_arus_jurusan_a,batas_panjang_m,batas_kha_pct").eq("id", 1).single(),
+      ]);
+      if (atur.error) throw atur.error;
+      setBaris(rows.map(keJurusan));
+      setPengaturan({
+        batas_arus_jurusan_a: Number(atur.data.batas_arus_jurusan_a),
+        batas_panjang_m: Number(atur.data.batas_panjang_m),
+        batas_kha_pct: Number(atur.data.batas_kha_pct),
+      });
+    } catch (e) {
+      const pesan = (e as { message?: string; code?: string });
+      setGalat(pesan.code === "PGRST205" || /analisis_jtr|jtr_analisis/.test(pesan.message ?? "") ? PESAN_SQL : (pesan.message ?? "Gagal memuat"));
+      setBaris([]);
+    } finally {
+      setMemuat(false);
+    }
+  }, [ulp]);
+
+  useEffect(() => {
+    void muat();
+  }, [muat]);
+
+  return { baris, pengaturan, memuat, galat, muatUlang: muat };
+}
+
+/** Daftar kabel terpasang + KHA-nya, untuk Pengaturan. */
+export async function bacaKha(): Promise<KhaKabel[]> {
+  const { data, error } = await supabaseBrowser
+    .from("jtr_kha_daftar")
+    .select("jenis,ukuran,kha_a,jumlah_kabel")
+    .order("jumlah_kabel", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    jenis: String(r.jenis),
+    ukuran: String(r.ukuran),
+    kha_a: r.kha_a === null ? null : Number(r.kha_a),
+    jumlah_kabel: Number(r.jumlah_kabel),
+  }));
+}
+
+export async function simpanPengaturan(p: PengaturanJtr, kha: KhaKabel[], oleh: string) {
+  const sekarang = new Date().toISOString();
+  const a = await supabaseBrowser
+    .from("jtr_analisis_pengaturan")
+    .update({ ...p, diubah_oleh: oleh, updated_at: sekarang })
+    .eq("id", 1)
+    .select("id");
+  if (a.error) throw a.error;
+  // RLS menolak tanpa galat — yang terlihat cuma nol baris berubah.
+  if (!a.data?.length) throw new Error("Pengaturan hanya bisa diubah akun UP3.");
+  const b = await supabaseBrowser
+    .from("jtr_kha_ref")
+    .upsert(kha.map((k) => ({ jenis: k.jenis, ukuran: k.ukuran, kha_a: k.kha_a, diubah_oleh: oleh, updated_at: sekarang })));
+  if (b.error) throw b.error;
+}

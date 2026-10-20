@@ -43,6 +43,7 @@ import {
   ClipboardList,
   BadgeCheck,
   Zap,
+  Network,
 } from "lucide-react";
 import { useState, useMemo, useEffect } from "react";
 import GarduDetailModal from "./_components/GarduDetailModal";
@@ -51,6 +52,7 @@ import FilterGarduTab from "./_components/FilterGarduTab";
 import SelUnbalance from "./_components/SelUnbalance";
 import PersetujuanUkurTab from "./_components/PersetujuanUkurTab";
 import TeganganUjungTab from "./_components/TeganganUjungTab";
+import AnalisisJtrTab from "./_components/AnalisisJtrTab";
 import { useTahanAmg, labelTahan } from "./_hooks/useTahanAmg";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
 import WoPengukuranTab from "./_components/WoPengukuranTab";
@@ -88,6 +90,7 @@ const TABS = [
   { key: "wo-pengukuran",  label: "WO Pengukuran",        icon: ClipboardList },
   { key: "persetujuan",    label: "Persetujuan",          icon: BadgeCheck },
   { key: "tegangan-ujung", label: "Tegangan Ujung",       icon: Zap },
+  { key: "analisis-jtr",   label: "Analisis JTR",         icon: Network },
 ] as const;
 
 type TabKey = typeof TABS[number]["key"];
@@ -920,6 +923,10 @@ export default function PengukuranGarduPage() {
 
       {activeTab === "tegangan-ujung" && (
         <TeganganUjungTab ulp={activeUlp} oleh={user.name ?? user.email ?? ""} />
+      )}
+
+      {activeTab === "analisis-jtr" && (
+        <AnalisisJtrTab ulp={activeUlp} bolehAtur={user.role === "UP3"} oleh={user.name ?? user.email ?? ""} />
       )}
 
     </div>
