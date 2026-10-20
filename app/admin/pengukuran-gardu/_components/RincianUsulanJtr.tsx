@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Ban, ClipboardCheck, Loader2, Map as IkonPeta, Save } from "lucide-react";
+import { Ban, ClipboardCheck, FileDown, Loader2, Map as IkonPeta, Save } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -9,6 +9,7 @@ import { NADA_TAHAP, PERLU_BULAN, TUJUAN_WO, type UsulanJtr, type UsulanJtrState
 import type { BarisMaterial } from "../_lib/materialJtr";
 import { alamatPetaRencana, LABEL_RENCANA } from "../_lib/rencanaJtr";
 import { labelBulanWo, pilihanBulanWo } from "../_utils/bulanWo";
+import { unduhGambarSurvey } from "../_utils/unduhGambarSurvey";
 import TabelMaterial from "./TabelMaterial";
 
 /**
@@ -37,6 +38,7 @@ export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props)
   const [bulan, setBulan] = useState(() => pilihanBulanWo()[0].nilai);
   const [alasan, setAlasan] = useState("");
   const [sibuk, setSibuk] = useState(false);
+  const [menggambar, setMenggambar] = useState(false);
   const berubah = JSON.stringify(material) !== JSON.stringify(u.material) || catatan !== (u.catatan ?? "");
   const d = u.dasar;
 
@@ -55,6 +57,18 @@ export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props)
       toast.error((e as Error).message);
     } finally {
       setSibuk(false);
+    }
+  };
+
+  const gambar = async () => {
+    setMenggambar(true);
+    try {
+      // Material yang sedang disunting ikut tergambar, walau belum disimpan.
+      await unduhGambarSurvey({ ...u, material, catatan: catatan || null });
+    } catch (e) {
+      toast.error(`Gambar survey gagal: ${(e as Error).message}`);
+    } finally {
+      setMenggambar(false);
     }
   };
 
@@ -108,9 +122,14 @@ export default function RincianUsulanJtr({ u, boleh, oleh, st, onTutup }: Props)
           {mode !== "lihat" ? (
             <button onClick={() => setMode("lihat")} className={`${BTN_GHOST} mr-auto`}>Kembali</button>
           ) : (
-            <a href={alamatPetaRencana(u.gardu_kode, u.jurusan, u.opsi?.kunci)} target="_blank" rel="noopener" className={`${BTN_GHOST} mr-auto`}>
-              <IkonPeta size={14} /> Lihat di peta
-            </a>
+            <>
+              <a href={alamatPetaRencana(u.gardu_kode, u.jurusan, u.opsi?.kunci)} target="_blank" rel="noopener" className={BTN_GHOST}>
+                <IkonPeta size={14} /> Lihat di peta
+              </a>
+              <button disabled={menggambar} onClick={() => void gambar()} className={`${BTN_GHOST} mr-auto`}>
+                {menggambar ? <Loader2 size={14} className="animate-spin" /> : <FileDown size={14} />} Gambar survey
+              </button>
+            </>
           )}
           {tombol}
         </div>
