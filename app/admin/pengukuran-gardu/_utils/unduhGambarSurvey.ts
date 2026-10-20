@@ -4,7 +4,8 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { keGawang } from "../_hooks/useAnalisisJtr";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
-import { rencanaUbin, susunGambar, type Gambar, type Koord } from "../_lib/gambarSurvey";
+import { nadaUjung } from "@/app/peta/_hooks/useUjungPeta";
+import { rencanaUbin, susunGambar, type Gambar, type Koord, type UjungGambar } from "../_lib/gambarSurvey";
 
 /**
  * Gambar survey satu usulan (PDF A3): JTR SELURUH gardu itu dari data JTR
@@ -24,6 +25,9 @@ async function ambilLogo() {
   const r = await fetch("/logo-pln.png");
   return r.ok ? keDataUrl(await r.blob()) : null;
 }
+
+/** ilike tanpa wildcard — kode gardu boleh mengandung "_". */
+const polaPersis = (s: string) => s.replace(/[%_\\]/g, "\\$&");
 
 const muatGambar = (url: string) =>
   new Promise<HTMLImageElement | null>((ok) => {
@@ -53,14 +57,41 @@ async function ambilLatar(ruang: Gambar["ruang"]): Promise<string | null> {
   return kanvas.toDataURL("image/jpeg", 0.85);
 }
 
+/**
+ * Tegangan ujung terakhir tiap jurusan gardu ini (setahun terakhir), yang
+ * belum dibatalkan/dikembalikan — sama dengan "Semua bulan" di lapisan peta.
+ */
+async function ambilUjung(kode: string): Promise<(Koord & UjungGambar)[]> {
+  const sejak = new Date(Date.now() - 365 * 864e5).toISOString().slice(0, 10);
+  const { data, error } = await supabaseBrowser
+    .from("tegangan_ujung_daftar")
+    .select("jurusan,v_rn,v_sn,v_tn,v_min,lat,lng,tgl_ukur,status_tampil")
+    .ilike("gardu_kode", polaPersis(kode))
+    .gte("tgl_ukur", sejak)
+    .neq("status", "Dibatalkan")
+    .order("tgl_ukur", { ascending: false });
+  if (error) throw error;
+  const per = new Map<string, Koord & UjungGambar>();
+  for (const x of data ?? []) {
+    if (x.status_tampil === "Dikembalikan" || x.lat === null || x.lng === null || per.has(x.jurusan)) continue;
+    per.set(x.jurusan, {
+      jurusan: x.jurusan, lat: Number(x.lat), lng: Number(x.lng),
+      v_rn: Number(x.v_rn), v_sn: Number(x.v_sn), v_tn: Number(x.v_tn),
+      nada: nadaUjung(Number(x.v_min)), tgl: x.tgl_ukur,
+    });
+  }
+  return [...per.values()];
+}
+
 export async function unduhGambarSurvey(u: UsulanJtr) {
   const kode = u.gardu_kode.toUpperCase();
-  const [rows, gardu, logo] = await Promise.all([
+  const [rows, gardu, logo, ujung] = await Promise.all([
     fetchAllRows<Record<string, unknown>>(() =>
       supabaseBrowser.from("analisis_jtr_gawang").select("*").eq("gardu_kode", kode).order("jurusan").order("tiang_id"),
     ),
-    supabaseBrowser.from("gardu").select("nama,lat,lng").ilike("kode", kode.replace(/[%_\\]/g, "\\$&")).limit(1).maybeSingle(),
+    supabaseBrowser.from("gardu").select("nama,lat,lng").ilike("kode", polaPersis(kode)).limit(1).maybeSingle(),
     ambilLogo(),
+    ambilUjung(kode),
   ]);
   if (gardu.error) throw gardu.error;
   const gawang = rows.map(keGawang);
@@ -84,6 +115,7 @@ export async function unduhGambarSurvey(u: UsulanJtr) {
     jurusan: u.jurusan,
     pecah: u.opsi ? { titikId: u.opsi.titikId, pindah: u.opsi.pindah, kabelBaru: u.opsi.kabelBaru } : null,
     sisip: u.pekerjaan === "sisip" && u.titik_lat !== null && u.titik_lng !== null ? { lat: u.titik_lat, lng: u.titik_lng } : null,
+    ujung,
   });
 
   const [{ pdf }, { default: GambarSurveyPdf }, latar] = await Promise.all([

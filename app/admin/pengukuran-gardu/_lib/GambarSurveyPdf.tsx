@@ -4,7 +4,7 @@
 
 import { Circle, Document, Image, Line, Page, Polygon, Polyline, Rect, StyleSheet, Svg, Text, View, type Styles } from "@react-pdf/renderer";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
-import { GAMBAR_H, GAMBAR_W, skalaGrafis, type Gambar, type JenisLabel } from "./gambarSurvey";
+import { GAMBAR_H, GAMBAR_W, skalaGrafis, type Gambar, type JenisLabel, type NadaUjung } from "./gambarSurvey";
 import { LABEL_RENCANA } from "./rencanaJtr";
 
 const GARIS = { lain: "#B0B8C4", utama: "#1F2937", pindah: "#7C3AED" } as const;
@@ -12,7 +12,11 @@ const TEBAL = { lain: 0.7, utama: 1.3, pindah: 1.6 } as const;
 const MERAH = "#DC2626";
 const TEAL = "#00897B";
 const BINGKAI = "#4B5563";
+const WARNA_UJUNG: Record<NadaUjung, string> = { merah: "#DC2626", kuning: "#D97706", hijau: "#16A34A" };
 const WARNA_LABEL: Record<JenisLabel, string> = {
+  "ujung-merah": WARNA_UJUNG.merah,
+  "ujung-kuning": WARNA_UJUNG.kuning,
+  "ujung-hijau": WARNA_UJUNG.hijau,
   kabel: MERAH,
   pecah: MERAH,
   sisip: MERAH,
@@ -21,7 +25,7 @@ const WARNA_LABEL: Record<JenisLabel, string> = {
   tiang: "#1F2937",
   "tiang-lain": "#9CA3AF",
 };
-const LABEL_TEBAL: JenisLabel[] = ["kabel", "pecah", "sisip", "gardu", "jurusan"];
+const LABEL_TEBAL: JenisLabel[] = ["kabel", "pecah", "sisip", "gardu", "jurusan", "ujung-merah", "ujung-kuning", "ujung-hijau"];
 const KOLOM_W = 270;
 
 const S = StyleSheet.create({
@@ -47,6 +51,18 @@ const S = StyleSheet.create({
   kecil: { fontSize: 6, color: "#6B7280" },
 });
 
+/** Gardu: segitiga dengan tiangnya (lingkaran) di tengah. */
+function SimbolGardu({ x, y, r }: { x: number; y: number; r: number }) {
+  return (
+    <>
+      <Polygon points={`${x},${y - r} ${x + r * 0.95},${y + r * 0.6} ${x - r * 0.95},${y + r * 0.6}`} fill={TEAL} stroke="#fff" strokeWidth={0.8} />
+      <Circle cx={x} cy={y + r * 0.1} r={r * 0.28} fill="#fff" stroke="#004D40" strokeWidth={0.6} />
+    </>
+  );
+}
+
+/** Belah ketupat (penanda titik ukur tegangan ujung). */
+const wajik = (x: number, y: number, r: number) => `${x},${y - r} ${x + r},${y} ${x},${y + r} ${x - r},${y}`;
 const angka = (v: number | null | undefined) => (v == null ? "—" : Math.round(v).toLocaleString("id-ID"));
 const tgl = (d: Date | string) => new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
 
@@ -81,10 +97,15 @@ function Legenda({ g, jurusan, garduKode }: { g: Gambar; jurusan: string; garduK
         <Contoh teks="Jalur kabel baru (rencana)"><Line x1={1} y1={5} x2={25} y2={5} stroke={MERAH} strokeWidth={1.4} strokeDasharray="4 2.5" /></Contoh>
       )}
       <Contoh teks="Kabel jurusan lain"><Line x1={1} y1={5} x2={25} y2={5} stroke={GARIS.lain} strokeWidth={TEBAL.lain} /></Contoh>
-      <Contoh teks={`Tiang (kode tanpa awalan ${garduKode}-)`}><Circle cx={13} cy={5} r={2} fill="#fff" stroke={GARIS.utama} strokeWidth={0.7} /></Contoh>
-      <Contoh teks="Gardu"><Rect x={9} y={1} width={8} height={8} fill={TEAL} /></Contoh>
+      <Contoh teks={`Tiang (kode tanpa awalan ${garduKode}-)`}><Circle cx={13} cy={5} r={2.8} fill="#fff" stroke={GARIS.utama} strokeWidth={0.9} /></Contoh>
+      <Contoh teks="Gardu (di tiang)"><SimbolGardu x={13} y={5.5} r={5} /></Contoh>
       {g.pecah && <Contoh teks="Titik pecah"><Circle cx={13} cy={5} r={4} fill="none" stroke={MERAH} strokeWidth={1.2} /></Contoh>}
       {g.sisip && <Contoh teks="Usulan gardu sisip"><Polygon points="13,1 18,9 8,9" fill={MERAH} /></Contoh>}
+      {g.ujung.length > 0 && (
+        <Contoh teks="Titik ukur tegangan ujung R/S/T–N (merah < 198 V, kuning < 207 V)">
+          <Polygon points={wajik(13, 5, 4.5)} fill={WARNA_UJUNG.merah} stroke="#fff" strokeWidth={0.6} />
+        </Contoh>
+      )}
       <View style={{ flexDirection: "row", alignItems: "flex-end", marginTop: 4, gap: 14 }}>
         <View>
           <Text style={S.kecil}>Skala grafis</Text>
@@ -154,6 +175,9 @@ function Kolom({ u, g, garduNama, logo }: Props) {
         <Baris l="Trafo" v={`${angka(d.kva)} kVA · beban ${angka(d.persen_beban)}%`} />
         <Baris l="Arus R/S/T" v={`${angka(d.a_r)} / ${angka(d.a_s)} / ${angka(d.a_t)} A (ukur ${d.tanggal_pengukuran ?? "—"})`} />
         <Baris l="Kabel" v={`${d.kabel ?? "—"} · terjauh ${angka(d.terjauh_m)} m · ${angka(d.jumlah_sr)} SR`} />
+        {g.ujung.map((x) => (
+          <Baris key={x.jurusan} l={`Teg. ujung ${x.jurusan}`} v={`${angka(x.v_rn)} / ${angka(x.v_sn)} / ${angka(x.v_tn)} V (ukur ${x.tgl})`} />
+        ))}
         {o && (
           <>
             <Baris l="Titik pecah" v={`${o.titikKode ?? "—"}, cabang ${o.cabangKode ?? "—"} pindah`} />
@@ -206,13 +230,16 @@ function Jtr({ g, latar }: { g: Gambar; latar: string | null }) {
         )}
         {g.tiang.map((t) => (
           <Circle
-            key={t.id} cx={t.x} cy={t.y} r={t.jenis === "lain" ? 1.5 : 2}
-            fill={t.jenis === "pindah" ? GARIS.pindah : "#fff"} stroke={GARIS[t.jenis]} strokeWidth={0.7}
+            key={t.id} cx={t.x} cy={t.y} r={t.jenis === "lain" ? 2.1 : 2.8}
+            fill={t.jenis === "pindah" ? GARIS.pindah : "#fff"} stroke={GARIS[t.jenis]} strokeWidth={0.9}
           />
         ))}
         {g.pecah && <Circle cx={g.pecah.x} cy={g.pecah.y} r={5.5} fill="none" stroke={MERAH} strokeWidth={1.4} />}
         {g.sisip && <Polygon points={`${g.sisip.x},${g.sisip.y - 6} ${g.sisip.x + 6},${g.sisip.y + 5} ${g.sisip.x - 6},${g.sisip.y + 5}`} fill={MERAH} />}
-        {g.gardu && <Rect x={g.gardu.x - 5} y={g.gardu.y - 5} width={10} height={10} fill={TEAL} />}
+        {g.ujung.map((x) => (
+          <Polygon key={`u${x.jurusan}`} points={wajik(x.x, x.y, 5)} fill={WARNA_UJUNG[x.nada]} stroke="#fff" strokeWidth={0.8} />
+        ))}
+        {g.gardu && <SimbolGardu x={g.gardu.x} y={g.gardu.y} r={8} />}
         {g.label.map((l, i) =>
           l.tarik ? (
             <Line key={`t${i}`} x1={l.tarik.a.x} y1={l.tarik.a.y} x2={l.tarik.b.x} y2={l.tarik.b.y} stroke={WARNA_LABEL[l.jenis]} strokeWidth={0.5} />

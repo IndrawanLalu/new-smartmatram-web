@@ -33,7 +33,20 @@ export interface TiangGambar extends Titik {
   jenis: JenisTiang;
 }
 
-export type JenisLabel = "kabel" | "pecah" | "gardu" | "jurusan" | "sisip" | "tiang" | "tiang-lain";
+export type JenisLabel = "kabel" | "pecah" | "gardu" | "jurusan" | "sisip" | "ujung-merah" | "ujung-kuning" | "ujung-hijau" | "tiang" | "tiang-lain";
+
+/** Nada tegangan ujung — batasnya sama dengan lapisan Tegangan ujung di peta. */
+export type NadaUjung = "merah" | "kuning" | "hijau";
+
+/** Titik ukur tegangan ujung terakhir satu jurusan (fasa-netral, V). */
+export interface UjungGambar {
+  jurusan: string;
+  v_rn: number;
+  v_sn: number;
+  v_tn: number;
+  nada: NadaUjung;
+  tgl: string;
+}
 export interface LabelGambar extends Titik {
   teks: string;
   jenis: JenisLabel;
@@ -50,6 +63,7 @@ export interface Gambar {
   kabelBaru: Titik[];
   pecah: Titik | null;
   sisip: Titik | null;
+  ujung: (Titik & UjungGambar)[];
   label: LabelGambar[];
   /** pt per meter — untuk skala grafis. */
   skala: number;
@@ -68,6 +82,7 @@ export interface BahanGambar {
   /** Usulan tambah jurusan: titik pecah + tiang yang pindah + panjang kabel baru. */
   pecah: { titikId: string; pindah: string[]; kabelBaru: number } | null;
   sisip: Koord | null;
+  ujung: (Koord & UjungGambar)[];
 }
 
 const GESER_KABEL = 3.5;
@@ -149,7 +164,7 @@ function tempatkan(calon: CalonLabel[], penghalang: Kotak[], ruas: [Titik, Titik
     const h = c.ukuran;
     const pilihan = c.wajib
       ? JARAK_WAJIB.flatMap((r) => ARAH.map((a) => kotakDi(c, a, r, w, h)))
-      : [ARAH[0], ARAH[4], ARAH[6], ARAH[2]].map((a) => kotakDi(c, a, 4, w, h));
+      : [ARAH[0], ARAH[4], ARAH[6], ARAH[2]].map((a) => kotakDi(c, a, 5, w, h));
     const muat = pilihan.filter(dalam);
     // Utamakan yang tidak menimpa garis; kalau tidak ada, cukup tidak menimpa label/simbol.
     const bebas = muat.filter((k) => !terisi.some((t) => tumpang(k, t)));
@@ -175,7 +190,7 @@ const dunia = (k: Koord): Titik => {
 export function susunGambar(b: BahanGambar): Gambar {
   // Web Mercator — sama dengan ubin peta, supaya tiang tepat di atas latar.
   // Satuan "dunia" = piksel ubin pada zoom 0 (256 × 256 untuk seluruh bumi).
-  const semua = [...b.koord.values(), ...(b.gardu ? [b.gardu] : []), ...(b.sisip ? [b.sisip] : [])];
+  const semua = [...b.koord.values(), ...(b.gardu ? [b.gardu] : []), ...(b.sisip ? [b.sisip] : []), ...b.ujung];
   const lat0 = semua.reduce((t, k) => t + k.lat, 0) / (semua.length || 1);
   const meterPerDunia = (Math.cos((lat0 * Math.PI) / 180) * 40_075_016.686) / 256;
   const m = semua.map(dunia);
@@ -252,6 +267,7 @@ export function susunGambar(b: BahanGambar): Gambar {
     if (kp) pecah = ke(kp);
   }
   const sisip = b.sisip ? ke(b.sisip) : null;
+  const ujung = b.ujung.map((x) => ({ ...x, ...ke(x) }));
 
   const wajib: CalonLabel[] = [];
   if (kabelBaru.length > 1) {
@@ -262,14 +278,19 @@ export function susunGambar(b: BahanGambar): Gambar {
   if (gardu) wajib.push({ ...gardu, teks: b.garduKode, jenis: "gardu", ukuran: 8, wajib: true });
   if (pecah) wajib.push({ ...pecah, teks: "TITIK PECAH", jenis: "pecah", ukuran: 7, wajib: true });
   if (sisip) wajib.push({ ...sisip, teks: "USULAN GARDU SISIP", jenis: "sisip", ukuran: 7, wajib: true });
+  for (const x of ujung) {
+    const v = `${Math.round(x.v_rn)}/${Math.round(x.v_sn)}/${Math.round(x.v_tn)} V`;
+    wajib.push({ x: x.x, y: x.y, teks: `Teg. ujung ${x.jurusan}: ${v}`, jenis: `ujung-${x.nada}`, ukuran: 6.5, wajib: true });
+  }
   // Kode tiang: yang wajib dulu, lalu jurusan usulan, lalu jurusan lain.
   const urutCalon = [...calon].sort((x, y) => Number(y.wajib) - Number(x.wajib) || Number(x.jenis === "tiang-lain") - Number(y.jenis === "tiang-lain"));
   const kotak = (p: Titik, r: number): Kotak => ({ x1: p.x - r, y1: p.y - r, x2: p.x + r, y2: p.y + r });
   const penghalang = [
-    ...[...tiang.values()].map((t) => kotak(t, 2.5)),
-    ...(gardu ? [kotak(gardu, 6)] : []),
+    ...[...tiang.values()].map((t) => kotak(t, 3.3)),
+    ...(gardu ? [kotak(gardu, 8)] : []),
     ...(pecah ? [kotak(pecah, 7)] : []),
     ...(sisip ? [kotak(sisip, 7)] : []),
+    ...ujung.map((x) => kotak(x, 5)),
   ];
   const ruas: [Titik, Titik][] = [...garis.map((x): [Titik, Titik] => [x.a, x.b]), ...kabelBaru.slice(1).map((p, i): [Titik, Titik] => [kabelBaru[i], p])];
   const label = tempatkan([...wajib, ...akarLabel.sort((x, y) => Number(y.wajib) - Number(x.wajib)), ...urutCalon], penghalang, ruas);
@@ -278,7 +299,7 @@ export function susunGambar(b: BahanGambar): Gambar {
   const hilang = !!b.pecah && (!ada(b.pecah.titikId) || b.pecah.pindah.some((id) => !ada(id)));
 
   return {
-    garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, label, hilang,
+    garis, tiang: [...tiang.values()], gardu, kabelBaru, pecah, sisip, ujung, label, hilang,
     skala: skala / meterPerDunia,
     ruang: { x0: -ox / skala, y0: -oy / skala, skala },
   };
