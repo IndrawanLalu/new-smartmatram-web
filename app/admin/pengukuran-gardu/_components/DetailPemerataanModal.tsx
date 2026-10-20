@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Camera, ExternalLink, Radio, Loader2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
+import { calcUnbalancePct } from "@/lib/anomaliGardu";
 import {
   urlFoto,
   waktuFoto,
@@ -23,13 +24,6 @@ const FASA_CLS: Record<string, string> = {
   N: "bg-blue-100 text-blue-700",
 };
 
-/** Rumus sama dengan yang dikirim ke AMG (`buildBody` di `smart-agent/index.js`,
- *  repo terpisah — pengiriman ke AMG dilakukan agen lokal, bukan server web). */
-function unbalance(r: number, s: number, t: number): number {
-  const avg = (r + s + t) / 3;
-  if (avg === 0) return 0;
-  return ((Math.abs(r - avg) + Math.abs(s - avg) + Math.abs(t - avg)) / (3 * avg)) * 100;
-}
 
 const fmt = (n: number, d = 1) => Number(n ?? 0).toFixed(d).replace(".", ",");
 
@@ -64,8 +58,8 @@ interface Props {
 }
 
 export default function DetailPemerataanModal({ record, amgBusy, onKirimAmg, onClose }: Props) {
-  const unbBefore = unbalance(record.arus_r_before, record.arus_s_before, record.arus_t_before);
-  const unbAfter = unbalance(record.arus_r_after, record.arus_s_after, record.arus_t_after);
+  const unbBefore = calcUnbalancePct(record.arus_r_before, record.arus_s_before, record.arus_t_before);
+  const unbAfter = calcUnbalancePct(record.arus_r_after, record.arus_s_after, record.arus_t_after);
   const membaik = unbAfter <= unbBefore;
 
   const before = (record.perjurusan_before ?? {}) as Record<string, JurusanData>;

@@ -12,6 +12,7 @@ import {
   statusAmg,
 } from "../_hooks/usePengukuranGardu";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
+import { calcUnbalancePct } from "@/lib/anomaliGardu";
 import GarduDetailModal from "./GarduDetailModal";
 import EditPengukuranModal from "./EditPengukuranModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -36,6 +37,11 @@ const BEBAN_QUICK = [
   { label: "Normal <60%", min: "", max: "60" },
   { label: "Rendah <20%", min: "", max: "20" },
 ];
+
+/** Unbalance arus fasa: chip cepat, dan batas merah di kolom tabel bila
+ *  isian unbalance kosong (sama dengan batas kuning lapisan Kesehatan peta). */
+const UNBALANCE_QUICK = ["20", "25", "30"];
+const UNBALANCE_BATAS = 20;
 
 const FLAG_OPTIONS = [
   { key: "onlyOverload" as const, label: `Trafo Overload (beban ≥ ${OVERLOAD_PCT}%)` },
@@ -63,6 +69,8 @@ export default function FilterGarduTab({ user }: Props) {
     [results, page]
   );
   const totalPages = Math.ceil(results.length / PAGE_SIZE);
+  // Merah di kolom Unbalance: batas yang sedang disaring, atau 20% bila kosong.
+  const batasUnb = parseFloat(filter.unbalanceMin) || UNBALANCE_BATAS;
 
   function handleSearch() {
     setPage(1);
@@ -276,6 +284,28 @@ export default function FilterGarduTab({ user }: Props) {
               </div>
             ))}
           </div>
+          <div className="border-t border-line pt-3 space-y-2">
+            <label className={LABEL_CLS}>Unbalance Arus R/S/T ≥ (%)</label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {UNBALANCE_QUICK.map((v) => (
+                <button
+                  key={v}
+                  onClick={() => setFilter((f) => ({ ...f, unbalanceMin: f.unbalanceMin === v ? "" : v }))}
+                  className={chip(filter.unbalanceMin === v)}
+                >
+                  ≥{v}%
+                </button>
+              ))}
+              <input
+                type="number" min={0} max={200} value={filter.unbalanceMin}
+                onChange={(e) => setFilter((f) => ({ ...f, unbalanceMin: e.target.value }))}
+                placeholder="lainnya" className={`${INPUT_CLS} w-24!`}
+              />
+            </div>
+            <p className="text-[10px] text-ink-soft">
+              Rata-rata simpangan arus fasa ÷ arus rata-rata — rumus yang sama dengan AMG
+            </p>
+          </div>
           <div className="border-t border-line pt-3 grid grid-cols-2 gap-3">
             <div>
               <label className={LABEL_CLS}>Tegangan ≤ (V) — Undervoltage</label>
@@ -362,6 +392,7 @@ export default function FilterGarduTab({ user }: Props) {
                     <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold min-w-32"><IkonKolom teks="Beban %" />Beban %</th>
                     <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus R/S/T (A)" />Arus R/S/T (A)</th>
                     <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Arus Max (A)" />Arus Max (A)</th>
+                    <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Unbalance" />Unbalance</th>
                     <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold"><IkonKolom teks="Suhu (°C)" />Suhu (°C)</th>
                     <th className="text-center px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap">Teg R/S/T (V)</th>
                     <th className="text-left px-4 py-3 text-xs text-accent-deep font-semibold whitespace-nowrap"><IkonKolom teks="Tgl Ukur" />Tgl Ukur</th>
@@ -376,6 +407,8 @@ export default function FilterGarduTab({ user }: Props) {
                     const isHighTemp = row.suhu_trafo > HIGH_TEMP_C;
                     const isHighCurrent = maxArus > HIGH_CURRENT_A;
                     const isPhaseOl = maxArus >= iNom;
+                    const terukur = row.total_arus_r + row.total_arus_s + row.total_arus_t > 0;
+                    const unb = calcUnbalancePct(row.total_arus_r, row.total_arus_s, row.total_arus_t);
 
                     const arusCls = (v: number) => {
                       if (v > HIGH_CURRENT_A) return "text-red-600 font-bold";
@@ -426,6 +459,9 @@ export default function FilterGarduTab({ user }: Props) {
                           {(isHighCurrent || isPhaseOl) && (
                             <AlertTriangle size={10} className="inline ml-1" />
                           )}
+                        </td>
+                        <td className={`px-4 py-3 text-center font-mono text-xs ${terukur && unb >= batasUnb ? "text-red-600 font-semibold" : "text-ink-soft"}`}>
+                          {terukur ? `${unb.toFixed(1).replace(".", ",")}%` : "—"}
                         </td>
                         <td className={`px-4 py-3 text-center font-mono text-xs ${isHighTemp ? "text-amber-600 font-medium" : "text-ink-soft"}`}>
                           {row.suhu_trafo}°C

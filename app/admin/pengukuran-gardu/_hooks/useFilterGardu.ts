@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { canSeeAllUnits, type Role } from "@/lib/roles";
+import { calcUnbalancePct } from "@/lib/anomaliGardu";
 import {
   type PengukuranGardu,
   getNominalCurrent,
@@ -37,6 +38,8 @@ export interface FilterGardu {
   // Tegangan (V)
   tegUnderMax: string;  // any phase <= X (undervoltage)
   tegOverMin: string;   // all phases >= X (overvoltage)
+  // Unbalance arus R/S/T (%) — dihitung, kolom `unbalance` di tabel kosong
+  unbalanceMin: string; // client-side only
   // Quick flags
   onlyOverload: boolean;
   onlyHighTemp: boolean;
@@ -52,6 +55,7 @@ export const INITIAL_FILTER: FilterGardu = {
   suhuMin: "", suhuMax: "",
   arusMaxFaseMin: "", arusRMin: "", arusSMin: "", arusTMin: "", arusNMin: "",
   tegUnderMax: "", tegOverMin: "",
+  unbalanceMin: "",
   onlyOverload: false, onlyHighTemp: false, onlyHighCurrent: false, onlyPhaseOverload: false,
 };
 
@@ -161,6 +165,16 @@ export function useFilterGardu(user: UserLike) {
           const iNom = getNominalCurrent(r.kva_trafo);
           return Math.max(r.total_arus_r, r.total_arus_s, r.total_arus_t) >= iNom;
         });
+      }
+
+      // Client-side: unbalance ≥ X%. Gardu tanpa arus (R+S+T = 0) bukan
+      // "seimbang 0%", tapi belum terukur — tidak ikut.
+      if (f.unbalanceMin) {
+        const v = parseFloat(f.unbalanceMin);
+        deduped = deduped.filter(
+          (r) => r.total_arus_r + r.total_arus_s + r.total_arus_t > 0
+            && calcUnbalancePct(r.total_arus_r, r.total_arus_s, r.total_arus_t) >= v,
+        );
       }
 
       setResults(deduped);

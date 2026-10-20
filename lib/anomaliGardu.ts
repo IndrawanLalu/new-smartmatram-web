@@ -61,12 +61,18 @@ export function calcPembebananArusPct(row: AnomalyRow): number {
   return (maxArus / nominal) * 100;
 }
 
-// Hitung persentase unbalance antar fasa R/S/T (NEMA formula)
+/**
+ * Unbalance arus fasa R/S/T (%) = rata-rata simpangan ÷ rata-rata arus.
+ *
+ * SATU rumus untuk Pengaturan Anomali, Filter Gardu, dan Pemerataan Beban —
+ * sama dengan yang dikirim ke AMG (`buildBody` di `smart-agent/index.js`) dan
+ * `unbalancePct` di HP. Dulu Anomali memakai simpangan TERBESAR (NEMA), dan
+ * gardu yang sama bisa 59% di satu layar, 100% di layar lain (20 Okt 2026).
+ */
 export function calcUnbalancePct(r: number, s: number, t: number): number {
   const avg = (r + s + t) / 3;
   if (avg === 0) return 0;
-  const maxDev = Math.max(Math.abs(r - avg), Math.abs(s - avg), Math.abs(t - avg));
-  return (maxDev / avg) * 100;
+  return ((Math.abs(r - avg) + Math.abs(s - avg) + Math.abs(t - avg)) / (3 * avg)) * 100;
 }
 
 export function detectAnomali(
