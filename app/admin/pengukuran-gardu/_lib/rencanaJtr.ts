@@ -20,9 +20,9 @@
 
 import type { JurusanJtr, PengaturanJtr } from "../_hooks/useAnalisisJtr";
 
-/** Alamat peta yang menggambar rencana satu jurusan (useRencanaPeta). */
-export const alamatPetaRencana = (gardu: string, jurusan: string) =>
-  `/peta?rencana=${encodeURIComponent(gardu)}&jurusan=${encodeURIComponent(jurusan)}`;
+/** Alamat peta yang menggambar rencana satu jurusan (useRencanaPeta); `opsi` = kunci OpsiPecah terpilih. */
+export const alamatPetaRencana = (gardu: string, jurusan: string, opsi?: string) =>
+  `/peta?rencana=${encodeURIComponent(gardu)}&jurusan=${encodeURIComponent(jurusan)}${opsi ? `&opsi=${encodeURIComponent(opsi)}` : ""}`;
 
 export interface GawangJtr {
   gardu_kode: string;
@@ -67,6 +67,8 @@ export interface Rencana {
   titik?: { tiang_id: string; kode: string | null; peran: PeranTitik }[];
   /** Tiang yang pindah ke jurusan baru / gardu sisip — disorot di peta. */
   pindah?: string[];
+  /** Pilihan titik pecah untuk dibandingkan; [0] = usulan sistem. */
+  pilihan?: OpsiPecah[];
 }
 
 interface Simpul extends GawangJtr {
@@ -147,36 +149,172 @@ function momen(simpul: Simpul[], perSr: number, kurangi?: { c: Simpul; leluhur: 
   return t;
 }
 
-interface CalonPecah {
-  c: Simpul;
+export type NadaOpsi = "aman" | "mendekati" | "lewat";
+
+/**
+ * Satu cara memecah jurusan: kabel baru dari gardu menyusuri jalur sampai
+ * TITIK PECAH, lalu satu CABANG hilirnya dilepas dari kabel lama dan
+ * disambung ke kabel baru. Cabang itu (dan seluruh hilirnya) pindah jurusan.
+ */
+export interface OpsiPecah {
+  /** id tiang cabang (+ "|rata" untuk varian pemerataan) — unik per opsi. */
+  kunci: string;
+  titikId: string;
+  titikKode: string | null;
+  percabangan: boolean;
+  cabangId: string;
+  cabangKode: string | null;
+  kabelBaru: number;
   iBaru: number;
   iLama: number;
-  momenMaks: number;
-  jauhLama: number;
   srPindah: number;
+  tiangPindah: number;
+  /** Lintasan terjauh (m dari gardu) jurusan baru / lama sesudah dipecah. */
+  jauhBaru: number;
+  jauhLama: number;
+  /** Perkiraan jatuh tegangan terburuk turun (%), lewat momen beban. */
+  turunPct: number;
+  /** Arus dihitung dari rata-rata fasa — sah hanya bila fasa diratakan juga. */
+  pemerataan: boolean;
+  nada: NadaOpsi;
+  /** Mengapa lewat / mendekati batas. */
+  peringatan: string[];
+  label: string[];
+  /** Tiang yang pindah — disorot di peta. */
+  pindah: string[];
+  momenMaks: number;
 }
 
-function calonPecah(p: Pohon, arus: number, batasI: number, batasKabel: number): CalonPecah[] {
-  const perSr = arus / p.sr;
-  const hulu = hulunya(p.simpul);
-  const hasil: CalonPecah[] = [];
-  for (const c of p.simpul) {
-    if (!hulu.has(c) || c.srHilir === 0 || c.srHilir === p.sr) continue; // akar = memindah semuanya
-    const kabelBaru = c.d - c.panjang_m; // gardu → hulu c, lalu menyambung ke c
-    if (kabelBaru > batasKabel) continue;
-    const iBaru = c.srHilir * perSr;
-    const iLama = arus - iBaru;
-    if (iBaru > batasI || iLama > batasI) continue;
-    const hilir = hilirDari(c);
-    const leluhur = new Set<Simpul>();
-    for (let x = hulu.get(c); x; x = hulu.get(x)) leluhur.add(x);
-    const lama = p.simpul.filter((s) => !hilir.has(s));
-    const mBaru = momen([...hilir], perSr) + iBaru * kabelBaru;
-    const mLama = momen(lama, perSr, { c, leluhur });
-    hasil.push({ c, iBaru, iLama, momenMaks: Math.max(mBaru, mLama), jauhLama: Math.max(0, ...lama.map((s) => s.d)), srPindah: c.srHilir });
-  }
-  return hasil.sort((x, y) => x.momenMaks - y.momenMaks);
+interface KonteksPecah {
+  pohon: Pohon;
+  hulu: Map<Simpul, Simpul>;
+  arus: number;
+  rata: number;
+  batasI: number;
+  batasKabel: number;
 }
+
+const BATAS_MENDEKATI = 0.8;
+
+function hitungOpsi(k: KonteksPecah, c: Simpul, pemerataan: boolean): OpsiPecah | null {
+  const titik = k.hulu.get(c);
+  const { pohon: p } = k;
+  if (!titik || c.srHilir === 0 || c.srHilir === p.sr) return null;
+  const arus = pemerataan ? k.rata : k.arus;
+  const perSr = arus / p.sr;
+  const kabelBaru = titik.d; // gardu → titik pecah, menyusuri jalur
+  const iBaru = c.srHilir * perSr;
+  const iLama = arus - iBaru;
+  const hilir = hilirDari(c);
+  const leluhur = new Set<Simpul>();
+  for (let x: Simpul | undefined = titik; x; x = k.hulu.get(x)) leluhur.add(x);
+  const lama = p.simpul.filter((s) => !hilir.has(s));
+  const mBaru = momen([...hilir], perSr) + iBaru * kabelBaru;
+  const mLama = momen(lama, perSr, { c, leluhur });
+  const momenMaks = Math.max(mBaru, mLama);
+
+  const peringatan: string[] = [];
+  if (iBaru > k.batasI) peringatan.push(`Jurusan baru ${a(iBaru)} > batas ${a(k.batasI)}.`);
+  if (iLama > k.batasI) peringatan.push(`Jurusan lama ${a(iLama)} > batas ${a(k.batasI)}.`);
+  if (kabelBaru > k.batasKabel) peringatan.push(`Kabel baru ${m(kabelBaru)} > batas ${m(k.batasKabel)}.`);
+  const lewat = peringatan.length > 0;
+  const dekat = !lewat && Math.max(iBaru, iLama) >= k.batasI * BATAS_MENDEKATI;
+  if (dekat) peringatan.push(`Sisi terberat ${a(Math.max(iBaru, iLama))} sudah ≥ ${BATAS_MENDEKATI * 100}% batas.`);
+
+  return {
+    kunci: pemerataan ? `${c.tiang_id}|rata` : c.tiang_id,
+    titikId: titik.tiang_id,
+    titikKode: titik.kode,
+    percabangan: titik.percabangan || titik.anak.length > 1,
+    cabangId: c.tiang_id,
+    cabangKode: c.kode,
+    kabelBaru,
+    iBaru,
+    iLama,
+    srPindah: c.srHilir,
+    tiangPindah: hilir.size,
+    jauhBaru: c.jauh,
+    jauhLama: Math.max(0, ...lama.map((s) => s.d)),
+    turunPct: Math.round((1 - momenMaks / momen(p.simpul, perSr)) * 100),
+    pemerataan,
+    nada: lewat ? "lewat" : dekat ? "mendekati" : "aman",
+    peringatan,
+    label: [],
+    pindah: [...hilir].map((x) => x.tiang_id),
+    momenMaks,
+  };
+}
+
+function konteksPecah(r: JurusanJtr, gawang: GawangJtr[] | undefined, s: PengaturanJtr): KonteksPecah | null {
+  const arus = r.arus_maks ?? 0;
+  if (!gawang?.length || arus <= 0) return null;
+  const pohon = susunPohon(gawang);
+  if (pohon.sr <= 0) return null;
+  const batasKha = r.kha_a ? (r.kha_a * s.batas_kha_pct) / 100 : Infinity;
+  return {
+    pohon,
+    hulu: hulunya(pohon.simpul),
+    arus,
+    rata: ((r.a_r ?? 0) + (r.a_s ?? 0) + (r.a_t ?? 0)) / 3,
+    batasI: Math.min(s.batas_arus_jurusan_a, batasKha),
+    batasKabel: s.batas_kabel_baru_m,
+  };
+}
+
+const terkecil = <T,>(xs: T[], f: (x: T) => number) => xs.reduce<T | undefined>((b, x) => (b === undefined || f(x) < f(b) ? x : b), undefined);
+
+/**
+ * Pilihan titik pecah yang dibandingkan user. Yang pertama = usulan sistem
+ * (percabangan dulu, lalu jatuh tegangan terkecil — aturan F3 yang disepakati).
+ */
+function susunPilihan(k: KonteksPecah): OpsiPecah[] {
+  const semua = k.pohon.simpul.flatMap((c) => hitungOpsi(k, c, false) ?? []);
+  const layak = semua.filter((o) => o.nada !== "lewat");
+  const hasil = new Map<string, OpsiPecah>();
+  const tambah = (o: OpsiPecah | undefined, label: string) => {
+    if (!o) return;
+    const ada = hasil.get(o.kunci) ?? o;
+    ada.label.push(label);
+    hasil.set(o.kunci, ada);
+  };
+  const cabang = layak.filter((o) => o.percabangan);
+  tambah(terkecil(cabang.length ? cabang : layak, (o) => o.momenMaks), "Usulan sistem");
+  tambah(terkecil(layak, (o) => o.kabelBaru), "Kabel terpendek");
+  tambah(terkecil(layak, (o) => Math.abs(o.iBaru - o.iLama)), "Paling seimbang");
+  tambah(terkecil(layak, (o) => o.momenMaks), "Tegangan terbaik");
+
+  // Pecah lebih dekat gardu bila fasanya sekalian diratakan.
+  if (k.rata < k.arus) {
+    const pendek = terkecil(layak, (o) => o.kabelBaru)?.kabelBaru ?? Infinity;
+    const rata = k.pohon.simpul
+      .flatMap((c) => hitungOpsi(k, c, true) ?? [])
+      .filter((o) => o.nada !== "lewat" && o.kabelBaru < pendek);
+    const o = terkecil(rata, (x) => x.kabelBaru);
+    // Tanpa pilihan biasa, varian inilah usulan sistemnya.
+    if (o && !hasil.size) o.label.push("Usulan sistem");
+    tambah(o, "Dekat gardu + pemerataan");
+  }
+  return [...hasil.values()];
+}
+
+/** Opsi pecah di tiang pilihan user — satu per cabang hilirnya. */
+export function opsiDiTiang(
+  r: JurusanJtr,
+  gawang: GawangJtr[] | undefined,
+  s: PengaturanJtr,
+  tiangId: string,
+): OpsiPecah[] {
+  const k = konteksPecah(r, gawang, s);
+  const t = k?.pohon.simpul.find((x) => x.tiang_id === tiangId);
+  if (!k || !t) return [];
+  return t.anak.flatMap((c) => {
+    const o = hitungOpsi(k, c, false);
+    return o ? [{ ...o, kunci: `${o.kunci}|sendiri`, label: ["Pilihan sendiri"] }] : [];
+  });
+}
+
+/** "Pecah di B3 → cabang B3_B1" */
+export const namaOpsi = (o: OpsiPecah) => `${o.titikKode ?? "tiang"} → cabang ${o.cabangKode ?? "tiang"}`;
 
 /** Tiang di titik tengah beban: separuh tarikan SR ada sebelum/sesudahnya. */
 function titikBerat(p: Pohon): Simpul | null {
@@ -265,39 +403,34 @@ export function buatRencana(
           };
     }
 
-    const perCabang = calonPecah(pohon, arus, batasI, s.batas_kabel_baru_m);
-    const cabang = perCabang.filter((c) => c.c.percabangan);
-    const calon = cabang.length ? cabang : perCabang;
-    const momenAwal = momen(pohon.simpul, arus / pohon.sr);
-    const tulisCalon = (c: CalonPecah) =>
-      `${c.c.kode}${c.c.percabangan ? "" : " (bukan percabangan)"} — kabel baru ${m(c.c.d - c.c.panjang_m)}, pindah ${c.srPindah} SR: ${a(c.iBaru)} + ${a(c.iLama)}`;
+    const pilihan = susunPilihan(konteksPecah(r, gawang, s)!);
+    const tulisOpsi = (o: OpsiPecah) =>
+      `${namaOpsi(o)} — kabel baru ${m(o.kabelBaru)}, ${a(o.iBaru)} + ${a(o.iLama)}${o.pemerataan ? " (sesudah pemerataan)" : ""}`;
 
     const penghalang: string[] = [];
     if (trafoLebih) penghalang.push(`Trafo ${Math.round(r.persen_beban ?? 0)}% > ${s.batas_trafo_pct}% — menambah jurusan tidak mengurangi beban trafo.`);
     if (slotKosong !== null && slotKosong <= 0) penghalang.push(`Slot jurusan PHB TR penuh (${r.jurusan_terpakai}/${r.jurusan_tersedia}).`);
-    if (!calon.length) penghalang.push(`Tidak ada tiang dalam ${m(s.batas_kabel_baru_m)} dari gardu yang membuat kedua bagian ≤ ${a(batasI)}.`);
+    if (!pilihan.length) penghalang.push(`Tidak ada tiang dalam ${m(s.batas_kabel_baru_m)} dari gardu yang membuat kedua bagian ≤ ${a(batasI)}.`);
 
     if (penghalang.length) {
-      return sisip([sebab, ...penghalang], calon.slice(0, 2).map((c) => `Tambah jurusan di ${tulisCalon(c)}`));
+      return { ...sisip([sebab, ...penghalang], pilihan.slice(0, 2).map((o) => `Tambah jurusan: ${tulisOpsi(o)}`)), pilihan };
     }
-    const t = calon[0];
+    const t = pilihan[0];
     return {
       jenis: "tambah-jurusan",
-      ringkas: `Tambah jurusan, pecah di ${t.c.kode} (${m(t.c.d - t.c.panjang_m)})`,
+      ringkas: `Tambah jurusan, pecah di ${t.titikKode} (${m(t.kabelBaru)})${t.pemerataan ? " + pemerataan" : ""}`,
       alasan: [sebab, `Rata-rata fasa ${a(rata)} juga di atas batas — pemerataan saja tidak cukup.`],
       rinci: [
-        `Pecah di tiang ${t.c.kode}${t.c.percabangan ? " (percabangan)" : " — tidak ada percabangan yang layak, dipilih tiang biasa"}.`,
-        `Kabel baru dari gardu ±${m(t.c.d - t.c.panjang_m)} (menyusuri jalur yang ada).`,
-        `Pindah ${t.srPindah} dari ${pohon.sr} tarikan SR → jurusan baru ±${a(t.iBaru)}, jurusan lama ±${a(t.iLama)} (lintasan lama jadi ${m(t.jauhLama)}).`,
-        `Perkiraan jatuh tegangan terburuk turun ±${Math.round((1 - t.momenMaks / momenAwal) * 100)}%.`,
+        `Pecah di tiang ${t.titikKode}${t.percabangan ? " (percabangan)" : ""}: cabang ${t.cabangKode} dilepas dan disambung ke jurusan baru.`,
+        `Kabel baru dari gardu ±${m(t.kabelBaru)} (menyusuri jalur yang ada).`,
+        `Pindah ${t.srPindah} dari ${pohon.sr} tarikan SR → jurusan baru ±${a(t.iBaru)}, jurusan lama ±${a(t.iLama)}${t.pemerataan ? " — setelah fasa diratakan" : ""}.`,
+        `Perkiraan jatuh tegangan terburuk turun ±${t.turunPct}%.`,
       ],
-      pilihanLain: calon.slice(1, 3).map(tulisCalon),
+      pilihanLain: [],
       catatan,
-      titik: [
-        { tiang_id: t.c.tiang_id, kode: t.c.kode, peran: "pecah" },
-        ...calon.slice(1, 3).map((c) => ({ tiang_id: c.c.tiang_id, kode: c.c.kode, peran: "alternatif" as const })),
-      ],
-      pindah: [...hilirDari(t.c)].map((x) => x.tiang_id),
+      titik: [{ tiang_id: t.titikId, kode: t.titikKode, peran: "pecah" }],
+      pindah: t.pindah,
+      pilihan,
     };
   }
 

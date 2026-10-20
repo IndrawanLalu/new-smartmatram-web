@@ -212,8 +212,14 @@ export default function AnalisisJtrTab({ ulp, bolehAtur, oleh }: Props) {
         </>
       )}
 
-      {buka && rencana.get(kunciBaris(buka)) && (
-        <RincianRencanaJtr r={buka} rencana={rencana.get(kunciBaris(buka))!} onTutup={() => setBuka(null)} />
+      {buka && pengaturan && rencana.get(kunciBaris(buka)) && (
+        <RincianRencanaJtr
+          r={buka}
+          rencana={rencana.get(kunciBaris(buka))!}
+          gawang={gawang.get(kunciBaris(buka))}
+          pengaturan={pengaturan}
+          onTutup={() => setBuka(null)}
+        />
       )}
 
       {atur && pengaturan && (

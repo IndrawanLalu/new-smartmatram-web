@@ -246,7 +246,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // ── Rencana perbaikan JTR (dari Analisis JTR) ─────────────────────────────
   // Peta dibingkai ke seluruh jurusan itu begitu rencananya selesai dihitung.
   const rencana = useRencanaPeta(awal?.rencana ?? null);
-  const semuaRencana = rencana.data?.semua;
+  const semuaRencana = rencana.bingkai;
   useEffect(() => {
     if (semuaRencana?.length) setFokus(bingkaiTitik(semuaRencana, 0.0004));
   }, [semuaRencana]);
@@ -340,7 +340,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           latar={latar}
           sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
           cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
-          rencana={sembunyi ? null : rencana.data}
+          rencana={sembunyi ? null : rencana}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />

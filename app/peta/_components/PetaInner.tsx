@@ -35,7 +35,7 @@ import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
 import LapisanCariLokasi from "./LapisanCariLokasi";
 import LapisanRencana from "./LapisanRencana";
-import type { RencanaPeta } from "../_hooks/useRencanaPeta";
+import type { RencanaPetaState } from "../_hooks/useRencanaPeta";
 import type { HasilCari } from "../_hooks/useCariLokasi";
 import type { Titik } from "@/lib/koordinat";
 import type { PohonCek, PohonDirabas, TemuanPohon } from "../_hooks/usePohonPeta";
@@ -120,7 +120,7 @@ interface Props {
   /** Cari lokasi/koordinat: pin + garis ke objek terdekat (titik null = padam). */
   cari: { titik: Titik | null; hasil: HasilCari | null };
   /** Rencana perbaikan JTR dari Analisis JTR (null = padam). */
-  rencana: RencanaPeta | null;
+  rencana: RencanaPetaState | null;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -210,7 +210,7 @@ export default function PetaInner({
         }}
         onTutup={() => setPilihan(null)}
       />
-      <LapisanRencana data={rencana} />
+      <LapisanRencana s={rencana} />
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       {tandaMilik.map((t) => (
         <Marker key={`milik-${t.id}`} position={[t.lat, t.lng]} icon={IKON_MILIK} eventHandlers={{ click: () => onPilihTiang(t) }}>
