@@ -14,6 +14,8 @@ export interface NilaiKondisi {
   nilai: string | null;
   label: string | null;
   normal: boolean;
+  /** Item ber-angka (fuse link, rating HS, …) — selain itu null. */
+  angka?: number | null;
 }
 
 /**
@@ -104,6 +106,7 @@ export interface BarisKondisi {
   nilai: string | null;
   nilai_label: string | null;
   normal: boolean;
+  nilai_angka?: number | null;
 }
 
 export interface BarisHar {
@@ -138,7 +141,7 @@ export function bangunNilaiItem(rows: BarisKondisi[]): Map<string, NilaiKondisi[
   for (const r of rows) {
     const k = kunciKondisi(r.gardu_kode, r.ulp);
     const daftar = peta.get(k) ?? [];
-    daftar.push({ bagian: r.bagian, nilai: r.nilai, label: r.nilai_label, normal: r.normal });
+    daftar.push({ bagian: r.bagian, nilai: r.nilai, label: r.nilai_label, normal: r.normal, angka: r.nilai_angka ?? null });
     peta.set(k, daftar);
   }
   return peta;

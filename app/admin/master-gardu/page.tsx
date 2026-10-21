@@ -6,8 +6,17 @@ import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { FIELD, EYEBROW, CARD } from "@/app/admin/_ui";
 import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
+import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
+import { Database, ListFilter } from "lucide-react";
 import TabelMasterGardu from "./_components/TabelMasterGardu";
+import FilterGarduTab from "./_components/FilterGarduTab";
 import { bacaSaringanUrl } from "./_lib/saringanUrl";
+
+type Tab = "master" | "filter";
+const TAB: ItemTab<Tab>[] = [
+  { kunci: "master", label: "Master gardu", ikon: Database },
+  { kunci: "filter", label: "Filter gardu", ikon: ListFilter },
+];
 
 /**
  * Master Gardu — daftar aset gardu, satu-satunya.
@@ -36,6 +45,13 @@ function IsiHalaman() {
   // lalu menyusuri belasan langkah yang tak seorang pun anggap sebagai langkah.
   const [awal] = useState(() => bacaSaringanUrl(sp));
   const [ulp, setUlp] = useState(awal.ulp);
+  const [tab, setTab] = useState<Tab>(() => (sp?.get("tab") === "filter" ? "filter" : "master"));
+  // Tab Filter baru dimuat saat pertama dibuka, lalu dipertahankan.
+  const [filterDibuka, setFilterDibuka] = useState(tab === "filter");
+  const pilihTab = (t: Tab) => {
+    setTab(t);
+    if (t === "filter") setFilterDibuka(true);
+  };
 
   const unit = canSeeAllUnits(user.role) ? ulp : (user.unit ?? "");
   // Ambang anomali disetel per ULP, jadi ikut berubah saat ULP-nya diganti.
@@ -43,6 +59,8 @@ function IsiHalaman() {
 
   return (
     <div className="text-ink flex flex-col gap-4">
+      <TabPil tab={TAB} aktif={tab} onPilih={pilihTab} />
+
       {canSeeAllUnits(user.role) && (
         <div className={`${CARD} p-4 flex flex-wrap items-end gap-3`}>
           <div>
@@ -63,7 +81,15 @@ function IsiHalaman() {
         </div>
       )}
 
-      <TabelMasterGardu user={user} ulp={unit} settings={settings} awal={awal} />
+      {/* Disembunyikan, bukan dilepas: saringan & halaman tiap tab tetap saat berpindah. */}
+      <div className={tab === "master" ? "" : "hidden"}>
+        <TabelMasterGardu user={user} ulp={unit} settings={settings} awal={awal} />
+      </div>
+      {filterDibuka && (
+        <div className={tab === "filter" ? "" : "hidden"}>
+          <FilterGarduTab ulp={unit} />
+        </div>
+      )}
     </div>
   );
 }

@@ -19,6 +19,7 @@ export interface OpsiKondisi {
 
 export interface ItemKondisi {
   kode: string;
+  tipe: "pilihan" | "angka";
   nama: string;
   kelompok: string;
   dimensi: "tunggal" | "fasa" | "jurusan";
@@ -37,7 +38,7 @@ export interface ItemKondisi {
  * kalau daftarnya dikeraskan di kode, item baru akan selamanya tidak bisa
  * disaring dan tidak ada galat apa pun yang memberi tahu.
  */
-export function useAcuanKondisi(aktif: boolean) {
+export function useAcuanKondisi(aktif: boolean, denganAngka = false) {
   const [item, setItem] = useState<ItemKondisi[]>([]);
   const [memuat, setMemuat] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
@@ -53,9 +54,9 @@ export function useAcuanKondisi(aktif: boolean) {
         const [i, o] = await Promise.all([
           supabaseBrowser
             .from("hargardu_item_ref")
-            .select("kode,nama,kelompok,dimensi,tampil_dashboard,urutan")
+            .select("kode,tipe,nama,kelompok,dimensi,tampil_dashboard,urutan")
             .eq("aktif", true)
-            .eq("tipe", "pilihan")
+            .in("tipe", denganAngka ? ["pilihan", "angka"] : ["pilihan"])
             .order("urutan"),
           supabaseBrowser
             .from("hargardu_opsi_ref")
@@ -77,6 +78,7 @@ export function useAcuanKondisi(aktif: boolean) {
         setItem(
           (i.data ?? []).map((r) => ({
             kode: r.kode,
+            tipe: r.tipe as ItemKondisi["tipe"],
             nama: r.nama,
             kelompok: r.kelompok,
             dimensi: r.dimensi as ItemKondisi["dimensi"],
@@ -95,7 +97,7 @@ export function useAcuanKondisi(aktif: boolean) {
     return () => {
       hidup = false;
     };
-  }, [aktif]);
+  }, [aktif, denganAngka]);
 
   return { item, memuat, galat };
 }

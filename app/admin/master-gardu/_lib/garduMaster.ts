@@ -231,7 +231,18 @@ export interface BarisEksporMaster {
   /** Keterangan — tidak ikut terbaca saat diunggah kembali. */
   tgl_ukur_terakhir: string | null;
   persen_beban: number | null;
+  /** Isi kolom tambahan (`TambahanEkspor.kolom`), berurutan. */
+  ekstra?: string[];
 }
+
+/** Kolom & lembar tambahan — dipakai tab Filter gardu: satu kolom per kondisi,
+ *  dan lembar "Kriteria" berisi kondisi yang dipakai. */
+export interface TambahanEkspor {
+  kolom: string[];
+  kriteria: [string, string][];
+}
+
+const WARNA_EKSTRA = "0F766E";
 
 /**
  * Susun berkas .xlsx berisi isi master gardu.
@@ -241,7 +252,7 @@ export interface BarisEksporMaster {
  * Excel → unggah lagi, tanpa perlu menyalin ke template lain. Menyalin manual
  * adalah langkah yang paling mudah salah, dan di sinilah ia dihilangkan.
  */
-export async function buatBerkasEksporMaster(rows: BarisEksporMaster[]): Promise<Blob> {
+export async function buatBerkasEksporMaster(rows: BarisEksporMaster[], tambahan?: TambahanEkspor): Promise<Blob> {
   const wb = new ExcelJS.Workbook();
   wb.creator = "SMART Mataram";
 
@@ -250,6 +261,7 @@ export async function buatBerkasEksporMaster(rows: BarisEksporMaster[]): Promise
   const semuaKolom = [
     ...KOLOM_MASTER.map((k) => ({ header: k.header, lebar: k.lebar })),
     ...KOLOM_KETERANGAN,
+    ...(tambahan?.kolom ?? []).map((header) => ({ header, lebar: 28 })),
   ];
   ws.columns = semuaKolom.map((k) => ({ header: k.header, width: k.lebar }));
 
@@ -258,12 +270,13 @@ export async function buatBerkasEksporMaster(rows: BarisEksporMaster[]): Promise
   semuaKolom.forEach((k, i) => {
     const c = head.getCell(i + 1);
     const keterangan = i >= KOLOM_MASTER.length;
+    const ekstra = i >= KOLOM_MASTER.length + KOLOM_KETERANGAN.length;
     c.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
     c.fill = {
       type: "pattern", pattern: "solid",
       // Blok keterangan diberi warna berbeda supaya terlihat bahwa ia bukan
       // bagian yang akan terbaca saat berkas ini diunggah kembali.
-      fgColor: { argb: "FF" + (keterangan ? "6B7280" : WARNA_HEADER) },
+      fgColor: { argb: "FF" + (ekstra ? WARNA_EKSTRA : keterangan ? "6B7280" : WARNA_HEADER) },
     };
     c.alignment = { horizontal: "center", vertical: "middle" };
     if (keterangan) c.note = "Kolom keterangan — diabaikan saat berkas diunggah kembali.";
@@ -280,9 +293,19 @@ export async function buatBerkasEksporMaster(rows: BarisEksporMaster[]): Promise
     baris.getCell(dasar + 1).value = r.tgl_ukur_terakhir ?? "";
     baris.getCell(dasar + 2).value = r.persen_beban ?? "";
     baris.getCell(dasar + 3).value = r.tgl_ukur_terakhir ? "Sudah diukur" : "Belum pernah diukur";
+    r.ekstra?.forEach((v, j) => { baris.getCell(dasar + KOLOM_KETERANGAN.length + 1 + j).value = v; });
   });
 
   ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: rows.length + 1, column: semuaKolom.length } };
+
+  if (tambahan) {
+    const ks = wb.addWorksheet("Kriteria");
+    ks.columns = [{ width: 28 }, { width: 70 }];
+    for (const [l, v] of tambahan.kriteria) {
+      const b = ks.addRow([l, v]);
+      b.getCell(1).font = { bold: true };
+    }
+  }
 
   const buf = await wb.xlsx.writeBuffer();
   return new Blob([buf], {
