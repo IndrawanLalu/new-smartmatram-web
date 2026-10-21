@@ -65,7 +65,7 @@ export function susunGambarJtm(
     const bentuk = t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang";
     tiangBaru.push({ id: t.id, ...p, bentuk });
     if (t.penanda === "gardu") {
-      calon.push({ ...p, teks: `GARDU BARU${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, jenis: "gardu", ukuran: 7, wajib: true });
+      calon.push({ ...p, teks: `GARDU BARU${t.gardu_jenis ? ` ${t.gardu_jenis.toUpperCase()}` : ""}${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, jenis: "gardu", ukuran: 7, wajib: true });
     } else if (t.penanda) {
       calon.push({ ...p, teks: labelPenanda(t.penanda).toUpperCase(), jenis: "alat", ukuran: 6.5, wajib: true });
     }

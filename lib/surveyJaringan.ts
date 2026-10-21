@@ -23,6 +23,9 @@ export const LABEL_ALASAN: Record<AlasanSurvey, string> = {
   lainnya: "Lainnya",
 };
 
+export type JenisGardu = "portal" | "cantol";
+export const LABEL_JENIS_GARDU: Record<JenisGardu, string> = { portal: "Portal (dua tiang)", cantol: "Cantol (satu tiang)" };
+
 export interface TitikSurvey {
   id: string;
   urutan: number;
@@ -40,6 +43,8 @@ export interface TitikSurvey {
   penanda: string | null;
   gardu_kva: number | null;
   gardu_nama: string | null;
+  /** Gardu baru: portal / cantol (null = belum dipilih / bukan gardu). */
+  gardu_jenis: JenisGardu | null;
   catatan: string | null;
 }
 
@@ -75,6 +80,10 @@ export interface SurveyJaringan {
   disetujui_oleh: string | null;
   disetujui_at: string | null;
   batal_alasan: string | null;
+  /** Nama di blok judul gambar survey (akun SMART bernama unit, bukan orang). */
+  digambar_nama: string | null;
+  diperiksa_nama: string | null;
+  disetujui_nama: string | null;
   jumlah_tiang: number;
   panjang_m: number;
   jumlah_gardu: number;
@@ -82,10 +91,12 @@ export interface SurveyJaringan {
 }
 
 export const PESAN_SQL_SURVEY = "Survey Jaringan Baru belum ada di database — jalankan scripts/survey-jaringan.sql di Supabase.";
+const PESAN_SQL_SURVEY_2 = "Tambahan Survey Jaringan Baru belum ada di database — jalankan scripts/survey-jaringan-2.sql di Supabase.";
 
 /** Galat Supabase → pesan untuk orang. */
 export const pesanSurvey = (e: unknown) => {
   const x = e as { message?: string; code?: string };
+  if (/ubah_pengesah_survey|gardu_jenis|diperiksa_nama/.test(x.message ?? "")) return PESAN_SQL_SURVEY_2;
   return x.code === "PGRST205" || x.code === "PGRST202" || /survey_jaringan|survey_titik/.test(x.message ?? "")
     ? PESAN_SQL_SURVEY
     : (x.message ?? "Gagal");
@@ -105,6 +116,7 @@ export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({
   lat: Number(x.lat),
   lng: Number(x.lng),
   gardu_kva: x.gardu_kva == null ? null : Number(x.gardu_kva),
+  gardu_jenis: (x.gardu_jenis as JenisGardu | null | undefined) ?? null,
 });
 
 /** Posisi induk satu titik (titik survey atau tiang sambung). */
@@ -130,8 +142,9 @@ export const CADANGAN_KONDUKTOR = 1.03;
 
 /**
  * Material dari GAMBAR: panjang konduktor per jenis & ukuran (kawat ×3 fasa,
- * kabel berinti tiga ×1, + cadangan), tiang per jenis, konstruksi per jenis,
- * peralatan per penanda, trafo per kVA. Hanya isian awal — user memeriksanya.
+ * kabel berinti tiga ×1, + cadangan), tiang per jenis (gardu portal +1 tiang),
+ * konstruksi per jenis, peralatan per penanda, trafo per kVA + konstruksi
+ * gardu portal/cantol. Hanya isian awal — user memeriksanya.
  */
 export function materialDariGambar(
   titik: TitikSurvey[],
@@ -154,8 +167,14 @@ export function materialDariGambar(
   for (const t of titik) if (t.konstruksi) tambah(`Konstruksi ${t.konstruksi}`, "set", 1);
   for (const t of titik) {
     if (!t.penanda) continue;
-    if (t.penanda === "gardu") tambah(`Trafo distribusi${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, "unit", 1);
-    else tambah(labelPenanda(t.penanda), "unit", 1);
+    if (t.penanda !== "gardu") {
+      tambah(labelPenanda(t.penanda), "unit", 1);
+      continue;
+    }
+    tambah(`Trafo distribusi${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, "unit", 1);
+    tambah(`Konstruksi gardu ${t.gardu_jenis ?? "(portal/cantol belum dipilih)"}`, "set", 1);
+    // Gardu portal berdiri di dua tiang: tiang keduanya tidak digambar sebagai titik.
+    if (t.gardu_jenis === "portal") tambah(`Tiang ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
   }
   return [...hasil.values()].map((b) => ({
     ...b,

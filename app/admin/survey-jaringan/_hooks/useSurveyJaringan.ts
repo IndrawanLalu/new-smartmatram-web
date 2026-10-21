@@ -8,12 +8,18 @@ import {
   type BarisMaterialSurvey, type SurveyJaringan, type TiangSambung, type TitikSurvey,
 } from "@/lib/surveyJaringan";
 
+/** Nama di blok judul gambar survey. */
+export interface Pengesah {
+  digambar: string;
+  diperiksa: string;
+  disetujui: string;
+}
+
 /**
  * Daftar Survey Jaringan Baru satu ULP ("" = semua, UP3). Semua penulisan
  * lewat fungsi SQL (hak ULP diperiksa di sana); sesudahnya satu baris dibaca
  * ulang dan ditambal.
  */
-
 export function useSurveyJaringan(ulp: string) {
   const [survey, setSurvey] = useState<SurveyJaringan[]>([]);
   const [memuat, setMemuat] = useState(true);
@@ -60,6 +66,8 @@ export function useSurveyJaringan(ulp: string) {
     batalkan: (id: string, alasan: string, oleh: string) => rpc("batalkan_survey_jaringan", { p_id: id, p_alasan: alasan, p_nama: oleh }, id),
     ubahMaterial: (id: string, material: BarisMaterialSurvey[], catatan: string, oleh: string) =>
       rpc("ubah_material_survey", { p_id: id, p_material: material, p_catatan: catatan, p_nama: oleh }, id),
+    ubahPengesah: (id: string, n: Pengesah, oleh: string) =>
+      rpc("ubah_pengesah_survey", { p_id: id, p_digambar: n.digambar, p_diperiksa: n.diperiksa, p_disetujui: n.disetujui, p_nama: oleh }, id),
   };
 }
 

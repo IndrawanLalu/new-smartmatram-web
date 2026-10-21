@@ -1,7 +1,7 @@
 "use client";
 
 import { Trash2 } from "lucide-react";
-import type { TitikSurvey } from "@/lib/surveyJaringan";
+import { LABEL_JENIS_GARDU, type JenisGardu, type TitikSurvey } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS } from "../_ui";
@@ -59,8 +59,15 @@ export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
       <Pilih
         label="Gardu / peralatan di tiang ini" nilai={t.penanda} kosong="Tidak ada (tiang biasa)" mati={mati}
         opsi={[...penanda.values()].map((p) => ({ kode: p.kode, label: p.label }))}
-        onUbah={(v) => u({ penanda: v, ...(v === "gardu" ? {} : { gardu_kva: null, gardu_nama: null }) })}
+        onUbah={(v) => u({ penanda: v, ...(v === "gardu" ? {} : { gardu_kva: null, gardu_nama: null, gardu_jenis: null }) })}
       />
+      {t.penanda === "gardu" && (
+        <Pilih
+          label="Jenis gardu" nilai={t.gardu_jenis} kosong="— pilih portal / cantol —" mati={mati}
+          opsi={(Object.keys(LABEL_JENIS_GARDU) as JenisGardu[]).map((k) => ({ kode: k, label: LABEL_JENIS_GARDU[k] }))}
+          onUbah={(v) => u({ gardu_jenis: v as JenisGardu | null })}
+        />
+      )}
       {t.penanda === "gardu" && (
         <div className="grid grid-cols-[5rem_1fr] gap-1.5">
           <input

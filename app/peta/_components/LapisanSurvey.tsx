@@ -25,7 +25,7 @@ function ikonTitik(bentuk: Bentuk, terpilih: boolean, aktif: boolean) {
     const cincin = terpilih ? `0 0 0 3px #fff, 0 0 0 6px ${UNGU}` : aktif ? `0 0 0 3px #fff, 0 0 0 6px ${HIJAU}` : "0 1px 3px rgba(0,0,0,.6)";
     const isi =
       bentuk === "gardu"
-        ? `<svg width="20" height="18" viewBox="0 0 20 18"><polygon points="10,1 19,17 1,17" fill="${WARNA_SURVEY}" stroke="#fff" stroke-width="1.5"/><circle cx="10" cy="11.5" r="2.6" fill="#fff"/></svg>`
+        ? `<svg width="20" height="18" viewBox="0 0 20 18"><polygon points="10,1 19,17 1,17" fill="${WARNA_SURVEY}" stroke="#fff" stroke-width="1.5"/><circle cx="10" cy="11.8" r="2" fill="#fff"/></svg>`
         : bentuk === "alat"
           ? `<div style="width:13px;height:13px;transform:rotate(45deg);background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`
           : `<div style="width:13px;height:13px;border-radius:999px;background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`;
@@ -99,7 +99,7 @@ export default function LapisanSurvey({ s, labelPenanda }: { s: SurveyPetaState;
           <Tooltip direction="top" offset={[0, -10]}>
             <span className="text-[11px] font-semibold">Tiang baru {n + 1}</span>
             <span className="block text-[10px]">
-              {[t.jenis_tiang, t.konstruksi, t.penanda && (t.penanda === "gardu" ? `Gardu ${t.gardu_kva ?? "?"} kVA` : labelPenanda(t.penanda))]
+              {[t.jenis_tiang, t.konstruksi, t.penanda && (t.penanda === "gardu" ? `Gardu ${t.gardu_jenis ?? ""} ${t.gardu_kva ?? "?"} kVA` : labelPenanda(t.penanda))]
                 .filter(Boolean)
                 .join(" · ") || "isian belum lengkap"}
             </span>

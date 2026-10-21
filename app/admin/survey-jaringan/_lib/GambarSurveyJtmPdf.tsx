@@ -1,10 +1,10 @@
 // Gambar survey Survey Jaringan Baru (JTM) — hanya dimuat lewat import().
 // Hitungan di gambarSurveyJtm.ts; lembar & potongan bersama di lib/gambarSurvey.
 
-import { Circle, Line, Polygon, View } from "@react-pdf/renderer";
+import { Circle, Line, Polygon, Text, View } from "@react-pdf/renderer";
 import {
-  angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, KepalaLembar, Keterangan, Lembar, S, SimbolGardu,
-  TabelMaterialPdf, TandaTangan, TEAL, tgl, wajik,
+  angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, Lembar, S, SimbolGardu, SumberData,
+  TabelMaterialPdf, TEAL, tgl, wajik,
 } from "@/lib/gambarSurvey/LembarPdf";
 import { LABEL_ALASAN, type SurveyJaringan, type TiangSambung } from "@/lib/surveyJaringan";
 import type { GambarJtm, JenisLabelJtm } from "./gambarSurveyJtm";
@@ -56,8 +56,8 @@ export default function GambarSurveyJtmPdf({ s, g, sambung, logo, latar }: Props
       gambar={<Bidang g={g} latar={latar} />}
       kolom={
         <>
-          <KepalaLembar logo={logo} ulp={s.ulp} sub={`Jaringan baru JTM — ${LABEL_ALASAN[s.alasan]}`} />
           <View style={S.blok}>
+            <Text style={S.eyebrow}>{`SURVEY JARINGAN BARU JTM — ${LABEL_ALASAN[s.alasan].toUpperCase()}`}</Text>
             <Baris l="Judul" v={s.judul} />
             <Baris l="Penyulang" v={s.penyulang ?? "—"} />
             <Baris l="Titik sambung" v={sambung.map((x) => x.kode ?? "—").join(", ") || "—"} />
@@ -67,7 +67,25 @@ export default function GambarSurveyJtmPdf({ s, g, sambung, logo, latar }: Props
             <Baris l="Status" v={s.status} />
           </View>
           <TabelMaterialPdf material={s.material} />
-          <Keterangan skalaM={g.skala}>
+          <CatatanPdf isi={s.catatan} />
+          <SumberData
+            teks={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan.`}
+          />
+        </>
+      }
+      blok={{
+        skalaM: g.skala,
+        judul: s.judul,
+        logo,
+        ulp: s.ulp,
+        pengesah: [
+          { label: "Di gbr/Survai", nama: s.digambar_nama ?? s.dibuat_oleh, tanggal: s.dibuat_at },
+          { label: "Diperiksa", nama: s.diperiksa_nama },
+          { label: "Disetujui", nama: s.disetujui_nama, tanggal: s.disetujui_at },
+          { label: "Dirubah", nama: s.diubah_at !== s.dibuat_at ? s.diubah_oleh : null, tanggal: s.diubah_at !== s.dibuat_at ? s.diubah_at : null },
+        ],
+        keterangan: (
+          <>
             <Contoh teks="JTM yang ada (patokan)"><ContohGaris warna={LAMA} tebal={1} /></Contoh>
             <Contoh teks="Jaringan baru (rencana) · panjang gawang"><ContohGaris warna={BARU} tebal={1.8} putus /></Contoh>
             <Contoh teks="Tiang baru T1, T2, …"><Circle cx={13} cy={5} r={3.2} fill={BARU} stroke="#fff" strokeWidth={0.8} /></Contoh>
@@ -77,13 +95,9 @@ export default function GambarSurveyJtmPdf({ s, g, sambung, logo, latar }: Props
               <Contoh teks="Peralatan baru (FCO, LBS, …)"><Polygon points={wajik(13, 5, 4)} fill={BARU} stroke="#fff" strokeWidth={0.6} /></Contoh>
             )}
             {g.tiangLama.some((t) => t.gardu) && <Contoh teks="Gardu yang ada"><SimbolGardu x={13} y={5.5} r={5} warna={TEAL} /></Contoh>}
-          </Keterangan>
-          <CatatanPdf isi={s.catatan} />
-          <TandaTangan
-            kaki={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan.`}
-          />
-        </>
-      }
+          </>
+        ),
+      }}
     />
   );
 }

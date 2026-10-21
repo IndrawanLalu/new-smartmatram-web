@@ -10,7 +10,7 @@ import {
   LABEL_ALASAN, materialDariGambar, NADA_STATUS_SURVEY,
   type BarisMaterialSurvey, type SurveyJaringan, type TiangSambung, type TitikSurvey,
 } from "@/lib/surveyJaringan";
-import { bacaGambarSurvey, bacaLabelPenanda, type SurveyJaringanState } from "../_hooks/useSurveyJaringan";
+import { bacaGambarSurvey, bacaLabelPenanda, type Pengesah, type SurveyJaringanState } from "../_hooks/useSurveyJaringan";
 import { unduhGambarSurveyJtm } from "../_utils/unduhGambarSurveyJtm";
 
 /** Rincian satu survey: angka, material (dihitung dari gambar, disunting), status, gambar survey PDF. */
@@ -31,10 +31,14 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
   const [penanda, setPenanda] = useState<Map<string, string>>(new Map());
   const [material, setMaterial] = useState<BarisMaterialSurvey[]>(s.material);
   const [catatan, setCatatan] = useState(s.catatan ?? "");
+  const namaAwal: Pengesah = { digambar: s.digambar_nama ?? "", diperiksa: s.diperiksa_nama ?? "", disetujui: s.disetujui_nama ?? "" };
+  const [nama, setNama] = useState<Pengesah>(namaAwal);
+  const namaBerubah = JSON.stringify(nama) !== JSON.stringify(namaAwal);
   const [mode, setMode] = useState<"lihat" | "batal">("lihat");
   const [alasan, setAlasan] = useState("");
   const [sibuk, setSibuk] = useState<string | null>(null);
   const bisaUbah = boleh && (s.status === "Draf" || s.status === "Disetujui");
+  const bisaNama = boleh && s.status !== "Batal";
   const berubah = JSON.stringify(material) !== JSON.stringify(s.material) || catatan !== (s.catatan ?? "");
   const label = (k: string) => penanda.get(k) ?? k;
 
@@ -90,15 +94,29 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
               </a>
               <button
                 disabled={!gambar || !!sibuk}
-                onClick={() => void jalankan("pdf", () => unduhGambarSurveyJtm({ ...s, material, catatan: catatan || null }, gambar!.titik, gambar!.sambung, label), "")}
+                onClick={() =>
+                  void jalankan("pdf", () => unduhGambarSurveyJtm(
+                    { ...s, material, catatan: catatan || null, digambar_nama: nama.digambar || null, diperiksa_nama: nama.diperiksa || null, disetujui_nama: nama.disetujui || null },
+                    gambar!.titik, gambar!.sambung, label,
+                  ), "")
+                }
                 className={`${BTN_GHOST} mr-auto`}
               >
                 {putar("pdf") ?? <FileDown size={14} />} Gambar survey
               </button>
               {bisaUbah && <button onClick={() => setMode("batal")} className={`${BTN_GHOST} text-red-600`}><Ban size={14} /> Batalkan</button>}
-              {bisaUbah && berubah && (
-                <button disabled={!!sibuk} onClick={() => void jalankan("simpan", () => st.ubahMaterial(s.id, material, catatan, oleh), "Material tersimpan.")} className={BTN_GHOST}>
-                  {putar("simpan") ?? <Save size={14} />} Simpan material
+              {((bisaUbah && berubah) || (bisaNama && namaBerubah)) && (
+                <button
+                  disabled={!!sibuk}
+                  onClick={() =>
+                    void jalankan("simpan", async () => {
+                      if (bisaUbah && berubah) await st.ubahMaterial(s.id, material, catatan, oleh);
+                      if (bisaNama && namaBerubah) await st.ubahPengesah(s.id, nama, oleh);
+                    }, "Tersimpan.")
+                  }
+                  className={BTN_GHOST}
+                >
+                  {putar("simpan") ?? <Save size={14} />} Simpan perubahan
                 </button>
               )}
               {boleh && s.status === "Disetujui" && (
@@ -108,8 +126,8 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
               )}
               {boleh && s.status === "Draf" && (
                 <button
-                  disabled={!!sibuk || berubah}
-                  title={berubah ? "Simpan material dulu" : undefined}
+                  disabled={!!sibuk || berubah || namaBerubah}
+                  title={berubah || namaBerubah ? "Simpan perubahan dulu" : undefined}
                   onClick={() => void jalankan("setujui", () => st.setujui(s.id, oleh), "Survey disetujui.")}
                   className={BTN_PRIMARY}
                 >
@@ -156,6 +174,22 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
             <p className="text-sm text-ink">{catatan || "—"}</p>
           )}
         </label>
+
+        <section className="space-y-1.5">
+          <p className={EYEBROW}>Nama di blok judul gambar survey</p>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {([["digambar", "Di gbr/Survai", s.dibuat_oleh ?? ""], ["diperiksa", "Diperiksa", ""], ["disetujui", "Disetujui", ""]] as const).map(([k, l, ph]) => (
+              <label key={k} className="block space-y-1">
+                <span className="text-xs text-ink-soft">{l}</span>
+                <input
+                  value={nama[k]} disabled={!bisaNama || mode !== "lihat"} placeholder={ph || "nama"}
+                  onChange={(e) => setNama((n) => ({ ...n, [k]: e.target.value }))}
+                  className={`${FIELD} w-full`}
+                />
+              </label>
+            ))}
+          </div>
+        </section>
 
         {mode === "batal" && (
           <label className="block space-y-1.5">

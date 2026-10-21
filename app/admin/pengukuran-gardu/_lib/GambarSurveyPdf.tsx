@@ -4,8 +4,8 @@
 
 import { Circle, Line, Polygon, Polyline, Text, View } from "@react-pdf/renderer";
 import {
-  angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, KepalaLembar, Keterangan, Lembar, MERAH, S, SimbolGardu,
-  TabelMaterialPdf, TandaTangan, TEAL, tgl, wajik,
+  angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, Lembar, MERAH, S, SimbolGardu, SumberData,
+  TabelMaterialPdf, TEAL, tgl, wajik,
 } from "@/lib/gambarSurvey/LembarPdf";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
 import type { Gambar, JenisLabel, NadaUjung } from "./gambarSurvey";
@@ -33,7 +33,7 @@ const LABEL_TIPIS: JenisLabel[] = ["tiang", "tiang-lain"];
 
 function Legenda({ g, jurusan, garduKode }: { g: Gambar; jurusan: string; garduKode: string }) {
   return (
-    <Keterangan skalaM={g.skala}>
+    <>
       <Contoh teks={`Kabel jurusan ${jurusan} (yang ada)`}><ContohGaris warna={GARIS.utama} tebal={TEBAL.utama} /></Contoh>
       {g.garis.some((x) => x.jenis === "pindah") && (
         <Contoh teks="Pindah ke jurusan baru"><ContohGaris warna={GARIS.pindah} tebal={TEBAL.pindah} /></Contoh>
@@ -54,7 +54,7 @@ function Legenda({ g, jurusan, garduKode }: { g: Gambar; jurusan: string; garduK
           <Polygon points={wajik(13, 5, 4.5)} fill={WARNA_UJUNG.merah} stroke="#fff" strokeWidth={0.6} />
         </Contoh>
       )}
-    </Keterangan>
+    </>
   );
 }
 
@@ -63,6 +63,7 @@ function Data({ u, g, garduNama }: Pick<Props, "u" | "g" | "garduNama">) {
   const d = u.dasar;
   return (
     <View style={S.blok}>
+      <Text style={S.eyebrow}>{LABEL_RENCANA[u.pekerjaan].toUpperCase()}</Text>
       <Baris l="Gardu" v={[u.gardu_kode, garduNama].filter(Boolean).join(" — ")} />
       <Baris l="Penyulang" v={u.penyulang ?? "—"} />
       <Baris l="Jurusan" v={u.jurusan} />
@@ -139,16 +140,27 @@ export default function GambarSurveyPdf(p: Props) {
       gambar={<Jtr g={p.g} latar={p.latar} />}
       kolom={
         <>
-          <KepalaLembar logo={p.logo} ulp={u.ulp} sub={LABEL_RENCANA[u.pekerjaan]} />
           <Data u={u} g={p.g} garduNama={p.garduNama} />
           <TabelMaterialPdf material={u.material} />
-          <Legenda g={p.g} jurusan={u.jurusan} garduKode={u.gardu_kode} />
           <CatatanPdf isi={u.catatan} />
-          <TandaTangan
-            kaki={`Diusulkan ${u.dibuat_oleh ?? "—"}, ${tgl(u.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang menurut koordinat data JTR SMART — pastikan di lapangan.`}
+          <SumberData
+            teks={`Diusulkan ${u.dibuat_oleh ?? "—"}, ${tgl(u.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang menurut koordinat data JTR SMART — pastikan di lapangan.`}
           />
         </>
       }
+      blok={{
+        skalaM: p.g.skala,
+        judul: `Rencana ${LABEL_RENCANA[u.pekerjaan]} Gardu ${u.gardu_kode} Jurusan ${u.jurusan}${u.penyulang ? ` — Penyulang ${u.penyulang}` : ""}`,
+        logo: p.logo,
+        ulp: u.ulp,
+        pengesah: [
+          { label: "Di gbr/Survai", nama: u.dibuat_oleh, tanggal: u.dibuat_at },
+          { label: "Diperiksa", nama: null },
+          { label: "Disetujui", nama: null },
+          { label: "Dirubah", nama: null },
+        ],
+        keterangan: <Legenda g={p.g} jurusan={u.jurusan} garduKode={u.gardu_kode} />,
+      }}
     />
   );
 }

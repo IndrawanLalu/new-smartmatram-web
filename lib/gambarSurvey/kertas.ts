@@ -4,13 +4,14 @@
  * ke kertas (Web Mercator, sama dengan ubin peta), penempatan label yang
  * menghindari titik/simbol/garis, skala grafis, dan ubin latar.
  *
- * Kolom kanan (kop, material, keterangan, tanda tangan) DI LUAR ruang gambar,
- * jadi tabel tidak mungkin menutupi jaringan.
+ * Kolom kanan (data, material) dan blok judul di bawah (pengesah, keterangan,
+ * judul, kop — format contohAset/Legenda.png) DI LUAR ruang gambar, jadi
+ * tabel tidak mungkin menutupi jaringan.
  */
 
-/** Ruang gambar di kertas A3 mendatar (pt), kolom kanan di luar ini. */
+/** Ruang gambar di kertas A3 mendatar (pt); kolom kanan & blok judul di bawah di luar ini. */
 export const GAMBAR_W = 878;
-export const GAMBAR_H = 800;
+export const GAMBAR_H = 626;
 const TEPI = 36;
 /** Batas perbesaran (pt per meter) — jaringan kecil tidak digambar raksasa. */
 const SKALA_MAKS = 4;
