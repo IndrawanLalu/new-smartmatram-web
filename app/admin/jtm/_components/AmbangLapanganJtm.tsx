@@ -10,6 +10,10 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
  * Ambang lapangan inspeksi JTM — jarak & radius yang dibaca HP (`jtm_ambang`)
  * saat layar penyapuan dibuka. Berlaku Tier 1 dan Tier 2, semua ULP (baris
  * `jtm_settings` 'ALL'). Batas min/maks = CHECK di database.
+ *
+ * "Jarak menilai tiang" bisa dinonaktifkan (`cek_jarak_nilai`,
+ * scripts/jtm-cek-jarak.sql): jtm_ambang lalu mengembalikan 99.999 m, jadi
+ * server dan HP sama-sama tidak memeriksa jarak. Angkanya tetap tersimpan.
  */
 
 type Kolom =
@@ -31,7 +35,7 @@ const KOLOM: { k: Kolom; label: string; bantu: string; min: number; maks: number
     bantu: "Jarak antar tiang lebih dari ini membuat HP bertanya: ada tiang yang belum tercatat?" },
 ];
 
-type Ambang = Record<Kolom, number>;
+type Ambang = Record<Kolom, number> & { cek_jarak_nilai: boolean };
 
 export default function AmbangLapanganJtm() {
   const toast = useToast();
@@ -40,10 +44,11 @@ export default function AmbangLapanganJtm() {
   const [sibuk, setSibuk] = useState(false);
 
   useEffect(() => {
-    void supabaseBrowser.from("jtm_settings").select(KOLOM.map((x) => x.k).join(",")).eq("ulp", "ALL").maybeSingle()
+    void supabaseBrowser.from("jtm_settings").select([...KOLOM.map((x) => x.k), "cek_jarak_nilai"].join(",")).eq("ulp", "ALL").maybeSingle()
       .then(({ data }) => {
         if (!data) return;
-        const a = Object.fromEntries(KOLOM.map(({ k }) => [k, Number((data as unknown as Record<string, unknown>)[k])])) as Ambang;
+        const d = data as unknown as Record<string, unknown>;
+        const a = { ...Object.fromEntries(KOLOM.map(({ k }) => [k, Number(d[k])])), cek_jarak_nilai: d.cek_jarak_nilai !== false } as Ambang;
         setAwal(a);
         setIsi(a);
       });
@@ -52,7 +57,7 @@ export default function AmbangLapanganJtm() {
   if (!isi || !awal) return null;
   const salah = KOLOM.filter(({ k, min, maks }) => !(isi[k] >= min && isi[k] <= maks));
   const petaKecil = isi.radius_peta_tumpang_m < isi.radius_cari_tumpang_m;
-  const berubah = KOLOM.some(({ k }) => isi[k] !== awal[k]);
+  const berubah = KOLOM.some(({ k }) => isi[k] !== awal[k]) || isi.cek_jarak_nilai !== awal.cek_jarak_nilai;
 
   const simpan = async () => {
     setSibuk(true);
@@ -73,20 +78,40 @@ export default function AmbangLapanganJtm() {
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {KOLOM.map(({ k, label, bantu, min, maks }) => {
           const keliru = salah.some((x) => x.k === k) || (k === "radius_peta_tumpang_m" && petaKecil);
+          const sakelar = k === "jarak_maks_nilai_m";
+          const mati = sakelar && !isi.cek_jarak_nilai;
           return (
-            <label key={k} className="text-xs">
-              <span className="font-semibold text-ink">{label}</span>
+            <div key={k} className="text-xs">
+              <span className="flex items-center gap-2">
+                <span className="font-semibold text-ink">{label}</span>
+                {sakelar && (
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={isi.cek_jarak_nilai}
+                    onClick={() => setIsi({ ...isi, cek_jarak_nilai: !isi.cek_jarak_nilai })}
+                    className={`h-6 px-2.5 rounded-full text-[11px] font-semibold border ${
+                      isi.cek_jarak_nilai ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-gray-100 text-gray-500 border-gray-200"
+                    }`}
+                  >
+                    {isi.cek_jarak_nilai ? "Aktif" : "Nonaktif"}
+                  </button>
+                )}
+              </span>
               <span className="mt-1 flex items-center gap-1.5">
                 <input
-                  type="number" inputMode="decimal" min={min} max={maks} value={isi[k]}
+                  type="number" inputMode="decimal" min={min} max={maks} value={isi[k]} disabled={mati}
                   onChange={(e) => setIsi({ ...isi, [k]: Number(e.target.value) })}
-                  className={`${FIELD} w-24 ${keliru ? "border-red-400" : ""}`}
+                  className={`${FIELD} w-24 disabled:opacity-50 ${keliru ? "border-red-400" : ""}`}
+                  aria-label={label}
                 />
                 <span className="text-ink-muted">m</span>
                 <span className="text-[10px] text-ink-muted">({min}–{maks})</span>
               </span>
-              <span className="mt-1 block text-[11px] text-ink-muted leading-snug">{bantu}</span>
-            </label>
+              <span className={`mt-1 block text-[11px] leading-snug ${mati ? "text-amber-700 font-semibold" : "text-ink-muted"}`}>
+                {mati ? "Nonaktif — jarak regu ke tiang TIDAK diperiksa saat menilai (Tier 1 & 2)." : bantu}
+              </span>
+            </div>
           );
         })}
       </div>
