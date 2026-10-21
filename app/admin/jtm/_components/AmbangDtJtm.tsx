@@ -41,9 +41,10 @@ export default function AmbangDtJtm() {
 
   const simpan = async () => {
     setSibuk(true);
-    const { error } = await supabaseBrowser.from("jtm_settings").update(isi).eq("ulp", "ALL");
+    const { data, error } = await supabaseBrowser.from("jtm_settings").update(isi).eq("ulp", "ALL").select("ulp");
     setSibuk(false);
     if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Tidak tersimpan — akun ini tidak punya hak mengubah pengaturan JTM.");
     setAwal(isi);
     toast.success("Ambang ΔT disimpan — berlaku di HP saat formulir dimuat berikutnya.");
   };

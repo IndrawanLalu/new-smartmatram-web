@@ -61,9 +61,12 @@ export default function AmbangLapanganJtm() {
 
   const simpan = async () => {
     setSibuk(true);
-    const { error } = await supabaseBrowser.from("jtm_settings").update({ ...isi, updated_at: new Date().toISOString() }).eq("ulp", "ALL");
+    // .select(): pembaruan yang ditolak hak akses TIDAK memberi galat, cuma 0 baris.
+    const { data, error } = await supabaseBrowser.from("jtm_settings")
+      .update({ ...isi, updated_at: new Date().toISOString() }).eq("ulp", "ALL").select("ulp");
     setSibuk(false);
     if (error) return toast.error(error.message);
+    if (!data?.length) return toast.error("Tidak tersimpan — akun ini tidak punya hak mengubah pengaturan JTM.");
     setAwal(isi);
     toast.success("Ambang lapangan disimpan — berlaku di HP saat layar inspeksi dibuka berikutnya.");
   };
