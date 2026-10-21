@@ -1,6 +1,6 @@
 # Rencana: Inspeksi JTM Tier 2 = inspeksi malam di tiang yang sudah ada
 
-*21 Oktober 2026. Status: **MENUNGGU PERSETUJUAN USER**.*
+*21 Oktober 2026. Status: **DISETUJUI & DIBANGUN** (web f32c065, HP 28e1e13) — SQL `jtm-tier2-malam.sql` belum dijalankan.*
 
 ## Latar
 
@@ -36,30 +36,32 @@ Jadi Tier 2 lebih panjang dari Tier 1, kebalikan dari kebutuhan.
 
 ### B. Isian Tier 2 baru (data di `jtm_item_ref`, kelompok "Pemeriksaan malam", per tiang)
 
+Pengaturan JTM melarang syarat bertingkat (A → B → C), jadi semua item
+bergantung langsung pada "Hasil pemeriksaan" yang punya tiga pilihan:
+
 | Item | Isian | Muncul bila |
 |---|---|---|
-| Hasil pemeriksaan | Normal / Ada kelainan (= temuan) | selalu, **wajib** |
-| Titik panas di | Tidak ada / Isolator / Jumperan-sambungan / Peralatan / Arrester | Ada kelainan |
-| Suhu titik panas (°C) | angka | titik panas ≠ Tidak ada |
-| Suhu pembanding (°C) | angka (fasa lain yang normal) | titik panas ≠ Tidak ada |
-| Suara | Tidak ada / Desis (korona) / Dengung / Letupan | Ada kelainan |
-| Flashover / percikan | Tidak terlihat / Terlihat | Ada kelainan |
+| Hasil pemeriksaan | Normal / Ada titik panas / Kelainan lain (suara / flashover) | selalu, **wajib** |
+| Titik panas di | Isolator / Jumperan-sambungan / Peralatan / Arrester | Ada titik panas |
+| Suhu titik panas (°C) | angka, wajib | Ada titik panas |
+| Suhu pembanding (°C) | angka, tidak wajib | Ada titik panas |
+| Suara | Tidak ada / Desis (korona) / Dengung / Letupan | Ada titik panas atau Kelainan lain |
+| Flashover / percikan | Tidak terlihat / Terlihat | Ada titik panas atau Kelainan lain |
 
-- "Ada kelainan" adalah pilihan bertanda Temuan. Akibatnya:
-  - foto temuan wajib (sampai 3, bisa foto termal);
-  - regu memilih kategori Urgent/Rawan/Biasa;
-  - temuannya masuk ke alur tugaskan regu yang sudah ada.
-- **ΔT = suhu titik panas − suhu pembanding**, dihitung HP dan web.
-  - HP **menyarankan** kategori dari ambang ΔT: <10 tanpa saran, 10–25 Biasa, 25–40 Rawan, >40 Urgent; flashover terlihat = Urgent.
-  - Regu tetap bisa mengganti kategori. Mesin temuan tidak diubah.
-- Tier 2 tidak menulis master tiang. Pemicu master hanya untuk item ber-`master_field`, dan item itu tidak ada di Tier 2.
-- Rekap data penyulang mengambil jawaban terakhir **per item**, jadi tidak hilang. Kedua hal ini sudah dicek.
+- Hanya "Ada titik panas" dan "Kelainan lain" yang bertanda Temuan.
+  - Akibatnya satu temuan per tiang, foto wajib, dan regu memilih kategori.
+  - Lokasi titik panas, suara, dan flashover menjadi keterangan temuan itu.
+- **ΔT = suhu titik panas − suhu pembanding.**
+  - HP menampilkan saran kategori di atas pilihan kategori: "Saran: Rawan (ΔT 28 °C)". Flashover terlihat = saran Urgent.
+  - Kategori tidak diisikan otomatis; regu tetap mengetuk sendiri.
+  - Web menampilkan ΔT di detail inspeksi dan Excel hasil.
 
 ### C. Hanya tiang yang sudah ada
-- **Server:**
-  - `rintis_segmen_jtm` menolak Tier 2.
-  - `kirim_tiang_jtm` menolak tiang baru, sisipan, dan geser titik pada inspeksi Tier 2.
-  - Inspeksi Tier 2 hanya bisa dibuat untuk segmen yang Tier 1-nya Diverifikasi, baik dari WO maupun di luar WO.
+- **Server (pemicu; fungsi besar tidak disalin ulang):**
+  - Inspeksi Tier 2 baru ditolak bila segmen belum punya Tier 1 Diverifikasi. Ini juga menutup rintis Tier 2.
+  - Tiang yang dibuat di kiriman yang sama ditolak masuk inspeksi Tier 2 (`tiang.created_at = now()`).
+  - Item WO Tier 2 ditolak untuk segmen yang belum dititik.
+  - Geser titik dan tumpang hanya disembunyikan di HP; servernya tidak dijaga.
 - **HP (OTA):**
   - Pada Tier 2, tombol rintis, tambah tiang, sisip, geser titik, dan tumpangi disembunyikan.
   - Pilihan "Tier 2" di luar WO hanya menampilkan segmen yang sudah dititik.
