@@ -113,8 +113,11 @@ export default function SusunWoSegmen({
   infoSla,
   woAwal,
   garansi,
+  terkunci,
 }: {
   user: CurrentUser;
+  /** Tampil tapi tidak bisa dipilih — WO Tier 2: segmen belum dititik Tier 1. */
+  terkunci?: { segmen: Set<string>; label: string };
   /** Jenis pekerjaan untuk peringatan masa garansi (wo-daftar-garansi.sql). */
   garansi?: KunciGaransi;
   istilah: IstilahWo;
@@ -183,12 +186,16 @@ export default function SusunWoSegmen({
         // Paling lama tidak diinspeksi di atas — sepola Master Segmen, supaya
         // yang paling perlu dirabas tidak harus dicari.
         .sort((a, b) => {
+          const ka = terkunci?.segmen.has(a.segmen_id) ? 1 : 0;
+          const kb = terkunci?.segmen.has(b.segmen_id) ? 1 : 0;
+          if (ka !== kb) return ka - kb;
           const ua = a.umur_inspeksi_bulan ?? Number.MAX_SAFE_INTEGER;
           const ub = b.umur_inspeksi_bulan ?? Number.MAX_SAFE_INTEGER;
           return ub - ua || a.penyulang.localeCompare(b.penyulang);
         }),
-    [segmen, ulp, segmenTerikat, saringPenyulang, saringSumber, cari],
+    [segmen, ulp, segmenTerikat, saringPenyulang, saringSumber, cari, terkunci],
   );
+  const bisaDipilih = useMemo(() => tersedia.filter((s) => !terkunci?.segmen.has(s.segmen_id)), [tersedia, terkunci]);
 
   const reguUlp = useMemo(() => regu.filter((g) => g.ulp === ulp), [regu, ulp]);
   const woUlp = useMemo(() => woTerbuka.filter((w) => w.ulp === ulp), [woTerbuka, ulp]);
@@ -211,10 +218,11 @@ export default function SusunWoSegmen({
   // Dari seluruh ULP, bukan dari daftar yang sedang tersaring: mencentang lalu
   // mencari yang lain tidak boleh diam-diam mengeluarkan yang sudah dicentang.
   const dipilih = useMemo(
-    () => segmen.filter((s) => pilih.has(s.segmen_id) && (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id)),
-    [segmen, pilih, ulp, segmenTerikat],
+    () => segmen.filter((s) =>
+      pilih.has(s.segmen_id) && (!ulp || s.ulp === ulp) && !segmenTerikat.has(s.segmen_id) && !terkunci?.segmen.has(s.segmen_id)),
+    [segmen, pilih, ulp, segmenTerikat, terkunci],
   );
-  const semuaTersaringDipilih = tersedia.length > 0 && tersedia.every((s) => pilih.has(s.segmen_id));
+  const semuaTersaringDipilih = bisaDipilih.length > 0 && bisaDipilih.every((s) => pilih.has(s.segmen_id));
   const totalKm = dipilih.reduce((n, s) => n + (s.panjang_pakai_km ?? 0), 0);
   const kmKetikan = dipilih
     .filter((s) => s.panjang_dari === "ketikan")
@@ -640,7 +648,7 @@ export default function SusunWoSegmen({
                 onChange={() =>
                   setPilih((prev) => {
                     const n = new Set(prev);
-                    for (const s of tersedia) {
+                    for (const s of bisaDipilih) {
                       if (semuaTersaringDipilih) n.delete(s.segmen_id);
                       else n.add(s.segmen_id);
                     }
@@ -650,23 +658,27 @@ export default function SusunWoSegmen({
                 className="accent-navy-600"
               />
               <span className="text-xs font-semibold text-ink">
-                Pilih semua {tersedia.length} {satuan}
+                Pilih semua {bisaDipilih.length} {satuan}
                 {saringPenyulang ? ` di penyulang ${saringPenyulang}` : ""}
                 {cari.trim() ? ` yang cocok dengan "${cari.trim()}"` : ""}
               </span>
             </label>
             {tersedia.slice(0, batasTampil).map((s) => {
-              const aktif = pilih.has(s.segmen_id);
+              const kunci = !!terkunci?.segmen.has(s.segmen_id);
+              const aktif = !kunci && pilih.has(s.segmen_id);
               return (
                 <label
                   key={s.segmen_id}
-                  className={`flex flex-wrap items-center gap-3 px-3 py-2 rounded-xl border cursor-pointer transition-colors ${
-                    aktif ? "border-navy-300 bg-navy-50/50" : "border-line hover:bg-surface"
+                  className={`flex flex-wrap items-center gap-3 px-3 py-2 rounded-xl border transition-colors ${
+                    kunci ? "border-line opacity-60 cursor-not-allowed"
+                      : aktif ? "border-navy-300 bg-navy-50/50 cursor-pointer" : "border-line hover:bg-surface cursor-pointer"
                   }`}
+                  title={kunci ? terkunci?.label : undefined}
                 >
                   <input
                     type="checkbox"
                     checked={aktif}
+                    disabled={kunci}
                     onChange={() =>
                       setPilih((prev) => {
                         const n = new Set(prev);
@@ -680,6 +692,11 @@ export default function SusunWoSegmen({
                   <span className="text-xs text-ink-soft w-[130px] truncate">{s.penyulang}</span>
                   <span className="text-sm text-ink flex-1 min-w-[200px]">
                     {s.nama}
+                    {kunci && (
+                      <span className="ml-1.5 px-1.5 py-px rounded-full border border-line bg-surface text-[10px] font-semibold text-ink-muted">
+                        {terkunci?.label}
+                      </span>
+                    )}
                     {s.sumber === "tempelan" && (
                       <span className="ml-1.5 px-1.5 py-px rounded-full border border-sky-200 bg-sky-50 text-[10px] font-semibold text-sky-700">
                         tempelan

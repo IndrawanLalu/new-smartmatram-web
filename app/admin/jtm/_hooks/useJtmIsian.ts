@@ -57,8 +57,17 @@ export interface ItemBaru {
   tipe: ItemIsian["tipe"];
   dimensi: "tunggal" | "fasa";
   milik: Milik;
+  tier: Tier;
   syarat: Syarat;
 }
+
+/** Tier yang menanyakan item: '1' rutin siang, '2' pemeriksaan malam, '12' keduanya. */
+export type Tier = "1" | "2" | "12";
+export const PILIHAN_TIER: { nilai: Tier; label: string }[] = [
+  { nilai: "1", label: "Tier 1" },
+  { nilai: "2", label: "Tier 2" },
+  { nilai: "12", label: "Tier 1 & 2" },
+];
 
 /** "Kondisi Aksesoris MVTIC" → "kondisi_aksesoris_mvtic". */
 export const jadiKode = (teks: string) =>
@@ -189,7 +198,7 @@ export function useJtmIsian() {
           tipe: v.tipe,
           dimensi: v.dimensi,
           milik: v.milik,
-          tier: "12",
+          tier: v.tier,
           wajib: true,
           urutan,
           // Item pilihan lahir NONAKTIF: tanpa pilihan, isian wajib di HP tidak

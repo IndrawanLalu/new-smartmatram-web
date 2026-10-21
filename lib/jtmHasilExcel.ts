@@ -84,12 +84,22 @@ function selIsian(daftar: KondisiJtm[], satuan: string | null): SelHasil {
   return { teks: urut.map((k) => `${k.bagian}: ${teksNilai(k, satuan)}`).join(" · "), temuan };
 }
 
+/** Tier 2 (jtm-tier2-malam.sql): ΔT = suhu titik panas − suhu pembanding,
+ *  kolom turunan tepat sesudah suhu pembanding. */
+const SUHU = "suhu_titik_panas";
+const PEMBANDING = "suhu_pembanding";
+
+function selDt(t: TiangJtm): SelHasil {
+  const a = t.kondisi.find((k) => k.item_kode === SUHU)?.nilai_angka;
+  const b = t.kondisi.find((k) => k.item_kode === PEMBANDING)?.nilai_angka;
+  return a != null && b != null ? { teks: Math.round((a - b) * 10) / 10 } : { teks: "" };
+}
+
 export function susunHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string): ExcelJS.Workbook {
-  const kolom: KolomHasil[] = [
-    ...DEPAN,
-    ...item.map((i) => ({ judul: i.nama, lebar: 14, kelompok: i.kelompok })),
-    ...BELAKANG,
-  ];
+  const posDt = item.some((i) => i.kode === SUHU) ? item.findIndex((i) => i.kode === PEMBANDING) : -1;
+  const kolomItem: KolomHasil[] = item.map((i) => ({ judul: i.nama, lebar: 14, kelompok: i.kelompok }));
+  if (posDt >= 0) kolomItem.splice(posDt + 1, 0, { judul: "ΔT (°C)", lebar: 9, kelompok: item[posDt].kelompok });
+  const kolom: KolomHasil[] = [...DEPAN, ...kolomItem, ...BELAKANG];
 
   const baris: BarisHasil[] = tiang.map((t, n) => {
     const dinilai = t.kondisi.length > 0;
@@ -111,6 +121,7 @@ export function susunHasilJtm(tiang: TiangJtm[], item: ItemJtm[], judul: string)
       }
       return selIsian(daftar, it.satuan);
     });
+    if (posDt >= 0) isian.splice(posDt + 1, 0, selDt(t));
 
     const tgl = t.kondisi.reduce<string | null>((m, k) => (k.tgl && (!m || k.tgl > m) ? k.tgl : m), null);
     const ada = t.lat !== null && t.lng !== null;

@@ -68,6 +68,17 @@ export interface JawabanTiang {
   }[];
 }
 
+/** Tier 2 (jtm-tier2-malam.sql): baris turunan ΔT sesudah suhu pembanding. */
+function denganDt(isi: JawabanTiang["isi"], periksa: { item_kode: string; nilai_angka: number | null }[]) {
+  const a = periksa.find((p) => p.item_kode === "suhu_titik_panas")?.nilai_angka;
+  const b = periksa.find((p) => p.item_kode === "suhu_pembanding")?.nilai_angka;
+  const i = isi.findIndex((x) => x.itemKode === "suhu_pembanding");
+  if (a == null || b == null || i < 0) return isi;
+  const dt = { itemKode: "dt", itemNama: "ΔT (selisih suhu)", bagian: "-", nilaiLabel: `${Math.round((a - b) * 10) / 10} °C`,
+    normal: true, catatan: null, fotoUrl: null, fotoLain: [] };
+  return [...isi.slice(0, i + 1), dt, ...isi.slice(i + 1)];
+}
+
 export const KOLOM =
   "id,segmen_id,segmen_nama,penyulang,ulp,tier,status,tgl_mulai,tgl_selesai,petugas_nama,catatan,verified_at,verified_by,verified_note,tiang_segmen,tiang_dinilai,jawaban,temuan,jumlah_foto";
 const AKTIF = ["Dijadwalkan", "Dalam Proses", "Selesai", "Ditolak"];
@@ -350,7 +361,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
         ),
       ),
     ).then((x) => x.flat()),
-    supabaseBrowser.from("jtm_item_ref").select("kode,nama,urutan"),
+    supabaseBrowser.from("jtm_item_ref").select("kode,nama,urutan,satuan"),
     supabaseBrowser.from("jtm_opsi_ref").select("item_kode,kode,label,normal"),
   ]);
   if (item.error) throw new Error(item.error.message);
@@ -358,12 +369,14 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
 
   const nama = new Map((item.data ?? []).map((i) => [i.kode as string, i.nama as string]));
   const urut = new Map((item.data ?? []).map((i) => [i.kode as string, Number(i.urutan ?? 0)]));
+  const satuan = new Map((item.data ?? []).map((i) => [i.kode as string, (i.satuan as string | null) ?? null]));
   const lbl = new Map((opsi.data ?? []).map((o) => [`${o.item_kode}|${o.kode}`, o]));
 
   const per = new Map<string, JawabanTiang["isi"]>();
   for (const p of periksa) {
     const o = lbl.get(`${p.item_kode}|${p.nilai}`);
-    const angka = p.nilai_angka !== null ? String(p.nilai_angka) : null;
+    const sat = satuan.get(p.item_kode);
+    const angka = p.nilai_angka !== null ? `${p.nilai_angka}${sat ? ` ${sat}` : ""}` : null;
     const d = per.get(p.titik_id) ?? [];
     d.push({
       itemKode: p.item_kode,
@@ -387,7 +400,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
       tiangKode: tg?.kode ?? "—",
       jarakM: t.jarak_m !== null ? Number(t.jarak_m) : null,
       dinilaiAt: t.dinilai_at,
-      isi: (per.get(t.id) ?? []).sort((a, b) => (urut.get(a.itemKode) ?? 0) - (urut.get(b.itemKode) ?? 0)),
+      isi: denganDt((per.get(t.id) ?? []).sort((a, b) => (urut.get(a.itemKode) ?? 0) - (urut.get(b.itemKode) ?? 0)), periksa.filter((p) => p.titik_id === t.id)),
     };
   });
 }

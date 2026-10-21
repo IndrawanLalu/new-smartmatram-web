@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
-import { useJtmIsian, type ItemBaru } from "../_hooks/useJtmIsian";
+import { PILIHAN_TIER, useJtmIsian, type ItemBaru } from "../_hooks/useJtmIsian";
 import BarisItemJtm from "./BarisItemJtm";
 import SyaratJtm from "./SyaratJtm";
 
@@ -21,6 +21,7 @@ const KOSONG: ItemBaru = {
   tipe: "pilihan",
   dimensi: "tunggal",
   milik: "sirkit",
+  tier: "1",
   syarat: { item: null, nilai: [], negasi: false },
 };
 
@@ -57,6 +58,8 @@ export default function IsianJtm() {
         diisi juga oleh penyulang yang menumpang, untuk kabelnya sendiri.
       </p>
       <p className="text-[11px] text-ink-muted mt-2 max-w-3xl">
+        <b>Tier</b> menentukan di inspeksi mana item ditanyakan: Tier 1 rutin siang (menitik tiang), Tier 2
+        pemeriksaan malam / beban puncak di tiang yang sudah ada.
         Perubahan berlaku di HP saat formulir dimuat berikutnya — tanpa rilis aplikasi. Pilihan
         yang sudah dipakai catatan pemeriksaan tidak bisa dihapus; nonaktifkan saja.
       </p>
@@ -128,6 +131,14 @@ export default function IsianJtm() {
           >
             <option value="sirkit">Tiap kabel</option>
             <option value="tiang">Pemilik tiang</option>
+          </select>
+          <select
+            value={baru.tier}
+            onChange={(e) => setBaru({ ...baru, tier: e.target.value as ItemBaru["tier"] })}
+            className={`${FIELD} w-[120px]`}
+            aria-label="Ditanyakan di tier"
+          >
+            {PILIHAN_TIER.map((t) => <option key={t.nilai} value={t.nilai}>{t.label}</option>)}
           </select>
         </div>
         <SyaratJtm nilai={baru.syarat} onUbah={(s) => setBaru({ ...baru, syarat: s })} item={item} opsiPer={opsiPer} />

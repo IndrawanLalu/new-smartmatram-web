@@ -6,6 +6,7 @@ import { BTN_GHOST, CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { useJtmRef, BENTUK, type Bentuk, type Kategori, type RefBaris } from "../_hooks/useJtmRef";
 import { kodeTitik } from "@/lib/jenisTitikJtm";
 import IsianJtm from "./IsianJtm";
+import AmbangDtJtm from "./AmbangDtJtm";
 
 const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boolean }[] = [
   {
@@ -96,6 +97,8 @@ export default function PengaturanJtm() {
       </div>
 
       <IsianJtm />
+
+      <AmbangDtJtm />
 
       {DAFTAR.map((d) => (
         <Bagian

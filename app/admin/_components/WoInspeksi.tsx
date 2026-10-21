@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Ban, ChevronLeft, ChevronRight, Loader2, PlusCircle } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
@@ -11,6 +11,7 @@ import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 import { bulanTahun, useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
+import { supabaseBrowser } from "@/lib/supabase-browser";
 
 /**
  * Tab Susun WO inspeksi JTM / JTR (J4, J5c `rencana-mobile-jtm-jtr.md`):
@@ -34,7 +35,7 @@ import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PILIHAN_TIER: { tier: TierWo; label: string; bantu: string }[] = [
   { tier: "1", label: "Tier 1 · rutin", bantu: "Pemeriksaan rutin tiap tiang" },
-  { tier: "2", label: "Tier 2 · detail", bantu: "Pemeriksaan detail (suhu sambungan, pentanahan, …)" },
+  { tier: "2", label: "Tier 2 · detail", bantu: "Pemeriksaan malam / beban puncak (suhu, suara, flashover) — hanya segmen yang Tier 1-nya sudah disetujui" },
 ];
 const BULAN_INI = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
@@ -98,6 +99,23 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
   const [halWo, setHalWo] = useState(1);
   const atasRef = useRef<HTMLDivElement>(null);
+
+  // WO Tier 2 hanya untuk segmen yang sudah dititik Tier 1 (Diverifikasi) —
+  // jtm-tier2-malam.sql; server menolak sisanya lewat pemicu yang sama.
+  const [dititik, setDititik] = useState<Set<string> | null>(null);
+  useEffect(() => {
+    if (tierSusun !== "2" || dititik) return;
+    // Galat (SQL belum dijalankan) = tanpa kunci di layar; server tetap menjaga.
+    void supabaseBrowser.rpc("jtm_segmen_dititik", { p_ulp: null }).then(({ data, error }) => {
+      if (!error) setDititik(new Set((data ?? []).map((x: { segmen_id: string }) => x.segmen_id)));
+    });
+  }, [tierSusun, dititik]);
+  const terkunci = useMemo(
+    () => (tierSusun === "2" && dititik
+      ? { segmen: new Set(w.objek.map((s) => s.segmen_id).filter((id) => !dititik.has(id))), label: "belum dititik Tier 1" }
+      : undefined),
+    [tierSusun, dititik, w.objek],
+  );
   // Item WO yang di-WO-kan dalam masa garansi pekerjaan sebelumnya.
   const garansi1 = useGaransiItem(jtm ? "jtm" : "jtr", ulpLihat, w.nonce);
   const garansi2 = useGaransiItem(jtm ? "jtm2" : null, ulpLihat, w.nonce);
@@ -188,6 +206,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           }
           segmen={w.objek}
           segmenTerikat={w.objekTerikat[tierSusun]}
+          terkunci={terkunci}
           regu={w.regu}
           woAwal={woAwal}
           woTerbuka={w.wo

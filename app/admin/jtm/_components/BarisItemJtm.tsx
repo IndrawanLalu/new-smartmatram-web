@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { BTN_GHOST, FIELD } from "@/app/admin/_ui";
-import type { ItemIsian, OpsiIsian, Syarat } from "../_hooks/useJtmIsian";
+import { PILIHAN_TIER, type ItemIsian, type OpsiIsian, type Syarat } from "../_hooks/useJtmIsian";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
 import SyaratJtm from "./SyaratJtm";
 
@@ -52,6 +52,15 @@ export default function BarisItemJtm({ i, opsi, semua, opsiPer, onUbahItem, onUb
         </span>
 
         <div className="ml-auto flex flex-wrap items-center gap-1.5">
+          <select
+            value={i.tier}
+            onChange={(e) => void onUbahItem(i.kode, { tier: e.target.value })}
+            className={`${FIELD} h-8 w-[110px] text-xs`}
+            title="Tier 1 = inspeksi rutin siang (menitik tiang). Tier 2 = pemeriksaan malam / beban puncak di tiang yang sudah ada."
+            aria-label={`Tier ${i.nama}`}
+          >
+            {PILIHAN_TIER.map((t) => <option key={t.nilai} value={t.nilai}>{t.label}</option>)}
+          </select>
           <button
             onClick={() => void onUbahItem(i.kode, { milik: i.milik === "tiang" ? "sirkit" : "tiang" })}
             className={TOMBOL}
