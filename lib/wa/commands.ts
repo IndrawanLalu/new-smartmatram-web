@@ -2,7 +2,10 @@
  * SMART MATARAM — WA Command Handler (port dari wa-bot/commands.js).
  * Dipakai oleh app/api/wa-webhook (pesan masuk dari wa-gateway).
  * Logika command dipertahankan sama: #gardu, #beban, #overload, #inspeksi urgent, #rekap, #help.
+ * #DATA (21 Okt 2026) membalas GAMBAR kartu gardu — lib/wa/dataGardu.ts.
  */
+
+import { cmdData, type BalasanMedia } from "./dataGardu";
 
 const SMART_MATARAM_URL = process.env.SMART_MATARAM_URL || "http://localhost:3000";
 const AGENT_SECRET = process.env.AGENT_SECRET || "";
@@ -74,6 +77,7 @@ function cmdHelp() {
     "📟 *SMART MATARAM BOT*\n━━━━━━━━━━━━━━━━━━━━\n\n" +
     "🔍 *#gardu <kode/nama/alamat>*\nInfo gardu + lokasi Maps\n» #gardu AM005\n» #gardu ampenan baru\n\n" +
     "⚡ *#beban <kode>*\nData pengukuran terakhir gardu\n» #beban AM005\n\n" +
+    "🖼️ *#DATA <kode>*\nKartu gambar gardu: beban puncak, per jurusan, tegangan ujung, pemeliharaan\n» #DATA AM001\n\n" +
     "🔴 *#overload*\nGardu overload (≥80%) & suhu tinggi\n\n" +
     "🚨 *#inspeksi urgent*\nTemuan urgent yang belum selesai\n\n" +
     "📊 *#rekap*\nRingkasan data hari ini\n\n" +
@@ -163,7 +167,7 @@ async function cmdRekap() {
 }
 
 // ── Dispatcher ────────────────────────────────────────────────────────────────
-export async function handleCommand(text: string): Promise<string | null> {
+export async function handleCommand(text: string): Promise<string | BalasanMedia | null> {
   if (!text.startsWith("#")) return null;
   const raw = text.slice(1).trim();
   const lower = raw.toLowerCase();
@@ -172,6 +176,7 @@ export async function handleCommand(text: string): Promise<string | null> {
   if (lower === "help" || lower === "bantuan") return cmdHelp();
   if (lower.startsWith("gardu") || lower.startsWith("alamat")) return cmdGardu(raw.replace(/^(gardu|alamat)\s*/i, ""));
   if (lower.startsWith("beban")) return cmdBeban(args);
+  if (lower === "data" || lower.startsWith("data ")) return cmdData(args);
   if (lower === "overload" || lower === "gardu overload" || lower === "anomali") return cmdOverload();
   if (lower.startsWith("inspeksi urgent") || lower === "urgent") return cmdInspeksiUrgent();
   if (lower === "rekap" || lower === "summary" || lower === "laporan") return cmdRekap();

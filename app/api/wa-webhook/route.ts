@@ -42,7 +42,8 @@ export async function POST(req: NextRequest) {
       const reply = isLaporan
         ? await handlePenormalanReport(text, { from, messageId: payload.messageId })
         : await handleCommand(text);
-      if (reply) await gatewaySend({ to: from, text: reply, replyTo: payload.messageId });
+      if (typeof reply === "string") await gatewaySend({ to: from, text: reply, replyTo: payload.messageId });
+      else if (reply) await gatewaySend({ to: from, mediaUrl: reply.mediaUrl, caption: reply.caption, replyTo: payload.messageId });
     } catch (e) {
       console.error("[wa-webhook] error:", (e as Error).message);
       await gatewaySend({ to: from, text: "⚠️ Terjadi kesalahan saat memproses pesan. Coba lagi." }).catch(() => {});
