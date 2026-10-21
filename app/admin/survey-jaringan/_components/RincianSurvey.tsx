@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Ban, Calculator, CheckCheck, FileDown, Loader2, Map as IkonPeta, RotateCcw, Save } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import TabelMaterial from "@/app/admin/_components/TabelMaterial";
+import FotoSurvey from "./FotoSurvey";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import {
@@ -22,6 +23,13 @@ interface Props {
   st: SurveyJaringanState;
   onTutup: () => void;
 }
+
+/** Koordinat yang bisa disalin + tautan Google Maps. */
+const Koordinat = ({ k }: { k: { lat: number; lng: number } }) => (
+  <a href={`https://www.google.com/maps?q=${k.lat},${k.lng}`} target="_blank" rel="noopener" className="font-mono text-navy-600 hover:underline">
+    {k.lat.toFixed(6)}, {k.lng.toFixed(6)}
+  </a>
+);
 
 const tgl = (x: string | null) => (x ? new Date(x).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
@@ -165,6 +173,26 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
             Dari gambar: konduktor kawat ×3 fasa, kabel berinti tiga ×1, +3% andongan; tiang, konstruksi, peralatan, dan trafo dihitung per titik.
           </p>
         </div>
+
+        <FotoSurvey s={s} boleh={bisaNama} onUbah={(f) => st.ubahFoto(s.id, f, oleh)} />
+
+        {gambar && (
+          <section className="space-y-1">
+            <p className={EYEBROW}>Koordinat lokasi</p>
+            <ul className="text-sm space-y-0.5">
+              {[...gambar.sambung.values()].map((x) => (
+                <li key={x.id}><span className="text-ink-soft">Sambung {x.kode ?? ""}:</span> <Koordinat k={x} /></li>
+              ))}
+              {gambar.titik.map((t, i) =>
+                t.penanda ? (
+                  <li key={t.id}>
+                    <span className="text-ink-soft">{t.penanda === "gardu" ? `Gardu ${t.gardu_jenis ?? ""}` : label(t.penanda)} T{i + 1}:</span> <Koordinat k={t} />
+                  </li>
+                ) : null,
+              )}
+            </ul>
+          </section>
+        )}
 
         <label className="block space-y-1.5">
           <span className={EYEBROW}>Catatan</span>

@@ -66,6 +66,7 @@ export function useSurveyJaringan(ulp: string) {
     batalkan: (id: string, alasan: string, oleh: string) => rpc("batalkan_survey_jaringan", { p_id: id, p_alasan: alasan, p_nama: oleh }, id),
     ubahMaterial: (id: string, material: BarisMaterialSurvey[], catatan: string, oleh: string) =>
       rpc("ubah_material_survey", { p_id: id, p_material: material, p_catatan: catatan, p_nama: oleh }, id),
+    ubahFoto: (id: string, foto: string[], oleh: string) => rpc("ubah_foto_survey", { p_id: id, p_foto: foto, p_nama: oleh }, id),
     ubahPengesah: (id: string, n: Pengesah, oleh: string) =>
       rpc("ubah_pengesah_survey", { p_id: id, p_digambar: n.digambar, p_diperiksa: n.diperiksa, p_disetujui: n.disetujui, p_nama: oleh }, id),
   };

@@ -81,9 +81,9 @@ export function susunGambarJtm(
     .map((t): CalonLabel<JenisLabelJtm> => ({ ...ke(t), teks: t.kode!, jenis: "lain", ukuran: 4.5, wajib: false }));
 
   const penghalang: Kotak[] = [
-    ...tiangLama.map((t) => kotak(t, 2.5)),
+    ...tiangLama.map((t) => kotak(t, 3.5)),
     // Gardu: tiang + trafo di sampingnya, ke arah mana pun → kotak lebih lebar.
-    ...tiangBaru.map((t) => kotak(t, t.bentuk === "gardu" ? 30 : 4)),
+    ...tiangBaru.map((t) => kotak(t, t.bentuk === "gardu" ? 24 : 4)),
     ...sambungPt.map((p) => kotak(p, 7)),
   ];
   const ruas: [Titik, Titik][] = [...lama, ...baru].map((g): [Titik, Titik] => [g.a, g.b]);

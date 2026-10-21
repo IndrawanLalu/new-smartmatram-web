@@ -50,7 +50,10 @@ export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
           </button>
         )}
       </div>
-      <p className="text-gray-400">Dari {induk} · {Math.round(s.panjang.get(t.id) ?? 0)} m</p>
+      <p className="text-gray-400">
+        Dari {induk} · {Math.round(s.panjang.get(t.id) ?? 0)} m ·{" "}
+        <span className="font-mono select-all text-gray-300" title="Koordinat — klik dua kali untuk memilih">{t.lat.toFixed(6)}, {t.lng.toFixed(6)}</span>
+      </p>
       <div className="grid grid-cols-2 gap-1.5">
         <Pilih label="Jenis tiang" nilai={t.jenis_tiang} opsi={keOpsi(s.opsi?.jenis_tiang)} onUbah={(v) => u({ jenis_tiang: v })} mati={mati} />
         <Pilih label="Konstruksi" nilai={t.konstruksi} opsi={keOpsi(s.opsi?.konstruksi)} onUbah={(v) => u({ konstruksi: v })} mati={mati} />

@@ -86,6 +86,8 @@ export interface SurveyJaringan {
   digambar_nama: string | null;
   diperiksa_nama: string | null;
   disetujui_nama: string | null;
+  /** Foto kondisi lapangan (URL publik bucket inspections, survey/<id>/…). */
+  foto: string[];
   jumlah_tiang: number;
   panjang_m: number;
   jumlah_gardu: number;
@@ -99,6 +101,7 @@ const PESAN_SQL_SURVEY_2 = "Tambahan Survey Jaringan Baru belum ada di database 
 export const pesanSurvey = (e: unknown) => {
   const x = e as { message?: string; code?: string };
   if (/ubah_pengesah_survey|gardu_jenis|diperiksa_nama/.test(x.message ?? "")) return PESAN_SQL_SURVEY_2;
+  if (/ubah_foto_survey/.test(x.message ?? "")) return "Foto survey belum ada di database — jalankan scripts/survey-jaringan-4.sql di Supabase.";
   return x.code === "PGRST205" || x.code === "PGRST202" || /survey_jaringan|survey_titik/.test(x.message ?? "")
     ? PESAN_SQL_SURVEY
     : (x.message ?? "Gagal");
@@ -111,6 +114,7 @@ export const keSurvey = (x: Record<string, unknown>): SurveyJaringan => ({
   jumlah_gardu: Number(x.jumlah_gardu ?? 0),
   gardu_kva: Number(x.gardu_kva ?? 0),
   material: (x.material as BarisMaterialSurvey[] | null) ?? [],
+  foto: (x.foto as string[] | null | undefined) ?? [],
 });
 
 export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({

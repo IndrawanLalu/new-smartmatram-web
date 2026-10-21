@@ -3,13 +3,14 @@
 import { useEffect } from "react";
 import { CircleMarker, Marker, Polyline, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { bentukGardu, setengahTiang } from "@/lib/gambarSurvey/simbolGardu";
+import { bentukGardu, jangkauGardu } from "@/lib/gambarSurvey/simbolGardu";
 import { posisiInduk, type TitikSurvey } from "@/lib/surveyJaringan";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 
 /**
- * Survey Jaringan Baru di peta: gawang rencana putus-putus jingga, tiang baru
- * bisa diseret (selama Draf), gardu baru segitiga, peralatan belah ketupat.
+ * Survey Jaringan Baru di peta: gawang rencana putus-putus jingga, tiang
+ * rencana cincin putih sebesar tiang biasa (bisa diseret selama Draf), gardu
+ * baru = tiang + trafo segitiga, peralatan belah ketupat di samping tiangnya.
  * Titik sambung (tiang JTM yang ada) bercincin ungu. Mode "tambah": klik peta
  * = tiang baru. Dirender HANYA saat survey terbuka (useMapEvents tanpa syarat).
  */
@@ -19,35 +20,46 @@ const UNGU = "#7C3AED";
 const HIJAU = "#16A34A";
 
 const ikon = new Map<string, L.DivIcon>();
-/** Ukuran ikon gardu (px) — memuat tiang & trafo di arah mana pun. */
-const GARDU_PX = 56;
+/** Jari-jari tiang = tiang biasa di peta (CircleMarker radius 5). */
 const R_TIANG = 5;
+/** Ukuran trafo — terpisah dari tiang supaya tetap terlihat. */
+const T_TRAFO = 6;
+/** Ukuran ikon gardu (px) — memuat tiang & trafo di arah mana pun. */
+const GARDU_PX = Math.ceil(2 * jangkauGardu(R_TIANG, T_TRAFO)) + 6;
 
-/** Gardu baru: tiang ◐ + segitiga trafo di sampingnya, diputar sesuai arah (contohGardu.png). */
+/**
+ * Tiang RENCANA: putih polos & berongga — garis jaringan rencana tetap
+ * terlihat menembus tengahnya (koreksi user 21 Okt). Tepi gelap tipis supaya
+ * tetap terbaca di latar terang.
+ */
+const svgTiang = (x: number, y: number) =>
+  `<circle cx="${x}" cy="${y}" r="${R_TIANG + 1}" fill="none" stroke="#111" stroke-width="1"/>` +
+  `<circle cx="${x}" cy="${y}" r="${R_TIANG}" fill="none" stroke="#fff" stroke-width="2"/>`;
+
+/** Gardu baru: tiang rencana + segitiga trafo di sampingnya, diputar sesuai arah (contohGardu.png). */
 function svgGardu(t: TitikSurvey, cincin: string | null) {
   const c = GARDU_PX / 2;
-  const b = bentukGardu(t.gardu_jenis, t.gardu_arah, R_TIANG);
+  const b = bentukGardu(t.gardu_jenis, t.gardu_arah, R_TIANG, T_TRAFO);
   const seg = b.segitiga.map((p) => `${c + p.x},${c + p.y}`).join(" ");
-  const tiang = b.tiang
-    .map((p) => `<circle cx="${c + p.x}" cy="${c + p.y}" r="${R_TIANG}" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="${setengahTiang(c + p.x, c + p.y, R_TIANG)}" fill="#111"/>`)
-    .join("");
   const lingkar = cincin ? `<circle cx="${c}" cy="${c}" r="${c - 2}" fill="none" stroke="${cincin}" stroke-width="2.5" stroke-dasharray="4 3"/>` : "";
-  return `<svg width="${GARDU_PX}" height="${GARDU_PX}" viewBox="0 0 ${GARDU_PX} ${GARDU_PX}">${lingkar}<polygon points="${seg}" fill="#6B7280" stroke="#fff" stroke-width="1"/>${tiang}</svg>`;
+  return `<svg width="${GARDU_PX}" height="${GARDU_PX}" viewBox="0 0 ${GARDU_PX} ${GARDU_PX}">${lingkar}<polygon points="${seg}" fill="#6B7280" stroke="#fff" stroke-width="1"/>${b.tiang.map((p) => svgTiang(c + p.x, c + p.y)).join("")}</svg>`;
 }
 
 function ikonTitik(t: TitikSurvey, terpilih: boolean, aktif: boolean) {
   const bentuk = t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang";
   const k = `${bentuk}|${terpilih}|${aktif}|${t.gardu_jenis}|${t.gardu_arah}`;
   if (!ikon.has(k)) {
-    const cincin = terpilih ? `0 0 0 3px #fff, 0 0 0 6px ${UNGU}` : aktif ? `0 0 0 3px #fff, 0 0 0 6px ${HIJAU}` : "0 1px 3px rgba(0,0,0,.6)";
+    const warna = terpilih ? UNGU : aktif ? HIJAU : null;
+    const pilih = (c: number) => (warna ? `<circle cx="${c}" cy="${c}" r="${c - 1.5}" fill="none" stroke="${warna}" stroke-width="2.5"/>` : "");
+    const ukuran = bentuk === "gardu" ? GARDU_PX : 22;
+    const c = ukuran / 2;
     const isi =
       bentuk === "gardu"
-        ? svgGardu(t, terpilih ? UNGU : aktif ? HIJAU : null)
-        : bentuk === "alat"
-          ? `<div style="width:13px;height:13px;transform:rotate(45deg);background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`
-          : `<div style="width:13px;height:13px;border-radius:999px;background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`;
-    const ukuran = bentuk === "gardu" ? GARDU_PX : 14;
-    ikon.set(k, L.divIcon({ className: "", iconSize: [ukuran, ukuran], iconAnchor: [ukuran / 2, ukuran / 2], html: `<div style="cursor:pointer">${isi}</div>` }));
+        ? svgGardu(t, warna)
+        : `<svg width="${ukuran}" height="${ukuran}" viewBox="0 0 ${ukuran} ${ukuran}">${pilih(c)}${svgTiang(c, c)}${
+            bentuk === "alat" ? `<rect x="${c + 4}" y="${c - 10}" width="7" height="7" transform="rotate(45 ${c + 7.5} ${c - 6.5})" fill="${WARNA_SURVEY}" stroke="#fff"/>` : ""
+          }</svg>`;
+    ikon.set(k, L.divIcon({ className: "", iconSize: [ukuran, ukuran], iconAnchor: [c, c], html: `<div style="cursor:pointer">${isi}</div>` }));
   }
   return ikon.get(k)!;
 }

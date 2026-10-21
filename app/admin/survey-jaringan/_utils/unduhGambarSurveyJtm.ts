@@ -1,7 +1,7 @@
 import React from "react";
 import type { DocumentProps } from "@react-pdf/renderer";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { ambilLatar, ambilLogo, unduhBerkas } from "@/lib/gambarSurvey/latar";
+import { ambilLatar, ambilLogo, fotoUntukPdf, unduhBerkas } from "@/lib/gambarSurvey/latar";
 import type { SurveyJaringan, TiangSambung, TitikSurvey } from "@/lib/surveyJaringan";
 import { susunGambarJtm, type TiangSekitar } from "../_lib/gambarSurveyJtm";
 
@@ -34,13 +34,19 @@ export async function unduhGambarSurveyJtm(
   labelPenanda: (k: string) => string,
 ) {
   if (!titik.length) throw new Error("Survey ini belum punya gambar.");
-  const [sekitar, logo] = await Promise.all([ambilSekitar([...titik, ...sambung.values()]), ambilLogo()]);
+  const [sekitar, logo, foto] = await Promise.all([
+    ambilSekitar([...titik, ...sambung.values()]),
+    ambilLogo(),
+    Promise.all(s.foto.slice(0, 4).map(fotoUntukPdf)),
+  ]);
   const g = susunGambarJtm(titik, sambung, sekitar, labelPenanda);
   const [{ pdf }, { default: GambarSurveyJtmPdf }, latar] = await Promise.all([
     import("@react-pdf/renderer"),
     import("../_lib/GambarSurveyJtmPdf"),
     ambilLatar(g.ruang),
   ]);
-  const el = React.createElement(GambarSurveyJtmPdf, { s, g, sambung: [...sambung.values()], logo, latar }) as unknown as React.ReactElement<DocumentProps>;
+  const el = React.createElement(GambarSurveyJtmPdf, {
+    s, g, titik, sambung: [...sambung.values()], foto: foto.filter((f): f is string => !!f), logo, latar,
+  }) as unknown as React.ReactElement<DocumentProps>;
   unduhBerkas(await pdf(el).toBlob(), `Gambar survey ${s.judul}.pdf`);
 }

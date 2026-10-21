@@ -1,7 +1,8 @@
 /**
  * Simbol gardu baru menurut contoh unit (contohAset/contohGardu.png): tiang
- * (lingkaran setengah hitam ◐) dengan segitiga trafo DI SAMPINGNYA — alasnya
- * menghadap tiang, ujung lancipnya menjauh. Portal =
+ * dengan segitiga trafo DI SAMPINGNYA — alasnya menghadap tiang, ujung
+ * lancipnya menjauh. Tiang RENCANA putih polos; ◐ (setengah hitam) = tiang
+ * yang sudah ada. Portal =
  * dua tiang berdampingan. Seluruh simbol diputar `arah` derajat searah jarum
  * jam supaya sesuai lapangan; 0 = trafo di bawah tiang.
  *
@@ -23,14 +24,18 @@ const putar = (p: Xy, derajat: number): Xy => {
   return { x: p.x * Math.cos(a) - p.y * Math.sin(a), y: p.x * Math.sin(a) + p.y * Math.cos(a) };
 };
 
-/** `r` = jari-jari lingkaran tiang. */
-export function bentukGardu(jenis: "portal" | "cantol" | null, arah: number, r: number): BentukGardu {
+/**
+ * `r` = jari-jari tiang (SAMA dengan tiang biasa di peta/gambar), `t` = ukuran
+ * trafo — terpisah, supaya trafo tetap terlihat tanpa membesarkan tiangnya.
+ */
+export function bentukGardu(jenis: "portal" | "cantol" | null, arah: number, r: number, t = r): BentukGardu {
   const tiang = jenis === "portal" ? [{ x: -1.15 * r, y: 0 }, { x: 1.15 * r, y: 0 }] : [{ x: 0, y: 0 }];
   // Alas menghadap tiang, ujung lancip menjauh (koreksi user 21 Okt).
+  const alas = r + 0.6 * t;
   const segitiga: [Xy, Xy, Xy] = [
-    { x: -1.7 * r, y: 1.6 * r },
-    { x: 1.7 * r, y: 1.6 * r },
-    { x: 0, y: 4.6 * r },
+    { x: -1.7 * t, y: alas },
+    { x: 1.7 * t, y: alas },
+    { x: 0, y: alas + 3 * t },
   ];
   return {
     tiang: tiang.map((p) => putar(p, arah)),
@@ -38,5 +43,8 @@ export function bentukGardu(jenis: "portal" | "cantol" | null, arah: number, r: 
   };
 }
 
-/** Setengah kiri lingkaran (bagian hitam ◐) sebagai path SVG. */
+/** Jangkauan terjauh simbol dari titiknya (untuk ukuran ikon & ruang label). */
+export const jangkauGardu = (r: number, t: number) => r + 3.6 * t;
+
+/** Setengah kiri lingkaran (bagian hitam ◐, tiang yang ada) sebagai path SVG. */
 export const setengahTiang = (x: number, y: number, r: number) => `M ${x} ${y - r} A ${r} ${r} 0 0 0 ${x} ${y + r} Z`;
