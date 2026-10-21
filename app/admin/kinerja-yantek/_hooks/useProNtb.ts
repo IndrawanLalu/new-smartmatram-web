@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { hariIniWita } from "../_lib/realisasiHarian";
-import { kunciGardu, susunBaris, type ItemPro, type KolomJenis } from "../_lib/proNtb";
+import { JENIS_DARI_KATEGORI, kunciGardu, susunBaris, type ItemPro, type KolomJenis } from "../_lib/proNtb";
 
 /**
  * Data Copy to PRO NTB: `realisasi_rentang` (rentang tanggal), kolom tetap per
@@ -32,6 +32,20 @@ async function ambilAlamat(item: ItemPro[]) {
   return peta;
 }
 
+/** Label kategori Pemeliharaan Jaringan per id catatan (`sumber_id`). */
+async function ambilKategori(id: string[]) {
+  const peta = new Map<string, string>();
+  for (let i = 0; i < id.length; i += POTONG) {
+    const { data, error } = await supabaseBrowser
+      .from("pemeliharaan_jaringan_daftar")
+      .select("id,kategori_label")
+      .in("id", id.slice(i, i + POTONG));
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) if (r.kategori_label) peta.set(r.id, r.kategori_label);
+  }
+  return peta;
+}
+
 export function useProNtb(ulpAwal: string) {
   const [ulp, gantiUlp] = useState(ulpAwal);
   const [dari, gantiDari] = useState(hariIniWita);
@@ -54,6 +68,8 @@ export function useProNtb(ulpAwal: string) {
           supabaseBrowser.from("pro_ntb_jenis").select("kunci,jenis_pekerjaan"),
         ]);
         if (kolom.error) throw new Error(`Kolom per jenis gagal dibaca: ${kolom.error.message}`);
+        const idKategori = rows.filter((r) => r.kunci === JENIS_DARI_KATEGORI && r.sumber_id).map((r) => String(r.sumber_id));
+        const kategori = await ambilKategori(idKategori);
         const isi: ItemPro[] = rows.map((r) => ({
           tgl: r.tgl as string,
           kunci: r.kunci as string,
@@ -65,6 +81,7 @@ export function useProNtb(ulpAwal: string) {
           waktu: r.waktu ? String(r.waktu).slice(0, 5) : null,
           km: r.km === null || r.km === undefined ? null : Number(r.km),
           disetujui: !!r.disetujui,
+          kategori: r.sumber_id ? kategori.get(String(r.sumber_id)) ?? null : null,
         }));
         const peta = await ambilAlamat(isi);
         if (!hidup) return;

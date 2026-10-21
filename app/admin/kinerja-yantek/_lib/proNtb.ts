@@ -36,7 +36,16 @@ const DESIMAL = new Map(META.map((m) => [m.kunci, m.desimal]));
 /** Baris `realisasi_rentang` — realisasi harian ditambah tanggalnya. */
 export interface ItemPro extends ItemHarian {
   tgl: string;
+  /** Pemeliharaan Jaringan: label kategori catatannya (lihat `JENIS_DARI_KATEGORI`). */
+  kategori?: string | null;
 }
+
+/**
+ * Jenis yang JENIS PEKERJAAN-nya = kategori tiap catatan, bukan teks tetap
+ * dari `pro_ntb_jenis` (permintaan user 21 Okt: "khusus di pemeliharaan
+ * jaringan, jenis pemeliharaan itu = kategori").
+ */
+export const JENIS_DARI_KATEGORI = "harjtm";
 
 export interface KolomJenis {
   kunci: string;
@@ -98,7 +107,9 @@ export function susunBaris(
       item: x,
       tanggal: tanggalPro(x.tgl),
       lokasi,
-      jenis: jenis.get(x.kunci) ?? null,
+      jenis: x.kunci === JENIS_DARI_KATEGORI
+        ? { kunci: x.kunci, jenis_pekerjaan: x.kategori ?? null }
+        : jenis.get(x.kunci) ?? null,
       nilai: desimal ? (x.km === null ? null : Math.round(x.km * 100) / 100) : 1,
       desimal,
     };

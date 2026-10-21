@@ -7,7 +7,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { META } from "../_lib/kinerjaMeta";
-import type { KolomJenis } from "../_lib/proNtb";
+import { JENIS_DARI_KATEGORI, type KolomJenis } from "../_lib/proNtb";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
@@ -84,11 +84,15 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
             <tr key={m.kunci}>
               <td className="px-2 py-1.5 border-b border-line text-xs font-medium text-ink">{m.jenis}</td>
               <td className="px-1 py-1.5 border-b border-line">
-                <input
-                  value={isi[i]}
-                  onChange={(e) => setIsi((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
-                  className={`${FIELD} w-full text-xs`}
-                />
+                {m.kunci === JENIS_DARI_KATEGORI ? (
+                  <span className="px-2 text-xs text-ink-soft">Kategori tiap pekerjaan (dari catatan regu)</span>
+                ) : (
+                  <input
+                    value={isi[i]}
+                    onChange={(e) => setIsi((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
+                    className={`${FIELD} w-full text-xs`}
+                  />
+                )}
               </td>
             </tr>
           ))}

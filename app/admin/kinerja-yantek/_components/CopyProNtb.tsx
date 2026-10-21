@@ -61,7 +61,7 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
   };
 
   const timKosong = baris.filter((b) => !timDari(b).trim()).length;
-  const belumDiatur = META.filter((m) => !o.jenis.get(m.kunci)?.jenis_pekerjaan && baris.some((b) => b.item.kunci === m.kunci));
+  const belumDiatur = META.filter((m) => baris.some((b) => b.item.kunci === m.kunci && !b.jenis?.jenis_pekerjaan));
 
   const salin = async () => {
     try {
