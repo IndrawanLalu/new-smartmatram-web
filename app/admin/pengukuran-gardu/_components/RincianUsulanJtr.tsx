@@ -10,7 +10,7 @@ import type { BarisMaterial } from "../_lib/materialJtr";
 import { alamatPetaRencana, LABEL_RENCANA } from "../_lib/rencanaJtr";
 import { labelBulanWo, pilihanBulanWo } from "../_utils/bulanWo";
 import { unduhGambarSurvey } from "../_utils/unduhGambarSurvey";
-import TabelMaterial from "./TabelMaterial";
+import TabelMaterial from "@/app/admin/_components/TabelMaterial";
 import UbahPecahUsulan, { type BahanPecah } from "./UbahPecahUsulan";
 
 /**

@@ -10,7 +10,7 @@ import { susunDasar, type UbahPecah, type UsulanJtr } from "../_hooks/useUsulanJ
 import { materialAwal, type BarisMaterial, type MaterialRef } from "../_lib/materialJtr";
 import { namaOpsi, ringkasOpsi, rinciOpsi, type GawangJtr, type OpsiPecah, type Rencana } from "../_lib/rencanaJtr";
 import PilihanPecah from "./PilihanPecah";
-import TabelMaterial from "./TabelMaterial";
+import TabelMaterial from "@/app/admin/_components/TabelMaterial";
 
 /**
  * Ganti titik pecah usulan yang belum di-WO-kan (salah klik tiang / berubah

@@ -21,6 +21,8 @@ export interface AwalPeta {
   /** Dibuka dari Analisis JTR (/peta?rencana=GS219&jurusan=B): lapisan JTR
    *  gardu itu menyala, rencana perbaikannya digambar. */
   rencana?: { gardu: string; jurusan: string; opsi?: string };
+  /** Survey Jaringan Baru (/peta?survey=<id|baru>). */
+  survey?: string;
 }
 
 export function useLapisanNyala(user: CurrentUser, awal?: AwalPeta) {

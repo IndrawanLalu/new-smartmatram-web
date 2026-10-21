@@ -9,7 +9,7 @@ import type { JurusanJtr } from "../_hooks/useAnalisisJtr";
 import { susunDasar, TUJUAN_WO, type PekerjaanUsulan, type SimpanUsulan } from "../_hooks/useUsulanJtr";
 import { materialAwal, type BarisMaterial, type MaterialRef } from "../_lib/materialJtr";
 import { LABEL_RENCANA, ringkasOpsi, rinciOpsi, type OpsiPecah, type Rencana } from "../_lib/rencanaJtr";
-import TabelMaterial from "./TabelMaterial";
+import TabelMaterial from "@/app/admin/_components/TabelMaterial";
 
 /**
  * Simpan rencana sebagai USULAN: angka dibekukan, material diperkirakan dari

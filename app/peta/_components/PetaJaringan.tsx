@@ -24,6 +24,7 @@ import { useSimulasiBuka } from "../_hooks/useSimulasiBuka";
 import { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import { useCariLokasi } from "../_hooks/useCariLokasi";
 import { useRencanaPeta } from "../_hooks/useRencanaPeta";
+import { useSurveyPeta } from "../_hooks/useSurveyPeta";
 import { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks/useLapisanTambahan";
 import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
@@ -39,6 +40,7 @@ import PanelGarduJanggal from "./PanelGarduJanggal";
 import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelKanan from "./PanelKanan";
 import PanelRencana from "./PanelRencana";
+import PanelSurvey from "./PanelSurvey";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
 import PanelSld from "./PanelSld";
@@ -251,6 +253,22 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     if (semuaRencana?.length) setFokus(bingkaiTitik(semuaRencana, 0.0004));
   }, [semuaRencana]);
 
+  // ── Survey Jaringan Baru (21 Okt 2026) ────────────────────────────────────
+  // Selama menggambar, klik tiang yang ada menjadi titik sambung (bukan panel
+  // tiang), dan lapisan JTM penyulangnya dinyalakan begitu survey dimuat.
+  const survey = useSurveyPeta(awal?.survey ?? null);
+  const bingkaiSurvey = survey.bingkai;
+  const penyulangSurvey = survey.kepala.penyulang;
+  useEffect(() => {
+    if (bingkaiSurvey?.length) setFokus(bingkaiTitik(bingkaiSurvey, 0.0006));
+  }, [bingkaiSurvey]);
+  useEffect(() => {
+    if (penyulangSurvey) nyalakan(`jtm:${penyulangSurvey}`);
+  }, [penyulangSurvey, nyalakan]);
+  const gambarSurvey = survey.aktifMode && survey.mode !== "lihat";
+  const pilihTiang = gambarSurvey ? survey.klikTiang : pilih.pilihTiang;
+  const labelPenanda = useCallback((k: string) => penanda.get(k)?.label ?? k, [penanda]);
+
   const bukaHasil = (kunci: string, t: NonNullable<typeof terpilih>) => {
     setSegmenTampil(null);
     nyalakan(kunci);
@@ -313,7 +331,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         <PetaInner
           rute={satuSegmen ? TANPA : rute} tiang={tiangPeta} gardu={satuSegmen ? TANPA : gardu}
           fokus={fokus} onKotak={setKotak} penanda={penanda}
-          onPilihTiang={pilih.pilihTiang} onPilihGardu={pilih.pilihGardu}
+          onPilihTiang={pilihTiang} onPilihGardu={pilih.pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={pilih.geser} onGeser={pilih.aturGeser}
           geserBanyak={modeSld ? TANPA : geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
@@ -341,6 +359,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
           cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
           rencana={sembunyi ? null : rencana}
+          survey={survey.aktifMode && !modeSld ? survey : null}
+          labelPenanda={labelPenanda}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
@@ -452,7 +472,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             boleh={boleh}
             oleh={oleh}
             onFokus={setFokus}
-            atas={rencana.aktif ? <PanelRencana s={rencana} /> : null}
+            atas={
+              survey.aktifMode ? <PanelSurvey s={survey} oleh={oleh} penanda={penanda} />
+              : rencana.aktif ? <PanelRencana s={rencana} /> : null
+            }
           />
         )}
 

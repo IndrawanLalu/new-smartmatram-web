@@ -5,7 +5,8 @@ import { fetchAllRows } from "@/lib/supabasePaginate";
 import { keGawang } from "../_hooks/useAnalisisJtr";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
 import { nadaUjung } from "@/app/peta/_hooks/useUjungPeta";
-import { rencanaUbin, susunGambar, type Gambar, type Koord, type UjungGambar } from "../_lib/gambarSurvey";
+import { ambilLatar, ambilLogo, unduhBerkas } from "@/lib/gambarSurvey/latar";
+import { susunGambar, type Koord, type UjungGambar } from "../_lib/gambarSurvey";
 
 /**
  * Gambar survey satu usulan (PDF A3): JTR SELURUH gardu itu dari data JTR
@@ -13,49 +14,8 @@ import { rencanaUbin, susunGambar, type Gambar, type Koord, type UjungGambar } f
  * material dari usulan tersimpan.
  */
 
-const keDataUrl = (b: Blob) =>
-  new Promise<string>((ok, gagal) => {
-    const r = new FileReader();
-    r.onload = () => ok(String(r.result));
-    r.onerror = () => gagal(r.error);
-    r.readAsDataURL(b);
-  });
-
-async function ambilLogo() {
-  const r = await fetch("/logo-pln.png");
-  return r.ok ? keDataUrl(await r.blob()) : null;
-}
-
 /** ilike tanpa wildcard — kode gardu boleh mengandung "_". */
 const polaPersis = (s: string) => s.replace(/[%_\\]/g, "\\$&");
-
-const muatGambar = (url: string) =>
-  new Promise<HTMLImageElement | null>((ok) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => ok(img);
-    img.onerror = () => ok(null);
-    img.src = url;
-  });
-
-/** Ubin peta dijahit di kanvas → JPEG. Gagal semua (luring) = tanpa latar. */
-async function ambilLatar(ruang: Gambar["ruang"]): Promise<string | null> {
-  const r = rencanaUbin(ruang);
-  const kanvas = document.createElement("canvas");
-  kanvas.width = r.lebar;
-  kanvas.height = r.tinggi;
-  const ctx = kanvas.getContext("2d");
-  if (!ctx) return null;
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, r.lebar, r.tinggi);
-  const gambar = await Promise.all(r.ubin.map((u) => muatGambar(u.url)));
-  if (!gambar.some(Boolean)) return null;
-  gambar.forEach((img, i) => img && ctx.drawImage(img, r.ubin[i].dx, r.ubin[i].dy));
-  // Dipudarkan sedikit supaya garis JTR lebih menonjol dari peta.
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
-  ctx.fillRect(0, 0, r.lebar, r.tinggi);
-  return kanvas.toDataURL("image/jpeg", 0.85);
-}
 
 /**
  * Tegangan ujung terakhir tiap jurusan gardu ini (setahun terakhir), yang
@@ -124,11 +84,5 @@ export async function unduhGambarSurvey(u: UsulanJtr) {
     ambilLatar(gambar.ruang),
   ]);
   const el = React.createElement(GambarSurveyPdf, { u, g: gambar, garduNama: g?.nama ?? null, logo, latar }) as unknown as React.ReactElement<DocumentProps>;
-  const blob = await pdf(el).toBlob();
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `Gambar survey ${kode}-${u.jurusan}.pdf`;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  unduhBerkas(await pdf(el).toBlob(), `Gambar survey ${kode}-${u.jurusan}.pdf`);
 }

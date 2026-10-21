@@ -2,11 +2,17 @@
 
 import { Plus, Trash2 } from "lucide-react";
 import { EYEBROW, FIELD } from "@/app/admin/_ui";
-import type { BarisMaterial } from "../_lib/materialJtr";
+
+export interface BarisMaterial {
+  nama: string;
+  satuan: string;
+  jumlah: number;
+}
 
 /**
- * Daftar material usulan/WO. Tanpa `onUbah` = hanya dibaca. Jumlah 0 boleh
- * (tidak ikut tertulis di tugas), supaya baris bawaan tidak perlu dihapus.
+ * Daftar material — usulan perbaikan JTR & WO-nya, Survey Jaringan Baru.
+ * Tanpa `onUbah` = hanya dibaca. Jumlah 0 boleh (tidak ikut tertulis di
+ * tugas), supaya baris bawaan tidak perlu dihapus.
  */
 
 interface Props {

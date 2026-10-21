@@ -1,0 +1,89 @@
+// Gambar survey Survey Jaringan Baru (JTM) — hanya dimuat lewat import().
+// Hitungan di gambarSurveyJtm.ts; lembar & potongan bersama di lib/gambarSurvey.
+
+import { Circle, Line, Polygon, View } from "@react-pdf/renderer";
+import {
+  angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, KepalaLembar, Keterangan, Lembar, S, SimbolGardu,
+  TabelMaterialPdf, TandaTangan, TEAL, tgl, wajik,
+} from "@/lib/gambarSurvey/LembarPdf";
+import { LABEL_ALASAN, type SurveyJaringan, type TiangSambung } from "@/lib/surveyJaringan";
+import type { GambarJtm, JenisLabelJtm } from "./gambarSurveyJtm";
+
+const LAMA = "#94A3B8";
+const BARU = "#EA580C";
+const UNGU = "#7C3AED";
+const WARNA_LABEL: Record<JenisLabelJtm, string> = {
+  sambung: UNGU, gardu: BARU, alat: BARU, nomor: "#9A3412", panjang: "#C2410C", lain: "#94A3B8",
+};
+const TIPIS: JenisLabelJtm[] = ["panjang", "lain"];
+
+function Bidang({ g, latar }: { g: GambarJtm; latar: string | null }) {
+  return (
+    <BidangGambar latar={latar} label={g.label} warnaLabel={(j) => WARNA_LABEL[j]} tebal={(j) => !TIPIS.includes(j)}>
+      {g.lama.map((x, i) => <Line key={`l${i}`} x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y} stroke={LAMA} strokeWidth={1} />)}
+      {g.tiangLama.map((t) =>
+        t.gardu ? <SimbolGardu key={t.id} x={t.x} y={t.y} r={5} /> : <Circle key={t.id} cx={t.x} cy={t.y} r={1.8} fill="#fff" stroke={LAMA} strokeWidth={0.7} />,
+      )}
+      {g.baru.map((x, i) => (
+        <Line key={`b${i}`} x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y} stroke={BARU} strokeWidth={1.8} strokeDasharray="6 3" />
+      ))}
+      {g.sambung.map((p, i) => <Circle key={`s${i}`} cx={p.x} cy={p.y} r={6} fill="none" stroke={UNGU} strokeWidth={1.5} />)}
+      {g.tiangBaru.map((t) =>
+        t.bentuk === "gardu" ? (
+          <SimbolGardu key={t.id} x={t.x} y={t.y} r={8} warna={BARU} />
+        ) : t.bentuk === "alat" ? (
+          <Polygon key={t.id} points={wajik(t.x, t.y, 4.5)} fill={BARU} stroke="#fff" strokeWidth={0.8} />
+        ) : (
+          <Circle key={t.id} cx={t.x} cy={t.y} r={3.2} fill={BARU} stroke="#fff" strokeWidth={0.8} />
+        ),
+      )}
+    </BidangGambar>
+  );
+}
+
+interface Props {
+  s: SurveyJaringan;
+  g: GambarJtm;
+  sambung: TiangSambung[];
+  logo: string | null;
+  latar: string | null;
+}
+
+export default function GambarSurveyJtmPdf({ s, g, sambung, logo, latar }: Props) {
+  return (
+    <Lembar
+      judul={`Gambar survey ${s.judul}`}
+      gambar={<Bidang g={g} latar={latar} />}
+      kolom={
+        <>
+          <KepalaLembar logo={logo} ulp={s.ulp} sub={`Jaringan baru JTM — ${LABEL_ALASAN[s.alasan]}`} />
+          <View style={S.blok}>
+            <Baris l="Judul" v={s.judul} />
+            <Baris l="Penyulang" v={s.penyulang ?? "—"} />
+            <Baris l="Titik sambung" v={sambung.map((x) => x.kode ?? "—").join(", ") || "—"} />
+            <Baris l="Tiang baru" v={`${angka(s.jumlah_tiang)} batang (T1–T${s.jumlah_tiang})`} />
+            <Baris l="Panjang" v={`± ${angka(s.panjang_m)} m (${(s.panjang_m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kms)`} />
+            {s.jumlah_gardu > 0 && <Baris l="Gardu baru" v={`${s.jumlah_gardu} gardu · ${angka(s.gardu_kva)} kVA`} />}
+            <Baris l="Status" v={s.status} />
+          </View>
+          <TabelMaterialPdf material={s.material} />
+          <Keterangan skalaM={g.skala}>
+            <Contoh teks="JTM yang ada (patokan)"><ContohGaris warna={LAMA} tebal={1} /></Contoh>
+            <Contoh teks="Jaringan baru (rencana) · panjang gawang"><ContohGaris warna={BARU} tebal={1.8} putus /></Contoh>
+            <Contoh teks="Tiang baru T1, T2, …"><Circle cx={13} cy={5} r={3.2} fill={BARU} stroke="#fff" strokeWidth={0.8} /></Contoh>
+            <Contoh teks="Titik sambung ke JTM yang ada"><Circle cx={13} cy={5} r={4} fill="none" stroke={UNGU} strokeWidth={1.3} /></Contoh>
+            {g.tiangBaru.some((t) => t.bentuk === "gardu") && <Contoh teks="Gardu baru"><SimbolGardu x={13} y={5.5} r={5} warna={BARU} /></Contoh>}
+            {g.tiangBaru.some((t) => t.bentuk === "alat") && (
+              <Contoh teks="Peralatan baru (FCO, LBS, …)"><Polygon points={wajik(13, 5, 4)} fill={BARU} stroke="#fff" strokeWidth={0.6} /></Contoh>
+            )}
+            {g.tiangLama.some((t) => t.gardu) && <Contoh teks="Gardu yang ada"><SimbolGardu x={13} y={5.5} r={5} warna={TEAL} /></Contoh>}
+          </Keterangan>
+          <CatatanPdf isi={s.catatan} />
+          <TandaTangan
+            kaki={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan.`}
+          />
+        </>
+      }
+    />
+  );
+}

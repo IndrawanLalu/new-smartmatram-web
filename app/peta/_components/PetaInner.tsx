@@ -35,6 +35,8 @@ import LapisanPersetujuan from "./LapisanPersetujuan";
 import LapisanPohon from "./LapisanPohon";
 import LapisanCariLokasi from "./LapisanCariLokasi";
 import LapisanRencana from "./LapisanRencana";
+import LapisanSurvey from "./LapisanSurvey";
+import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import type { RencanaPetaState } from "../_hooks/useRencanaPeta";
 import type { HasilCari } from "../_hooks/useCariLokasi";
 import type { Titik } from "@/lib/koordinat";
@@ -121,6 +123,9 @@ interface Props {
   cari: { titik: Titik | null; hasil: HasilCari | null };
   /** Rencana perbaikan JTR dari Analisis JTR (null = padam). */
   rencana: RencanaPetaState | null;
+  /** Survey Jaringan Baru yang sedang dibuka (null = padam). */
+  survey: SurveyPetaState | null;
+  labelPenanda: (kode: string) => string;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -177,7 +182,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -211,6 +216,7 @@ export default function PetaInner({
         onTutup={() => setPilihan(null)}
       />
       <LapisanRencana s={rencana} />
+      {survey && <LapisanSurvey s={survey} labelPenanda={labelPenanda} />}
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       {tandaMilik.map((t) => (
         <Marker key={`milik-${t.id}`} position={[t.lat, t.lng]} icon={IKON_MILIK} eventHandlers={{ click: () => onPilihTiang(t) }}>
