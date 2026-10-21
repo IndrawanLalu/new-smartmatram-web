@@ -45,6 +45,8 @@ export interface TitikSurvey {
   gardu_nama: string | null;
   /** Gardu baru: portal / cantol (null = belum dipilih / bukan gardu). */
   gardu_jenis: JenisGardu | null;
+  /** Arah gambar gardu (derajat searah jarum jam; 0 = trafo di bawah tiang). */
+  gardu_arah: number;
   catatan: string | null;
 }
 
@@ -117,7 +119,14 @@ export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({
   lng: Number(x.lng),
   gardu_kva: x.gardu_kva == null ? null : Number(x.gardu_kva),
   gardu_jenis: (x.gardu_jenis as JenisGardu | null | undefined) ?? null,
+  gardu_arah: Number(x.gardu_arah ?? 0),
 });
+
+/** Gardu portal berdiri di dua tiang, tapi digambar sebagai satu titik. */
+export const portal = (t: TitikSurvey) => t.penanda === "gardu" && t.gardu_jenis === "portal";
+
+/** Jumlah batang tiang baru: titik + tiang kedua tiap gardu portal. */
+export const jumlahBatang = (titik: TitikSurvey[]) => titik.length + titik.filter(portal).length;
 
 /** Posisi induk satu titik (titik survey atau tiang sambung). */
 export function posisiInduk(t: TitikSurvey, titik: Map<string, TitikSurvey>, sambung: Map<string, TiangSambung>) {
@@ -174,7 +183,7 @@ export function materialDariGambar(
     tambah(`Trafo distribusi${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, "unit", 1);
     tambah(`Konstruksi gardu ${t.gardu_jenis ?? "(portal/cantol belum dipilih)"}`, "set", 1);
     // Gardu portal berdiri di dua tiang: tiang keduanya tidak digambar sebagai titik.
-    if (t.gardu_jenis === "portal") tambah(`Tiang ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
+    if (portal(t)) tambah(`Tiang ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
   }
   return [...hasil.values()].map((b) => ({
     ...b,

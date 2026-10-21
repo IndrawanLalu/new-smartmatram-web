@@ -154,7 +154,7 @@ export function useSurveyPeta(awal: string | null) {
         id, urutan: ts.length + 1, lat, lng,
         induk_titik_id: "titik" in aktif ? aktif.titik : null,
         induk_tiang_id: "tiang" in aktif ? aktif.tiang : null,
-        ...bawaan, penanda: null, gardu_kva: null, gardu_nama: null, gardu_jenis: null, catatan: null,
+        ...bawaan, penanda: null, gardu_kva: null, gardu_nama: null, gardu_jenis: null, gardu_arah: 0, catatan: null,
       },
     ]);
     setAktif({ titik: id });

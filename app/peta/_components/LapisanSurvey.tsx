@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { CircleMarker, Marker, Polyline, Tooltip, useMapEvents } from "react-leaflet";
 import L from "leaflet";
-import { posisiInduk } from "@/lib/surveyJaringan";
+import { bentukGardu, setengahTiang } from "@/lib/gambarSurvey/simbolGardu";
+import { posisiInduk, type TitikSurvey } from "@/lib/surveyJaringan";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 
 /**
@@ -17,19 +18,35 @@ export const WARNA_SURVEY = "#F97316";
 const UNGU = "#7C3AED";
 const HIJAU = "#16A34A";
 
-type Bentuk = "tiang" | "gardu" | "alat";
 const ikon = new Map<string, L.DivIcon>();
-function ikonTitik(bentuk: Bentuk, terpilih: boolean, aktif: boolean) {
-  const k = `${bentuk}|${terpilih}|${aktif}`;
+/** Ukuran ikon gardu (px) — memuat tiang & trafo di arah mana pun. */
+const GARDU_PX = 56;
+const R_TIANG = 5;
+
+/** Gardu baru: tiang ◐ + segitiga trafo di sampingnya, diputar sesuai arah (contohGardu.png). */
+function svgGardu(t: TitikSurvey, cincin: string | null) {
+  const c = GARDU_PX / 2;
+  const b = bentukGardu(t.gardu_jenis, t.gardu_arah, R_TIANG);
+  const seg = b.segitiga.map((p) => `${c + p.x},${c + p.y}`).join(" ");
+  const tiang = b.tiang
+    .map((p) => `<circle cx="${c + p.x}" cy="${c + p.y}" r="${R_TIANG}" fill="#fff" stroke="#111" stroke-width="1.2"/><path d="${setengahTiang(c + p.x, c + p.y, R_TIANG)}" fill="#111"/>`)
+    .join("");
+  const lingkar = cincin ? `<circle cx="${c}" cy="${c}" r="${c - 2}" fill="none" stroke="${cincin}" stroke-width="2.5" stroke-dasharray="4 3"/>` : "";
+  return `<svg width="${GARDU_PX}" height="${GARDU_PX}" viewBox="0 0 ${GARDU_PX} ${GARDU_PX}">${lingkar}<polygon points="${seg}" fill="#6B7280" stroke="#fff" stroke-width="1"/>${tiang}</svg>`;
+}
+
+function ikonTitik(t: TitikSurvey, terpilih: boolean, aktif: boolean) {
+  const bentuk = t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang";
+  const k = `${bentuk}|${terpilih}|${aktif}|${t.gardu_jenis}|${t.gardu_arah}`;
   if (!ikon.has(k)) {
     const cincin = terpilih ? `0 0 0 3px #fff, 0 0 0 6px ${UNGU}` : aktif ? `0 0 0 3px #fff, 0 0 0 6px ${HIJAU}` : "0 1px 3px rgba(0,0,0,.6)";
     const isi =
       bentuk === "gardu"
-        ? `<svg width="20" height="18" viewBox="0 0 20 18"><polygon points="10,1 19,17 1,17" fill="${WARNA_SURVEY}" stroke="#fff" stroke-width="1.5"/><circle cx="10" cy="11.8" r="2" fill="#fff"/></svg>`
+        ? svgGardu(t, terpilih ? UNGU : aktif ? HIJAU : null)
         : bentuk === "alat"
           ? `<div style="width:13px;height:13px;transform:rotate(45deg);background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`
           : `<div style="width:13px;height:13px;border-radius:999px;background:${WARNA_SURVEY};border:2px solid #fff;box-shadow:${cincin}"></div>`;
-    const ukuran = bentuk === "gardu" ? 20 : 14;
+    const ukuran = bentuk === "gardu" ? GARDU_PX : 14;
     ikon.set(k, L.divIcon({ className: "", iconSize: [ukuran, ukuran], iconAnchor: [ukuran / 2, ukuran / 2], html: `<div style="cursor:pointer">${isi}</div>` }));
   }
   return ikon.get(k)!;
@@ -85,7 +102,7 @@ export default function LapisanSurvey({ s, labelPenanda }: { s: SurveyPetaState;
         <Marker
           key={`t-${t.id}`}
           position={[t.lat, t.lng]}
-          icon={ikonTitik(t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang", s.terpilih === t.id, aktifId === t.id)}
+          icon={ikonTitik(t, s.terpilih === t.id, aktifId === t.id)}
           draggable={s.draf}
           zIndexOffset={800}
           eventHandlers={{

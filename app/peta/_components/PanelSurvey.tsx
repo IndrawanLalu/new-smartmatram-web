@@ -1,7 +1,7 @@
 "use client";
 
 import { Crosshair, ExternalLink, Loader2, MousePointerClick, PencilRuler, Save, X } from "lucide-react";
-import { LABEL_ALASAN, type AlasanSurvey } from "@/lib/surveyJaringan";
+import { jumlahBatang, LABEL_ALASAN, type AlasanSurvey } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
@@ -64,7 +64,7 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
           </select>
 
           <p className="rounded-lg px-2 py-1.5 bg-white/5">
-            <b className="text-white">{s.titik.length}</b> tiang baru · <b className="text-white">{km(s.totalM)}</b>
+            <b className="text-white">{jumlahBatang(s.titik)}</b> tiang baru · <b className="text-white">{km(s.totalM)}</b>
             {gardu > 0 && <> · <b className="text-white">{gardu}</b> gardu baru</>}
           </p>
 

@@ -6,7 +6,7 @@
  */
 
 import { kotak, proyeksi, tempatkan, type CalonLabel, type Kotak, type Label, type Ruang, type Titik } from "@/lib/gambarSurvey/kertas";
-import { panjangGawang, posisiInduk, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
+import { panjangGawang, posisiInduk, type JenisGardu, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
 
 /** Tiang JTM yang ada di sekitar survey. */
 export interface TiangSekitar {
@@ -24,7 +24,7 @@ export interface GambarJtm {
   lama: { a: Titik; b: Titik }[];
   tiangLama: (Titik & { id: string; gardu: boolean })[];
   baru: { a: Titik; b: Titik }[];
-  tiangBaru: (Titik & { id: string; bentuk: "tiang" | "gardu" | "alat" })[];
+  tiangBaru: (Titik & { id: string; bentuk: "tiang" | "gardu" | "alat"; jenis: JenisGardu | null; arah: number })[];
   sambung: Titik[];
   label: Label<JenisLabelJtm>[];
   skala: number;
@@ -63,7 +63,7 @@ export function susunGambarJtm(
       meter.push({ x: (a.x + p.x) / 2, y: (a.y + p.y) / 2, teks: `${Math.round(panjang.get(t.id) ?? 0)} m`, jenis: "panjang", ukuran: 5, wajib: false });
     }
     const bentuk = t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang";
-    tiangBaru.push({ id: t.id, ...p, bentuk });
+    tiangBaru.push({ id: t.id, ...p, bentuk, jenis: t.gardu_jenis, arah: t.gardu_arah });
     if (t.penanda === "gardu") {
       calon.push({ ...p, teks: `GARDU BARU${t.gardu_jenis ? ` ${t.gardu_jenis.toUpperCase()}` : ""}${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, jenis: "gardu", ukuran: 7, wajib: true });
     } else if (t.penanda) {
@@ -82,7 +82,8 @@ export function susunGambarJtm(
 
   const penghalang: Kotak[] = [
     ...tiangLama.map((t) => kotak(t, 2.5)),
-    ...tiangBaru.map((t) => kotak(t, t.bentuk === "gardu" ? 8 : 4)),
+    // Gardu: tiang + trafo di sampingnya, ke arah mana pun → kotak lebih lebar.
+    ...tiangBaru.map((t) => kotak(t, t.bentuk === "gardu" ? 30 : 4)),
     ...sambungPt.map((p) => kotak(p, 7)),
   ];
   const ruas: [Titik, Titik][] = [...lama, ...baru].map((g): [Titik, Titik] => [g.a, g.b]);

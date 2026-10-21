@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2 } from "lucide-react";
+import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
 import { LABEL_JENIS_GARDU, type JenisGardu, type TitikSurvey } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
@@ -36,6 +36,7 @@ export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
 }) {
   const mati = !s.draf;
   const u = (patch: Partial<TitikSurvey>) => s.ubah(t.id, patch);
+  const putar = (d: number) => u({ gardu_arah: (((t.gardu_arah + d) % 360) + 360) % 360 });
   const induk = t.induk_titik_id
     ? `tiang baru ${s.titik.findIndex((x) => x.id === t.induk_titik_id) + 1}`
     : (s.sambung.get(t.induk_tiang_id ?? "")?.kode ?? "tiang JTM");
@@ -67,6 +68,24 @@ export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
           opsi={(Object.keys(LABEL_JENIS_GARDU) as JenisGardu[]).map((k) => ({ kode: k, label: LABEL_JENIS_GARDU[k] }))}
           onUbah={(v) => u({ gardu_jenis: v as JenisGardu | null })}
         />
+      )}
+      {t.penanda === "gardu" && (
+        <div className="space-y-0.5">
+          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Arah gambar gardu · {t.gardu_arah}°</span>
+          <div className="flex items-center gap-1.5">
+            <button disabled={mati} onClick={() => putar(-15)} className="p-1 rounded border border-white/15 hover:bg-white/5 disabled:opacity-40" title="Putar 15° berlawanan jarum jam">
+              <RotateCcw size={13} />
+            </button>
+            <input
+              type="range" min={0} max={359} step={5} value={t.gardu_arah} disabled={mati}
+              onChange={(e) => u({ gardu_arah: Number(e.target.value) })}
+              className="flex-1 accent-[#F97316]"
+            />
+            <button disabled={mati} onClick={() => putar(15)} className="p-1 rounded border border-white/15 hover:bg-white/5 disabled:opacity-40" title="Putar 15° searah jarum jam">
+              <RotateCw size={13} />
+            </button>
+          </div>
+        </div>
       )}
       {t.penanda === "gardu" && (
         <div className="grid grid-cols-[5rem_1fr] gap-1.5">
