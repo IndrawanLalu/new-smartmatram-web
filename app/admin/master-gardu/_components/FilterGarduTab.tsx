@@ -17,7 +17,7 @@ interface Props {
 
 /**
  * Tab Filter gardu: susun beberapa kondisi sekaligus (mis. jenis cut out
- * keramik DAN jenis arrester keramik), lihat gardunya beserta koordinat dan
+ * keramik ATAU jenis arrester keramik), lihat gardunya beserta koordinat dan
  * nilai yang disaring, lalu unduh Excel format master + kolom kondisi.
  */
 export default function FilterGarduTab({ ulp }: Props) {
@@ -30,7 +30,7 @@ export default function FilterGarduTab({ ulp }: Props) {
   const aktif = useMemo(() => kondisi.filter(kondisiTerisi), [kondisi]);
 
   const hasil = useMemo(
-    () => (aktif.length ? gardu.filter((g) => aktif.every((k) => cocok(g, kunciHar(g.kode, g.ulp), k, nilaiHar))) : []),
+    () => (aktif.length ? gardu.filter((g) => aktif.some((k) => cocok(g, kunciHar(g.kode, g.ulp), k, nilaiHar))) : []),
     [gardu, aktif, nilaiHar],
   );
 
@@ -52,7 +52,7 @@ export default function FilterGarduTab({ ulp }: Props) {
           ["ULP", ulp || "Semua ULP"],
           ["Diunduh", new Date().toLocaleString("id-ID")],
           ["Jumlah gardu", String(hasil.length)],
-          ["Aturan", "Semua kondisi harus terpenuhi; pilihan di dalam satu kondisi = salah satu"],
+          ["Aturan", "Gardu memenuhi salah satu kondisi (atau); pilihan di dalam satu kondisi juga salah satu"],
           ...aktif.map((k): [string, string] => [judulKondisi(k, namaItem), uraianKondisi(k, labelOpsi)]),
         ],
       });
@@ -81,8 +81,8 @@ export default function FilterGarduTab({ ulp }: Props) {
         </div>
         <SusunKondisi kondisi={kondisi} onUbah={setKondisi} item={acuan.item} gardu={gardu} />
         <p className="text-[11px] text-ink-muted leading-relaxed">
-          Gardu harus memenuhi <b>semua</b> kondisi. Di dalam satu kondisi cukup <b>salah satu</b> pilihan; untuk item per
-          fasa/jurusan cukup satu bagian yang cocok. Kondisi pemeliharaan diambil dari pemeliharaan <b>terverifikasi
+          Gardu tampil bila memenuhi <b>salah satu</b> kondisi; di dalam satu kondisi pun cukup salah satu pilihan, dan
+          untuk item per fasa/jurusan cukup satu bagian yang cocok. Nilai yang cocok ditebalkan. Kondisi pemeliharaan diambil dari pemeliharaan <b>terverifikasi
           terakhir</b> — gardu yang belum pernah dipelihara hanya muncul lewat <b>Belum diperiksa</b>.
         </p>
       </div>

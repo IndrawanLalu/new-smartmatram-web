@@ -38,8 +38,8 @@ export default function TabelFilterGardu({ hasil, kondisi, har, nilaiHar, namaIt
         <ListFilter size={28} className="opacity-40" />
         <p className="text-sm">
           {!adaKondisi
-            ? "Tambah kondisi di atas — misalnya Jenis Cut Out: Keramik dan Jenis Arrester: Keramik."
-            : memuat ? "Menyaring gardu…" : "Tidak ada gardu yang memenuhi semua kondisi."}
+            ? "Tambah kondisi di atas — misalnya Jenis Cut Out: Keramik atau Jenis Arrester: Keramik."
+            : memuat ? "Menyaring gardu…" : "Tidak ada gardu yang memenuhi kondisi mana pun."}
         </p>
       </div>
     );

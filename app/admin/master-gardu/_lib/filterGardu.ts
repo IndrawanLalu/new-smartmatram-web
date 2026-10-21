@@ -2,10 +2,10 @@
  * Aturan tab Filter gardu — murni, tanpa React dan tanpa Supabase.
  *
  * Satu kondisi = satu kriteria (jenis cut out, daya kVA, beban terakhir, …).
- * Antar kondisi DAN, di dalam satu kondisi pilihan ATAU — sama dengan saringan
- * kondisi di tab Master gardu (`kondisiGardu.ts`), dan pencocokan item
- * pemeliharaannya memakai `cocokItem` yang sama, supaya kedua tab tidak pernah
- * memberi jawaban berbeda untuk pertanyaan yang sama.
+ * Gardu tampil bila memenuhi SALAH SATU kondisi (ATAU — permintaan user 21 Okt:
+ * "jika salah satu kondisi tercapai"), dan di dalam satu kondisi pun pilihannya
+ * ATAU. Pencocokan item pemeliharaan memakai `cocokItem` yang sama dengan
+ * saringan kondisi tab Master gardu (`kondisiGardu.ts`).
  */
 
 import { cocokItem, NILAI_BELUM, NILAI_TIDAK_NORMAL, type NilaiKondisi } from "./kondisiGardu";
@@ -138,11 +138,11 @@ export function nilaiTampil(g: GarduFilter, kunciHar: string, k: Kondisi, har: N
       });
     }
     case "master":
-      return [{ teks: nilaiMaster(g, k.kunci), cocok: true }];
+      return [{ teks: nilaiMaster(g, k.kunci), cocok: cocok(g, kunciHar, k, har) }];
     case "beban":
-      return [{ teks: g.persen_beban !== null ? `${fmtAngka(g.persen_beban)}%` : "Belum diukur", cocok: g.persen_beban !== null }];
+      return [{ teks: g.persen_beban !== null ? `${fmtAngka(g.persen_beban)}%` : "Belum diukur", cocok: cocok(g, kunciHar, k, har) }];
     case "ukur":
-      return [{ teks: g.event_date ? fmtTgl(g.event_date) : "Belum pernah diukur", cocok: true }];
+      return [{ teks: g.event_date ? fmtTgl(g.event_date) : "Belum pernah diukur", cocok: cocok(g, kunciHar, k, har) }];
   }
 }
 
