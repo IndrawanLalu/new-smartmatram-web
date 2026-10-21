@@ -7,6 +7,7 @@ import { useJtmRef, BENTUK, type Bentuk, type Kategori, type RefBaris } from "..
 import { kodeTitik } from "@/lib/jenisTitikJtm";
 import IsianJtm from "./IsianJtm";
 import AmbangDtJtm from "./AmbangDtJtm";
+import AmbangLapanganJtm from "./AmbangLapanganJtm";
 
 const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boolean }[] = [
   {
@@ -87,6 +88,8 @@ export default function PengaturanJtm() {
 
   return (
     <div className="space-y-4">
+      <AmbangLapanganJtm />
+
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>Pengaturan JTM</p>
         <p className="text-xs text-ink-soft mt-1 max-w-3xl">
