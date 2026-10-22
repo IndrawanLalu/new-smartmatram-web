@@ -64,11 +64,16 @@ async function baca(): Promise<Map<string, IndukLoncat>> {
   const kodeDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.kode]));
   const indukDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.induk_id]));
 
-  const hasil = new Map<string, IndukLoncat>();
-  for (const r of calon) {
+  const tersisa = calon.filter((r) => {
     const kb = kunci(indukBatang.get(r.tiang_id)!, r.penyulang);
-    const dilompati = kodeDi.get(kb);
-    if (!dilompati || indukDi.get(kb) === r.tiang_id) continue;
+    return kodeDi.has(kb) && indukDi.get(kb) !== r.tiang_id;
+  });
+  const dilewati = await batangDiHulu(tersisa, indukBatang);
+
+  const hasil = new Map<string, IndukLoncat>();
+  for (const r of tersisa) {
+    if (dilewati.has(kunci(r.tiang_id, r.penyulang))) continue;
+    const dilompati = kodeDi.get(kunci(indukBatang.get(r.tiang_id)!, r.penyulang))!;
     hasil.set(kunci(r.tiang_id, r.penyulang), {
       kode: r.kode,
       induk: kodeDi.get(kunci(r.induk_id!, r.penyulang)) ?? "?",
@@ -76,6 +81,40 @@ async function baca(): Promise<Map<string, IndukLoncat>> {
     });
   }
   return hasil;
+}
+
+/** Batas langkah naik — tiang sisipan penumpang biasanya satu-dua batang. */
+const NAIK_MAKS = 6;
+
+/**
+ * Tiang yang induk batangnya ternyata ada DI HULU induk penyulangnya — jalur
+ * penyulang itu melewati tiang tambahan (mis. MSR-136 yang hanya dipakai MVTIC
+ * & MENINTING di antara 135 dan 137, sementara GUNUNG SARI langsung 142 → 143).
+ * Tidak ada yang dilompati, jadi tidak ditandai (22 Okt 2026).
+ * Naik dari induk penyulang: induk yang diatur di penyulang itu, kalau tidak
+ * ada induk batangnya.
+ */
+async function batangDiHulu(calon: BarisKp[], indukBatang: Map<string, string | null>): Promise<Set<string>> {
+  const ketemu = new Set<string>();
+  let jalan = calon.map((r) => ({ k: kunci(r.tiang_id, r.penyulang), p: r.penyulang, cari: indukBatang.get(r.tiang_id)!, di: r.induk_id! }));
+  for (let i = 0; i < NAIK_MAKS && jalan.length; i++) {
+    const ids = [...new Set(jalan.map((j) => j.di))];
+    const [{ data: kp }, { data: tb }] = await Promise.all([
+      supabaseBrowser.from("tiang_kode_penyulang").select("tiang_id,penyulang,induk_id").in("tiang_id", ids).not("induk_id", "is", null),
+      supabaseBrowser.from("tiang").select("id,induk_id").in("id", ids),
+    ]);
+    const atur = new Map(((kp ?? []) as BarisKp[]).map((a) => [kunci(a.tiang_id, a.penyulang), a.induk_id]));
+    const batang = new Map(((tb ?? []) as { id: string; induk_id: string | null }[]).map((t) => [t.id, t.induk_id]));
+    const lanjut: typeof jalan = [];
+    for (const j of jalan) {
+      const naik = atur.get(kunci(j.di, j.p)) ?? batang.get(j.di) ?? null;
+      if (!naik) continue;
+      if (naik === j.cari) ketemu.add(j.k);
+      else lanjut.push({ ...j, di: naik });
+    }
+    jalan = lanjut;
+  }
+  return ketemu;
 }
 
 export function useIndukLoncat() {
