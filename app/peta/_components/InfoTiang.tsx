@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Columns2, GitBranch, Loader2, Move, Pencil, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
+import { ArrowDownUp, Columns2, GitBranch, Loader2, Move, Pencil, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
 import { PENANDA_ALAT } from "../_hooks/useSimulasiBuka";
 import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
@@ -37,6 +37,8 @@ interface Props {
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onGeser: () => void;
   onGantiInduk: () => void;
+  /** Rantai induk terbalik (salah pilih pangkal): tiang ini = pangkal yang salah. */
+  onBalikArah: () => void;
   /** Titik pertemuan: pilih induk tiang ini di penyulang yang menumpang. */
   onIndukPenyulang: (penyulang: string) => void;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
@@ -59,7 +61,7 @@ interface Props {
 }
 
 export default function InfoTiang({
-  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onSimulasi, simulasiSibuk,
+  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onBalikArah, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onSimulasi, simulasiSibuk,
   tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah, milik, onPemilikPeralatan,
 }: Props) {
   const jtr = !!t.gardu_kode;
@@ -223,6 +225,7 @@ export default function InfoTiang({
           <button onClick={mulai} className={TOMBOL_PANEL}><Pencil size={13} /> Ubah atribut</button>
           <button onClick={onGeser} className={TOMBOL_PANEL}><Move size={13} /> Geser titik</button>
           {!jtr && !tanpaGantiInduk && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
+          {!jtr && !tanpaGantiInduk && <button onClick={onBalikArah} className={TOMBOL_PANEL}><ArrowDownUp size={13} /> Balik arah</button>}
           {!jtr && !tanpaGantiInduk &&
             t.nama
               .filter((n) => !n.utama)

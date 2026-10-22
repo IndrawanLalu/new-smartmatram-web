@@ -77,6 +77,14 @@ export function useSuntingPeta(oleh: string) {
       "Induk tiang diganti.",
     );
 
+  /** Rantai induk terbalik karena salah pilih pangkal (`jtm-balik-arah.sql`). */
+  const balikArah = (dari: string, ke: string, hulu: string | null, alasan: string) =>
+    jalankan<{ tiang: unknown[]; segmen: unknown[] }>(
+      "balik_arah_jtm",
+      { p_dari: dari, p_ke: ke, p_hulu: hulu, p_alasan: alasan, p_oleh: oleh },
+      (d) => `Arah ${d.tiang.length} tiang dibalik${d.segmen.length ? `, ${d.segmen.length} segmen ditukar` : ""}.`,
+    );
+
   /** Tiang kedua gardu portal (`buat_pasangan_portal`, jtm-hak-akses-portal.sql). */
   const buatPasanganPortal = (id: string) =>
     jalankan<{ kode: string; dari: string }>("buat_pasangan_portal", { p_tiang_id: id, p_oleh: oleh }, (d) =>
@@ -150,7 +158,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, batalkan, lepasTumpangJtm, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, buatPasanganPortal,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
 }

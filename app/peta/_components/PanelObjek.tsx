@@ -13,6 +13,7 @@ import RingkasSimulasi from "./RingkasSimulasi";
 import RincianKesehatan from "./RincianKesehatan";
 import KoreksiJtr from "./KoreksiJtr";
 import LepasTumpangJtm from "./LepasTumpangJtm";
+import { LangkahBalikArah } from "./BalikArahJtm";
 import PersetujuanJtrPeta from "./PersetujuanJtrPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
@@ -43,6 +44,11 @@ interface Props {
   onIndukPenyulang: (penyulang: string) => void;
   onIkutBatang: () => Promise<boolean>;
   onBatalInduk: () => void;
+  /** Balik arah JTM sedang menunggu klik; `ke` = kode pangkal sebenarnya (null = belum). */
+  balik: { ke: string | null } | null;
+  onBalikArah: () => void;
+  onTanpaHulu: () => void;
+  onBatalBalik: () => void;
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
   onBuatPasangan: () => Promise<boolean>;
@@ -194,6 +200,8 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
+        {p.balik && <LangkahBalikArah ke={p.balik.ke} onTanpaHulu={p.onTanpaHulu} onBatal={p.onBatalBalik} />}
+
         {p.modeGabung && (
           <div className="rounded-lg border border-pink-400/60 p-3 text-xs text-pink-100 space-y-2">
             <p>
@@ -204,7 +212,7 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
-        {tiang?.jtr && !geser && !p.modeInduk && !p.modeGabung && (
+        {tiang?.jtr && !geser && !p.modeInduk && !p.modeGabung && !p.balik && (
           <KoreksiJtr
             key={`${tiang.jtr.gardu}-${tiang.jtr.kode}-${tiang.jtr.kabel.map((k) => k.nomor).join("")}`}
             j={tiang.jtr}
@@ -221,7 +229,7 @@ export default function PanelObjek(p: Props) {
           />
         )}
 
-        {tiang && !geser && !p.modeInduk && !p.modeGabung && (
+        {tiang && !geser && !p.modeInduk && !p.modeGabung && !p.balik && (
           <InfoTiang
             t={tiang}
             pilihan={p.pilihan}
@@ -230,6 +238,7 @@ export default function PanelObjek(p: Props) {
             onUbahAtribut={p.onUbahAtribut}
             onGeser={p.onMulaiGeser}
             onGantiInduk={p.onGantiInduk}
+            onBalikArah={p.onBalikArah}
             onIndukPenyulang={p.onIndukPenyulang}
             onPercabangan={p.onPercabangan}
             onBuatPasangan={p.onBuatPasangan}

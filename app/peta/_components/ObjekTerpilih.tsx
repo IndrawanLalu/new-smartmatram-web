@@ -8,6 +8,7 @@ import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { PilihObjek } from "../_hooks/usePilihObjek";
 import type { HasilSimulasi } from "../_hooks/useSimulasiBuka";
 import type { useSuntingPeta } from "../_hooks/useSuntingPeta";
+import BalikArahJtm from "./BalikArahJtm";
 import DialogObjek from "./DialogObjek";
 import PanelObjek from "./PanelObjek";
 
@@ -124,6 +125,10 @@ export default function ObjekTerpilih({
             p.setIndukPenyulang(null);
           }}
           indukPenyulang={p.indukPenyulang}
+          balik={p.balik ? { ke: p.balik.ke?.kode ?? null } : null}
+          onBalikArah={() => p.setBalik({ ke: null })}
+          onTanpaHulu={() => p.balik?.ke && p.setCalonBalik({ ke: p.balik.ke, hulu: null })}
+          onBatalBalik={() => p.setBalik(null)}
           onIndukPenyulang={(x) => {
             p.setIndukPenyulang(x);
             p.setModeInduk(true);
@@ -181,6 +186,27 @@ export default function ObjekTerpilih({
             const tid = objek.tiang?.jtr?.tumpangId;
             if (!tid) return false;
             return tutupLaluMuat(await sunting.lepasTumpangJtr(tid, alasan));
+          }}
+        />
+      )}
+      {p.calonBalik && terpilih?.jenis === "tiang" && (
+        <BalikArahJtm
+          key={`${p.calonBalik.ke.id}-${p.calonBalik.hulu?.id ?? ""}`}
+          dariId={terpilih.id}
+          keId={p.calonBalik.ke.id}
+          huluId={p.calonBalik.hulu?.id ?? null}
+          oleh={oleh}
+          onBalik={async (alasan) => {
+            const c = p.calonBalik;
+            const ok = !!c && (await sunting.balikArah(terpilih.id, c.ke.id, c.hulu?.id ?? null, alasan));
+            if (ok) segarkan();
+            return ok;
+          }}
+          onTutup={() => p.setCalonBalik(null)}
+          onSelesai={() => {
+            p.setCalonBalik(null);
+            p.setBalik(null);
+            segarkan();
           }}
         />
       )}
