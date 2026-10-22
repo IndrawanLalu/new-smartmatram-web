@@ -5,7 +5,7 @@ import { ambilLatar, ambilLogo, unduhBerkas } from "@/lib/gambarSurvey/latar";
 import { fotoBertanda } from "@/lib/gambarSurvey/tandaFoto";
 import type { SurveyJaringan, TiangSambung, TitikSurvey } from "@/lib/surveyJaringan";
 import { susunGambarJtm, type TiangSekitar } from "../_lib/gambarSurveyJtm";
-import { RASIO_FOTO_PDF, type FotoPdf } from "../_lib/fotoPdf";
+import type { FotoPdf } from "../_lib/fotoPdf";
 
 /** Jaringan JTM yang ada di sekitar survey — patokan di gambar (±150 m di luar bingkai). */
 const MARGIN_DERAJAT = 0.0015;
@@ -39,8 +39,11 @@ export async function unduhGambarSurveyJtm(
   const [sekitar, logo, foto] = await Promise.all([
     ambilSekitar([...titik, ...sambung.values()]),
     ambilLogo(),
-    // Foto dipotong pas kotaknya di PDF, simbol yang ditempel ikut tergambar.
-    Promise.all(s.foto.slice(0, 4).map(async (f, i) => ({ src: await fotoBertanda(f, RASIO_FOTO_PDF, 900), ket: f.ket, nomor: i + 1 }))),
+    // Foto utuh (tidak dipotong), simbol yang ditempel ikut tergambar.
+    Promise.all(s.foto.slice(0, 4).map(async (f, i) => {
+      const b = await fotoBertanda(f, 900);
+      return b ? { ...b, ket: f.ket, nomor: i + 1 } : null;
+    })),
   ]);
   const g = susunGambarJtm(titik, sambung, sekitar, labelPenanda);
   const [{ pdf }, { default: GambarSurveyJtmPdf }, latar] = await Promise.all([
@@ -49,7 +52,7 @@ export async function unduhGambarSurveyJtm(
     ambilLatar(g.ruang),
   ]);
   const el = React.createElement(GambarSurveyJtmPdf, {
-    s, g, titik, sambung: [...sambung.values()], foto: foto.filter((f): f is FotoPdf => !!f.src), logo, latar,
+    s, g, titik, sambung: [...sambung.values()], foto: foto.filter((f): f is FotoPdf => !!f), logo, latar,
   }) as unknown as React.ReactElement<DocumentProps>;
   unduhBerkas(await pdf(el).toBlob(), `Gambar survey ${s.judul}.pdf`);
 }

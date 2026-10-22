@@ -10,7 +10,7 @@ import {
 import { bentukGardu, setengahTiang } from "@/lib/gambarSurvey/simbolGardu";
 import { geser } from "@/lib/gambarSurvey/kertas";
 import { bawaJtm, bawaJtr, LABEL_ALASAN, type JenisGardu, type SurveyJaringan, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
-import { FOTO_PDF_H, FOTO_PDF_W, type FotoPdf } from "./fotoPdf";
+import { FOTO_PDF_W, ukuranFotoPdf, type FotoPdf } from "./fotoPdf";
 import type { GambarJtm, JenisLabelJtm } from "./gambarSurveyJtm";
 
 const LAMA = "#94A3B8";
@@ -112,7 +112,7 @@ function Foto({ foto }: { foto: FotoPdf[] }) {
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
         {foto.map((f) => (
           <View key={f.nomor} style={{ width: FOTO_PDF_W }}>
-            <Image src={f.src} style={{ width: FOTO_PDF_W, height: FOTO_PDF_H, objectFit: "cover" }} />
+            <Image src={f.src} style={ukuranFotoPdf(f.rasio)} />
             <Text style={[S.kecil, { marginTop: 1 }]}>{`Foto ${f.nomor}${f.ket ? ` — ${f.ket}` : ""}`}</Text>
           </View>
         ))}

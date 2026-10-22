@@ -188,11 +188,11 @@ export const muatFoto = (url: string) =>
   });
 
 /**
- * Foto + tandanya untuk PDF, dipotong pas ke `rasio` (lebar/tinggi) seperti
- * object-fit cover. Tanda digambar di FOTO UTUH dulu (ukurannya sama dengan di
- * penyunting), baru dipotong. Gagal = null.
+ * Foto + tandanya untuk PDF — UTUH, tidak dipotong (foto tegak dulu terpotong
+ * atas-bawah sehingga tanda hilang; koreksi user 22 Okt). Tanda digambar di
+ * ukuran asli foto, sama dengan di penyunting, lalu diperkecil. Gagal = null.
  */
-export async function fotoBertanda(f: FotoSurvey, rasio: number, maks: number): Promise<string | null> {
+export async function fotoBertanda(f: FotoSurvey, maks: number): Promise<{ src: string; rasio: number } | null> {
   try {
     const img = await muatFoto(f.url);
     const iw = img.naturalWidth;
@@ -205,16 +205,14 @@ export async function fotoBertanda(f: FotoSurvey, rasio: number, maks: number): 
     cu.drawImage(img, 0, 0);
     gambarTanda(cu, f.tanda, iw, ih);
 
-    const pw = iw / ih > rasio ? ih * rasio : iw;
-    const ph = iw / ih > rasio ? ih : iw / rasio;
-    const k = Math.min(1, maks / Math.max(pw, ph));
+    const k = Math.min(1, maks / Math.max(iw, ih));
     const kanvas = document.createElement("canvas");
-    kanvas.width = Math.round(pw * k);
-    kanvas.height = Math.round(ph * k);
+    kanvas.width = Math.round(iw * k);
+    kanvas.height = Math.round(ih * k);
     const ctx = kanvas.getContext("2d");
     if (!ctx) return null;
-    ctx.drawImage(utuh, (iw - pw) / 2, (ih - ph) / 2, pw, ph, 0, 0, kanvas.width, kanvas.height);
-    return kanvas.toDataURL("image/jpeg", 0.85);
+    ctx.drawImage(utuh, 0, 0, kanvas.width, kanvas.height);
+    return { src: kanvas.toDataURL("image/jpeg", 0.85), rasio: iw / ih };
   } catch {
     return null;
   }
