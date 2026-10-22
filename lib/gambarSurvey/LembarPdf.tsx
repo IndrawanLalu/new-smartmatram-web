@@ -269,10 +269,7 @@ function BlokJudul({ skalaM, judul, logo, ulp, pengesah, keterangan, nomor, lemb
           {/* SMART = sistem pembuat gambar: kecil di pojok, tidak menyaingi kop PLN. */}
           <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
             {logo.smart && <Image src={logo.smart} style={{ width: 30, height: 30, objectFit: "contain" }} />}
-            <View style={{ gap: 2 }}>
-              <Text style={S.kecil}>Dibuat dengan SMART Mataram</Text>
-              <Text>Grup Distribusi</Text>
-            </View>
+            <Text style={S.kecil}>Dibuat dengan SMART Mataram</Text>
           </View>
         </View>
       </View>

@@ -85,19 +85,8 @@ export async function perkecilFoto(sumber: Blob | string, maks: number): Promise
   }
 }
 
-/** Logo SMART asli 500 px (±400 KB) — di PDF cukup 160 px; PNG supaya sudut transparannya tidak menghitam. */
-async function logoKecil(jalur: string, maks: number): Promise<string | null> {
-  const img = await muatGambar(jalur);
-  if (!img) return null;
-  const k = Math.min(1, maks / Math.max(img.naturalWidth, img.naturalHeight));
-  const kanvas = document.createElement("canvas");
-  kanvas.width = Math.round(img.naturalWidth * k);
-  kanvas.height = Math.round(img.naturalHeight * k);
-  kanvas.getContext("2d")?.drawImage(img, 0, 0, kanvas.width, kanvas.height);
-  return kanvas.toDataURL("image/png");
-}
-
 export async function ambilLogo(): Promise<LogoLembar> {
-  const [pln, smart] = await Promise.all([ambilGambarPublik("/logo-pln.png"), logoKecil("/logsmart.png", 160)]);
+  // Logo "S" SMART (sama dengan ikon aplikasi & Gambar Laporan), 192 px.
+  const [pln, smart] = await Promise.all([ambilGambarPublik("/logo-pln.png"), ambilGambarPublik("/gambar-laporan/logo-smart.png")]);
   return { pln, smart };
 }
