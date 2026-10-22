@@ -12,7 +12,9 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
  * Aturannya sengaja sempit: induk batang tiang itu sendiri anggota penyulang
  * yang sama, tapi induk penyulangnya tiang lain. Sambungan tumpang di titik
  * pertemuan (batang sebelumnya milik penyulang lain) TIDAK ditandai — itu
- * memang disengaja.
+ * memang disengaja. Begitu pula ARAH BERLAWANAN (22 Okt 2026, MVTIC SHERATON
+ * di batang GUNUNG SARI): induk batangnya justru menyambung DARI tiang ini di
+ * penyulang itu — dia hilir, bukan tiang yang dilompati.
  *
  * Datanya kecil (hanya tiang yang induk penyulangnya diatur), jadi dibaca
  * sekali untuk semua ULP, bukan per layar.
@@ -51,18 +53,22 @@ async function baca(): Promise<Map<string, IndukLoncat>> {
   if (!calon.length) return new Map();
 
   // Kode di penyulang itu untuk induk yang dipakai & induk batang — sekaligus
-  // menjawab apakah induk batang anggota penyulang yang sama.
+  // menjawab apakah induk batang anggota penyulang yang sama, dan dari mana
+  // induk batang itu menyambung di penyulang itu.
   const ids = [...new Set(calon.flatMap((r) => [r.induk_id!, indukBatang.get(r.tiang_id)!]))];
   const { data: anggota } = await supabaseBrowser
     .from("tiang_kode_penyulang")
-    .select("tiang_id,penyulang,kode")
+    .select("tiang_id,penyulang,kode,induk_id")
     .in("tiang_id", ids);
-  const kodeDi = new Map(((anggota ?? []) as BarisKp[]).map((a) => [kunci(a.tiang_id, a.penyulang), a.kode]));
+  const baris = (anggota ?? []) as BarisKp[];
+  const kodeDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.kode]));
+  const indukDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.induk_id]));
 
   const hasil = new Map<string, IndukLoncat>();
   for (const r of calon) {
-    const dilompati = kodeDi.get(kunci(indukBatang.get(r.tiang_id)!, r.penyulang));
-    if (!dilompati) continue;
+    const kb = kunci(indukBatang.get(r.tiang_id)!, r.penyulang);
+    const dilompati = kodeDi.get(kb);
+    if (!dilompati || indukDi.get(kb) === r.tiang_id) continue;
     hasil.set(kunci(r.tiang_id, r.penyulang), {
       kode: r.kode,
       induk: kodeDi.get(kunci(r.induk_id!, r.penyulang)) ?? "?",
