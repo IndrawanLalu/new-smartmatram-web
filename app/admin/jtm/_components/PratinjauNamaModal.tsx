@@ -33,10 +33,19 @@ interface Props {
 }
 
 const jenisCatatan = (c: string | null) =>
-  !c ? null : c.startsWith("bentrok") ? "bentrok" : c.startsWith("dianggap") ? "cabang" : "pindah";
+  !c
+    ? null
+    : c.startsWith("bentrok")
+      ? "bentrok"
+      : c.startsWith("nama dobel")
+        ? "dobel"
+        : c.startsWith("dianggap")
+          ? "cabang"
+          : "pindah";
 
 const WARNA_CATATAN = {
   bentrok: "text-red-700",
+  dobel: "text-violet-700",
   cabang: "text-amber-700",
   pindah: "text-navy-700",
 } as const;
@@ -81,6 +90,7 @@ export default function PratinjauNamaModal({
     return {
       berubah,
       bentrok: hitung("bentrok"),
+      dobel: hitung("dobel"),
       cabang: hitung("cabang"),
       pindah: hitung("pindah"),
       terpanjang: b.reduce((t, r) => (r.baru.length > t.length ? r.baru : t), ""),
@@ -175,8 +185,14 @@ export default function PratinjauNamaModal({
             )}
             {ringkas.bentrok > 0 && (
               <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
-                <b>{ringkas.bentrok} nama bentrok</b> dengan tiang di luar bagian ini (baris merah). Terapkan
-                dinonaktifkan — pilih nama awal lain, atau ganti dulu nama tiang yang memakainya.
+                <b>{ringkas.bentrok} nama bentrok</b> (baris merah) — dipakai tiang di luar bagian ini yang lebih dekat
+                ke pangkal. Terapkan dinonaktifkan — pilih nama awal lain, atau ganti dulu nama tiang yang memakainya.
+              </p>
+            )}
+            {ringkas.dobel > 0 && (
+              <p className="text-xs text-violet-800 bg-violet-50 border border-violet-200 rounded-lg p-2.5">
+                {ringkas.dobel} tiang di luar bagian ini <b>namanya dobel</b> dengan nama baru — yang lebih dekat ke
+                pangkal tetap memakainya; tiang yang lebih ke ujung (beserta hilirnya) diberi nama dari induknya.
               </p>
             )}
             {ringkas.cabang > 0 && (
