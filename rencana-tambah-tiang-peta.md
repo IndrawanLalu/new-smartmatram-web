@@ -4,7 +4,14 @@ Permintaan user 22 Okt 2026: kalau di lapangan ada tiang yang **lupa / lolos
 dititik**, atau admin **salah hapus** di peta, sekarang tidak ada cara
 menambahkan tiang langsung di `/peta`.
 
-Status: **RENCANA — menunggu jawaban user (bagian "Perlu diputuskan").**
+Status: **RENCANA — keputusan inti dijawab user 22 Okt; menunggu aba-aba mulai T1.**
+
+### Keputusan user (22 Okt 2026)
+- **Nama sisipan = huruf di belakang** (`GNS-018a`), hilir tidak berubah;
+  Ganti nama (hilir ikut) tetap tersedia kalau mau dirapikan.
+- **Tiang dari meja langsung dianggap sah** — tidak ada tanda "belum
+  dikonfirmasi" (B.4 dan fase T3 gugur); asalnya tetap tercatat
+  (`sumber = 'meja'` + audit).
 
 ---
 
@@ -46,9 +53,8 @@ Mode baru di panel tiang, pola "Mode geser titik":
 3. **Nama**: lewat mesin penamaan yang sama dengan HP — sisipan diberi
    huruf (`GNS-018a`, seperti data lama), lanjutan diberi nomor berikutnya;
    lalu ditawarkan **Ganti nama (hilir ikut)** kalau mau dirapikan.
-4. **Tanda "dititik dari meja"**: `sumber = 'meja'`, belum dikonfirmasi
-   lapangan → digambar putus-putus sampai regu menilainya di penyapuan
-   berikutnya (pola tiang rencana Survey Jaringan Baru).
+4. ~~Tanda belum dikonfirmasi~~ — user: langsung sah. Asal tetap tercatat
+   (`sumber = 'meja'`, audit), tampil biasa di peta & HP.
 5. Atribut (jenis, konstruksi, penghantar) bisa langsung diisi atau dibiarkan
    untuk regu.
 6. Penjaga yang sama dengan HP: tolak titik < radius tumpang dari tiang lain
@@ -63,16 +69,13 @@ Mode baru di panel tiang, pola "Mode geser titik":
 |---|---|---|
 | **T1** | Pulihkan tiang (SQL `pulihkan_tiang` + lapisan/daftar dibatalkan + panel) | SQL + web |
 | **T2** | Tambah tiang: sisipkan A→B & tambah dari A (SQL `tambah_tiang_meja` + mode di peta) | SQL + web |
-| **T3** | Tanda "belum dikonfirmasi lapangan" tampil di HP penyapuan JTM | OTA |
 
 ---
 
-## Perlu diputuskan (user)
+## Masih terbuka (dipakai usulan kalau tidak dijawab)
 
 1. **Siapa boleh menambah / memulihkan?** Usulan: admin ULP & UP3 (sama dengan
    sunting peta lainnya).
-2. **Nama tiang sisipan**: huruf di belakang (`GNS-018a`, seperti data lama)
-   atau langsung tawarkan Ganti nama (hilir ikut) supaya bernomor rapi?
+2. ~~Nama sisipan~~ — dijawab: huruf di belakang.
 3. **JTM saja dulu**, atau JTR juga (JTR punya jurusan & kabel — lebih panjang)?
-4. Tiang tambahan dari meja: **wajib dikonfirmasi regu** di penyapuan
-   berikutnya (usulan), atau langsung dianggap sah?
+4. ~~Konfirmasi regu~~ — dijawab: langsung sah.

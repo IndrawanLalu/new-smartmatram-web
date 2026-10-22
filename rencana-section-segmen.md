@@ -7,7 +7,14 @@ Permintaan user 22 Okt 2026:
   bebas, asal tidak keluar dari section-nya.
 - Fitur **pecah section** (memotong section menjadi segmen-segmen).
 
-Status: **RENCANA — menunggu jawaban user (bagian "Perlu diputuskan").**
+Status: **RENCANA — keputusan inti dijawab user 22 Okt; menunggu aba-aba mulai X1.**
+
+### Keputusan user (22 Okt 2026)
+- **Batas section hanya REC / LBS / LBSM** (+ pangkal GI/PLTD/GH). FCO, PENG,
+  3Y **bukan** batas section — beda dengan keypoint Mode SLD (semua penanda
+  kecuali gardu); definisi section ditulis sendiri, Mode SLD tidak diubah.
+- **Nama section otomatis** dari keypoint hulunya (`REC. MALOMBA`; section
+  pertama = nama pangkal, mis. `GI AMPENAN`).
 
 ---
 
@@ -84,14 +91,10 @@ pengelompokan di peta & daftar, dan rekap per section (opsional, fase akhir).
 
 ---
 
-## Perlu diputuskan (user)
+## Masih terbuka (dipakai usulan kalau tidak dijawab)
 
-1. **Penanda mana yang jadi batas section?** REC, LBS, LBSM pasti. **FCO (109)**,
-   **PENG (39)**, **3Y (3)**, GH ikut atau tidak?
-   - Mode SLD sekarang menganggap semuanya keypoint.
-   - FCO di cabang akan membuat banyak section kecil; PENG justru *bukan*
-     peralatan pemutus (`segmen_memotong` tidak menghitungnya).
-2. **Nama section**: otomatis dari keypoint hulunya (usulan), atau boleh diketik?
+1. ~~Batas section~~ — dijawab: REC/LBS/LBSM.
+2. ~~Nama section~~ — dijawab: otomatis.
 3. **Segmen harus menutup seluruh section tanpa celah?** (usulan: tidak wajib,
    tapi tiang tanpa segmen ditampilkan sebagai "belum masuk segmen").
 4. **Nama segmen**: tetap unik per penyulang (usulan), atau cukup unik per section?
