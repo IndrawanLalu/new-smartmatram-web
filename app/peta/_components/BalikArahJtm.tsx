@@ -6,15 +6,21 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY } from "@/app/admin/_ui";
 import PratinjauNamaModal from "@/app/admin/jtm/_components/PratinjauNamaModal";
+import type { PermintaanNama } from "@/lib/jtmNama";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { TOMBOL_PANEL } from "./InfoTiang";
 
 /**
  * Balik arah JTM (`scripts/jtm-balik-arah.sql`): rantai induk yang terbalik
  * karena regu memulai rintisan dari ujung jaringan. Pratinjau dulu — induk
- * lama → baru per tiang dan segmen yang ditukar — lalu langsung Generate
- * ulang nama penyulangnya, karena nama tiang mengikuti arah rantai.
+ * lama → baru per tiang dan segmen yang ditukar — lalu ganti nama BAGIAN
+ * YANG DIBALIK saja: dari pangkal barunya ke hilir (user 22 Okt — dulu
+ * Generate ulang seluruh penyulang, nama sampai ke pangkal penyulang ikut
+ * berubah). Nama awalnya diketik admin, mis. lanjutan dari hulunya.
  */
+
+const ISIAN =
+  "w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15";
 
 interface Pratinjau {
   penyulang: string;
@@ -73,6 +79,8 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
   const [alasan, setAlasan] = useState("");
   const [sibuk, setSibuk] = useState(false);
   const [dibalik, setDibalik] = useState(false);
+  const [namaAwal, setNamaAwal] = useState("");
+  const [permintaan, setPermintaan] = useState<PermintaanNama | null>(null);
 
   useEffect(() => {
     let hidup = true;
@@ -98,12 +106,14 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
 
   if (!p) return null;
 
-  if (dibalik) {
+  const pangkal = p.tiang[0];
+
+  if (permintaan) {
     return (
       <PratinjauNamaModal
-        judul={`Generate ulang nama ${p.penyulang}`}
-        subjudul="Arah sudah dibalik — nama tiang menyusul arah yang benar"
-        permintaan={{ penyulang: p.penyulang, ulp: p.ulp }}
+        judul={`Ganti nama ${pangkal.kode} → ${permintaan.namaMulai} (hilir ikut)`}
+        subjudul={`Penyulang ${p.penyulang} · bagian yang dibalik saja`}
+        permintaan={permintaan}
         oleh={oleh}
         onTutup={onSelesai}
         onSelesai={onSelesai}
@@ -111,14 +121,58 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
     );
   }
 
+  if (dibalik) {
+    const baru = namaAwal.trim().toUpperCase();
+    return (
+      <ModalShell
+        title="Ganti nama bagian yang dibalik"
+        subtitle={`Penyulang ${p.penyulang}`}
+        maxWidth="max-w-md"
+        onClose={onSelesai}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={onSelesai} className={BTN_GHOST}>Lewati</button>
+            <button
+              onClick={() => setPermintaan({ penyulang: p.penyulang, ulp: p.ulp, mulai: keId, namaMulai: baru })}
+              disabled={!baru}
+              className={BTN_PRIMARY}
+            >
+              Pratinjau nama
+            </button>
+          </div>
+        }
+      >
+        <div className="p-5 space-y-3 text-sm text-ink">
+          <p className="text-ink-soft">
+            Arah sudah dibalik. Nama mulai dari <b className="text-ink">{pangkal.kode}</b> (pangkal baru
+            {pangkal.induk_baru ? `, menyambung dari ${pangkal.induk_baru}` : ""}) sampai hilirnya ikut berganti —
+            tiang di hulunya tidak disentuh.
+          </p>
+          <label className="block space-y-1">
+            <span className="text-xs font-semibold text-ink-soft">Nama baru {pangkal.kode}</span>
+            <input
+              autoFocus
+              value={namaAwal}
+              onChange={(e) => setNamaAwal(e.target.value)}
+              placeholder={pangkal.induk_baru ? `mis. lanjutan dari ${pangkal.induk_baru}` : "mis. MSR-001"}
+              className={ISIAN}
+            />
+          </label>
+        </div>
+      </ModalShell>
+    );
+  }
+
   const balik = async () => {
     setSibuk(true);
     const ok = await onBalik(alasan.trim());
     setSibuk(false);
-    if (ok) setDibalik(true);
+    if (ok) {
+      setNamaAwal(pangkal.kode);
+      setDibalik(true);
+    }
   };
 
-  const pangkal = p.tiang[0];
   return (
     <ModalShell
       title={`Balik arah ${p.tiang[p.tiang.length - 1].kode} … ${pangkal.kode}`}
@@ -201,9 +255,11 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
           rows={2}
           autoFocus
           placeholder="Alasan — mis. regu memulai rintisan dari ujung jaringan"
-          className="w-full rounded-xl border border-line bg-white px-3 py-2 text-sm text-ink placeholder:text-ink-muted focus:outline-none focus:border-navy-500 focus:ring-2 focus:ring-navy-500/15"
+          className={ISIAN}
         />
-        <p className="text-xs text-ink-soft">Sesudah dibalik, pratinjau Generate ulang nama {p.penyulang} langsung dibuka.</p>
+        <p className="text-xs text-ink-soft">
+          Sesudah dibalik, nama bagian ini saja yang diganti — mulai {pangkal.kode} ke hilirnya, lewat pratinjau.
+        </p>
       </div>
     </ModalShell>
   );
