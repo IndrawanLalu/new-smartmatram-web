@@ -23,6 +23,14 @@ export const LABEL_ALASAN: Record<AlasanSurvey, string> = {
   lainnya: "Lainnya",
 };
 
+/** Jenis tiang baru (22 Okt 2026: JTM + gardu + JTR dalam satu survey). */
+export type JaringanTiang = "JTM" | "JTR";
+/** Kabel dari induk ke titik: JTM, JTR, atau keduanya di tiang yang sama (underbuild). */
+export type KabelSurvey = "JTM" | "JTR" | "JTM+JTR";
+export const LABEL_KABEL: Record<KabelSurvey, string> = { JTM: "JTM", JTR: "JTR", "JTM+JTR": "JTM + JTR (satu tiang)" };
+export const bawaJtm = (k: KabelSurvey) => k !== "JTR";
+export const bawaJtr = (k: KabelSurvey) => k !== "JTM";
+
 export type JenisGardu = "portal" | "cantol";
 export const LABEL_JENIS_GARDU: Record<JenisGardu, string> = { portal: "Portal (dua tiang)", cantol: "Cantol (satu tiang)" };
 
@@ -48,7 +56,42 @@ export interface TitikSurvey {
   /** Arah gambar gardu (derajat searah jarum jam; 0 = trafo di bawah tiang). */
   gardu_arah: number;
   catatan: string | null;
+  jaringan: JaringanTiang;
+  kabel: KabelSurvey;
+  /** Kabel JTR gawang ini (konduktor_* = JTM). */
+  jtr_kabel_jenis: string | null;
+  jtr_kabel_ukuran: string | null;
+  /** Jurusan JTR (A, B, C …) kabel JTR yang masuk ke titik ini. */
+  jurusan: string | null;
 }
+
+/** Simbol yang ditempel di foto; x/y 0–1 dari kiri-atas foto = KAKI tiang di tanah. */
+export type JenisTanda = "gardu" | "tiang_jtm" | "tiang_jtr" | "teks";
+export interface TandaFoto {
+  jenis: JenisTanda;
+  x: number;
+  y: number;
+  /** Gardu: portal (dua tiang) / cantol (satu tiang). */
+  gardu?: JenisGardu;
+  /** Besar gambar (1 = bawaan) — disesuaikan dengan jarak di foto. */
+  skala?: number;
+  /** Tulisan di samping simbol (atau isi tanda teks). */
+  teks?: string;
+}
+export interface FotoSurvey {
+  url: string;
+  /** Keterangan, mis. "Lokasi gardu". */
+  ket: string;
+  tanda: TandaFoto[];
+}
+/** Pilihan cepat keterangan foto — tetap boleh diketik bebas. */
+export const SARAN_KET_FOTO = ["Lokasi gardu", "Lokasi pengambilan", "Titik sambung", "Jalur JTM", "Jalur JTR"];
+
+/** Data lama = URL polos. */
+const keFoto = (x: unknown): FotoSurvey =>
+  typeof x === "string"
+    ? { url: x, ket: "", tanda: [] }
+    : { url: String((x as FotoSurvey).url), ket: (x as FotoSurvey).ket ?? "", tanda: (x as FotoSurvey).tanda ?? [] };
 
 /** Tiang JTM yang ada, tempat jaringan baru menyambung. */
 export interface TiangSambung {
@@ -86,12 +129,16 @@ export interface SurveyJaringan {
   digambar_nama: string | null;
   diperiksa_nama: string | null;
   disetujui_nama: string | null;
-  /** Foto kondisi lapangan (URL publik bucket inspections, survey/<id>/…). */
-  foto: string[];
+  /** Foto kondisi lapangan (bucket inspections, survey/<id>/…) + keterangan & tanda. */
+  foto: FotoSurvey[];
   jumlah_tiang: number;
   panjang_m: number;
   jumlah_gardu: number;
   gardu_kva: number;
+  jumlah_tiang_jtm: number;
+  jumlah_tiang_jtr: number;
+  panjang_jtm_m: number;
+  panjang_jtr_m: number;
 }
 
 export const PESAN_SQL_SURVEY = "Survey Jaringan Baru belum ada di database — jalankan scripts/survey-jaringan.sql di Supabase.";
@@ -101,8 +148,7 @@ const PESAN_SQL_SURVEY_2 = "Tambahan Survey Jaringan Baru belum ada di database 
 export const pesanSurvey = (e: unknown) => {
   const x = e as { message?: string; code?: string };
   if (/ubah_pengesah_survey|gardu_jenis|diperiksa_nama/.test(x.message ?? "")) return PESAN_SQL_SURVEY_2;
-  if (/ubah_foto_survey/.test(x.message ?? "")) return "Foto survey belum ada di database — jalankan scripts/survey-jaringan-4.sql di Supabase.";
-  return x.code === "PGRST205" || x.code === "PGRST202" || /survey_jaringan|survey_titik/.test(x.message ?? "")
+  if (/ubah_foto_survey/.test(x.message ?? "")) return "Foto survey belum ada di database — jalankan scripts/survey-jaringan-4.sql di Supabase.";  return x.code === "PGRST205" || x.code === "PGRST202" || /survey_jaringan|survey_titik/.test(x.message ?? "")
     ? PESAN_SQL_SURVEY
     : (x.message ?? "Gagal");
 };
@@ -113,8 +159,13 @@ export const keSurvey = (x: Record<string, unknown>): SurveyJaringan => ({
   panjang_m: Number(x.panjang_m ?? 0),
   jumlah_gardu: Number(x.jumlah_gardu ?? 0),
   gardu_kva: Number(x.gardu_kva ?? 0),
+  // Sebelum survey-jaringan-5.sql kolom JTM/JTR belum ada: semuanya JTM.
+  jumlah_tiang_jtm: Number(x.jumlah_tiang_jtm ?? x.jumlah_tiang ?? 0),
+  jumlah_tiang_jtr: Number(x.jumlah_tiang_jtr ?? 0),
+  panjang_jtm_m: Number(x.panjang_jtm_m ?? x.panjang_m ?? 0),
+  panjang_jtr_m: Number(x.panjang_jtr_m ?? 0),
   material: (x.material as BarisMaterialSurvey[] | null) ?? [],
-  foto: (x.foto as string[] | null | undefined) ?? [],
+  foto: ((x.foto as unknown[] | null | undefined) ?? []).map(keFoto),
 });
 
 export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({
@@ -124,13 +175,15 @@ export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({
   gardu_kva: x.gardu_kva == null ? null : Number(x.gardu_kva),
   gardu_jenis: (x.gardu_jenis as JenisGardu | null | undefined) ?? null,
   gardu_arah: Number(x.gardu_arah ?? 0),
+  jaringan: (x.jaringan as JaringanTiang | undefined) ?? "JTM",
+  kabel: (x.kabel as KabelSurvey | undefined) ?? "JTM",
+  jtr_kabel_jenis: (x.jtr_kabel_jenis as string | null | undefined) ?? null,
+  jtr_kabel_ukuran: (x.jtr_kabel_ukuran as string | null | undefined) ?? null,
+  jurusan: (x.jurusan as string | null | undefined) ?? null,
 });
 
 /** Gardu portal berdiri di dua tiang, tapi digambar sebagai satu titik. */
 export const portal = (t: TitikSurvey) => t.penanda === "gardu" && t.gardu_jenis === "portal";
-
-/** Jumlah batang tiang baru: titik + tiang kedua tiap gardu portal. */
-export const jumlahBatang = (titik: TitikSurvey[]) => titik.length + titik.filter(portal).length;
 
 /** Posisi induk satu titik (titik survey atau tiang sambung). */
 export function posisiInduk(t: TitikSurvey, titik: Map<string, TitikSurvey>, sambung: Map<string, TiangSambung>) {
@@ -150,12 +203,15 @@ export function panjangGawang(titik: TitikSurvey[], sambung: Map<string, TiangSa
 
 /** Kabel berinti tiga (satu batang untuk tiga fasa) — selebihnya kawat per fasa. */
 const KABEL_TIGA_INTI = /NA2XSEYBY|MVTIC/i;
+/** JTR: kabel pilin (LVTC/Twisted) satu batang; telanjang = 3 fasa + netral. */
+const KABEL_JTR_PILIN = /LVTC|TWIST/i;
 /** Cadangan andongan & sambungan konduktor. */
 export const CADANGAN_KONDUKTOR = 1.03;
 
 /**
- * Material dari GAMBAR: panjang konduktor per jenis & ukuran (kawat ×3 fasa,
- * kabel berinti tiga ×1, + cadangan), tiang per jenis (gardu portal +1 tiang),
+ * Material dari GAMBAR: panjang konduktor JTM per jenis & ukuran (kawat ×3 fasa,
+ * kabel berinti tiga ×1) dan kabel JTR (pilin ×1, telanjang ×4), + cadangan;
+ * tiang JTM & JTR per jenis (gardu portal +1 tiang),
  * konstruksi per jenis, peralatan per penanda, trafo per kVA + konstruksi
  * gardu portal/cantol. Hanya isian awal — user memeriksanya.
  */
@@ -172,11 +228,17 @@ export function materialDariGambar(
     else hasil.set(nama, { nama, satuan, jumlah: n });
   };
   for (const t of titik) {
-    const jenis = t.konduktor_jenis ?? "(jenis belum diisi)";
-    const p = (panjang.get(t.id) ?? 0) * (KABEL_TIGA_INTI.test(jenis) ? 1 : 3);
-    tambah(`Konduktor ${jenis}${t.konduktor_ukuran ? ` ${t.konduktor_ukuran}` : ""}`, "m", p);
+    const m = panjang.get(t.id) ?? 0;
+    if (bawaJtm(t.kabel)) {
+      const jenis = t.konduktor_jenis ?? "(jenis belum diisi)";
+      tambah(`Konduktor JTM ${jenis}${t.konduktor_ukuran ? ` ${t.konduktor_ukuran}` : ""}`, "m", m * (KABEL_TIGA_INTI.test(jenis) ? 1 : 3));
+    }
+    if (bawaJtr(t.kabel)) {
+      const jenis = t.jtr_kabel_jenis ?? "(jenis belum diisi)";
+      tambah(`Kabel JTR ${jenis}${t.jtr_kabel_ukuran ? ` ${t.jtr_kabel_ukuran}` : ""}`, "m", m * (KABEL_JTR_PILIN.test(jenis) ? 1 : 4));
+    }
   }
-  for (const t of titik) tambah(`Tiang ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
+  for (const t of titik) tambah(`Tiang ${t.jaringan} ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
   for (const t of titik) if (t.konstruksi) tambah(`Konstruksi ${t.konstruksi}`, "set", 1);
   for (const t of titik) {
     if (!t.penanda) continue;
@@ -187,7 +249,7 @@ export function materialDariGambar(
     tambah(`Trafo distribusi${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, "unit", 1);
     tambah(`Konstruksi gardu ${t.gardu_jenis ?? "(portal/cantol belum dipilih)"}`, "set", 1);
     // Gardu portal berdiri di dua tiang: tiang keduanya tidak digambar sebagai titik.
-    if (portal(t)) tambah(`Tiang ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
+    if (portal(t)) tambah(`Tiang JTM ${t.jenis_tiang ?? "(jenis belum diisi)"}`, "btg", 1);
   }
   return [...hasil.values()].map((b) => ({
     ...b,
@@ -212,3 +274,18 @@ export function urutTopologis(titik: TitikSurvey[]): TitikSurvey[] {
   // Yang tidak tersambung tetap ikut (server yang menolaknya dengan pesan jelas).
   return [...hasil, ...titik.filter((t) => !dilihat.has(t.id))].map((t, i) => ({ ...t, urutan: i + 1 }));
 }
+
+/**
+ * Jurusan bawaan kabel JTR baru dari `induk`: dari gardu = huruf berikutnya
+ * yang belum dipakai kabel JTR gardu itu; dari kabel JTR = jurusan induknya.
+ */
+export function jurusanBawaan(induk: TitikSurvey, titik: TitikSurvey[]): string {
+  if (induk.penanda !== "gardu" && bawaJtr(induk.kabel) && induk.jurusan) return induk.jurusan;
+  const dipakai = new Set(
+    titik.filter((t) => t.induk_titik_id === induk.id && bawaJtr(t.kabel) && t.jurusan).map((t) => t.jurusan!.toUpperCase()),
+  );
+  return [..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"].find((h) => !dipakai.has(h)) ?? "A";
+}
+
+/** Boleh menarik kabel JTR dari titik ini? (gardu baru, atau sudah dilewati JTR) */
+export const sumberJtr = (t: TitikSurvey | undefined) => !!t && (t.penanda === "gardu" || (bawaJtr(t.kabel) && !!t.jurusan));

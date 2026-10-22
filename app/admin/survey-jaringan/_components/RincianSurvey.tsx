@@ -31,6 +31,7 @@ const Koordinat = ({ k }: { k: { lat: number; lng: number } }) => (
   </a>
 );
 
+const kms = (m: number) => (m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 });
 const tgl = (x: string | null) => (x ? new Date(x).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
 export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
@@ -151,8 +152,9 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
         <div className="flex flex-wrap items-center gap-2 text-sm">
           <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${NADA_STATUS_SURVEY[s.status]}`}>{s.status}</span>
           <span className="text-ink">
-            <b>{s.jumlah_tiang}</b> tiang baru · <b>{(s.panjang_m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })}</b> kms
+            JTM <b>{s.jumlah_tiang_jtm}</b> tiang · <b>{kms(s.panjang_jtm_m)}</b> kms
             {s.jumlah_gardu > 0 && <> · <b>{s.jumlah_gardu}</b> gardu baru ({s.gardu_kva} kVA)</>}
+            {(s.jumlah_tiang_jtr > 0 || s.panjang_jtr_m > 0) && <> · JTR <b>{s.jumlah_tiang_jtr}</b> tiang · <b>{kms(s.panjang_jtr_m)}</b> kms</>}
           </span>
         </div>
         {s.status === "Batal" && <p className="text-sm text-ink-soft">Dibatalkan: {s.batal_alasan ?? "-"}</p>}
@@ -170,7 +172,7 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
             </button>
           )}
           <p className="text-xs text-ink-muted">
-            Dari gambar: konduktor kawat ×3 fasa, kabel berinti tiga ×1, +3% andongan; tiang, konstruksi, peralatan, dan trafo dihitung per titik.
+            Dari gambar: konduktor JTM kawat ×3 fasa, kabel berinti tiga ×1; kabel JTR pilin (LVTC/Twisted) ×1, telanjang ×4; +3% andongan; tiang JTM/JTR, konstruksi, peralatan, dan trafo dihitung per titik.
           </p>
         </div>
 

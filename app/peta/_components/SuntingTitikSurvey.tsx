@@ -1,17 +1,20 @@
 "use client";
 
-import { RotateCcw, RotateCw, Trash2 } from "lucide-react";
-import { LABEL_JENIS_GARDU, type JenisGardu, type TitikSurvey } from "@/lib/surveyJaringan";
+import { Trash2 } from "lucide-react";
+import { bawaJtm, bawaJtr, LABEL_KABEL, type JaringanTiang, type KabelSurvey, type TitikSurvey } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS } from "../_ui";
+import IsianGarduSurvey from "./IsianGarduSurvey";
+import { WARNA_JTR, WARNA_SURVEY } from "./LapisanSurvey";
 
-/** Isian satu tiang survey (dark panel). Isian tiang/konstruksi/konduktor jadi
- *  bawaan tiang berikutnya. */
+/** Isian satu tiang survey (dark panel): Tiang JTM / JTR, kabel dari induk
+ *  (JTM, JTR, JTM + JTR), konduktor & jurusan. Isian tiang/kabel jadi bawaan
+ *  tiang berikutnya yang sejenis. */
 
-const SEL = "w-full rounded-lg border px-2 py-1 text-xs text-[#e2e8f0] focus:outline-none focus:border-[#F97316]";
+export const SEL = "w-full rounded-lg border px-2 py-1 text-xs text-[#e2e8f0] focus:outline-none focus:border-[#F97316]";
 
-function Pilih({ label, nilai, opsi, onUbah, kosong = "—", mati }: {
+export function Pilih({ label, nilai, opsi, onUbah, kosong = "—", mati }: {
   label: string; nilai: string | null; opsi: { kode: string; label: string }[]; onUbah: (v: string | null) => void; kosong?: string; mati: boolean;
 }) {
   return (
@@ -30,13 +33,14 @@ function Pilih({ label, nilai, opsi, onUbah, kosong = "—", mati }: {
 }
 
 const keOpsi = (xs: string[] | undefined) => (xs ?? []).map((x) => ({ kode: x, label: x }));
+const WARNA_JARINGAN: Record<JaringanTiang, string> = { JTM: WARNA_SURVEY, JTR: WARNA_JTR };
 
 export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
   s: SurveyPetaState; t: TitikSurvey; nomor: number; penanda: Map<string, Penanda>;
 }) {
   const mati = !s.draf;
   const u = (patch: Partial<TitikSurvey>) => s.ubah(t.id, patch);
-  const putar = (d: number) => u({ gardu_arah: (((t.gardu_arah + d) % 360) + 360) % 360 });
+  const jtr = t.jaringan === "JTR";
   const induk = t.induk_titik_id
     ? `tiang baru ${s.titik.findIndex((x) => x.id === t.induk_titik_id) + 1}`
     : (s.sambung.get(t.induk_tiang_id ?? "")?.kode ?? "tiang JTM");
@@ -54,56 +58,64 @@ export default function SuntingTitikSurvey({ s, t, nomor, penanda }: {
         Dari {induk} · {Math.round(s.panjang.get(t.id) ?? 0)} m ·{" "}
         <span className="font-mono select-all text-gray-300" title="Koordinat — klik dua kali untuk memilih">{t.lat.toFixed(6)}, {t.lng.toFixed(6)}</span>
       </p>
-      <div className="grid grid-cols-2 gap-1.5">
-        <Pilih label="Jenis tiang" nilai={t.jenis_tiang} opsi={keOpsi(s.opsi?.jenis_tiang)} onUbah={(v) => u({ jenis_tiang: v })} mati={mati} />
-        <Pilih label="Konstruksi" nilai={t.konstruksi} opsi={keOpsi(s.opsi?.konstruksi)} onUbah={(v) => u({ konstruksi: v })} mati={mati} />
-        <Pilih label="Konduktor" nilai={t.konduktor_jenis} opsi={keOpsi(s.opsi?.konduktor_jenis)} onUbah={(v) => u({ konduktor_jenis: v })} mati={mati} />
-        <Pilih label="Ukuran" nilai={t.konduktor_ukuran} opsi={keOpsi(s.opsi?.konduktor_ukuran)} onUbah={(v) => u({ konduktor_ukuran: v })} mati={mati} />
+
+      <div className="flex gap-1">
+        {(["JTM", "JTR"] as JaringanTiang[]).map((j) => (
+          <button
+            key={j} disabled={mati} onClick={() => u({ jaringan: j })}
+            className={`flex-1 rounded-lg border px-2 py-1 font-semibold disabled:opacity-60 ${t.jaringan === j ? "text-white" : "border-white/15 text-gray-300 hover:bg-white/5"}`}
+            style={t.jaringan === j ? { background: WARNA_JARINGAN[j], borderColor: WARNA_JARINGAN[j] } : undefined}
+          >
+            Tiang {j}
+          </button>
+        ))}
       </div>
-      <Pilih
-        label="Gardu / peralatan di tiang ini" nilai={t.penanda} kosong="Tidak ada (tiang biasa)" mati={mati}
-        opsi={[...penanda.values()].map((p) => ({ kode: p.kode, label: p.label }))}
-        onUbah={(v) => u({ penanda: v, ...(v === "gardu" ? {} : { gardu_kva: null, gardu_nama: null, gardu_jenis: null }) })}
-      />
-      {t.penanda === "gardu" && (
+
+      <div className="grid grid-cols-2 gap-1.5">
         <Pilih
-          label="Jenis gardu" nilai={t.gardu_jenis} kosong="— pilih portal / cantol —" mati={mati}
-          opsi={(Object.keys(LABEL_JENIS_GARDU) as JenisGardu[]).map((k) => ({ kode: k, label: LABEL_JENIS_GARDU[k] }))}
-          onUbah={(v) => u({ gardu_jenis: v as JenisGardu | null })}
+          label="Jenis tiang" nilai={t.jenis_tiang} mati={mati} onUbah={(v) => u({ jenis_tiang: v })}
+          opsi={keOpsi(jtr ? s.opsi?.jtr_jenis_tiang : s.opsi?.jenis_tiang)}
+        />
+        {!jtr && <Pilih label="Konstruksi" nilai={t.konstruksi} opsi={keOpsi(s.opsi?.konstruksi)} onUbah={(v) => u({ konstruksi: v })} mati={mati} />}
+        {!jtr && t.induk_titik_id && (
+          <div className="col-span-2">
+            <Pilih
+              label="Kabel dari tiang sebelumnya" nilai={t.kabel} kosong="—" mati={mati}
+              opsi={(Object.keys(LABEL_KABEL) as KabelSurvey[]).map((k) => ({ kode: k, label: LABEL_KABEL[k] }))}
+              onUbah={(v) => v && u({ kabel: v as KabelSurvey })}
+            />
+          </div>
+        )}
+        {bawaJtm(t.kabel) && (
+          <>
+            <Pilih label="Konduktor JTM" nilai={t.konduktor_jenis} opsi={keOpsi(s.opsi?.konduktor_jenis)} onUbah={(v) => u({ konduktor_jenis: v })} mati={mati} />
+            <Pilih label="Ukuran" nilai={t.konduktor_ukuran} opsi={keOpsi(s.opsi?.konduktor_ukuran)} onUbah={(v) => u({ konduktor_ukuran: v })} mati={mati} />
+          </>
+        )}
+        {bawaJtr(t.kabel) && (
+          <>
+            <Pilih label="Kabel JTR" nilai={t.jtr_kabel_jenis} opsi={keOpsi(s.opsi?.jtr_kabel_jenis)} onUbah={(v) => u({ jtr_kabel_jenis: v })} mati={mati} />
+            <Pilih label="Ukuran" nilai={t.jtr_kabel_ukuran} opsi={keOpsi(s.opsi?.jtr_kabel_ukuran)} onUbah={(v) => u({ jtr_kabel_ukuran: v })} mati={mati} />
+            <label className="block space-y-0.5 col-span-2">
+              <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Jurusan</span>
+              <input
+                value={t.jurusan ?? ""} disabled={mati} maxLength={4} placeholder="A"
+                onChange={(e) => u({ jurusan: e.target.value.toUpperCase() || null })}
+                className={SEL} style={{ background: BIDANG, borderColor: GARIS }}
+              />
+            </label>
+          </>
+        )}
+      </div>
+
+      {!jtr && (
+        <Pilih
+          label="Gardu / peralatan di tiang ini" nilai={t.penanda} kosong="Tidak ada (tiang biasa)" mati={mati}
+          opsi={[...penanda.values()].map((p) => ({ kode: p.kode, label: p.label }))}
+          onUbah={(v) => u({ penanda: v, ...(v === "gardu" ? {} : { gardu_kva: null, gardu_nama: null, gardu_jenis: null }) })}
         />
       )}
-      {t.penanda === "gardu" && (
-        <div className="space-y-0.5">
-          <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Arah gambar gardu · {t.gardu_arah}°</span>
-          <div className="flex items-center gap-1.5">
-            <button disabled={mati} onClick={() => putar(-15)} className="p-1 rounded border border-white/15 hover:bg-white/5 disabled:opacity-40" title="Putar 15° berlawanan jarum jam">
-              <RotateCcw size={13} />
-            </button>
-            <input
-              type="range" min={0} max={359} step={5} value={t.gardu_arah} disabled={mati}
-              onChange={(e) => u({ gardu_arah: Number(e.target.value) })}
-              className="flex-1 accent-[#F97316]"
-            />
-            <button disabled={mati} onClick={() => putar(15)} className="p-1 rounded border border-white/15 hover:bg-white/5 disabled:opacity-40" title="Putar 15° searah jarum jam">
-              <RotateCw size={13} />
-            </button>
-          </div>
-        </div>
-      )}
-      {t.penanda === "gardu" && (
-        <div className="grid grid-cols-[5rem_1fr] gap-1.5">
-          <input
-            type="number" min={0} placeholder="kVA" value={t.gardu_kva ?? ""} disabled={mati}
-            onChange={(e) => u({ gardu_kva: e.target.value ? Number(e.target.value) : null })}
-            className={SEL} style={{ background: BIDANG, borderColor: GARIS }}
-          />
-          <input
-            placeholder="Nama / lokasi gardu" value={t.gardu_nama ?? ""} disabled={mati}
-            onChange={(e) => u({ gardu_nama: e.target.value || null })}
-            className={SEL} style={{ background: BIDANG, borderColor: GARIS }}
-          />
-        </div>
-      )}
+      {t.penanda === "gardu" && <IsianGarduSurvey t={t} mati={mati} u={u} />}
       <input
         placeholder="Catatan tiang (opsional)" value={t.catatan ?? ""} disabled={mati}
         onChange={(e) => u({ catatan: e.target.value || null })}

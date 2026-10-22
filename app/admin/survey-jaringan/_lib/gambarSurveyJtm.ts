@@ -1,12 +1,14 @@
 /**
- * Gambar survey Survey Jaringan Baru JTM: jaringan JTM yang ada di sekitarnya
- * (abu-abu, patokan), jaringan baru jingga putus-putus dengan nomor tiang &
- * panjang gawang, titik sambung, gardu & peralatan baru. Kertas, proyeksi &
+ * Gambar survey Survey Jaringan Baru: jaringan JTM yang ada di sekitarnya
+ * (abu-abu, patokan), JTM baru jingga & JTR baru biru putus-putus dengan nomor
+ * tiang, panjang gawang & jurusan JTR, titik sambung, gardu & peralatan baru. Kertas, proyeksi &
  * penempatan label: lib/gambarSurvey/kertas.ts.
  */
 
 import { kotak, proyeksi, tempatkan, type CalonLabel, type Kotak, type Label, type Ruang, type Titik } from "@/lib/gambarSurvey/kertas";
-import { panjangGawang, posisiInduk, type JenisGardu, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
+import {
+  bawaJtr, panjangGawang, posisiInduk, type JaringanTiang, type JenisGardu, type KabelSurvey, type TiangSambung, type TitikSurvey,
+} from "@/lib/surveyJaringan";
 
 /** Tiang JTM yang ada di sekitar survey. */
 export interface TiangSekitar {
@@ -18,13 +20,13 @@ export interface TiangSekitar {
   penanda: string | null;
 }
 
-export type JenisLabelJtm = "sambung" | "gardu" | "alat" | "nomor" | "panjang" | "lain";
+export type JenisLabelJtm = "sambung" | "gardu" | "alat" | "nomor" | "panjang" | "jurusan" | "lain";
 
 export interface GambarJtm {
   lama: { a: Titik; b: Titik }[];
   tiangLama: (Titik & { id: string; gardu: boolean })[];
-  baru: { a: Titik; b: Titik }[];
-  tiangBaru: (Titik & { id: string; bentuk: "tiang" | "gardu" | "alat"; jenis: JenisGardu | null; arah: number })[];
+  baru: { a: Titik; b: Titik; kabel: KabelSurvey }[];
+  tiangBaru: (Titik & { id: string; bentuk: "tiang" | "gardu" | "alat"; jaringan: JaringanTiang; jenis: JenisGardu | null; arah: number })[];
   sambung: Titik[];
   label: Label<JenisLabelJtm>[];
   skala: number;
@@ -54,16 +56,22 @@ export function susunGambarJtm(
   const calon: CalonLabel<JenisLabelJtm>[] = [];
   const nomor: CalonLabel<JenisLabelJtm>[] = [];
   const meter: CalonLabel<JenisLabelJtm>[] = [];
+  const jurusan: CalonLabel<JenisLabelJtm>[] = [];
   titik.forEach((t, n) => {
     const p = ke(t);
     const i = posisiInduk(t, perId, sambung);
     if (i) {
       const a = ke(i);
-      baru.push({ a, b: p });
-      meter.push({ x: (a.x + p.x) / 2, y: (a.y + p.y) / 2, teks: `${Math.round(panjang.get(t.id) ?? 0)} m`, jenis: "panjang", ukuran: 5, wajib: false });
+      const tengah = { x: (a.x + p.x) / 2, y: (a.y + p.y) / 2 };
+      baru.push({ a, b: p, kabel: t.kabel });
+      meter.push({ ...tengah, teks: `${Math.round(panjang.get(t.id) ?? 0)} m`, jenis: "panjang", ukuran: 5, wajib: false });
+      // Jurusan ditulis di kabel JTR pertama tiap jurusan (dari gardu / berganti jurusan).
+      const induk = t.induk_titik_id ? perId.get(t.induk_titik_id) : undefined;
+      const lanjut = induk && induk.penanda !== "gardu" && bawaJtr(induk.kabel) && induk.jurusan === t.jurusan;
+      if (bawaJtr(t.kabel) && t.jurusan && !lanjut) jurusan.push({ ...tengah, teks: `JURUSAN ${t.jurusan}`, jenis: "jurusan", ukuran: 6, wajib: true });
     }
     const bentuk = t.penanda === "gardu" ? "gardu" : t.penanda ? "alat" : "tiang";
-    tiangBaru.push({ id: t.id, ...p, bentuk, jenis: t.gardu_jenis, arah: t.gardu_arah });
+    tiangBaru.push({ id: t.id, ...p, bentuk, jaringan: t.jaringan, jenis: t.gardu_jenis, arah: t.gardu_arah });
     if (t.penanda === "gardu") {
       calon.push({ ...p, teks: `GARDU BARU${t.gardu_jenis ? ` ${t.gardu_jenis.toUpperCase()}` : ""}${t.gardu_kva ? ` ${t.gardu_kva} kVA` : ""}`, jenis: "gardu", ukuran: 7, wajib: true });
     } else if (t.penanda) {
@@ -87,6 +95,6 @@ export function susunGambarJtm(
     ...sambungPt.map((p) => kotak(p, 7)),
   ];
   const ruas: [Titik, Titik][] = [...lama, ...baru].map((g): [Titik, Titik] => [g.a, g.b]);
-  const label = tempatkan([...calon, ...nomor, ...meter, ...lain], penghalang, ruas);
+  const label = tempatkan([...calon, ...jurusan, ...nomor, ...meter, ...lain], penghalang, ruas);
   return { lama, tiangLama, baru, tiangBaru, sambung: sambungPt, label, skala: skalaM, ruang };
 }

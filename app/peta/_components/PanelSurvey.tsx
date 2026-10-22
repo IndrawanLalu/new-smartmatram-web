@@ -1,28 +1,35 @@
 "use client";
 
 import { Crosshair, ExternalLink, Loader2, MousePointerClick, PencilRuler, Save, X } from "lucide-react";
-import { jumlahBatang, LABEL_ALASAN, type AlasanSurvey } from "@/lib/surveyJaringan";
+import { bawaJtm, bawaJtr, LABEL_ALASAN, portal, type AlasanSurvey, type JaringanTiang } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
 import SuntingTitikSurvey from "./SuntingTitikSurvey";
-import { WARNA_SURVEY } from "./LapisanSurvey";
+import { WARNA_JTR, WARNA_SURVEY } from "./LapisanSurvey";
 
 /** Kartu Survey Jaringan Baru di kanan peta: judul, mode gambar, isian tiang terpilih, simpan. */
 
 const TOMBOL = "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 font-semibold";
 const km = (m: number) => `${(m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kms`;
+const WARNA_JARINGAN: Record<JaringanTiang, string> = { JTM: WARNA_SURVEY, JTR: WARNA_JTR };
 
 export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; oleh: string; penanda: Map<string, Penanda> }) {
   const terpilih = s.terpilih ? s.perId.get(s.terpilih) : undefined;
   const gardu = s.titik.filter((t) => t.penanda === "gardu").length;
+  const tiang = (j: JaringanTiang) => s.titik.filter((t) => t.jaringan === j).length + (j === "JTM" ? s.titik.filter(portal).length : 0);
+  const panjang = (bawa: (k: (typeof s.titik)[number]["kabel"]) => boolean) =>
+    s.titik.reduce((n, t) => n + (bawa(t.kabel) ? (s.panjang.get(t.id) ?? 0) : 0), 0);
+  const adaJtr = s.titik.some((t) => bawaJtr(t.kabel) || t.jaringan === "JTR");
   const langkah =
     s.mode === "sambung"
       ? s.sambung.size === 0
         ? "Nyalakan penyulang JTM di panel kiri, lalu klik tiang tempat jaringan baru menyambung."
         : "Klik tiang JTM yang ada untuk menyambung cabang baru."
       : s.mode === "tambah"
-        ? "Klik peta untuk menaruh tiang baru berikutnya. Klik tiang baru mana pun untuk bercabang dari situ."
+        ? s.jaringanBaru === "JTR"
+          ? "Klik gardu baru (atau tiang berkabel JTR), lalu klik peta untuk menaruh Tiang JTR berikutnya."
+          : "Klik peta untuk menaruh tiang baru berikutnya. Klik tiang baru mana pun untuk bercabang dari situ."
         : "Klik tiang baru untuk menyunting isiannya; seret untuk menggeser.";
 
   return (
@@ -33,7 +40,7 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
       <header className="flex items-start gap-2">
         <PencilRuler size={15} className="mt-0.5 shrink-0" style={{ color: WARNA_SURVEY }} />
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Survey Jaringan Baru · JTM</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Survey Jaringan Baru</p>
           <p className="text-sm font-semibold truncate">{s.kepala.judul || "Survey baru"}</p>
           <p className="text-gray-400">
             {s.kepala.status}
@@ -63,10 +70,17 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
             {(Object.keys(LABEL_ALASAN) as AlasanSurvey[]).map((a) => <option key={a} value={a}>{LABEL_ALASAN[a]}</option>)}
           </select>
 
-          <p className="rounded-lg px-2 py-1.5 bg-white/5">
-            <b className="text-white">{jumlahBatang(s.titik)}</b> tiang baru · <b className="text-white">{km(s.totalM)}</b>
-            {gardu > 0 && <> · <b className="text-white">{gardu}</b> gardu baru</>}
-          </p>
+          <div className="rounded-lg px-2 py-1.5 bg-white/5 space-y-0.5">
+            <p>
+              <span style={{ color: WARNA_SURVEY }}>JTM</span> <b className="text-white">{tiang("JTM")}</b> tiang · <b className="text-white">{km(panjang(bawaJtm))}</b>
+              {gardu > 0 && <> · <b className="text-white">{gardu}</b> gardu baru</>}
+            </p>
+            {adaJtr && (
+              <p>
+                <span style={{ color: WARNA_JTR }}>JTR</span> <b className="text-white">{tiang("JTR")}</b> tiang · <b className="text-white">{km(panjang(bawaJtr))}</b>
+              </p>
+            )}
+          </div>
 
           {s.draf && (
             <div className="flex gap-1.5">
@@ -83,6 +97,20 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
               >
                 <Crosshair size={13} /> Tambah tiang
               </button>
+            </div>
+          )}
+          {s.draf && (
+            <div className="flex items-center gap-1.5">
+              <span className="text-gray-400 shrink-0">Tiang berikutnya</span>
+              {(["JTM", "JTR"] as JaringanTiang[]).map((j) => (
+                <button
+                  key={j} onClick={() => s.setJaringanBaru(j)}
+                  className={`flex-1 rounded-lg border px-2 py-1 font-semibold ${s.jaringanBaru === j ? "text-white" : "border-white/15 text-gray-300 hover:bg-white/5"}`}
+                  style={s.jaringanBaru === j ? { background: WARNA_JARINGAN[j], borderColor: WARNA_JARINGAN[j] } : undefined}
+                >
+                  Tiang {j}
+                </button>
+              ))}
             </div>
           )}
           <p className="text-gray-400">{s.draf ? langkah : `Survey ${s.kepala.status} — gambar terkunci. Buka kembali ke Draf dari daftar survey untuk mengubah.`}</p>

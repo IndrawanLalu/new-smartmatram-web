@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
-  keSurvey, keTitik, panjangGawang, pesanSurvey, urutTopologis,
-  type AlasanSurvey, type StatusSurvey, type TiangSambung, type TitikSurvey,
+  bawaJtr, jurusanBawaan, keSurvey, keTitik, panjangGawang, pesanSurvey, sumberJtr, urutTopologis,
+  type AlasanSurvey, type JaringanTiang, type StatusSurvey, type TiangSambung, type TitikSurvey,
 } from "@/lib/surveyJaringan";
 import type { TiangPeta } from "./usePetaIsi";
 
@@ -18,6 +18,9 @@ import type { TiangPeta } from "./usePetaIsi";
  *   tambah  — klik peta = tiang baru, induknya titik AKTIF (yang terakhir /
  *             yang diklik), sehingga cabang dibuat dengan mengklik titik lain
  *   lihat   — klik titik survey untuk menyunting isiannya
+ *
+ * Tiang baru JTM atau JTR (`jaringanBaru`, 22 Okt 2026). JTR hanya ditarik
+ * dari gardu baru di survey ini atau dari kabel JTR sebelumnya.
  */
 
 export type ModeSurvey = "lihat" | "sambung" | "tambah";
@@ -32,9 +35,11 @@ export interface KepalaSurvey {
   penyulang: string | null;
 }
 
-/** Isian yang diteruskan ke tiang berikutnya (bawaan = isian sebelumnya). */
-type Bawaan = Pick<TitikSurvey, "jenis_tiang" | "konstruksi" | "konduktor_jenis" | "konduktor_ukuran">;
-const BAWAAN_KOSONG: Bawaan = { jenis_tiang: null, konstruksi: null, konduktor_jenis: null, konduktor_ukuran: null };
+/** Isian yang diteruskan ke tiang berikutnya SEJENIS (bawaan = isian sebelumnya). */
+type Bawaan = Pick<TitikSurvey, "jenis_tiang" | "konstruksi" | "konduktor_jenis" | "konduktor_ukuran" | "jtr_kabel_jenis" | "jtr_kabel_ukuran">;
+const BAWAAN_KOSONG: Bawaan = {
+  jenis_tiang: null, konstruksi: null, konduktor_jenis: null, konduktor_ukuran: null, jtr_kabel_jenis: null, jtr_kabel_ukuran: null,
+};
 const KEPALA_BARU: KepalaSurvey = { id: null, judul: "", alasan: "perluasan", catatan: "", status: "Draf", ulp: null, penyulang: null };
 
 /** Induk titik baru: titik survey, atau tiang sambung. */
@@ -45,17 +50,35 @@ export interface OpsiIsian {
   konstruksi: string[];
   konduktor_jenis: string[];
   konduktor_ukuran: string[];
+  /** JTR dari Pengaturan JTR: jenis × tinggi ("Besi 9 m"), kabel & ukurannya. */
+  jtr_jenis_tiang: string[];
+  jtr_kabel_jenis: string[];
+  jtr_kabel_ukuran: string[];
 }
 
 async function bacaOpsi(): Promise<OpsiIsian> {
-  const { data } = await supabaseBrowser
-    .from("jtm_opsi_ref")
-    .select("item_kode,label,urutan")
-    .in("item_kode", ["jenis_tiang", "konstruksi", "jenis_konduktor", "ukuran_konduktor"])
-    .eq("aktif", true)
-    .order("urutan");
+  const [{ data }, { data: jtr }] = await Promise.all([
+    supabaseBrowser
+      .from("jtm_opsi_ref")
+      .select("item_kode,label,urutan")
+      .in("item_kode", ["jenis_tiang", "konstruksi", "jenis_konduktor", "ukuran_konduktor"])
+      .eq("aktif", true)
+      .order("urutan"),
+    supabaseBrowser
+      .from("jtr_ref")
+      .select("kategori,label,urutan")
+      .in("kategori", ["jenis_tiang", "ukuran_tiang", "jenis_kabel", "ukuran_kabel"])
+      .eq("aktif", true)
+      .order("urutan"),
+  ]);
   const per = (k: string) => (data ?? []).filter((x) => x.item_kode === k).map((x) => x.label as string);
-  return { jenis_tiang: per("jenis_tiang"), konstruksi: per("konstruksi"), konduktor_jenis: per("jenis_konduktor"), konduktor_ukuran: per("ukuran_konduktor") };
+  const jr = (k: string) => (jtr ?? []).filter((x) => x.kategori === k).map((x) => x.label as string);
+  return {
+    jenis_tiang: per("jenis_tiang"), konstruksi: per("konstruksi"), konduktor_jenis: per("jenis_konduktor"), konduktor_ukuran: per("ukuran_konduktor"),
+    jtr_jenis_tiang: jr("jenis_tiang").flatMap((j) => jr("ukuran_tiang").map((u) => `${j} ${u} m`)),
+    jtr_kabel_jenis: jr("jenis_kabel"),
+    jtr_kabel_ukuran: jr("ukuran_kabel"),
+  };
 }
 
 export function useSurveyPeta(awal: string | null) {
@@ -66,7 +89,9 @@ export function useSurveyPeta(awal: string | null) {
   const [mode, setMode] = useState<ModeSurvey>("lihat");
   const [aktif, setAktif] = useState<Aktif>(null);
   const [terpilih, setTerpilih] = useState<string | null>(null);
-  const [bawaan, setBawaan] = useState<Bawaan>(BAWAAN_KOSONG);
+  const [bawaan, setBawaan] = useState<Record<JaringanTiang, Bawaan>>({ JTM: BAWAAN_KOSONG, JTR: BAWAAN_KOSONG });
+  /** Jenis tiang yang ditaruh klik peta berikutnya. */
+  const [jaringanBaru, setJaringanBaru] = useState<JaringanTiang>("JTM");
   const [berubah, setBerubah] = useState(false);
   const [galat, setGalat] = useState<string | null>(null);
   const [memuat, setMemuat] = useState(false);
@@ -128,7 +153,6 @@ export function useSurveyPeta(awal: string | null) {
   const draf = kepala.status === "Draf";
   const perId = useMemo(() => new Map(titik.map((t) => [t.id, t])), [titik]);
   const panjang = useMemo(() => panjangGawang(titik, sambung), [titik, sambung]);
-  const totalM = useMemo(() => [...panjang.values()].reduce((a, b) => a + b, 0), [panjang]);
 
   const ubahTitik = (f: (t: TitikSurvey[]) => TitikSurvey[]) => {
     setTitik(f);
@@ -147,6 +171,13 @@ export function useSurveyPeta(awal: string | null) {
   /** Klik peta: tiang survey baru, induknya titik aktif. */
   const tambahDi = (lat: number, lng: number) => {
     if (mode !== "tambah" || !aktif || !draf || Date.now() - barusanTiang.current < 400) return;
+    const induk = "titik" in aktif ? perId.get(aktif.titik) : undefined;
+    const jtr = jaringanBaru === "JTR";
+    if (jtr && !sumberJtr(induk)) {
+      setGalat("Tiang JTR ditarik dari gardu baru di survey ini, atau dari tiang yang sudah dilewati kabel JTR. Klik titik itu dulu.");
+      return;
+    }
+    setGalat(null);
     const id = crypto.randomUUID();
     ubahTitik((ts) => [
       ...ts,
@@ -154,7 +185,11 @@ export function useSurveyPeta(awal: string | null) {
         id, urutan: ts.length + 1, lat, lng,
         induk_titik_id: "titik" in aktif ? aktif.titik : null,
         induk_tiang_id: "tiang" in aktif ? aktif.tiang : null,
-        ...bawaan, penanda: null, gardu_kva: null, gardu_nama: null, gardu_jenis: null, gardu_arah: 0, catatan: null,
+        ...bawaan[jaringanBaru],
+        penanda: null, gardu_kva: null, gardu_nama: null, gardu_jenis: null, gardu_arah: 0, catatan: null,
+        jaringan: jaringanBaru,
+        kabel: jtr ? "JTR" : "JTM",
+        jurusan: jtr && induk ? jurusanBawaan(induk, ts) : null,
       },
     ]);
     setAktif({ titik: id });
@@ -168,9 +203,24 @@ export function useSurveyPeta(awal: string | null) {
   };
 
   const ubah = (id: string, patch: Partial<TitikSurvey>) => {
-    ubahTitik((ts) => ts.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+    const t = perId.get(id);
+    if (!t) return;
+    const p = { ...patch };
+    if (p.jaringan && p.jaringan !== t.jaringan) {
+      // Ganti jenis tiang: isian tiang ikut bawaan jenis barunya. Tiang JTR
+      // hanya memikul kabel JTR, tanpa gardu/peralatan & konstruksi JTM.
+      p.jenis_tiang = bawaan[p.jaringan].jenis_tiang;
+      if (p.jaringan === "JTR") Object.assign(p, { kabel: "JTR", penanda: null, konstruksi: null, gardu_kva: null, gardu_nama: null, gardu_jenis: null });
+    }
+    const baru = { ...t, ...p };
+    if (bawaJtr(baru.kabel) && !baru.jurusan) {
+      const induk = baru.induk_titik_id ? perId.get(baru.induk_titik_id) : undefined;
+      if (induk) p.jurusan = jurusanBawaan(induk, titik.filter((x) => x.id !== id));
+    }
+    ubahTitik((ts) => ts.map((x) => (x.id === id ? { ...x, ...p } : x)));
+    // Bawaan hanya dari isian yang DIKETIK, bukan yang ikut berubah karena ganti jenis.
     const b = Object.fromEntries(Object.entries(patch).filter(([k]) => k in BAWAAN_KOSONG));
-    if (Object.keys(b).length) setBawaan((x) => ({ ...x, ...b }));
+    if (Object.keys(b).length) setBawaan((x) => ({ ...x, [baru.jaringan]: { ...x[baru.jaringan], ...b } }));
   };
 
   const geser = (id: string, lat: number, lng: number) => ubah(id, { lat, lng });
@@ -230,7 +280,7 @@ export function useSurveyPeta(awal: string | null) {
 
   return {
     aktifMode: buka !== null,
-    kepala, titik, sambung, perId, panjang, totalM, mode, setMode, aktif, terpilih, setTerpilih,
+    kepala, titik, sambung, perId, panjang, mode, setMode, aktif, terpilih, setTerpilih, jaringanBaru, setJaringanBaru,
     draf, berubah, galat, memuat, sibuk, opsi, bingkai,
     klikTiang, tambahDi, pilih, ubah, geser, hapus, ubahKepala, simpan, tutup,
   };

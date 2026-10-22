@@ -8,23 +8,25 @@ import {
   TabelMaterialPdf, TEAL, tgl, wajik,
 } from "@/lib/gambarSurvey/LembarPdf";
 import { bentukGardu, setengahTiang } from "@/lib/gambarSurvey/simbolGardu";
-import { LABEL_ALASAN, type JenisGardu, type SurveyJaringan, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
+import { geser } from "@/lib/gambarSurvey/kertas";
+import { bawaJtm, bawaJtr, LABEL_ALASAN, type JenisGardu, type SurveyJaringan, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
+import { FOTO_PDF_H, FOTO_PDF_W, type FotoPdf } from "./fotoPdf";
 import type { GambarJtm, JenisLabelJtm } from "./gambarSurveyJtm";
 
 const LAMA = "#94A3B8";
 const HITAM = "#111827";
 const BARU = "#EA580C";
+const JTR = "#2563EB";
 const UNGU = "#7C3AED";
 const ABU = "#6B7280";
 const WARNA_LABEL: Record<JenisLabelJtm, string> = {
-  sambung: UNGU, gardu: BARU, alat: BARU, nomor: "#9A3412", panjang: "#C2410C", lain: "#94A3B8",
+  sambung: UNGU, gardu: BARU, alat: BARU, nomor: "#9A3412", panjang: "#C2410C", jurusan: JTR, lain: "#94A3B8",
 };
 const TIPIS: JenisLabelJtm[] = ["panjang", "lain"];
-/** Semua tiang (ada, rencana, gardu) sama besar; trafo punya ukurannya sendiri. */
+/** Tiang yang ada & Tiang JTR rencana sama besar; Tiang JTM rencana sedikit lebih besar; trafo ukurannya sendiri. */
 export const R_TIANG = 3;
+const R_TIANG_JTM = 3.6;
 export const T_TRAFO = 5.5;
-/** Paling banyak foto yang muat di kolom kanan. */
-const FOTO_MAKS = 4;
 
 /** Tiang yang ADA: lingkaran setengah hitam ◐. */
 function TiangAda({ x, y }: { x: number; y: number }) {
@@ -37,12 +39,12 @@ function TiangAda({ x, y }: { x: number; y: number }) {
 }
 
 /** Tiang RENCANA: putih polos (garis rencana digambar di atasnya, menembus tengah). */
-const TiangRencana = ({ x, y, r = R_TIANG }: { x: number; y: number; r?: number }) => (
+const TiangRencana = ({ x, y, r = R_TIANG_JTM }: { x: number; y: number; r?: number }) => (
   <Circle cx={x} cy={y} r={r} fill="#fff" stroke={HITAM} strokeWidth={0.8} />
 );
 
 /** Gardu baru: tiang rencana (portal dua) + segitiga trafo di sampingnya, diputar `arah` (contohGardu.png). */
-function GarduBaru({ x, y, jenis, arah, r = R_TIANG, t = T_TRAFO }: { x: number; y: number; jenis: JenisGardu | null; arah: number; r?: number; t?: number }) {
+function GarduBaru({ x, y, jenis, arah, r = R_TIANG_JTM, t = T_TRAFO }: { x: number; y: number; jenis: JenisGardu | null; arah: number; r?: number; t?: number }) {
   const b = bentukGardu(jenis, arah, r, t);
   return (
     <G>
@@ -62,13 +64,22 @@ function Bidang({ g, latar }: { g: GambarJtm; latar: string | null }) {
         t.bentuk === "gardu" ? (
           <GarduBaru key={t.id} x={t.x} y={t.y} jenis={t.jenis} arah={t.arah} />
         ) : (
-          <TiangRencana key={t.id} x={t.x} y={t.y} />
+          <TiangRencana key={t.id} x={t.x} y={t.y} r={t.jaringan === "JTR" ? R_TIANG : R_TIANG_JTM} />
         ),
       )}
-      {/* Garis rencana di ATAS tiang rencana — tetap terlihat menembus tengahnya. */}
-      {g.baru.map((x, i) => (
-        <Line key={`b${i}`} x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y} stroke={BARU} strokeWidth={1.6} strokeDasharray="6 3" />
-      ))}
+      {/* Garis rencana di ATAS tiang rencana — tetap terlihat menembus tengahnya.
+          JTM + JTR: dua garis sejajar (jingga & biru). */}
+      {g.baru.map((x, i) => {
+        const dua = bawaJtm(x.kabel) && bawaJtr(x.kabel);
+        const [a, b] = dua ? geser([x.a, x.b], 1.6) : [x.a, x.b];
+        const [c, d] = dua ? geser([x.a, x.b], -1.6) : [x.a, x.b];
+        return (
+          <G key={`b${i}`}>
+            {bawaJtm(x.kabel) && <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={BARU} strokeWidth={1.6} strokeDasharray="6 3" />}
+            {bawaJtr(x.kabel) && <Line x1={c.x} y1={c.y} x2={d.x} y2={d.y} stroke={JTR} strokeWidth={1.1} strokeDasharray="4 2.5" />}
+          </G>
+        );
+      })}
       {g.tiangBaru.filter((t) => t.bentuk === "alat").map((t) => (
         <Polygon key={`a${t.id}`} points={wajik(t.x + 6, t.y - 6, 3.5)} fill={BARU} stroke="#fff" strokeWidth={0.6} />
       ))}
@@ -76,6 +87,7 @@ function Bidang({ g, latar }: { g: GambarJtm; latar: string | null }) {
   );
 }
 
+const kms = (m: number) => (m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 });
 const koordinat = (k: { lat: number; lng: number }) => `${k.lat.toFixed(6)}, ${k.lng.toFixed(6)}`;
 
 /** Koordinat lokasi: titik sambung (tiang yang ada) & rencana gardu/peralatan. */
@@ -92,14 +104,17 @@ function Koordinat({ sambung, titik }: { sambung: TiangSambung[]; titik: TitikSu
   );
 }
 
-function Foto({ foto }: { foto: string[] }) {
+function Foto({ foto }: { foto: FotoPdf[] }) {
   if (!foto.length) return null;
   return (
     <View style={S.blok}>
       <Text style={S.eyebrow}>FOTO KONDISI LAPANGAN</Text>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 4 }}>
-        {foto.slice(0, FOTO_MAKS).map((f, i) => (
-          <Image key={i} src={f} style={{ width: 125, height: 88, objectFit: "cover" }} />
+        {foto.map((f) => (
+          <View key={f.nomor} style={{ width: FOTO_PDF_W }}>
+            <Image src={f.src} style={{ width: FOTO_PDF_W, height: FOTO_PDF_H, objectFit: "cover" }} />
+            <Text style={[S.kecil, { marginTop: 1 }]}>{`Foto ${f.nomor}${f.ket ? ` — ${f.ket}` : ""}`}</Text>
+          </View>
         ))}
       </View>
     </View>
@@ -111,8 +126,8 @@ interface Props {
   g: GambarJtm;
   titik: TitikSurvey[];
   sambung: TiangSambung[];
-  /** Foto kondisi lapangan (data URL, sudah diperkecil). */
-  foto: string[];
+  /** Foto kondisi lapangan (data URL, diperkecil & bertanda) + keterangan. */
+  foto: FotoPdf[];
   logo: string | null;
   latar: string | null;
 }
@@ -125,14 +140,17 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
       kolom={
         <>
           <View style={S.blok}>
-            <Text style={S.eyebrow}>{`SURVEY JARINGAN BARU JTM — ${LABEL_ALASAN[s.alasan].toUpperCase()}`}</Text>
+            <Text style={S.eyebrow}>{`SURVEY JARINGAN BARU — ${LABEL_ALASAN[s.alasan].toUpperCase()}`}</Text>
             <Baris l="Judul" v={s.judul} />
             <Baris l="Penyulang" v={s.penyulang ?? "—"} />
             <Baris
               l="Tiang baru"
               v={`${angka(s.jumlah_tiang)} batang (titik T1–T${g.tiangBaru.length}${s.jumlah_tiang > g.tiangBaru.length ? ", gardu portal dua tiang" : ""})`}
             />
-            <Baris l="Panjang" v={`± ${angka(s.panjang_m)} m (${(s.panjang_m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kms)`} />
+            <Baris l="JTM baru" v={`${angka(s.jumlah_tiang_jtm)} tiang · ± ${angka(s.panjang_jtm_m)} m (${kms(s.panjang_jtm_m)} kms)`} />
+            {(s.jumlah_tiang_jtr > 0 || s.panjang_jtr_m > 0) && (
+              <Baris l="JTR baru" v={`${angka(s.jumlah_tiang_jtr)} tiang · ± ${angka(s.panjang_jtr_m)} m (${kms(s.panjang_jtr_m)} kms)`} />
+            )}
             {s.jumlah_gardu > 0 && <Baris l="Gardu baru" v={`${s.jumlah_gardu} gardu · ${angka(s.gardu_kva)} kVA`} />}
             <Baris l="Status" v={s.status} />
           </View>
@@ -160,11 +178,26 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
           <>
             <Contoh teks="JTM yang ada (patokan)"><ContohGaris warna={LAMA} tebal={1} /></Contoh>
             <Contoh teks="Tiang yang ada"><TiangAda x={13} y={5} /></Contoh>
-            <Contoh teks="Jaringan baru (rencana) · panjang gawang"><ContohGaris warna={BARU} tebal={1.6} putus /></Contoh>
-            <Contoh teks="Tiang rencana T1, T2, …">
+            <Contoh teks="JTM baru (rencana) · panjang gawang"><ContohGaris warna={BARU} tebal={1.6} putus /></Contoh>
+            <Contoh teks="Tiang JTM rencana T1, T2, …">
               <TiangRencana x={13} y={5} />
               <Line x1={1} y1={5} x2={25} y2={5} stroke={BARU} strokeWidth={1.2} strokeDasharray="3 2" />
             </Contoh>
+            {g.baru.some((x) => bawaJtr(x.kabel)) && (
+              <>
+                <Contoh teks="JTR baru (rencana) · jurusan"><ContohGaris warna={JTR} tebal={1.1} putus /></Contoh>
+                <Contoh teks="Tiang JTR rencana">
+                  <TiangRencana x={13} y={5} r={R_TIANG} />
+                  <Line x1={1} y1={5} x2={25} y2={5} stroke={JTR} strokeWidth={1} strokeDasharray="3 2" />
+                </Contoh>
+              </>
+            )}
+            {g.baru.some((x) => x.kabel === "JTM+JTR") && (
+              <Contoh teks="JTM + JTR satu tiang">
+                <Line x1={1} y1={3.4} x2={25} y2={3.4} stroke={BARU} strokeWidth={1.2} strokeDasharray="3 2" />
+                <Line x1={1} y1={6.6} x2={25} y2={6.6} stroke={JTR} strokeWidth={1} strokeDasharray="3 2" />
+              </Contoh>
+            )}
             <Contoh teks="Titik sambung ke JTM yang ada"><Circle cx={13} cy={5} r={4} fill="none" stroke={UNGU} strokeWidth={1.3} /></Contoh>
             {g.tiangBaru.some((t) => t.bentuk === "gardu") && (
               <Contoh teks="Gardu baru (tiang + trafo; portal dua tiang)"><GarduBaru x={13} y={1.8} jenis="cantol" arah={0} r={1.6} t={1.4} /></Contoh>

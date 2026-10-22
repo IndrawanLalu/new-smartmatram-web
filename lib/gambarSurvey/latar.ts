@@ -76,6 +76,3 @@ export async function perkecilFoto(sumber: Blob | string, maks: number): Promise
     if (typeof sumber !== "string") URL.revokeObjectURL(url);
   }
 }
-
-/** Foto (URL) → data URL kecil untuk PDF; gagal dibaca = dilewati. */
-export const fotoUntukPdf = (url: string) => perkecilFoto(url, 900).then(keDataUrl).catch(() => null);
