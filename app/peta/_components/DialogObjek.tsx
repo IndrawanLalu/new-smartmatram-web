@@ -8,7 +8,7 @@ import type { useSuntingPeta } from "../_hooks/useSuntingPeta";
 /**
  * Konfirmasi sesudah tiang KEDUA diklik dalam mode gabung atau ganti induk:
  * gabungkan tiang kembar JTR, ganti induk JTR, sambungkan di penyulang yang
- * menumpang, atau ganti induk batang JTM.
+ * menumpang, ganti induk batang JTM, atau sambung hilir JTM.
  */
 
 interface Props {
@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function DialogObjek({ p, sunting, segarkan, onIndukPenyulang, onIndukJtr }: Props) {
-  const { terpilih, calonGabung, calonInduk, indukPenyulang, alasanInduk } = p;
+  const { terpilih, calonGabung, calonInduk, calonHilir, indukPenyulang, alasanInduk } = p;
   if (terpilih?.jenis !== "tiang") return null;
   const jtr = terpilih.jaringan === "jtr";
 
@@ -44,6 +44,27 @@ export default function DialogObjek({ p, sunting, segarkan, onIndukPenyulang, on
           }
           return ok;
         }}
+      />
+    );
+  }
+
+  if (calonHilir && !jtr) {
+    const tutupHilir = () => p.setCalonHilir(null);
+    return (
+      <ConfirmDialog
+        title={`Sambungkan ${calonHilir.kode} dari ${terpilih.kode}?`}
+        message={`${calonHilir.kode} beserta tiang sesudahnya akan menyambung dari ${terpilih.kode}; sambungan lamanya lepas. Ditolak kalau ${terpilih.kode} justru berada di hilir ${calonHilir.kode}. Nama tidak berubah otomatis — pakai Ganti nama (hilir ikut) bila perlu.`}
+        confirmLabel="Sambungkan"
+        onConfirm={async () => {
+          const t = calonHilir;
+          tutupHilir();
+          const ok = await sunting.ubahInduk(t.id, terpilih.id);
+          if (ok) {
+            p.setModeHilir(false);
+            segarkan();
+          }
+        }}
+        onClose={tutupHilir}
       />
     );
   }

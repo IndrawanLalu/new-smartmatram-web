@@ -11,6 +11,7 @@ import type { useSuntingPeta } from "../_hooks/useSuntingPeta";
 import BalikArahJtm from "./BalikArahJtm";
 import DialogObjek from "./DialogObjek";
 import PanelObjek from "./PanelObjek";
+import type { IsiTambah } from "./TambahTiangJtm";
 
 /**
  * Panel benda yang diklik + semua sambungan suntingnya ke database, dan
@@ -93,6 +94,22 @@ export default function ObjekTerpilih({
     return ok;
   };
 
+  /** Tambah tiang JTM: tersimpan → panel pindah ke tiang baru (atributnya bisa langsung diisi). */
+  const simpanTambah = async (isi: IsiTambah) => {
+    if (terpilih?.jenis !== "tiang" || !p.geser) return "Letak tiang belum ditentukan";
+    const pos = p.geser;
+    const h = await sunting.tambahTiang({
+      indukId: terpilih.id, lat: pos.lat, lng: pos.lng, anakId: isi.anakId,
+      penyulang: terpilih.kelompok, batangBeda: isi.batangBeda, alasan: isi.alasan,
+    });
+    if (typeof h === "string") return h;
+    p.setTambah(false);
+    p.setGeser(null);
+    p.setTerpilih({ jenis: "tiang", id: h.id, kelompok: terpilih.kelompok, lat: pos.lat, lng: pos.lng, kode: h.kode, jaringan: "jtm" });
+    segarkan();
+    return null;
+  };
+
   /** Batang hilang dari peta / lapisan (dibatalkan / lepas tumpang): panel ditutup. */
   const tutupLaluMuat = (ok: boolean) => {
     if (ok) {
@@ -120,6 +137,21 @@ export default function ObjekTerpilih({
           onSimpanGeser={simpanGeser}
           modeInduk={p.modeInduk}
           onGantiInduk={() => p.setModeInduk(true)}
+          tambah={p.tambah}
+          onMulaiTambah={() => {
+            // Mulai ±20 m di utara induknya; admin menyeret ke letak sebenarnya.
+            p.setTambah(true);
+            p.setGeser({ lat: terpilih.lat + 0.00018, lng: terpilih.lng });
+          }}
+          onPosisiTambah={p.aturGeser}
+          onSimpanTambah={simpanTambah}
+          onBatalTambah={() => {
+            p.setTambah(false);
+            p.setGeser(null);
+          }}
+          modeHilir={p.modeHilir}
+          onSambungHilir={() => p.setModeHilir(true)}
+          onBatalHilir={() => p.setModeHilir(false)}
           onBatalInduk={() => {
             p.setModeInduk(false);
             p.setIndukPenyulang(null);

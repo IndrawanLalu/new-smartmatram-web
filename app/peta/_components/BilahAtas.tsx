@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Tags, TriangleAlert, Workflow } from "lucide-react";
+import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Tags, TriangleAlert, Undo2, Workflow } from "lucide-react";
 import type { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import type { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import type { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
@@ -33,6 +33,8 @@ interface Props {
   isian: ReturnType<typeof useTulisIsian>;
   kesehatan: Saklar;
   ujung: Saklar;
+  /** Lapisan "Tiang dibatalkan" (Pulihkan). */
+  tiangBatal: Saklar & { daftar: unknown[] };
   geserBanyak: { aktif: boolean; mulai: () => void };
   nomorKabel: boolean;
   onNomorKabel: () => void;
@@ -46,7 +48,7 @@ interface Props {
 }
 
 export default function BilahAtas({
-  boleh, bolehSetujui, antrean, koreksi, garduJanggal, isian, kesehatan, ujung, geserBanyak,
+  boleh, bolehSetujui, antrean, koreksi, garduJanggal, isian, kesehatan, ujung, tiangBatal, geserBanyak,
   nomorKabel, onNomorKabel, namaTiang, onNamaTiang, memuatUlang, onMuatUlang, tutupObjek, onModeSld,
 }: Props) {
   const [menuBuka, setMenuBuka] = useState<Menu | null>(null);
@@ -64,7 +66,7 @@ export default function BilahAtas({
         onBuka={() => bukaMenu("jtm")}
         angka={(bolehSetujui ? jtm.antrean.length : 0) + (boleh ? portal.daftar.length : 0)}
         warnaAngka="#60A5FA"
-        menyala={jtm.aktif || koreksi.aktif || isian.tampil || portal.aktif}
+        menyala={jtm.aktif || koreksi.aktif || isian.tampil || portal.aktif || tiangBatal.aktif}
         kelas={TOMBOL_ATAS}
       >
         {bolehSetujui && (
@@ -129,6 +131,17 @@ export default function BilahAtas({
             title="Gardu portal yang baru tercatat satu tiang — buatkan tiang keduanya"
           >
             Portal
+          </TombolAtas>
+        )}
+        {boleh && (
+          <TombolAtas
+            ikon={<Undo2 size={15} />}
+            aktif={tiangBatal.aktif}
+            lencana={tiangBatal.aktif ? tiangBatal.daftar.length : undefined}
+            onClick={() => tiangBatal.setAktif(!tiangBatal.aktif)}
+            title="Tiang JTM yang dibatalkan — klik tiangnya untuk Pulihkan (salah hapus)"
+          >
+            Tiang dibatalkan
           </TombolAtas>
         )}
       </MenuKelompok>

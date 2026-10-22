@@ -8,8 +8,9 @@ import type { Terpilih } from "./useObjekPeta";
 /**
  * Benda yang diklik di peta dan mode sunting yang sedang menunggu klik
  * berikutnya: geser titik, ganti induk (batang / di penyulang yang menumpang),
- * gabungkan tiang kembar, balik arah JTM. Klik ditujukan ke mode yang aktif lebih dulu —
- * geser banyak, koreksi isian, gabung, induk — baru memilih benda.
+ * gabungkan tiang kembar, balik arah JTM, tambah tiang & sambung hilir JTM.
+ * Klik ditujukan ke mode yang aktif lebih dulu — geser banyak, koreksi isian,
+ * induk tiang yang dipulihkan, gabung, induk, hilir — baru memilih benda.
  */
 
 interface Deps {
@@ -17,11 +18,13 @@ interface Deps {
   geserBanyak: { aktif: boolean; pilih: (t: TiangPeta) => void };
   /** Koreksi isian JTM: klik = tiang awal / akhir rentang. */
   koreksi: { aktif: boolean; pilih: (t: TiangPeta) => void };
+  /** Pulihkan tiang dibatalkan: klik = induknya (useTiangBatal). */
+  pulihInduk: { aktif: boolean; pilih: (t: TiangPeta) => void };
   /** Dipanggil saat panel benda ditutup (mis. menutup simulasi). */
   onTutup: () => void;
 }
 
-export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
+export function usePilihObjek({ geserBanyak, koreksi, pulihInduk, onTutup }: Deps) {
   const [terpilih, setTerpilih] = useState<Terpilih | null>(null);
   const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
   const [modeInduk, setModeInduk] = useState(false);
@@ -35,6 +38,11 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
    *  sebenarnya (`ke`), lalu tiang hulunya → `calonBalik` membuka pratinjau. */
   const [balik, setBalik] = useState<{ ke: TiangPeta | null } | null>(null);
   const [calonBalik, setCalonBalik] = useState<{ ke: TiangPeta; hulu: TiangPeta | null } | null>(null);
+  /** Tambah tiang JTM dari tiang terpilih: letaknya = `geser` (penggeser yang sama). */
+  const [tambah, setTambah] = useState(false);
+  /** Sambung hilir: tiang yang diklik menjadi anak tiang terpilih. */
+  const [modeHilir, setModeHilir] = useState(false);
+  const [calonHilir, setCalonHilir] = useState<TiangPeta | null>(null);
   /** Ganti induk JTR wajib beralasan — diisi di panel, dipakai saat tiang diklik. */
   const [alasanInduk, setAlasanInduk] = useState("");
 
@@ -42,6 +50,7 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
   // ulang hanya karena panel berubah.
   const { aktif: geserBanyakAktif, pilih: pilihGeserBanyak } = geserBanyak;
   const { aktif: koreksiAktif, pilih: pilihKoreksi } = koreksi;
+  const { aktif: pulihAktif, pilih: pilihPulih } = pulihInduk;
   const pilihTiang = useCallback(
     (t: TiangPeta) => {
       if (geser) return;
@@ -51,6 +60,15 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
       }
       if (koreksiAktif) {
         pilihKoreksi(t);
+        return;
+      }
+      if (pulihAktif) {
+        pilihPulih(t);
+        return;
+      }
+      if (modeHilir) {
+        if (terpilih?.jenis !== "tiang" || t.jaringan !== "jtm" || t.id === terpilih.id) return;
+        setCalonHilir(t);
         return;
       }
       if (modeGabung) {
@@ -77,14 +95,14 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
-    [geser, modeInduk, modeGabung, balik, terpilih, geserBanyakAktif, pilihGeserBanyak, koreksiAktif, pilihKoreksi, indukPenyulang],
+    [geser, modeInduk, modeGabung, modeHilir, balik, terpilih, geserBanyakAktif, pilihGeserBanyak, koreksiAktif, pilihKoreksi, pulihAktif, pilihPulih, indukPenyulang],
   );
   const pilihGardu = useCallback(
     (g: GarduPeta) => {
-      if (geser || modeInduk || balik || geserBanyakAktif || koreksiAktif) return;
+      if (geser || modeInduk || modeHilir || balik || geserBanyakAktif || koreksiAktif || pulihAktif) return;
       setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
     },
-    [geser, modeInduk, balik, geserBanyakAktif, koreksiAktif],
+    [geser, modeInduk, modeHilir, balik, geserBanyakAktif, koreksiAktif, pulihAktif],
   );
   const pilihKesehatan = useCallback(
     (g: KesehatanGardu) => {
@@ -104,6 +122,9 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
     setModeGabung(false);
     setBalik(null);
     setCalonBalik(null);
+    setTambah(false);
+    setModeHilir(false);
+    setCalonHilir(null);
     setAlasanInduk("");
   };
 
@@ -112,6 +133,7 @@ export function usePilihObjek({ geserBanyak, koreksi, onTutup }: Deps) {
     modeInduk, setModeInduk, indukPenyulang, setIndukPenyulang,
     modeGabung, setModeGabung, calonGabung, setCalonGabung, calonInduk, setCalonInduk,
     balik, setBalik, calonBalik, setCalonBalik,
+    tambah, setTambah, modeHilir, setModeHilir, calonHilir, setCalonHilir,
     alasanInduk, setAlasanInduk,
     pilihTiang, pilihGardu, pilihKesehatan, tutup,
   };

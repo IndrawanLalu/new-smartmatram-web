@@ -14,6 +14,7 @@ import RincianKesehatan from "./RincianKesehatan";
 import KoreksiJtr from "./KoreksiJtr";
 import LepasTumpangJtm from "./LepasTumpangJtm";
 import { LangkahBalikArah } from "./BalikArahJtm";
+import TambahTiangJtm, { type IsiTambah } from "./TambahTiangJtm";
 import PersetujuanJtrPeta from "./PersetujuanJtrPeta";
 import type { AntreanJtr } from "../_hooks/useAntreanJtr";
 import type { Banding } from "@/app/admin/jtr/_hooks/useApprovalJtr";
@@ -39,6 +40,16 @@ interface Props {
   onSimpanGeser: (alasan: string) => Promise<boolean>;
   modeInduk: boolean;
   onGantiInduk: () => void;
+  /** Tambah tiang JTM: letaknya = `geser`. */
+  tambah: boolean;
+  onMulaiTambah: () => void;
+  onPosisiTambah: (lat: number, lng: number) => void;
+  onSimpanTambah: (isi: IsiTambah) => Promise<string | null>;
+  onBatalTambah: () => void;
+  /** Sambung hilir: menunggu klik tiang anaknya. */
+  modeHilir: boolean;
+  onSambungHilir: () => void;
+  onBatalHilir: () => void;
   /** Mode pilih induk di penyulang yang menumpang (null = induk batang). */
   indukPenyulang: string | null;
   onIndukPenyulang: (penyulang: string) => void;
@@ -135,8 +146,19 @@ export default function PanelObjek(p: Props) {
           <RingkasSimulasi h={p.simulasi} onTutup={p.onTutupSimulasi} />
         )}
 
+        {/* ── Tambah tiang (letak = penggeser) ── */}
+        {p.tambah && geser && tiang && (
+          <TambahTiangJtm
+            induk={{ id: tiang.id, kode: tiang.kode, lat: terpilih.lat, lng: terpilih.lng }}
+            posisi={geser}
+            onPosisi={p.onPosisiTambah}
+            onBatal={p.onBatalTambah}
+            onSimpan={p.onSimpanTambah}
+          />
+        )}
+
         {/* ── Menggeser ── */}
-        {geser && (
+        {geser && !p.tambah && (
           <div className="rounded-lg border border-[#00897B] p-3 space-y-2">
             <p className="text-xs text-[#e2e8f0]">
               Seret lingkaran hijau ke posisi yang benar.
@@ -200,6 +222,16 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
+        {p.modeHilir && (
+          <div className="rounded-lg border border-sky-400/60 p-3 text-xs text-sky-100 space-y-2">
+            <p>
+              Klik tiang yang menyambung <b>dari {terpilih.kode}</b> (hilirnya). Tiang itu beserta tiang sesudahnya
+              pindah menyambung dari sini; sambungan lamanya lepas.
+            </p>
+            <button onClick={p.onBatalHilir} className={TOMBOL_PANEL}>Batal</button>
+          </div>
+        )}
+
         {p.balik && <LangkahBalikArah ke={p.balik.ke} onTanpaHulu={p.onTanpaHulu} onBatal={p.onBatalBalik} />}
 
         {p.modeGabung && (
@@ -229,7 +261,7 @@ export default function PanelObjek(p: Props) {
           />
         )}
 
-        {tiang && !geser && !p.modeInduk && !p.modeGabung && !p.balik && (
+        {tiang && !geser && !p.modeInduk && !p.modeGabung && !p.balik && !p.modeHilir && (
           <InfoTiang
             t={tiang}
             pilihan={p.pilihan}
@@ -238,6 +270,8 @@ export default function PanelObjek(p: Props) {
             onUbahAtribut={p.onUbahAtribut}
             onGeser={p.onMulaiGeser}
             onGantiInduk={p.onGantiInduk}
+            onTambahTiang={p.onMulaiTambah}
+            onSambungHilir={p.onSambungHilir}
             onBalikArah={p.onBalikArah}
             onIndukPenyulang={p.onIndukPenyulang}
             onPercabangan={p.onPercabangan}

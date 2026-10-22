@@ -24,6 +24,8 @@ import PenggeserBanyak from "./PenggeserBanyak";
 import type { GeserTiang } from "../_hooks/useGeserBanyak";
 import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
+import LapisanTiangBatal from "./LapisanTiangBatal";
+import type { TiangBatal } from "../_hooks/useTiangBatal";
 import LapisanKoreksi from "./LapisanKoreksi";
 import LapisanIsian from "./LapisanIsian";
 import type { NilaiIsian } from "../_hooks/useIsianPeta";
@@ -126,6 +128,8 @@ interface Props {
   /** Survey Jaringan Baru yang sedang dibuka (null = padam). */
   survey: SurveyPetaState | null;
   labelPenanda: (kode: string) => string;
+  /** Lapisan "Tiang dibatalkan" (null = padam). */
+  batal: { daftar: TiangBatal[]; onPilih: (t: TiangBatal) => void } | null;
 }
 
 // Warnanya datang dari `../_ui` supaya kotak centang di panel kiri dan benda
@@ -182,7 +186,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, batal,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -232,6 +236,7 @@ export default function PetaInner({
       <LapisanSimulasi hasil={simulasi} />
       <LapisanUjung titik={ujung} bolehSetujui={bolehSetujuiUjung} oleh={oleh} onDisetujui={onUjungDisetujui} sorot={sorotUjung} />
       <LapisanPohon temuan={pohonTemuan} dirabas={pohonDirabas} cek={pohonCek} onTugaskan={onTugaskanPohon} />
+      {batal && <LapisanTiangBatal daftar={batal.daftar} onPilih={batal.onPilih} />}
       <PenggeserTitik sorot={sorot} geser={geser} onGeser={onGeser} />
       <PenggeserBanyak daftar={geserBanyak} onSeret={onSeretBanyak} />
       <LapisanCariLokasi titik={cari.titik} hasil={cari.hasil} />

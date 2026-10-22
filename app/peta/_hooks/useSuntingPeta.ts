@@ -99,6 +99,26 @@ export function useSuntingPeta(oleh: string) {
       (d) => `${d.penyulang} dilepas dari tiang ini — ${d.kode} dihapus${d.penilaian ? `, ${d.penilaian} penilaian ikut terhapus` : ""}.`,
     );
 
+  /** Tambah tiang JTM yang lolos dititik (jtm-tambah-pulihkan-tiang.sql).
+   *  Galat DIKEMBALIKAN, bukan hanya di-toast: "sudah berdiri" dijawab panel
+   *  dengan centang "batang berbeda". */
+  const tambahTiang = async (isi: {
+    indukId: string; lat: number; lng: number; anakId: string | null; penyulang: string; batangBeda: boolean; alasan: string;
+  }): Promise<{ id: string; kode: string } | string> => {
+    const { data, error } = await supabaseBrowser.rpc("tambah_tiang_meja_jtm", {
+      p_induk_id: isi.indukId, p_lat: isi.lat, p_lng: isi.lng, p_anak_id: isi.anakId,
+      p_penyulang: isi.penyulang, p_batang_beda: isi.batangBeda, p_alasan: isi.alasan, p_oleh: oleh,
+    });
+    if (error) {
+      return error.message.includes("Could not find the function")
+        ? "Fungsi tambah tiang belum ada — jalankan scripts/jtm-tambah-pulihkan-tiang.sql di Supabase."
+        : error.message;
+    }
+    const d = data as { id: string; kode: string; segmen: string[] };
+    toast.success(`Tiang ${d.kode} ditambahkan${d.segmen.length ? ` ke segmen ${d.segmen.join(", ")}` : ""}.`);
+    return d;
+  };
+
   const batalkan = (id: string, alasan: string) =>
     jalankan<unknown>("batalkan_tiang", { p_id: id, p_nama: oleh, p_alasan: alasan }, () =>
       "Tiang dibatalkan (salah input).",
@@ -159,6 +179,7 @@ export function useSuntingPeta(oleh: string) {
 
   return {
     geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, buatPasanganPortal,
+    tambahTiang,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
 }

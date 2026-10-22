@@ -4,7 +4,12 @@ Permintaan user 22 Okt 2026: kalau di lapangan ada tiang yang **lupa / lolos
 dititik**, atau admin **salah hapus** di peta, sekarang tidak ada cara
 menambahkan tiang langsung di `/peta`.
 
-Status: **RENCANA — keputusan inti dijawab user 22 Okt; menunggu aba-aba mulai T1.**
+Status: **T1 + T2 DIBANGUN 22 Okt 2026** — SQL `scripts/jtm-tambah-pulihkan-tiang.sql`
+(23 uji PGlite lulus) + web (`/peta`: menu JTM → **Tiang dibatalkan**; panel tiang →
+**Tambah tiang** & **Sambung hilir**). Menunggu SQL dijalankan user + uji di peta.
+
+Tambahan dari user 22 Okt (kasus KKL-108 / AIR-083): **Sambung hilir** — dari tiang
+induk, klik tiang yang menyambung darinya (kebalikan Ganti induk; `ubah_induk_tiang_jtm`).
 
 ### Keputusan user (22 Okt 2026)
 - **Nama sisipan = huruf di belakang** (`GNS-018a`), hilir tidak berubah;

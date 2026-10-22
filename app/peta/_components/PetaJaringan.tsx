@@ -29,6 +29,7 @@ import { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks
 import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
 import { useTiangMilik } from "../_hooks/useTiangMilik";
+import { useTiangBatal } from "../_hooks/useTiangBatal";
 import { GARIS, PANEL } from "../_ui";
 import BilahAtas from "./BilahAtas";
 import BilahAtasSld from "./BilahAtasSld";
@@ -45,6 +46,7 @@ import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
 import PanelSld from "./PanelSld";
 import PilihLatar from "./PilihLatar";
+import PulihkanTiang, { PetunjukIndukPulih } from "./PulihkanTiang";
 import PenelusurPeta from "./PenelusurPeta";
 import PersetujuanJtmPeta from "./PersetujuanJtmPeta";
 import RincianPenyulang from "./RincianPenyulang";
@@ -133,7 +135,12 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // Gardu janggal: kode gardu di tiang vs master gardu (kelompok Gardu, 10 Okt 2026).
   const garduJanggal = useGarduJanggal(ulp, oleh);
   const simulasi = useSimulasiBuka();
-  const pilih = usePilihObjek({ geserBanyak, koreksi, onTutup: simulasi.tutup });
+  // Tiang dibatalkan + Pulihkan (22 Okt 2026): selama memilih induknya, klik
+  // tiang di peta = induk tiang yang dipulihkan.
+  const tiangBatal = useTiangBatal(ulp);
+  const pilih = usePilihObjek({
+    geserBanyak, koreksi, pulihInduk: { aktif: tiangBatal.menungguInduk, pilih: tiangBatal.pilihInduk }, onTutup: simulasi.tutup,
+  });
   const { terpilih, setTerpilih } = pilih;
   const objek = useObjekPeta(terpilih);
   const isian = useTulisIsian(koreksi, tiang);
@@ -369,6 +376,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           rencana={sembunyi ? null : rencana}
           survey={survey.aktifMode && !modeSld ? survey : null}
           labelPenanda={labelPenanda}
+          batal={tiangBatal.aktif && !sembunyi ? { daftar: tiangBatal.daftar, onPilih: (t) => { pilih.tutup(); tiangBatal.buka(t); } } : null}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
@@ -487,6 +495,29 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
+        {tiangBatal.pulih && !tiangBatal.pulih.pilihInduk && (
+          <PulihkanTiang
+            key={tiangBatal.pulih.t.id}
+            p={tiangBatal.pulih}
+            oleh={oleh}
+            onPilihInduk={() => tiangBatal.setPulih((x) => (x ? { ...x, pilihInduk: true } : x))}
+            onTutup={() => tiangBatal.setPulih(null)}
+            onSelesai={(h) => {
+              const t = tiangBatal.pulih!.t;
+              tiangBatal.setPulih(null);
+              tiangBatal.muatUlang();
+              setTerpilih({ jenis: "tiang", id: h.id, kelompok: t.penyulang ?? "", lat: h.lat, lng: h.lng, kode: h.kode, jaringan: "jtm" });
+              segarkan();
+            }}
+          />
+        )}
+        {tiangBatal.pulih?.pilihInduk && (
+          <PetunjukIndukPulih
+            kode={tiangBatal.pulih.t.kode}
+            onBatal={() => tiangBatal.setPulih((x) => (x ? { ...x, pilihInduk: false } : x))}
+          />
+        )}
+
         {pohon.tugas && (
           <TugaskanPohonPeta daftar={pohon.tugas} oleh={oleh} onTutup={() => pohon.setTugas(null)} onSelesai={pohon.muatUlang} />
         )}
@@ -509,6 +540,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           isian={isian}
           kesehatan={kesehatan}
           ujung={ujung}
+          tiangBatal={tiangBatal}
           geserBanyak={geserBanyak}
           nomorKabel={nomorKabel}
           onNomorKabel={() => setNomorKabel((v) => !v)}
