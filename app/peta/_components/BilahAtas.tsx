@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Tags, TriangleAlert, Undo2, Workflow } from "lucide-react";
+import { Activity, ArrowLeft, ClipboardCheck, Columns2, Gauge, Hash, ListChecks, Move, RefreshCw, Ruler, Split, Tags, TriangleAlert, Undo2, Workflow } from "lucide-react";
 import type { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import type { useGarduJanggal } from "../_hooks/useGarduJanggal";
 import type { useKoreksiIsian } from "../_hooks/useKoreksiIsian";
@@ -33,6 +33,8 @@ interface Props {
   isian: ReturnType<typeof useTulisIsian>;
   kesehatan: Saklar;
   ujung: Saklar;
+  /** Lapisan Section JTM. */
+  section: Saklar;
   /** Lapisan "Tiang dibatalkan" (Pulihkan). */
   tiangBatal: Saklar & { daftar: unknown[] };
   geserBanyak: { aktif: boolean; mulai: () => void };
@@ -48,7 +50,7 @@ interface Props {
 }
 
 export default function BilahAtas({
-  boleh, bolehSetujui, antrean, koreksi, garduJanggal, isian, kesehatan, ujung, tiangBatal, geserBanyak,
+  boleh, bolehSetujui, antrean, koreksi, garduJanggal, isian, kesehatan, ujung, section, tiangBatal, geserBanyak,
   nomorKabel, onNomorKabel, namaTiang, onNamaTiang, memuatUlang, onMuatUlang, tutupObjek, onModeSld,
 }: Props) {
   const [menuBuka, setMenuBuka] = useState<Menu | null>(null);
@@ -66,9 +68,18 @@ export default function BilahAtas({
         onBuka={() => bukaMenu("jtm")}
         angka={(bolehSetujui ? jtm.antrean.length : 0) + (boleh ? portal.daftar.length : 0)}
         warnaAngka="#60A5FA"
-        menyala={jtm.aktif || koreksi.aktif || isian.tampil || portal.aktif || tiangBatal.aktif}
+        menyala={jtm.aktif || koreksi.aktif || isian.tampil || portal.aktif || tiangBatal.aktif || section.aktif}
         kelas={TOMBOL_ATAS}
       >
+        <TombolAtas
+          ikon={<Split size={15} />}
+          aktif={section.aktif}
+          nada="ungu"
+          onClick={() => section.setAktif(!section.aktif)}
+          title="Warnai penyulang JTM yang menyala per section (di antara REC / LBS / LBSM)"
+        >
+          Section
+        </TombolAtas>
         {bolehSetujui && (
           <TombolAtas
             ikon={<ClipboardCheck size={15} />}

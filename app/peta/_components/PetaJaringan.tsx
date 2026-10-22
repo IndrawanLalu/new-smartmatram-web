@@ -30,6 +30,7 @@ import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
 import { useTiangMilik } from "../_hooks/useTiangMilik";
 import { useTiangBatal } from "../_hooks/useTiangBatal";
+import { useSectionPeta } from "../_hooks/useSectionPeta";
 import { GARIS, PANEL } from "../_ui";
 import BilahAtas from "./BilahAtas";
 import BilahAtasSld from "./BilahAtasSld";
@@ -47,6 +48,7 @@ import PanelLapisan from "./PanelLapisan";
 import PanelSld from "./PanelSld";
 import PilihLatar from "./PilihLatar";
 import PulihkanTiang, { PetunjukIndukPulih } from "./PulihkanTiang";
+import PanelSection from "./PanelSection";
 import PenelusurPeta from "./PenelusurPeta";
 import PersetujuanJtmPeta from "./PersetujuanJtmPeta";
 import RincianPenyulang from "./RincianPenyulang";
@@ -143,6 +145,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   });
   const { terpilih, setTerpilih } = pilih;
   const objek = useObjekPeta(terpilih);
+  // Section JTM (X2, 22 Okt 2026): penyulang JTM yang menyala diwarnai per section.
+  const penyulangJtm = useMemo(() => [...nyala].filter((k) => k.startsWith("jtm:")).map((k) => k.slice(4)), [nyala]);
+  const section = useSectionPeta(ulp, penyulangJtm);
+  const idSection = section.terpilih?.id ?? null;
+  const tiangSection = useMemo(
+    () => (idSection ? [...section.anggota].filter(([, v]) => v === idSection).map(([k]) => k.split("|")[0]) : []),
+    [section.anggota, idSection],
+  );
   const isian = useTulisIsian(koreksi, tiang);
 
   // ── "Segmen ini saja" (12 Okt 2026) ────────────────────────────────────────
@@ -196,6 +206,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     indukLoncat.muatUlang();
     milikPenanda.muatUlang();
     garduJanggal.muatUlang();
+    section.muatUlang();
     void muatUlangPeta();
   };
 
@@ -220,6 +231,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       indukLoncat.muatUlang();
       milikPenanda.muatUlang();
       garduJanggal.muatUlang();
+      section.muatUlang();
       await Promise.all([muatDaftar(), muatUlangPeta()]);
     } finally {
       setMemuatUlang(false);
@@ -376,6 +388,11 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           rencana={sembunyi ? null : rencana}
           survey={survey.aktifMode && !modeSld ? survey : null}
           labelPenanda={labelPenanda}
+          section={
+            section.aktif && !sembunyi
+              ? { anggota: section.anggota, perId: section.perId, daftar: section.daftar, pilih: idSection, onPilih: (id) => { pilih.tutup(); section.setPilih(id); } }
+              : null
+          }
           batal={tiangBatal.aktif && !sembunyi ? { daftar: tiangBatal.daftar, onPilih: (t) => { pilih.tutup(); tiangBatal.buka(t); } } : null}
         />
 
@@ -495,6 +512,15 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
+        {section.aktif && section.terpilih && !terpilih && !geserBanyak.aktif && (
+          <PanelSection s={section.terpilih} tiangIds={tiangSection} onTutup={() => section.setPilih(null)} />
+        )}
+        {section.aktif && (section.galat || section.memuat) && (
+          <p className="absolute z-[1000] top-14 left-1/2 -translate-x-1/2 rounded-lg bg-[#0d1b2a]/95 border border-white/10 px-3 py-1.5 text-xs text-gray-300">
+            {section.galat ?? "Menyusun section…"}
+          </p>
+        )}
+
         {tiangBatal.pulih && !tiangBatal.pulih.pilihInduk && (
           <PulihkanTiang
             key={tiangBatal.pulih.t.id}
@@ -541,6 +567,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           kesehatan={kesehatan}
           ujung={ujung}
           tiangBatal={tiangBatal}
+          section={{ aktif: section.aktif, setAktif: (v) => { section.setAktif(v); if (!v) section.setPilih(null); } }}
           geserBanyak={geserBanyak}
           nomorKabel={nomorKabel}
           onNomorKabel={() => setNomorKabel((v) => !v)}

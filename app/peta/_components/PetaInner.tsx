@@ -25,6 +25,8 @@ import type { GeserTiang } from "../_hooks/useGeserBanyak";
 import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
 import LapisanTiangBatal from "./LapisanTiangBatal";
+import LapisanSection from "./LapisanSection";
+import type { SectionPeta } from "../_hooks/useSectionPeta";
 import type { TiangBatal } from "../_hooks/useTiangBatal";
 import LapisanKoreksi from "./LapisanKoreksi";
 import LapisanIsian from "./LapisanIsian";
@@ -128,6 +130,14 @@ interface Props {
   /** Survey Jaringan Baru yang sedang dibuka (null = padam). */
   survey: SurveyPetaState | null;
   labelPenanda: (kode: string) => string;
+  /** Lapisan Section JTM (null = padam). */
+  section: {
+    anggota: Map<string, string>;
+    perId: Map<string, SectionPeta>;
+    daftar: SectionPeta[];
+    pilih: string | null;
+    onPilih: (id: string) => void;
+  } | null;
   /** Lapisan "Tiang dibatalkan" (null = padam). */
   batal: { daftar: TiangBatal[]; onPilih: (t: TiangBatal) => void } | null;
 }
@@ -186,7 +196,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, batal,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, section, batal,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -210,6 +220,12 @@ export default function PetaInner({
         onPilihTiang={onPilihTiang} onPilihGardu={onPilihGardu} loncat={loncat}
         onBerdesakan={setPilihan}
       />
+      {section && (
+        <LapisanSection
+          tiang={tiang} anggota={section.anggota} perId={section.perId} daftar={section.daftar}
+          pilih={section.pilih} onPilih={section.onPilih}
+        />
+      )}
       {sld && <LapisanSld graf={sld.graf} warna={sld.warna} gardu={sld.gardu} penanda={penanda} label={sld.label} />}
       <PemilihTiang
         pilihan={pilihan}

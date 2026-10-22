@@ -7,7 +7,16 @@ Permintaan user 22 Okt 2026:
   bebas, asal tidak keluar dari section-nya.
 - Fitur **pecah section** (memotong section menjadi segmen-segmen).
 
-Status: **RENCANA — keputusan inti dijawab user 22 Okt; menunggu aba-aba mulai X1.**
+Status (22 Okt 2026): **X1 + X2 DIBANGUN** — SQL `scripts/jtm-section.sql` (13 uji PGlite
+lulus; simulasi data asli: 87 section dari 26 penyulang, 17 dari 1.396 segmen melewati
+keypoint) + `/peta` menu JTM → **Section** (warna per section, nama di hulu, panel).
+Menunggu SQL dijalankan user. X3 (Pecah/Gabung) berikutnya.
+
+Catatan rancangan X1: pemilik peralatan di tiang bersama dibaca langsung (pilihan admin,
+kalau belum pemilik tiang) — view `jtm_pemilik_penanda` dihitung penuh ±1,5 dtk tiap
+dibaca, terlalu mahal per penyulang; keypoint tanpa hilir di sebuah penyulang (ujung /
+titik pertemuan) tidak membuka section. Bentang MASUK ke keypoint milik section
+sebelumnya (sisi hulu peralatan).
 
 ### Keputusan user (22 Okt 2026)
 - **Batas section hanya REC / LBS / LBSM** (+ pangkal GI/PLTD/GH). FCO, PENG,
