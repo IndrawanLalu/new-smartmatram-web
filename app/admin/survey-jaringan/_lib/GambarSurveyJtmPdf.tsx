@@ -7,6 +7,7 @@ import {
   angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, Lembar, S, SimbolGardu, SumberData,
   TabelMaterialPdf, TEAL, tgl, wajik,
 } from "@/lib/gambarSurvey/LembarPdf";
+import type { LogoLembar } from "@/lib/gambarSurvey/latar";
 import { bentukGardu, setengahTiang } from "@/lib/gambarSurvey/simbolGardu";
 import { geser } from "@/lib/gambarSurvey/kertas";
 import { bawaJtm, bawaJtr, LABEL_ALASAN, type JenisGardu, type SurveyJaringan, type TiangSambung, type TitikSurvey } from "@/lib/surveyJaringan";
@@ -54,9 +55,12 @@ function GarduBaru({ x, y, jenis, arah, r = R_TIANG_JTM, t = T_TRAFO }: { x: num
   );
 }
 
-function Bidang({ g, latar }: { g: GambarJtm; latar: string | null }) {
+function Bidang({ g, latar, citra }: { g: GambarJtm; latar: string | null; citra: boolean }) {
   return (
-    <BidangGambar latar={latar} label={g.label} warnaLabel={(j) => WARNA_LABEL[j]} tebal={(j) => !TIPIS.includes(j)}>
+    <BidangGambar
+      latar={latar} label={g.label} warnaLabel={(j) => WARNA_LABEL[j]} tebal={(j) => !TIPIS.includes(j)}
+      atribusi={citra ? "Latar © Esri, Maxar, Earthstar Geographics" : undefined}
+    >
       {g.lama.map((x, i) => <Line key={`l${i}`} x1={x.a.x} y1={x.a.y} x2={x.b.x} y2={x.b.y} stroke={LAMA} strokeWidth={1} />)}
       {g.tiangLama.map((t) => (t.gardu ? <SimbolGardu key={t.id} x={t.x} y={t.y} r={5} /> : <TiangAda key={t.id} x={t.x} y={t.y} />))}
       {g.sambung.map((p, i) => <Circle key={`s${i}`} cx={p.x} cy={p.y} r={6} fill="none" stroke={UNGU} strokeWidth={1.5} />)}
@@ -128,7 +132,7 @@ interface Props {
   sambung: TiangSambung[];
   /** Foto kondisi lapangan (data URL, diperkecil & bertanda) + keterangan. */
   foto: FotoPdf[];
-  logo: string | null;
+  logo: LogoLembar;
   latar: string | null;
 }
 
@@ -136,7 +140,7 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
   return (
     <Lembar
       judul={`Gambar survey ${s.judul}`}
-      gambar={<Bidang g={g} latar={latar} />}
+      gambar={<Bidang g={g} latar={latar} citra={s.latar === "citra"} />}
       kolom={
         <>
           <View style={S.blok}>
@@ -159,7 +163,7 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
           <Foto foto={foto} />
           <CatatanPdf isi={s.catatan} />
           <SumberData
-            teks={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan. Latar: ${s.latar === "citra" ? "citra satelit © Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap"}.`}
+            teks={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan.`}
           />
         </>
       }

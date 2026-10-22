@@ -11,6 +11,7 @@
 import type { ReactNode } from "react";
 import { Circle, Document, Image, Line, Page, Polygon, Rect, StyleSheet, Svg, Text, View, type Styles } from "@react-pdf/renderer";
 import { GAMBAR_H, GAMBAR_W, skalaGrafis, type Label } from "./kertas";
+import type { LogoLembar } from "./latar";
 
 export const MERAH = "#DC2626";
 export const TEAL = "#00897B";
@@ -126,12 +127,16 @@ export function CatatanPdf({ isi }: { isi: string | null }) {
 const PENUH = { position: "absolute", left: 0, top: 0, width: GAMBAR_W, height: GAMBAR_H } as const;
 
 /**
- * Bidang gambar: latar peta jalan, isi SVG (children), label (teks absolut —
- * alas putih di atas latar), garis penunjuk label, atribusi OSM, dan pesan
+ * Bidang gambar: latar peta, isi SVG (children), label (teks absolut — alas
+ * putih di atas latar), garis penunjuk label, atribusi latar, dan pesan
  * peringatan di pojok bawah.
  */
-export function BidangGambar<J extends string>({ latar, label, warnaLabel, tebal, peringatan, children }: {
+export function BidangGambar<J extends string>({
+  latar, atribusi = "Latar © kontributor OpenStreetMap", label, warnaLabel, tebal, peringatan, children,
+}: {
   latar: string | null;
+  /** Sumber ubin latar (peta jalan / citra satelit). */
+  atribusi?: string;
   label: Label<J>[];
   warnaLabel: (j: J) => string;
   tebal: (j: J) => boolean;
@@ -163,7 +168,7 @@ export function BidangGambar<J extends string>({ latar, label, warnaLabel, tebal
       ))}
       {latar && (
         <Text style={{ position: "absolute", right: 4, bottom: 3, fontSize: 5.5, color: "#4B5563", backgroundColor: "rgba(255,255,255,0.8)" }}>
-          Latar © kontributor OpenStreetMap
+          {atribusi}
         </Text>
       )}
       {peringatan && (
@@ -185,7 +190,7 @@ export interface Pengesah {
 interface BlokJudulProps {
   skalaM: number;
   judul: string;
-  logo: string | null;
+  logo: LogoLembar;
   ulp: string;
   pengesah: Pengesah[];
   /** Baris-baris <Contoh> — disusun berkolom di kotak Keterangan. */
@@ -249,7 +254,7 @@ function BlokJudul({ skalaM, judul, logo, ulp, pengesah, keterangan, nomor, lemb
       </View>
       <View style={S.bjBawah}>
         <View style={{ width: KIRI_W - 60, flexDirection: "row", alignItems: "center", gap: 8, paddingHorizontal: 6, borderRightWidth: 0.8, borderColor: HITAM }}>
-          {logo && <Image src={logo} style={{ width: 52, height: 30, objectFit: "contain" }} />}
+          {logo.pln && <Image src={logo.pln} style={{ width: 52, height: 30, objectFit: "contain" }} />}
           <View style={{ gap: 2 }}>
             <Text>PT PLN (Persero) UIW NTB</Text>
             <Text>UP3 Mataram</Text>
@@ -259,9 +264,16 @@ function BlokJudul({ skalaM, judul, logo, ulp, pengesah, keterangan, nomor, lemb
         <View style={{ width: 60, alignItems: "center", justifyContent: "center", borderRightWidth: 0.8, borderColor: HITAM }}>
           <Text style={{ fontSize: 12 }}>{lembar}</Text>
         </View>
-        <View style={{ flex: 1, paddingHorizontal: 6, paddingVertical: 3, justifyContent: "space-between" }}>
+        <View style={{ flex: 1, paddingHorizontal: 6, paddingVertical: 3, flexDirection: "row", justifyContent: "space-between" }}>
           <Text>Nomor : {nomor ?? ""}</Text>
-          <Text style={{ alignSelf: "flex-end", marginRight: 60 }}>Grup Distribusi</Text>
+          {/* SMART = sistem pembuat gambar: kecil di pojok, tidak menyaingi kop PLN. */}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+            {logo.smart && <Image src={logo.smart} style={{ width: 30, height: 30, objectFit: "contain" }} />}
+            <View style={{ gap: 2 }}>
+              <Text style={S.kecil}>Dibuat dengan SMART Mataram</Text>
+              <Text>Grup Distribusi</Text>
+            </View>
+          </View>
         </View>
       </View>
     </View>

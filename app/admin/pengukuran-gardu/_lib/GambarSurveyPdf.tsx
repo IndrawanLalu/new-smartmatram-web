@@ -7,6 +7,7 @@ import {
   angka, Baris, BidangGambar, CatatanPdf, Contoh, ContohGaris, Lembar, MERAH, S, SimbolGardu, SumberData,
   TabelMaterialPdf, TEAL, tgl, wajik,
 } from "@/lib/gambarSurvey/LembarPdf";
+import type { LogoLembar } from "@/lib/gambarSurvey/latar";
 import type { UsulanJtr } from "../_hooks/useUsulanJtr";
 import type { Gambar, JenisLabel, NadaUjung } from "./gambarSurvey";
 import { LABEL_RENCANA, pindahSr } from "./rencanaJtr";
@@ -127,7 +128,7 @@ interface Props {
   u: UsulanJtr;
   g: Gambar;
   garduNama: string | null;
-  logo: string | null;
+  logo: LogoLembar;
   /** Latar peta jalan (JPEG data URL); null = latar putih. */
   latar: string | null;
 }

@@ -10,10 +10,17 @@ const keDataUrl = (b: Blob) =>
     r.readAsDataURL(b);
   });
 
-export async function ambilLogo() {
-  const r = await fetch("/logo-pln.png");
-  return r.ok ? keDataUrl(await r.blob()) : null;
+/** Logo di blok judul gambar survey: kop PLN (kiri) & SMART sebagai pembuat gambar (kanan bawah). */
+export interface LogoLembar {
+  pln: string | null;
+  smart: string | null;
 }
+
+const ambilGambarPublik = async (jalur: string) => {
+  const r = await fetch(jalur);
+  return r.ok ? keDataUrl(await r.blob()) : null;
+};
+
 
 const muatGambar = (url: string) =>
   new Promise<HTMLImageElement | null>((ok) => {
@@ -76,4 +83,21 @@ export async function perkecilFoto(sumber: Blob | string, maks: number): Promise
   } finally {
     if (typeof sumber !== "string") URL.revokeObjectURL(url);
   }
+}
+
+/** Logo SMART asli 500 px (±400 KB) — di PDF cukup 160 px; PNG supaya sudut transparannya tidak menghitam. */
+async function logoKecil(jalur: string, maks: number): Promise<string | null> {
+  const img = await muatGambar(jalur);
+  if (!img) return null;
+  const k = Math.min(1, maks / Math.max(img.naturalWidth, img.naturalHeight));
+  const kanvas = document.createElement("canvas");
+  kanvas.width = Math.round(img.naturalWidth * k);
+  kanvas.height = Math.round(img.naturalHeight * k);
+  kanvas.getContext("2d")?.drawImage(img, 0, 0, kanvas.width, kanvas.height);
+  return kanvas.toDataURL("image/png");
+}
+
+export async function ambilLogo(): Promise<LogoLembar> {
+  const [pln, smart] = await Promise.all([ambilGambarPublik("/logo-pln.png"), logoKecil("/logsmart.png", 160)]);
+  return { pln, smart };
 }
