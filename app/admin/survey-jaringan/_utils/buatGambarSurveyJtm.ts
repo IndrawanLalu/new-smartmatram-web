@@ -50,7 +50,7 @@ export async function buatGambarSurveyJtm(
   const [{ pdf }, { default: GambarSurveyJtmPdf }, latar] = await Promise.all([
     import("@react-pdf/renderer"),
     import("../_lib/GambarSurveyJtmPdf"),
-    ambilLatar(g.ruang),
+    ambilLatar(g.ruang, s.latar),
   ]);
   const el = React.createElement(GambarSurveyJtmPdf, {
     s, g, titik, sambung: [...sambung.values()], foto: foto.filter((f): f is FotoPdf => !!f), logo, latar,

@@ -265,6 +265,14 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   useEffect(() => {
     if (penyulangSurvey) nyalakan(`jtm:${penyulangSurvey}`);
   }, [penyulangSurvey, nyalakan]);
+  // Latar gambar survey (PDF) dipakai peta selama survey terbuka — yang
+  // digambar dilihat di atas latar yang sama dengan yang nanti tercetak.
+  const latarSurvey = survey.aktifMode ? survey.kepala.latar : null;
+  useEffect(() => {
+    if (latarSurvey) setLatar(latarSurvey);
+    // setLatar baru tiap render; yang ditunggu hanya pilihan survey.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [latarSurvey]);
   const gambarSurvey = survey.aktifMode && survey.mode !== "lihat";
   const pilihTiang = gambarSurvey ? survey.klikTiang : pilih.pilihTiang;
   const labelPenanda = useCallback((k: string) => penanda.get(k)?.label ?? k, [penanda]);

@@ -1,4 +1,4 @@
-import { rencanaUbin, type Ruang } from "./kertas";
+import { rencanaUbin, type JenisUbin, type Ruang } from "./kertas";
 
 /** Bahan gambar survey yang hanya bisa diambil di peramban: latar peta, logo, unduhan. */
 
@@ -24,9 +24,9 @@ const muatGambar = (url: string) =>
     img.src = url;
   });
 
-/** Ubin peta jalan dijahit di kanvas → JPEG. Gagal semua (luring) = tanpa latar. */
-export async function ambilLatar(ruang: Ruang): Promise<string | null> {
-  const r = rencanaUbin(ruang);
+/** Ubin peta jalan / citra satelit dijahit di kanvas → JPEG. Gagal semua (luring) = tanpa latar. */
+export async function ambilLatar(ruang: Ruang, jenis: JenisUbin = "jalan"): Promise<string | null> {
+  const r = rencanaUbin(ruang, jenis);
   const kanvas = document.createElement("canvas");
   kanvas.width = r.lebar;
   kanvas.height = r.tinggi;
@@ -37,8 +37,9 @@ export async function ambilLatar(ruang: Ruang): Promise<string | null> {
   const gambar = await Promise.all(r.ubin.map((u) => muatGambar(u.url)));
   if (!gambar.some(Boolean)) return null;
   gambar.forEach((img, i) => img && ctx.drawImage(img, r.ubin[i].dx, r.ubin[i].dy));
-  // Dipudarkan sedikit supaya garis jaringan lebih menonjol dari peta.
-  ctx.fillStyle = "rgba(255,255,255,0.3)";
+  // Dipudarkan sedikit supaya garis jaringan lebih menonjol dari peta. Citra
+  // hanya sedikit — kalau terlalu pudar, bangunan & jalan tidak terbaca lagi.
+  ctx.fillStyle = `rgba(255,255,255,${jenis === "citra" ? 0.12 : 0.3})`;
   ctx.fillRect(0, 0, r.lebar, r.tinggi);
   return kanvas.toDataURL("image/jpeg", 0.85);
 }

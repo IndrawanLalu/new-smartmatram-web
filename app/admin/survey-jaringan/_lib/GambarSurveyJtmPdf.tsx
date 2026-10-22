@@ -159,7 +159,7 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
           <Foto foto={foto} />
           <CatatanPdf isi={s.catatan} />
           <SumberData
-            teks={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan.`}
+            teks={`Disurvey ${s.dibuat_oleh ?? "—"}, ${tgl(s.dibuat_at)} · dicetak ${tgl(new Date())}. Posisi tiang baru menurut gambar survey di SMART — pastikan di lapangan. Latar: ${s.latar === "citra" ? "citra satelit © Esri, Maxar, Earthstar Geographics" : "© OpenStreetMap"}.`}
           />
         </>
       }

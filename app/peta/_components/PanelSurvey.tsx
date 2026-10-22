@@ -1,7 +1,9 @@
 "use client";
 
 import { Crosshair, ExternalLink, Loader2, MousePointerClick, PencilRuler, Save, X } from "lucide-react";
-import { bawaJtm, bawaJtr, LABEL_ALASAN, portal, type AlasanSurvey, type JaringanTiang } from "@/lib/surveyJaringan";
+import {
+  bawaJtm, bawaJtr, LABEL_ALASAN, LABEL_LATAR_SURVEY, portal, type AlasanSurvey, type JaringanTiang, type LatarSurvey,
+} from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
@@ -69,6 +71,21 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
           >
             {(Object.keys(LABEL_ALASAN) as AlasanSurvey[]).map((a) => <option key={a} value={a}>{LABEL_ALASAN[a]}</option>)}
           </select>
+
+          {/* Latar gambar survey PDF — peta ikut berganti, jadi yang dicetak = yang dilihat saat menggambar. */}
+          <div className="flex items-center gap-1.5">
+            <span className="text-gray-400 shrink-0">Latar gambar</span>
+            {(Object.keys(LABEL_LATAR_SURVEY) as LatarSurvey[]).map((l) => (
+              <button
+                key={l} disabled={s.kepala.status === "Batal"} onClick={() => void s.ubahLatar(l, oleh)}
+                className={`flex-1 rounded-lg border px-2 py-1 font-semibold disabled:opacity-40 ${
+                  s.kepala.latar === l ? "bg-white/15 border-white/40 text-white" : "border-white/15 text-gray-300 hover:bg-white/5"
+                }`}
+              >
+                {LABEL_LATAR_SURVEY[l]}
+              </button>
+            ))}
+          </div>
 
           <div className="rounded-lg px-2 py-1.5 bg-white/5 space-y-0.5">
             <p>

@@ -173,6 +173,11 @@ export function skalaGrafis(skala: number, maksPt = 150): { meter: number; pt: n
 
 /** Ubin OpenStreetMap — sama dengan latar "Peta jalan" di /peta. */
 export const UBIN_OSM = (z: number, x: number, y: number) => `https://${"abc"[(x + y) % 3]}.tile.openstreetmap.org/${z}/${x}/${y}.png`;
+/** Ubin citra satelit Esri — sama dengan latar "Citra satelit" di /peta. */
+export const UBIN_CITRA = (z: number, x: number, y: number) =>
+  `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`;
+export type JenisUbin = "jalan" | "citra";
+const SUMBER_UBIN: Record<JenisUbin, (z: number, x: number, y: number) => string> = { jalan: UBIN_OSM, citra: UBIN_CITRA };
 const ZOOM_MAKS = 19;
 
 export interface RencanaUbin {
@@ -186,7 +191,8 @@ export interface RencanaUbin {
  * Ubin peta yang menutup ruang gambar. Zoom dipilih supaya ±1,4–2,8 piksel per
  * pt (tajam dicetak A3) tanpa mengunduh ubin berlebihan.
  */
-export function rencanaUbin(ruang: Ruang): RencanaUbin {
+export function rencanaUbin(ruang: Ruang, jenis: JenisUbin = "jalan"): RencanaUbin {
+  const url = SUMBER_UBIN[jenis];
   const z = Math.max(0, Math.min(ZOOM_MAKS, Math.round(Math.log2(ruang.skala * 2))));
   const k = 2 ** z;
   const pxPerPt = k / ruang.skala;
@@ -198,7 +204,7 @@ export function rencanaUbin(ruang: Ruang): RencanaUbin {
   for (let ty = Math.floor(gy / 256); ty <= Math.floor((gy + tinggi) / 256); ty++) {
     if (ty < 0 || ty >= k) continue;
     for (let tx = Math.floor(gx / 256); tx <= Math.floor((gx + lebar) / 256); tx++) {
-      ubin.push({ url: UBIN_OSM(z, ((tx % k) + k) % k, ty), dx: Math.round(tx * 256 - gx), dy: Math.round(ty * 256 - gy) });
+      ubin.push({ url: url(z, ((tx % k) + k) % k, ty), dx: Math.round(tx * 256 - gx), dy: Math.round(ty * 256 - gy) });
     }
   }
   return { lebar, tinggi, ubin };

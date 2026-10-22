@@ -31,6 +31,10 @@ export const LABEL_KABEL: Record<KabelSurvey, string> = { JTM: "JTM", JTR: "JTR"
 export const bawaJtm = (k: KabelSurvey) => k !== "JTR";
 export const bawaJtr = (k: KabelSurvey) => k !== "JTM";
 
+/** Latar gambar survey PDF — dipilih di peta saat menggambar (peta ikut berganti). */
+export type LatarSurvey = "jalan" | "citra";
+export const LABEL_LATAR_SURVEY: Record<LatarSurvey, string> = { jalan: "Peta jalan", citra: "Citra satelit" };
+
 export type JenisGardu = "portal" | "cantol";
 export const LABEL_JENIS_GARDU: Record<JenisGardu, string> = { portal: "Portal (dua tiang)", cantol: "Cantol (satu tiang)" };
 
@@ -131,6 +135,7 @@ export interface SurveyJaringan {
   disetujui_nama: string | null;
   /** Foto kondisi lapangan (bucket inspections, survey/<id>/…) + keterangan & tanda. */
   foto: FotoSurvey[];
+  latar: LatarSurvey;
   jumlah_tiang: number;
   panjang_m: number;
   jumlah_gardu: number;
@@ -166,6 +171,7 @@ export const keSurvey = (x: Record<string, unknown>): SurveyJaringan => ({
   panjang_jtr_m: Number(x.panjang_jtr_m ?? 0),
   material: (x.material as BarisMaterialSurvey[] | null) ?? [],
   foto: ((x.foto as unknown[] | null | undefined) ?? []).map(keFoto),
+  latar: (x.latar as LatarSurvey | undefined) ?? "jalan",
 });
 
 export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({

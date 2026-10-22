@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import {
   bawaJtr, jurusanBawaan, keSurvey, keTitik, panjangGawang, pesanSurvey, sumberJtr, urutTopologis,
-  type AlasanSurvey, type JaringanTiang, type StatusSurvey, type TiangSambung, type TitikSurvey,
+  type AlasanSurvey, type JaringanTiang, type LatarSurvey, type StatusSurvey, type TiangSambung, type TitikSurvey,
 } from "@/lib/surveyJaringan";
 import type { TiangPeta } from "./usePetaIsi";
 
@@ -33,6 +33,8 @@ export interface KepalaSurvey {
   status: StatusSurvey;
   ulp: string | null;
   penyulang: string | null;
+  /** Latar gambar survey PDF — peta ikut memakainya selama survey terbuka. */
+  latar: LatarSurvey;
 }
 
 /** Isian yang diteruskan ke tiang berikutnya SEJENIS (bawaan = isian sebelumnya). */
@@ -40,7 +42,7 @@ type Bawaan = Pick<TitikSurvey, "jenis_tiang" | "konstruksi" | "konduktor_jenis"
 const BAWAAN_KOSONG: Bawaan = {
   jenis_tiang: null, konstruksi: null, konduktor_jenis: null, konduktor_ukuran: null, jtr_kabel_jenis: null, jtr_kabel_ukuran: null,
 };
-const KEPALA_BARU: KepalaSurvey = { id: null, judul: "", alasan: "perluasan", catatan: "", status: "Draf", ulp: null, penyulang: null };
+const KEPALA_BARU: KepalaSurvey = { id: null, judul: "", alasan: "perluasan", catatan: "", status: "Draf", ulp: null, penyulang: null, latar: "jalan" };
 
 /** Induk titik baru: titik survey, atau tiang sambung. */
 type Aktif = { titik: string } | { tiang: string } | null;
@@ -131,7 +133,7 @@ export function useSurveyPeta(awal: string | null) {
       if (error) throw error;
       if (batal) return;
       const peta = new Map((tg ?? []).map((x) => [x.id as string, { ...x, lat: Number(x.lat), lng: Number(x.lng) } as TiangSambung]));
-      setKepala({ id: sv.id, judul: sv.judul, alasan: sv.alasan, catatan: sv.catatan ?? "", status: sv.status, ulp: sv.ulp, penyulang: sv.penyulang });
+      setKepala({ id: sv.id, judul: sv.judul, alasan: sv.alasan, catatan: sv.catatan ?? "", status: sv.status, ulp: sv.ulp, penyulang: sv.penyulang, latar: sv.latar });
       setTitik(ts);
       setSambung(peta);
       setMode("lihat");
@@ -243,6 +245,20 @@ export function useSurveyPeta(awal: string | null) {
     setBerubah(true);
   };
 
+  /**
+   * Latar gambar survey: survey yang sudah tersimpan langsung dicatat (boleh
+   * juga sesudah Disetujui — tampilan, bukan gambar); survey baru ikut Simpan.
+   */
+  const ubahLatar = async (latar: LatarSurvey, oleh: string) => {
+    setKepala((k) => ({ ...k, latar }));
+    if (!kepala.id) {
+      setBerubah(true);
+      return;
+    }
+    const { error } = await supabaseBrowser.rpc("ubah_latar_survey", { p_id: kepala.id, p_latar: latar, p_nama: oleh });
+    if (error) setGalat(/ubah_latar_survey/.test(error.message) ? "Latar survey belum ada di database — jalankan scripts/survey-jaringan-6.sql di Supabase." : error.message);
+  };
+
   const simpan = async (oleh: string) => {
     setSibuk(true);
     setGalat(null);
@@ -253,6 +269,9 @@ export function useSurveyPeta(awal: string | null) {
       });
       if (error) throw error;
       const id = data as string;
+      if (!kepala.id && kepala.latar !== "jalan") {
+        await supabaseBrowser.rpc("ubah_latar_survey", { p_id: id, p_latar: kepala.latar, p_nama: oleh });
+      }
       if (!kepala.id) window.history.replaceState(null, "", `/peta?survey=${id}`);
       setKepala((k) => ({ ...k, id }));
       setBerubah(false);
@@ -282,7 +301,7 @@ export function useSurveyPeta(awal: string | null) {
     aktifMode: buka !== null,
     kepala, titik, sambung, perId, panjang, mode, setMode, aktif, terpilih, setTerpilih, jaringanBaru, setJaringanBaru,
     draf, berubah, galat, memuat, sibuk, opsi, bingkai,
-    klikTiang, tambahDi, pilih, ubah, geser, hapus, ubahKepala, simpan, tutup,
+    klikTiang, tambahDi, pilih, ubah, geser, hapus, ubahKepala, ubahLatar, simpan, tutup,
   };
 }
 
