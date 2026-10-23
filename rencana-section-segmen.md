@@ -10,7 +10,16 @@ Permintaan user 22 Okt 2026:
 Status (22 Okt 2026): **X1 + X2 DIBANGUN** — SQL `scripts/jtm-section.sql` (13 uji PGlite
 lulus; simulasi data asli: 87 section dari 26 penyulang, 17 dari 1.396 segmen melewati
 keypoint) + `/peta` menu JTM → **Section** (warna per section, nama di hulu, panel).
-Menunggu SQL dijalankan user. X3 (Pecah/Gabung) berikutnya.
+SQL X1 dijalankan user 23 Okt.
+
+**X3 DIBANGUN 23 Okt** — SQL `scripts/jtm-section-pecah.sql` (21 uji PGlite lulus) + `/peta`:
+panel Section → tiap segmen: **Pecah** (klik tiang potong di peta, pratinjau berwarna, tombol
+"Potong di keypoint yang dilewati"), **Gabung** (dengan segmen lain di section yang sama),
+**Ubah nama** (kini semua sumber; `segmen.nama_bebas` menjaga nama ketikan dari penyusun nama).
+Potongan pangkal = segmen lama (id, inspeksi & WO tetap); tiang potong ikut di kedua sisi.
+Ditolak bila segmen sedang diinspeksi (Dijadwalkan/Dalam Proses) atau masih dirintis.
+Penjaga satu section HANYA di pecah/gabung — rintisan HP tidak ditolak (laporan lintas tetap).
+X4 berikutnya.
 
 Catatan rancangan X1: pemilik peralatan di tiang bersama dibaca langsung (pilihan admin,
 kalau belum pemilik tiang) — view `jtm_pemilik_penanda` dihitung penuh ±1,5 dtk tiap

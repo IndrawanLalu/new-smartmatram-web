@@ -49,6 +49,8 @@ import PanelSld from "./PanelSld";
 import PilihLatar from "./PilihLatar";
 import PulihkanTiang, { PetunjukIndukPulih } from "./PulihkanTiang";
 import PanelSection from "./PanelSection";
+import PanelPecah from "./PanelPecah";
+import { usePecahSegmen } from "../_hooks/usePecahSegmen";
 import PenelusurPeta from "./PenelusurPeta";
 import PersetujuanJtmPeta from "./PersetujuanJtmPeta";
 import RincianPenyulang from "./RincianPenyulang";
@@ -140,8 +142,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // Tiang dibatalkan + Pulihkan (22 Okt 2026): selama memilih induknya, klik
   // tiang di peta = induk tiang yang dipulihkan.
   const tiangBatal = useTiangBatal(ulp);
+  // Pecah segmen (Section X3, 23 Okt 2026): selama aktif, klik tiang = titik potong.
+  const pecah = usePecahSegmen(oleh);
   const pilih = usePilihObjek({
-    geserBanyak, koreksi, pulihInduk: { aktif: tiangBatal.menungguInduk, pilih: tiangBatal.pilihInduk }, onTutup: simulasi.tutup,
+    geserBanyak, koreksi, pecah: { aktif: pecah.aktif, pilih: pecah.alih }, pulihInduk: { aktif: tiangBatal.menungguInduk, pilih: tiangBatal.pilihInduk }, onTutup: simulasi.tutup,
   });
   const { terpilih, setTerpilih } = pilih;
   const objek = useObjekPeta(terpilih);
@@ -390,9 +394,10 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           labelPenanda={labelPenanda}
           section={
             section.aktif && !sembunyi
-              ? { anggota: section.anggota, perId: section.perId, daftar: section.daftar, pilih: idSection, onPilih: (id) => { pilih.tutup(); section.setPilih(id); } }
+              ? { anggota: section.anggota, perId: section.perId, daftar: section.daftar, pilih: idSection, diam: pecah.aktif, onPilih: (id) => { pilih.tutup(); section.setPilih(id); } }
               : null
           }
+          pecah={pecah.aktif && !sembunyi ? pecah.hasil : null}
           batal={tiangBatal.aktif && !sembunyi ? { daftar: tiangBatal.daftar, onPilih: (t) => { pilih.tutup(); tiangBatal.buka(t); } } : null}
         />
 
@@ -512,8 +517,18 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           />
         )}
 
-        {section.aktif && section.terpilih && !terpilih && !geserBanyak.aktif && (
-          <PanelSection s={section.terpilih} tiangIds={tiangSection} onTutup={() => section.setPilih(null)} />
+        {pecah.aktif ? (
+          <PanelPecah p={pecah} onSelesai={() => { segarkan(); void muatDaftar(); }} />
+        ) : section.aktif && section.terpilih && !terpilih && !geserBanyak.aktif && (
+          <PanelSection
+            s={section.terpilih}
+            tiangIds={tiangSection}
+            onTutup={() => section.setPilih(null)}
+            boleh={boleh}
+            oleh={oleh}
+            onPecah={pecah.mulai}
+            onBerubah={() => { section.muatUlang(); void muatDaftar(); }}
+          />
         )}
         {section.aktif && (section.galat || section.memuat) && (
           <p className="absolute z-[1000] top-14 left-1/2 -translate-x-1/2 rounded-lg bg-[#0d1b2a]/95 border border-white/10 px-3 py-1.5 text-xs text-gray-300">
@@ -567,7 +582,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           kesehatan={kesehatan}
           ujung={ujung}
           tiangBatal={tiangBatal}
-          section={{ aktif: section.aktif, setAktif: (v) => { section.setAktif(v); if (!v) section.setPilih(null); } }}
+          section={{ aktif: section.aktif, setAktif: (v) => { section.setAktif(v); if (!v) { section.setPilih(null); pecah.batal(); } } }}
           geserBanyak={geserBanyak}
           nomorKabel={nomorKabel}
           onNomorKabel={() => setNomorKabel((v) => !v)}

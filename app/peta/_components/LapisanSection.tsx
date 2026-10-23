@@ -16,6 +16,7 @@ export default memo(function LapisanSection({
   perId,
   daftar,
   pilih,
+  diam,
   onPilih,
 }: {
   tiang: TiangPeta[];
@@ -23,6 +24,7 @@ export default memo(function LapisanSection({
   perId: Map<string, SectionPeta>;
   daftar: SectionPeta[];
   pilih: string | null;
+  diam: boolean;
   onPilih: (id: string) => void;
 }) {
   // Section tiap titik (koordinat + penyulang) — untuk menemukan section INDUK
@@ -53,6 +55,7 @@ export default memo(function LapisanSection({
           <Polyline
             key={`sc-${t.id}-${t.kelompok}`}
             positions={[[t.indukLat, t.indukLng], [t.lat, t.lng]]}
+            interactive={!diam}
             pathOptions={{ color: s.warna, weight: tebal ? 7 : 4, opacity: pilih && !tebal ? 0.35 : 0.9 }}
             eventHandlers={{ click: () => onPilih(s.id) }}
           />
@@ -64,6 +67,7 @@ export default memo(function LapisanSection({
             key={`sch-${s.id}`}
             center={[s.hulu.lat, s.hulu.lng]}
             radius={8}
+            interactive={!diam}
             pathOptions={{ color: "#fff", weight: 2, fillColor: s.warna, fillOpacity: 1 }}
             eventHandlers={{ click: () => onPilih(s.id) }}
           >

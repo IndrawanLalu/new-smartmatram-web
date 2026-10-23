@@ -1,35 +1,41 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, TriangleAlert, X } from "lucide-react";
+import { Loader2, X } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { km } from "@/app/admin/jtm/_lib/tampilan";
 import type { SectionPeta } from "../_hooks/useSectionPeta";
 import { GARIS, JUDUL_BAGIAN, PANEL } from "../_ui";
 import { Baris } from "./InfoTiang";
+import BarisSegmenSection, { type SegmenDi } from "./BarisSegmenSection";
 
 /**
  * Panel satu section JTM (X2): ringkasan, segmen di dalamnya, segmen yang
- * isinya melewati keypoint (bahan Pecah di X3), dan tiang yang belum masuk
- * segmen mana pun di penyulang ini.
+ * isinya melewati keypoint, dan tiang yang belum masuk segmen mana pun di
+ * penyulang ini. X3: tiap segmen bisa dipecah / digabung / diubah namanya.
  */
 
 const LABEL_HULU: Record<string, string> = { pangkal: "Pangkal penyulang", recloser: "Recloser", lbs: "LBS", lbsm: "LBSM" };
-
-interface SegmenDi { segmen_id: string; segmen_nama: string; jumlah_isi: number }
 
 interface Props {
   s: SectionPeta;
   /** Id tiang anggota section ini. */
   tiangIds: string[];
   onTutup: () => void;
+  boleh: boolean;
+  oleh: string;
+  /** Pecah segmen: panel diganti panel Pecah, titik potong diklik di peta. */
+  onPecah: (s: { id: string; nama: string }) => void;
+  /** Sesudah gabung / ubah nama: segarkan lapisan lain (daftar segmen, section). */
+  onBerubah: () => void;
 }
 
-export default function PanelSection({ s, tiangIds, onTutup }: Props) {
+export default function PanelSection({ s, tiangIds, onTutup, boleh, oleh, onPecah, onBerubah }: Props) {
   const [segmen, setSegmen] = useState<SegmenDi[] | null>(null);
   const [lintas, setLintas] = useState<Set<string>>(new Set());
   const [tanpaSegmen, setTanpaSegmen] = useState<number | null>(null);
   const kunciTiang = tiangIds.length;
+  const [ke, setKe] = useState(0);
 
   useEffect(() => {
     let hidup = true;
@@ -64,7 +70,7 @@ export default function PanelSection({ s, tiangIds, onTutup }: Props) {
     return () => { hidup = false; };
     // tiangIds diwakili jumlahnya + id section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [s.id, kunciTiang]);
+  }, [s.id, kunciTiang, ke]);
 
   return (
     <aside
@@ -100,19 +106,18 @@ export default function PanelSection({ s, tiangIds, onTutup }: Props) {
         ) : segmen.length === 0 ? (
           <p className="text-xs text-gray-500 mt-1">Belum ada segmen.</p>
         ) : (
-          <ul className="mt-1 space-y-1 text-xs">
+          <ul className="mt-1 space-y-2 text-xs">
             {segmen.map((x) => (
-              <li key={x.segmen_id} className="flex gap-2">
-                <span className="flex-1 min-w-0 break-words">
-                  {x.segmen_nama}
-                  {lintas.has(x.segmen_id) && (
-                    <span className="flex items-center gap-1 text-[11px] text-amber-300">
-                      <TriangleAlert size={11} /> isinya juga di section lain — dipecah di tahap berikutnya
-                    </span>
-                  )}
-                </span>
-                <span className="tabular-nums text-gray-400 shrink-0">{x.jumlah_isi} tiang</span>
-              </li>
+              <BarisSegmenSection
+                key={x.segmen_id}
+                x={x}
+                lintas={lintas.has(x.segmen_id)}
+                lain={segmen.filter((y) => y.segmen_id !== x.segmen_id)}
+                boleh={boleh}
+                oleh={oleh}
+                onPecah={() => onPecah({ id: x.segmen_id, nama: x.segmen_nama })}
+                onBerubah={() => { setKe((n) => n + 1); onBerubah(); }}
+              />
             ))}
           </ul>
         )}

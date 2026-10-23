@@ -9,13 +9,15 @@ import type { Terpilih } from "./useObjekPeta";
  * Benda yang diklik di peta dan mode sunting yang sedang menunggu klik
  * berikutnya: geser titik, ganti induk (batang / di penyulang yang menumpang),
  * gabungkan tiang kembar, balik arah JTM, tambah tiang & sambung hilir JTM.
- * Klik ditujukan ke mode yang aktif lebih dulu — geser banyak, koreksi isian,
+ * Klik ditujukan ke mode yang aktif lebih dulu — geser banyak, pecah segmen, koreksi isian,
  * induk tiang yang dipulihkan, gabung, induk, hilir — baru memilih benda.
  */
 
 interface Deps {
   /** Mode geser titik banyak tiang: klik = tambahkan tiang. */
   geserBanyak: { aktif: boolean; pilih: (t: TiangPeta) => void };
+  /** Pecah segmen (Section X3): klik = titik potong. */
+  pecah: { aktif: boolean; pilih: (t: TiangPeta) => void };
   /** Koreksi isian JTM: klik = tiang awal / akhir rentang. */
   koreksi: { aktif: boolean; pilih: (t: TiangPeta) => void };
   /** Pulihkan tiang dibatalkan: klik = induknya (useTiangBatal). */
@@ -24,7 +26,7 @@ interface Deps {
   onTutup: () => void;
 }
 
-export function usePilihObjek({ geserBanyak, koreksi, pulihInduk, onTutup }: Deps) {
+export function usePilihObjek({ geserBanyak, pecah, koreksi, pulihInduk, onTutup }: Deps) {
   const [terpilih, setTerpilih] = useState<Terpilih | null>(null);
   const [geser, setGeser] = useState<{ lat: number; lng: number } | null>(null);
   const [modeInduk, setModeInduk] = useState(false);
@@ -49,6 +51,7 @@ export function usePilihObjek({ geserBanyak, koreksi, pulihInduk, onTutup }: Dep
   // Stabil — `Isi` di peta di-memo, dan ribuan objeknya tidak boleh digambar
   // ulang hanya karena panel berubah.
   const { aktif: geserBanyakAktif, pilih: pilihGeserBanyak } = geserBanyak;
+  const { aktif: pecahAktif, pilih: pilihPecah } = pecah;
   const { aktif: koreksiAktif, pilih: pilihKoreksi } = koreksi;
   const { aktif: pulihAktif, pilih: pilihPulih } = pulihInduk;
   const pilihTiang = useCallback(
@@ -56,6 +59,10 @@ export function usePilihObjek({ geserBanyak, koreksi, pulihInduk, onTutup }: Dep
       if (geser) return;
       if (geserBanyakAktif) {
         pilihGeserBanyak(t);
+        return;
+      }
+      if (pecahAktif) {
+        pilihPecah(t);
         return;
       }
       if (koreksiAktif) {
@@ -95,14 +102,14 @@ export function usePilihObjek({ geserBanyak, koreksi, pulihInduk, onTutup }: Dep
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });
     },
-    [geser, modeInduk, modeGabung, modeHilir, balik, terpilih, geserBanyakAktif, pilihGeserBanyak, koreksiAktif, pilihKoreksi, pulihAktif, pilihPulih, indukPenyulang],
+    [geser, modeInduk, modeGabung, modeHilir, balik, terpilih, geserBanyakAktif, pilihGeserBanyak, pecahAktif, pilihPecah, koreksiAktif, pilihKoreksi, pulihAktif, pilihPulih, indukPenyulang],
   );
   const pilihGardu = useCallback(
     (g: GarduPeta) => {
-      if (geser || modeInduk || modeHilir || balik || geserBanyakAktif || koreksiAktif || pulihAktif) return;
+      if (geser || modeInduk || modeHilir || balik || geserBanyakAktif || pecahAktif || koreksiAktif || pulihAktif) return;
       setTerpilih({ jenis: "gardu", kode: g.kode, ulp: g.ulp, lat: g.lat, lng: g.lng });
     },
-    [geser, modeInduk, modeHilir, balik, geserBanyakAktif, koreksiAktif, pulihAktif],
+    [geser, modeInduk, modeHilir, balik, geserBanyakAktif, pecahAktif, koreksiAktif, pulihAktif],
   );
   const pilihKesehatan = useCallback(
     (g: KesehatanGardu) => {

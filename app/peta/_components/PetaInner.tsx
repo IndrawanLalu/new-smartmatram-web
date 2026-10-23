@@ -26,6 +26,8 @@ import LapisanSimulasi from "./LapisanSimulasi";
 import LapisanKesehatan from "./LapisanKesehatan";
 import LapisanTiangBatal from "./LapisanTiangBatal";
 import LapisanSection from "./LapisanSection";
+import LapisanPecah from "./LapisanPecah";
+import type { PratinjauPecah } from "../_hooks/usePecahSegmen";
 import type { SectionPeta } from "../_hooks/useSectionPeta";
 import type { TiangBatal } from "../_hooks/useTiangBatal";
 import LapisanKoreksi from "./LapisanKoreksi";
@@ -136,8 +138,12 @@ interface Props {
     perId: Map<string, SectionPeta>;
     daftar: SectionPeta[];
     pilih: string | null;
+    /** Tidak menangkap klik (mis. selama Pecah segmen — klik untuk tiang). */
+    diam: boolean;
     onPilih: (id: string) => void;
   } | null;
+  /** Pratinjau Pecah segmen (null = tidak sedang memecah). */
+  pecah: PratinjauPecah | null;
   /** Lapisan "Tiang dibatalkan" (null = padam). */
   batal: { daftar: TiangBatal[]; onPilih: (t: TiangBatal) => void } | null;
 }
@@ -196,7 +202,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, section, batal,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, section, pecah, batal,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -223,9 +229,10 @@ export default function PetaInner({
       {section && (
         <LapisanSection
           tiang={tiang} anggota={section.anggota} perId={section.perId} daftar={section.daftar}
-          pilih={section.pilih} onPilih={section.onPilih}
+          pilih={section.pilih} diam={section.diam} onPilih={section.onPilih}
         />
       )}
+      {pecah && <LapisanPecah hasil={pecah} />}
       {sld && <LapisanSld graf={sld.graf} warna={sld.warna} gardu={sld.gardu} penanda={penanda} label={sld.label} />}
       <PemilihTiang
         pilihan={pilihan}
