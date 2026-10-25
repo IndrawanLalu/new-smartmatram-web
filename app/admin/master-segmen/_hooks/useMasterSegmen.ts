@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
+import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { PratinjauBatalJtm } from "@/app/admin/jtm/_hooks/useDaftarJtm";
 
 /**
@@ -50,6 +51,29 @@ export interface SegmenYatim {
   terakhir_dibatalkan: string | null;
 }
 
+/** Section "rumah" segmen (`segmen_section_utama`, X4). Segmen tanpa tiang tidak punya. */
+export interface SectionSegmen {
+  section_id: string;
+  section_nama: string;
+  section_urutan: number;
+  /** Isinya juga di section lain — melewati keypoint, bahan Pecah di /peta. */
+  lintas: boolean;
+}
+
+/** Ringkasan satu section (`section_rekap`, X4). */
+export interface RekapSection {
+  section_id: string;
+  penyulang: string;
+  ulp: string;
+  nama: string;
+  jenis_hulu: string;
+  urutan: number;
+  jumlah_tiang: number;
+  panjang_km: number;
+  jumlah_segmen: number;
+  tiang_tanpa_segmen: number;
+}
+
 export interface BarisImpor {
   awal: string;
   akhir: string;
@@ -76,16 +100,46 @@ export function useMasterSegmen() {
   const [penyulang, setPenyulang] = useState<{ penyulang: string; ulp: string | null }[]>([]);
   const [yatim, setYatim] = useState<Map<string, SegmenYatim>>(new Map());
   const [loading, setLoading] = useState(true);
+  const [sectionDari, setSectionDari] = useState<Map<string, SectionSegmen>>(new Map());
+  const [rekapSection, setRekapSection] = useState<RekapSection[] | null>(null);
+
+  const muatSection = useCallback(async () => {
+    try {
+      // Section yang kotor (tiang berubah) disusun ulang dulu, sama dengan /peta.
+      const { error: eSusun } = await supabaseBrowser.rpc("segarkan_section_kotor", { p_ulp: null, p_batas: 50 });
+      if (eSusun) throw new Error(eSusun.message);
+      const [utama, rekap] = await Promise.all([
+        fetchAllRows<SectionSegmen & { segmen_id: string }>(() =>
+          supabaseBrowser
+            .from("segmen_section_utama")
+            .select("segmen_id,section_id,section_nama,section_urutan,lintas")
+            .order("segmen_id"),
+        ),
+        fetchAllRows<RekapSection>(() =>
+          supabaseBrowser
+            .from("section_rekap")
+            .select("section_id,penyulang,ulp,nama,jenis_hulu,urutan,jumlah_tiang,panjang_km,jumlah_segmen,tiang_tanpa_segmen")
+            .order("section_id"),
+        ),
+      ]);
+      setSectionDari(new Map(utama.map(({ segmen_id, ...r }) => [segmen_id, r])));
+      setRekapSection(rekap.map((r) => ({ ...r, panjang_km: Number(r.panjang_km) })));
+    } catch {
+      setRekapSection(null);
+    }
+  }, []);
 
   const muat = useCallback(async () => {
     try {
-      const { data, error } = await supabaseBrowser
-        .from("master_segmen")
-        .select(KOLOM)
-        .order("penyulang")
-        .order("nama");
-      if (error) throw new Error(error.message);
-      setBaris((data ?? []) as unknown as SegmenBaris[]);
+      // Berhalaman: 1.441 segmen (25 Okt 2026) — dulu terpotong diam-diam di 1.000.
+      const data = await fetchAllRows<SegmenBaris>(() =>
+        supabaseBrowser.from("master_segmen").select(KOLOM).order("segmen_id"),
+      );
+      setBaris(data);
+
+      // Section (X4, `jtm-section-daftar.sql`). Belum dijalankan = tampilan
+      // Per section disembunyikan, bukan halaman yang gagal dimuat.
+      void muatSection();
 
       // View-nya lahir di `jtm-batal-hp.sql`. Belum dijalankan = tidak ada
       // penanda yatim, bukan halaman yang gagal dimuat.
@@ -114,7 +168,7 @@ export function useMasterSegmen() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, muatSection]);
 
   useEffect(() => {
     void muat();
@@ -312,7 +366,7 @@ export function useMasterSegmen() {
   );
 
   return {
-    baris, penyulang, daftarUlp, loading, yatim, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik,
+    baris, penyulang, daftarUlp, loading, yatim, sectionDari, rekapSection, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik,
     tutupSegmen, pratinjauHapus, hapusSegmen,
   };
 }

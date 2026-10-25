@@ -19,7 +19,7 @@ panel Section → tiap segmen: **Pecah** (klik tiang potong di peta, pratinjau b
 Potongan pangkal = segmen lama (id, inspeksi & WO tetap); tiang potong ikut di kedua sisi.
 Ditolak bila segmen sedang diinspeksi (Dijadwalkan/Dalam Proses) atau masih dirintis.
 Penjaga satu section HANYA di pecah/gabung — rintisan HP tidak ditolak (laporan lintas tetap).
-X4 berikutnya.
+**X4 (web) DIBANGUN 25 Okt** — SQL `scripts/jtm-section-daftar.sql` (section.urutan hulu→hilir, view `segmen_section_utama` satu section per segmen + tanda lintas, view `section_rekap`; 8 uji PGlite) + Master Segmen → tombol **Per section** (Penyulang → Section → Segmen, rekap di kepala section, kelompok "Belum dititik"). HP DITUNDA — user: belum ada rencana untuk HP.
 
 Catatan rancangan X1: pemilik peralatan di tiang bersama dibaca langsung (pilihan admin,
 kalau belum pemilik tiang) — view `jtm_pemilik_penanda` dihitung penuh ±1,5 dtk tiap
