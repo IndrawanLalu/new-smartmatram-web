@@ -109,7 +109,7 @@ BEGIN
   GROUP BY t.id, kp.induk_id, kp.kode, t.induk_id, t.lat, t.lng, t.kode, t.penanda, t.nama_peralatan;
 
   -- Induk langsung (tanpa melompati celah) — dipakai menilai bersebelahan.
-  UPDATE _sg_simpul SET induk_langsung = induk;
+  UPDATE _sg_simpul SET induk_langsung = induk WHERE true;   -- WHERE wajib: Supabase menolak UPDATE tanpa WHERE (safeupdate)
   -- Induk di luar himpunan → naik sampai leluhur yang ada di himpunan.
   FOR r IN SELECT s.id, s.induk FROM _sg_simpul s
            WHERE s.induk IS NOT NULL AND NOT EXISTS (SELECT 1 FROM _sg_simpul x WHERE x.id = s.induk) LOOP
@@ -280,10 +280,12 @@ BEGIN
   ALTER TABLE _sg_bagian ADD COLUMN nama_usul TEXT, ADD COLUMN nama TEXT;
   UPDATE _sg_bagian SET nama_usul = CASE WHEN bagian = 0 THEN s.nama ELSE
     public._segmen_label_tiang(akar_penanda, akar_alat, akar_kode) || ' - ' ||
-    COALESCE(public._segmen_label_tiang(ujung_penanda, ujung_alat, ujung_kode), 'UJUNG') END;
+    COALESCE(public._segmen_label_tiang(ujung_penanda, ujung_alat, ujung_kode), 'UJUNG') END
+  WHERE true;   -- WHERE wajib: Supabase menolak UPDATE tanpa WHERE (safeupdate)
   UPDATE _sg_bagian SET nama = COALESCE(
     NULLIF(public.rapikan_nama_segmen(p_nama ->> CASE WHEN bagian = 0 THEN 'asal' ELSE akar_id::text END), ''),
-    public.rapikan_nama_segmen(nama_usul));
+    public.rapikan_nama_segmen(nama_usul))
+  WHERE true;   -- WHERE wajib: Supabase menolak UPDATE tanpa WHERE (safeupdate)
 
   -- Penjaga.
   SELECT galat || COALESCE(array_agg(m ORDER BY m), ARRAY[]::TEXT[]) INTO galat FROM (
