@@ -114,6 +114,14 @@ export default function DetailPemeliharaanModal({
           {sibuk ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Verifikasi
         </button>
       </>
+    ) : b.sumber === "web" && b.statusDb !== "Dibatalkan" ? (
+      // Catatan admin langsung Diverifikasi; salah input tetap bisa dibatalkan.
+      <>
+        <button onClick={() => setBatal(true)} className={BTN_GHOST} disabled={sibuk}>
+          <Ban size={14} /> Salah input
+        </button>
+        <button onClick={onTutup} className={BTN_GHOST}>Tutup</button>
+      </>
     ) : (
       <button onClick={onTutup} className={`${BTN_GHOST} ml-auto`}>Tutup</button>
     );
@@ -171,12 +179,18 @@ export default function DetailPemeliharaanModal({
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Foto url={b.fotoSebelum} lain={b.fotoSebelumLain} label="Sebelum" />
+              {b.fotoProses && <Foto url={b.fotoProses} lain={[]} label="Proses" />}
               <Foto url={b.fotoSesudah} lain={b.fotoSesudahLain} label="Sesudah" />
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               <Nilai label="Kategori">{b.kategoriLabel ?? b.kategori}</Nilai>
-              <Nilai label="Petugas">{b.petugasNama ?? "—"}</Nilai>
+              <Nilai label={b.sumber === "web" ? "Tim pelaksana" : "Petugas"}>
+                {b.pelaksana ?? b.petugasNama ?? "—"}
+                {b.sumber === "web" && (
+                  <span className="block text-[11px] font-normal text-ink-muted">dicatat admin{b.diinputOleh ? ` · ${b.diinputOleh}` : ""}</span>
+                )}
+              </Nilai>
               <Nilai label="Tanggal">{tanggal(b.tgl)}</Nilai>
               <Nilai label="WO">
                 <span className="font-normal">{b.woLabel ?? "-"}</span>

@@ -119,7 +119,10 @@ export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
                     <Mini url={b.fotoSesudah} label="sesudah" />
                   </div>
                 </td>
-                <td className={`${TD} text-xs text-ink-soft`}>{b.petugasNama ?? "—"}</td>
+                <td className={`${TD} text-xs text-ink-soft`}>
+                  {b.petugasNama ?? "—"}
+                  {b.sumber === "web" && <span className="block text-[10px] text-ink-muted">dicatat admin</span>}
+                </td>
                 <td className={TD}>
                   <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA_STATUS[b.status]}`}>
                     {b.status}

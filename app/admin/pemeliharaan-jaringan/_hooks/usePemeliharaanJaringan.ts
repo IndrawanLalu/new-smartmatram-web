@@ -4,14 +4,16 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { perkecilFoto } from "@/lib/gambarSurvey/latar";
 
 /**
  * Pemeliharaan Jaringan JTM/JTR — daftar, verifikasi, koreksi, dan acuan
  * kategorinya. Pola tampilannya sama dengan Optimasi Trafo (tabel + modal).
  *
- * Pengisiannya di HP; web memeriksa. Tidak ada "tambah catatan" di sini —
- * pekerjaan ini dibuktikan oleh foto sebelum-sesudah dan titiknya, dan ketiganya
- * cuma berarti kalau diambil di tempat kejadian.
+ * Pengisiannya di HP; web memeriksa. Pengecualian (26 Okt 2026): pekerjaan
+ * tim di luar aplikasi (PDKB, Yantek, kontraktor) dicatat admin lewat
+ * `inputAdmin` — foto sebelum-sesudah tetap wajib, langsung Diverifikasi,
+ * ditandai sumber = web (pemeliharaan-jaringan-input-admin.sql).
  */
 
 export type JenisJaringan = "JTM" | "JTR";
@@ -44,6 +46,12 @@ export interface BarisPemeliharaan {
   /** Foto tambahan (paling banyak 2 per sisi) — `scripts/foto-temuan-banyak.sql`. */
   fotoSebelumLain: string[];
   fotoSesudahLain: string[];
+  /** Foto proses pekerjaan, opsional (26 Okt 2026). */
+  fotoProses: string | null;
+  /** "web" = dicatat admin untuk tim di luar aplikasi; pelaksana = nama timnya. */
+  sumber: "hp" | "web";
+  pelaksana: string | null;
+  diinputOleh: string | null;
   statusDb: string;
   status: StatusTabel;
   petugasNama: string | null;
@@ -82,6 +90,24 @@ export interface KoreksiPemeliharaan {
 
 export type SaringStatus = "SEMUA" | StatusTabel;
 
+/** Isian "Catat pekerjaan tim lain" — foto berupa berkas, diunggah saat simpan. */
+export interface InputAdmin {
+  jenis: JenisJaringan;
+  penyulang: string;
+  /** Satu baris tabel per kategori; foto & isian lain dipakai bersama
+   *  (pemeliharaan-jaringan-input-banyak.sql, 26 Okt 2026). */
+  item: { kategori: string; pekerjaan: string }[];
+  pelaksana: string;
+  tgl: string;
+  alamat: string;
+  lat: number | null;
+  lng: number | null;
+  catatan: string;
+  fotoSebelum: File;
+  fotoSesudah: File;
+  fotoProses: File | null;
+}
+
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
 export const BULAN = [
@@ -118,6 +144,10 @@ export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     fotoSesudah: (r.foto_sesudah_url as string) ?? "",
     fotoSebelumLain: (r.foto_sebelum_lain as string[] | null) ?? [],
     fotoSesudahLain: (r.foto_sesudah_lain as string[] | null) ?? [],
+    fotoProses: teks(r.foto_proses_url),
+    sumber: r.sumber === "web" ? "web" : "hp",
+    pelaksana: teks(r.pelaksana),
+    diinputOleh: teks(r.diinput_oleh),
     statusDb,
     status: STATUS_DB[statusDb] ?? "Menunggu verifikasi",
     petugasNama: teks(r.petugas_nama),
@@ -290,6 +320,45 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
+  /** Catat pekerjaan tim di luar aplikasi. Foto diunggah dulu (folder sama
+   *  dengan kiriman HP), baru RPC; id dibuat di sini supaya klik ganda tidak dobel. */
+  const inputAdmin = async (v: InputAdmin, oleh: string) => {
+    const id = crypto.randomUUID();
+    const unggah = async (f: File, nama: string) => {
+      const jalur = `harjar/${id}/${Date.now()}-${nama}.jpg`;
+      const { error } = await supabaseBrowser.storage
+        .from("inspections")
+        .upload(jalur, await perkecilFoto(f, 1600), { contentType: "image/jpeg" });
+      if (error) throw new Error(`Foto ${nama} gagal diunggah: ${error.message}`);
+      return supabaseBrowser.storage.from("inspections").getPublicUrl(jalur).data.publicUrl;
+    };
+    const [sebelum, sesudah, proses] = await Promise.all([
+      unggah(v.fotoSebelum, "sebelum"),
+      unggah(v.fotoSesudah, "sesudah"),
+      v.fotoProses ? unggah(v.fotoProses, "proses") : Promise.resolve(null),
+    ]);
+    const { error } = await supabaseBrowser.rpc("input_pemeliharaan_jaringan_admin", {
+      p_isi: {
+        id,
+        jenis: v.jenis,
+        penyulang: v.penyulang,
+        item: v.item,
+        pelaksana: v.pelaksana,
+        tgl: v.tgl,
+        alamat: v.alamat || null,
+        lat: v.lat,
+        lng: v.lng,
+        catatan: v.catatan || null,
+        foto_sebelum_url: sebelum,
+        foto_sesudah_url: sesudah,
+        foto_proses_url: proses,
+        oleh,
+      },
+    });
+    if (error) throw new Error(error.message);
+    muat();
+  };
+
   const simpanKategori = async (k: KategoriRef, baru: boolean) => {
     const isi = { ...k, updated_at: new Date().toISOString() };
     const { error } = baru
@@ -303,6 +372,6 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     semua, baris, hitung, kategori, loading, galat,
     ulp, setUlp, daftarUlp, jenis, setJenis, status, setStatus, cari, setCari,
     bulan, setBulan, tahun, setTahun, daftarTahun,
-    muat, verifikasi, batalkan, kembalikan, koreksi, simpanKategori,
+    muat, verifikasi, batalkan, kembalikan, koreksi, inputAdmin, simpanKategori,
   };
 }

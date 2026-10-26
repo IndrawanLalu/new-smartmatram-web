@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
+import { ClipboardList, ClipboardPlus, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import { usePemeliharaanJaringan, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
@@ -10,6 +10,7 @@ import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardPemeliharaan from "./_components/DashboardPemeliharaan";
 import PengaturanKategori from "./_components/PengaturanKategori";
 import TugasHarjar from "./_components/TugasHarjar";
+import InputPekerjaanModal from "./_components/InputPekerjaanModal";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import TabPil from "@/app/admin/_kit/TabPil";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
@@ -25,10 +26,10 @@ import { nadaStatus } from "@/lib/statusUi";
  * teknisaplikasi.md butir 7): Daftar → Dashboard → Pengaturan. Status
  * verifikasi adalah CHIP penyaring di daftar, bukan tab tersendiri.
  *
- * DICATAT DARI HP, DIPERIKSA DI SINI. Tidak ada tombol "tambah catatan" di
- * web: bukti pekerjaan ini adalah foto sebelum-sesudah dan titiknya, dan
- * ketiganya cuma berarti kalau diambil di tempat kejadian. Yang dibuat di web
- * hanya PERINTAH kerjanya — tab "Tugas" (6 Okt 2026).
+ * DICATAT DARI HP, DIPERIKSA DI SINI. Yang dibuat di web: PERINTAH kerjanya
+ * (tab "Tugas", 6 Okt 2026) dan catatan pekerjaan tim yang TIDAK memakai
+ * aplikasi — PDKB, Yantek, kontraktor ("Catat pekerjaan tim lain", 26 Okt
+ * 2026; foto sebelum-sesudah tetap wajib, ditandai "dicatat admin").
  */
 
 const TABS = [
@@ -47,6 +48,7 @@ export default function PemeliharaanJaringanPage() {
   const [tab, setTab] = useState<TabKey>("daftar");
   const [idDetail, setIdDetail] = useState<string | null>(null);
   const [mengunduh, setMengunduh] = useState(false);
+  const [catat, setCatat] = useState(false);
   const o = usePemeliharaanJaringan(user);
   const oleh = user.name ?? user.email ?? "";
 
@@ -116,10 +118,17 @@ export default function PemeliharaanJaringanPage() {
                 onPilih={o.setStatus}
               />
               <button
+                onClick={() => setCatat(true)}
+                className="ml-auto inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-line bg-white text-[13px] font-semibold text-ink hover:border-brand-400 hover:text-brand-700 transition-colors"
+                title="Pekerjaan tim yang tidak memakai aplikasi (PDKB, Yantek, kontraktor)"
+              >
+                <ClipboardPlus size={13} /> Catat pekerjaan tim lain
+              </button>
+              <button
                 onClick={() => void unduh()}
                 disabled={o.loading || !!o.galat || o.baris.length === 0 || mengunduh}
                 title="Mengunduh baris yang sedang tampil di tabel"
-                className="ml-auto inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-600 text-white text-[13px] font-semibold shadow-sm hover:bg-brand-700 transition-colors disabled:opacity-40"
+                className="inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-600 text-white text-[13px] font-semibold shadow-sm hover:bg-brand-700 transition-colors disabled:opacity-40"
               >
                 {mengunduh ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
                 Download XLSX
@@ -150,6 +159,15 @@ export default function PemeliharaanJaringanPage() {
             <TabelPemeliharaan baris={o.baris} loading={o.loading} onDetail={(b) => setIdDetail(b.id)} />
           )}
         </>
+      )}
+
+      {catat && (
+        <InputPekerjaanModal
+          ulp={o.ulp}
+          kategori={o.kategori}
+          onTutup={() => setCatat(false)}
+          onSimpan={(v) => o.inputAdmin(v, oleh)}
+        />
       )}
 
       {detail && (
