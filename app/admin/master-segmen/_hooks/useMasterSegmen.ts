@@ -72,6 +72,33 @@ export interface RekapSection {
   panjang_km: number;
   jumlah_segmen: number;
   tiang_tanpa_segmen: number;
+  /** Gardu di tiang section (master gardu, `jtm-section-gardu.sql`). */
+  jumlah_gardu: number;
+  gardu_kva: number;
+}
+
+/** Gardu & kVA per segmen (`segmen_gardu`). */
+export interface GarduSegmen {
+  jumlah_gardu: number;
+  gardu_kva: number;
+  gardu: string;
+}
+
+/** Gardu master penyulang yang belum di segmen mana pun (`gardu_belum_segmen`). */
+export interface GarduBelum {
+  kode: string;
+  nama: string | null;
+  daya: number | null;
+  penyulang: string;
+  ulp: string | null;
+  /** Tiangnya sudah di pohon penyulang — tinggal dimasukkan ke segmen. */
+  di_section: boolean;
+  /** Rincian (`jtm-gardu-belum-rinci.sql`); tidak ada = SQL itu belum dijalankan. */
+  alamat?: string | null;
+  lat?: number | null;
+  lng?: number | null;
+  /** Tercatat di tiang penyulang LAIN — feeder master mungkin salah. */
+  di_tiang_penyulang?: string | null;
 }
 
 export interface BarisImpor {
@@ -102,6 +129,8 @@ export function useMasterSegmen() {
   const [loading, setLoading] = useState(true);
   const [sectionDari, setSectionDari] = useState<Map<string, SectionSegmen>>(new Map());
   const [rekapSection, setRekapSection] = useState<RekapSection[] | null>(null);
+  const [garduSegmen, setGarduSegmen] = useState<Map<string, GarduSegmen>>(new Map());
+  const [garduBelum, setGarduBelum] = useState<GarduBelum[]>([]);
 
   const muatSection = useCallback(async () => {
     try {
@@ -118,12 +147,32 @@ export function useMasterSegmen() {
         fetchAllRows<RekapSection>(() =>
           supabaseBrowser
             .from("section_rekap")
-            .select("section_id,penyulang,ulp,nama,jenis_hulu,urutan,jumlah_tiang,panjang_km,jumlah_segmen,tiang_tanpa_segmen")
+            .select("section_id,penyulang,ulp,nama,jenis_hulu,urutan,jumlah_tiang,panjang_km,jumlah_segmen,tiang_tanpa_segmen,jumlah_gardu,gardu_kva")
             .order("section_id"),
         ),
       ]);
+      // Gardu (`jtm-section-gardu.sql`) — belum dijalankan = kolom gardu kosong saja.
+      const [gs, gb] = await Promise.all([
+        fetchAllRows<GarduSegmen & { segmen_id: string }>(() =>
+          supabaseBrowser.from("segmen_gardu").select("segmen_id,jumlah_gardu,gardu_kva,gardu").order("segmen_id"),
+        ).catch(() => []),
+        fetchAllRows<GarduBelum>(() =>
+          supabaseBrowser
+            .from("gardu_belum_segmen")
+            .select("kode,nama,daya,penyulang,ulp,di_section,alamat,lat,lng,di_tiang_penyulang")
+            .order("kode"),
+        ).catch(() =>
+          fetchAllRows<GarduBelum>(() =>
+            supabaseBrowser.from("gardu_belum_segmen").select("kode,nama,daya,penyulang,ulp,di_section").order("kode"),
+          ).catch(() => []),
+        ),
+      ]);
+      setGarduSegmen(new Map(gs.map(({ segmen_id, ...r }) => [segmen_id, { ...r, gardu_kva: Number(r.gardu_kva) }])));
+      setGarduBelum(gb.map((g) => ({ ...g, daya: g.daya === null ? null : Number(g.daya) })));
       setSectionDari(new Map(utama.map(({ segmen_id, ...r }) => [segmen_id, r])));
-      setRekapSection(rekap.map((r) => ({ ...r, panjang_km: Number(r.panjang_km) })));
+      setRekapSection(rekap.map((r) => ({
+        ...r, panjang_km: Number(r.panjang_km), jumlah_gardu: Number(r.jumlah_gardu ?? 0), gardu_kva: Number(r.gardu_kva ?? 0),
+      })));
     } catch {
       setRekapSection(null);
     }
@@ -366,7 +415,7 @@ export function useMasterSegmen() {
   );
 
   return {
-    baris, penyulang, daftarUlp, loading, yatim, sectionDari, rekapSection, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik,
+    baris, penyulang, daftarUlp, loading, yatim, sectionDari, rekapSection, garduSegmen, garduBelum, muat, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik,
     tutupSegmen, pratinjauHapus, hapusSegmen,
   };
 }

@@ -2,6 +2,9 @@
 -- X3 — Pecah / Gabung segmen di dalam section + nama segmen bebas (23 Okt 2026)
 -- Rencana: rencana-section-segmen.md. Jalankan SESUDAH jtm-section.sql.
 -- Idempoten (aman diulang).
+-- ⚠ 25 Okt: pecah_segmen & gabung_segmen_section versi TERBARU (mencatat
+--   segmen_warisan) ada di jtm-pecah-riwayat.sql. Kalau file ini dijalankan
+--   ulang, jalankan jtm-pecah-riwayat.sql lagi sesudahnya.
 --
 --   • segmen.nama_bebas — nama yang DIKETIK admin (pecah, gabung, ubah nama)
 --     tidak lagi ditimpa `segmen_susun_nama` saat titik ujungnya berubah.

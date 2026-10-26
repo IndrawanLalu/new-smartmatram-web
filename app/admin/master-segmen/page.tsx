@@ -31,7 +31,7 @@ export default function MasterSegmenPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
   const {
-    baris, penyulang, daftarUlp, loading, yatim, sectionDari, rekapSection, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik, tutupSegmen,
+    baris, penyulang, daftarUlp, loading, yatim, sectionDari, rekapSection, garduSegmen, garduBelum, pratinjauImpor, impor, ubahPanjang, ubahNama, ubahTitik, tutupSegmen,
     pratinjauHapus, hapusSegmen,
   } = useMasterSegmen();
 
@@ -51,6 +51,8 @@ export default function MasterSegmenPage() {
           yatim={yatim}
           sectionDari={sectionDari}
           rekapSection={rekapSection}
+          garduSegmen={garduSegmen}
+          garduBelum={garduBelum}
           user={user}
           onUbahPanjang={(id, km) => ubahPanjang(id, km, oleh)}
           onUbahNama={(id, nama) => ubahNama(id, nama, oleh)}

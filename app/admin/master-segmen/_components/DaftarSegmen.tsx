@@ -1,13 +1,13 @@
 "use client";
 
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, MapPinned, Pencil, Radio, Trash2, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import type { PratinjauBatalJtm } from "@/app/admin/jtm/_hooks/useDaftarJtm";
-import type { RekapSection, SectionSegmen, SegmenBaris, SegmenYatim } from "../_hooks/useMasterSegmen";
+import type { GarduBelum, GarduSegmen, RekapSection, SectionSegmen, SegmenBaris, SegmenYatim } from "../_hooks/useMasterSegmen";
 import { kelompokkanSection } from "../_lib/kelompokSection";
-import { KepalaPenyulang, KepalaSectionBaris } from "./KepalaSection";
+import TabelSection from "./TabelSection";
 import UbahTitikSegmen from "./UbahTitikSegmen";
 import HapusSegmenYatim from "./HapusSegmenYatim";
 
@@ -19,8 +19,8 @@ import HapusSegmenYatim from "./HapusSegmenYatim";
  * diingat-ingat orang. Yang belum pernah diinspeksi sama sekali naik paling
  * atas — bukan turun ke bawah sebagai data kosong.
  *
- * "Per section" (X4) mengelompokkan Penyulang → Section → Segmen dengan rekap
- * tiap section; urutan umur tetap berlaku di dalam tiap section.
+ * "Per section" (X4) = tabel bertingkat Penyulang → Section → Segmen dengan
+ * rekap tiap baris (TabelSection), seperti Rekap Data Master Penyulang.
  */
 
 const LABEL_SUMBER: Record<string, { teks: string; kelas: string }> = {
@@ -44,6 +44,8 @@ export default function DaftarSegmen({
   yatim,
   sectionDari,
   rekapSection,
+  garduSegmen,
+  garduBelum,
   user,
   onUbahPanjang,
   onUbahNama,
@@ -59,6 +61,8 @@ export default function DaftarSegmen({
   sectionDari: Map<string, SectionSegmen>;
   /** null = SQL section belum terpasang — tampilan Per section disembunyikan. */
   rekapSection: RekapSection[] | null;
+  garduSegmen: Map<string, GarduSegmen>;
+  garduBelum: GarduBelum[];
   user: CurrentUser;
   onUbahPanjang: (segmenId: string, km: number | null) => Promise<unknown>;
   onUbahNama: (segmenId: string, nama: string) => Promise<boolean>;
@@ -190,10 +194,11 @@ export default function DaftarSegmen({
         </div>
       </div>
 
+      {kelompok ? (
+        <TabelSection kelompok={kelompok} sectionDari={sectionDari} garduSegmen={garduSegmen} garduBelum={garduBelum} />
+      ) : (
       <div className={`${CARD} p-5`}>
-        <p className={EYEBROW}>
-          {kelompok ? "Penyulang → section (hulu ke hilir) → segmen" : "Paling lama tidak diinspeksi, di atas"}
-        </p>
+        <p className={EYEBROW}>Paling lama tidak diinspeksi, di atas</p>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full text-sm min-w-[860px]">
             <thead className="kepala-kit">
@@ -208,30 +213,7 @@ export default function DaftarSegmen({
               </tr>
             </thead>
             <tbody>
-              {kelompok?.map((p) => (
-                <Fragment key={`${p.penyulang}|${p.ulp}`}>
-                  <KepalaPenyulang p={p} />
-                  {p.bagian.map((k) => (
-                    <Fragment key={k.rekap?.section_id ?? "belum"}>
-                      <KepalaSectionBaris k={k} />
-                      {k.baris.map((b) => (
-                        <Baris
-                          key={b.segmen_id}
-                          b={b}
-                          yatim={yatim.get(b.segmen_id)}
-                          lintas={sectionDari.get(b.segmen_id)?.lintas ?? false}
-                          onUbahPanjang={onUbahPanjang}
-                          onUbahNama={onUbahNama}
-                          onUbahTitik={onUbahTitik}
-                          onTutupSegmen={onTutupSegmen}
-                          onHapus={() => setHapus(b)}
-                        />
-                      ))}
-                    </Fragment>
-                  ))}
-                </Fragment>
-              ))}
-              {!kelompok && tampil.map((b) => (
+              {tampil.map((b) => (
                 <Baris
                   key={b.segmen_id}
                   b={b}
@@ -270,6 +252,7 @@ export default function DaftarSegmen({
           dirabas”, dan itu belum bisa dipertanggungjawabkan.
         </p>
       </div>
+      )}
     </div>
   );
 }
