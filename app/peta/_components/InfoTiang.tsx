@@ -41,8 +41,9 @@ interface Props {
   onTambahTiang: () => void;
   /** Sambung hilir: tiang yang diklik berikutnya menyambung dari tiang ini. */
   onSambungHilir: () => void;
-  /** Rantai induk terbalik (salah pilih pangkal): tiang ini = pangkal yang salah. */
-  onBalikArah: () => void;
+  /** Rantai induk terbalik (salah pilih pangkal): tiang ini = pangkal yang salah.
+   *  `penyulang` = penyulang yang menumpang (rantai induk khususnya); null = batang. */
+  onBalikArah: (penyulang: string | null) => void;
   /** Titik pertemuan: pilih induk tiang ini di penyulang yang menumpang. */
   onIndukPenyulang: (penyulang: string) => void;
   onPercabangan: (nyala: boolean) => Promise<boolean>;
@@ -115,7 +116,12 @@ export default function InfoTiang({
             nilai={t.nama.map((n) => `${n.kode} (${n.penyulang}${n.utama ? "" : ", menumpang"})`).join(" · ")}
           />
         )}
-        <Baris label="Induk" nilai={t.induk ?? "pangkal"} />
+        {/* Tiang yang ditumpangi: induk ini milik batang pemiliknya, bukan
+            penyulang yang menumpang — bisa berlawanan arah (MENINTING/KARANG UJUNG di AMPENAN). */}
+        <Baris
+          label={!jtr && t.nama.some((n) => !n.utama) ? `Induk di ${t.penyulang} (pemilik)` : "Induk"}
+          nilai={t.induk ?? "pangkal"}
+        />
         {/* Penyulang yang menumpang: induknya di penyulang itu. Titik pertemuan
             dua penyulang (LBSM tie) didatangi tiap penyulang dari arah lain. */}
         {!jtr &&
@@ -231,15 +237,18 @@ export default function InfoTiang({
           {!jtr && !tanpaGantiInduk && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
           {!jtr && !tanpaGantiInduk && <button onClick={onSambungHilir} className={TOMBOL_PANEL}><Link2 size={13} /> Sambung hilir</button>}
           {!jtr && !tanpaGantiInduk && <button onClick={onTambahTiang} className={TOMBOL_PANEL}><Plus size={13} /> Tambah tiang</button>}
-          {!jtr && !tanpaGantiInduk && <button onClick={onBalikArah} className={TOMBOL_PANEL}><ArrowDownUp size={13} /> Balik arah</button>}
+          {!jtr && !tanpaGantiInduk && <button onClick={() => onBalikArah(null)} className={TOMBOL_PANEL}><ArrowDownUp size={13} /> Balik arah</button>}
           {!jtr && !tanpaGantiInduk &&
             t.nama
               .filter((n) => !n.utama)
-              .map((n) => (
-                <button key={n.penyulang} onClick={() => onIndukPenyulang(n.penyulang)} className={TOMBOL_PANEL}>
+              .flatMap((n) => [
+                <button key={`i-${n.penyulang}`} onClick={() => onIndukPenyulang(n.penyulang)} className={TOMBOL_PANEL}>
                   <Waypoints size={13} /> Induk di {n.penyulang}
-                </button>
-              ))}
+                </button>,
+                <button key={`b-${n.penyulang}`} onClick={() => onBalikArah(n.penyulang)} className={TOMBOL_PANEL}>
+                  <ArrowDownUp size={13} /> Balik arah di {n.penyulang}
+                </button>,
+              ])}
           {!jtr && (
             <button onClick={() => void onPercabangan(!t.percabangan)} className={TOMBOL_PANEL}>
               <GitBranch size={13} /> {t.percabangan ? "Lepas percabangan" : "Tandai percabangan"}

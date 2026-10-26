@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { jarakMeter } from "@/lib/geo";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 
 /**
@@ -18,7 +19,15 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
  *
  * Datanya kecil (hanya tiang yang induk penyulangnya diatur), jadi dibaca
  * sekali untuk semua ULP, bukan per layar.
+ *
+ * Induk batang yang JAUH (> JARAK_JANGGAL_M) bukan tiang yang dilompati,
+ * melainkan sambungan batang pemiliknya yang salah (26 Okt 2026: AMPENAN
+ * L003 → KJG-054, 861 m, muncul sebagai "?" di KARANG UJUNG & MENINTING).
+ * Itu ditandai di lapisan PEMILIKNYA (PetaInner), bukan di penyulang yang menumpang.
  */
+
+/** Gawang JTM lebih panjang dari ini hampir pasti salah sambung (26 Okt 2026: hanya 5 dari ±10.500). */
+export const JARAK_JANGGAL_M = 300;
 
 export interface IndukLoncat {
   /** Kode tiang di penyulang itu, induk yang dipakai sekarang, dan tiang yang dilompati. */
@@ -28,6 +37,7 @@ export interface IndukLoncat {
 }
 
 interface BarisKp { tiang_id: string; penyulang: string; kode: string; induk_id: string | null }
+interface Titik { id: string; induk_id: string | null; lat: number; lng: number }
 
 const kunci = (tiangId: string, penyulang: string) => `${tiangId}|${penyulang.toUpperCase()}`;
 
@@ -41,10 +51,12 @@ async function baca(): Promise<Map<string, IndukLoncat>> {
 
   const { data: batang } = await supabaseBrowser
     .from("tiang")
-    .select("id,induk_id")
+    .select("id,induk_id,lat,lng")
     .in("id", [...new Set(kp.map((r) => r.tiang_id))])
     .eq("status_hidup", "aktif");
-  const indukBatang = new Map(((batang ?? []) as { id: string; induk_id: string | null }[]).map((t) => [t.id, t.induk_id]));
+  const barisBatang = (batang ?? []) as Titik[];
+  const indukBatang = new Map(barisBatang.map((t) => [t.id, t.induk_id]));
+  const letak = new Map(barisBatang.map((t) => [t.id, t]));
 
   const calon = kp.filter((r) => {
     const b = indukBatang.get(r.tiang_id);
@@ -56,17 +68,23 @@ async function baca(): Promise<Map<string, IndukLoncat>> {
   // menjawab apakah induk batang anggota penyulang yang sama, dan dari mana
   // induk batang itu menyambung di penyulang itu.
   const ids = [...new Set(calon.flatMap((r) => [r.induk_id!, indukBatang.get(r.tiang_id)!]))];
-  const { data: anggota } = await supabaseBrowser
-    .from("tiang_kode_penyulang")
-    .select("tiang_id,penyulang,kode,induk_id")
-    .in("tiang_id", ids);
+  const [{ data: anggota }, { data: letakInduk }] = await Promise.all([
+    supabaseBrowser.from("tiang_kode_penyulang").select("tiang_id,penyulang,kode,induk_id").in("tiang_id", ids),
+    supabaseBrowser.from("tiang").select("id,induk_id,lat,lng").in("id", ids),
+  ]);
+  for (const t of (letakInduk ?? []) as Titik[]) letak.set(t.id, t);
+  const dekat = (a: string, b: string) => {
+    const x = letak.get(a);
+    const y = letak.get(b);
+    return !!x && !!y && jarakMeter(Number(x.lat), Number(x.lng), Number(y.lat), Number(y.lng)) <= JARAK_JANGGAL_M;
+  };
   const baris = (anggota ?? []) as BarisKp[];
   const kodeDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.kode]));
   const indukDi = new Map(baris.map((a) => [kunci(a.tiang_id, a.penyulang), a.induk_id]));
 
   const tersisa = calon.filter((r) => {
     const kb = kunci(indukBatang.get(r.tiang_id)!, r.penyulang);
-    return kodeDi.has(kb) && indukDi.get(kb) !== r.tiang_id;
+    return kodeDi.has(kb) && indukDi.get(kb) !== r.tiang_id && dekat(r.tiang_id, indukBatang.get(r.tiang_id)!);
   });
   const dilewati = await batangDiHulu(tersisa, indukBatang);
 

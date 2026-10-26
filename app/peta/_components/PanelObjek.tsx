@@ -55,9 +55,10 @@ interface Props {
   onIndukPenyulang: (penyulang: string) => void;
   onIkutBatang: () => Promise<boolean>;
   onBatalInduk: () => void;
-  /** Balik arah JTM sedang menunggu klik; `ke` = kode pangkal sebenarnya (null = belum). */
-  balik: { ke: string | null } | null;
-  onBalikArah: () => void;
+  /** Balik arah JTM sedang menunggu klik; `ke` = kode pangkal sebenarnya (null = belum),
+   *  `penyulang` = penyulang yang menumpang (null = batang). */
+  balik: { ke: string | null; penyulang: string | null } | null;
+  onBalikArah: (penyulang: string | null) => void;
   onTanpaHulu: () => void;
   onBatalBalik: () => void;
   onUbahAtribut: (isi: Record<string, string>) => Promise<boolean>;
@@ -232,7 +233,9 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
-        {p.balik && <LangkahBalikArah ke={p.balik.ke} onTanpaHulu={p.onTanpaHulu} onBatal={p.onBatalBalik} />}
+        {p.balik && (
+          <LangkahBalikArah ke={p.balik.ke} penyulang={p.balik.penyulang} onTanpaHulu={p.onTanpaHulu} onBatal={p.onBatalBalik} />
+        )}
 
         {p.modeGabung && (
           <div className="rounded-lg border border-pink-400/60 p-3 text-xs text-pink-100 space-y-2">

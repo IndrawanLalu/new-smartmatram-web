@@ -33,7 +33,8 @@ import type { TiangBatal } from "../_hooks/useTiangBatal";
 import LapisanKoreksi from "./LapisanKoreksi";
 import LapisanIsian from "./LapisanIsian";
 import type { NilaiIsian } from "../_hooks/useIsianPeta";
-import { kunciLoncat, type IndukLoncat } from "../_hooks/useIndukLoncat";
+import { jarakMeter } from "@/lib/geo";
+import { JARAK_JANGGAL_M, kunciLoncat, type IndukLoncat } from "../_hooks/useIndukLoncat";
 import type { SorotKoreksi } from "../_hooks/useKoreksiIsian";
 import LapisanNama from "./LapisanNama";
 import PemilihTiang, { type CalonTiang, type PilihanTiang } from "./PemilihTiang";
@@ -406,7 +407,14 @@ const Isi = memo(function Isi({
       {tiang.map((t) => {
         if (t.indukLat === null || t.indukLng === null) return null;
         const lompat = t.jaringan === "jtm" ? loncat.get(kunciLoncat(t.id, t.kelompok)) : undefined;
-        const j = lompat ? "putus" : jenisGaris(t);
+        // Gawang JTM pemilik batang yang terlalu panjang = salah sambung di
+        // batang (26 Okt 2026: AMPENAN L003 → KJG-054, 861 m). Ditandai di
+        // lapisan pemiliknya saja; penyulang yang menumpang punya induk sendiri.
+        const panjang = t.jaringan === "jtm" && !t.menumpang && !lompat
+          ? Math.round(jarakMeter(t.indukLat, t.indukLng, t.lat, t.lng))
+          : 0;
+        const jauh = panjang > JARAK_JANGGAL_M;
+        const j = lompat || jauh ? "putus" : jenisGaris(t);
         const posisi: [number, number][] = [
           [t.indukLat, t.indukLng],
           [t.lat, t.lng],
@@ -423,9 +431,10 @@ const Isi = memo(function Isi({
               <Tooltip sticky>
                 <span className="text-[11px]">{t.kelompok}</span>
                 {j === "ub" && <span className="block text-[10px]">underbuild JTR · {t.jumlahKabel} kabel</span>}
-                {j === "putus" && !lompat && (
+                {j === "putus" && !lompat && !jauh && (
                   <span className="block text-[10px]">{t.kode}: kabel belum jelas datang dari tiang mana</span>
                 )}
+                {jauh && <span className="block text-[10px]">{t.kode}: disambung dari tiang {panjang} m jauhnya</span>}
                 {lompat && (
                   <span className="block text-[10px]">{lompat.kode} disambung dari {lompat.induk}, melompati {lompat.batang}</span>
                 )}
@@ -445,7 +454,21 @@ const Isi = memo(function Isi({
                 </Tooltip>
               </Marker>
             )}
-            {j === "putus" && !lompat && gaya.tandaPutus && (
+            {jauh && (
+              <Marker
+                position={[(t.indukLat + t.lat) / 2, (t.indukLng + t.lng) / 2]}
+                icon={ikonTandaLoncat}
+                eventHandlers={{ click: () => onPilihTiang(t) }}
+              >
+                <Tooltip direction="top" offset={[0, -8]}>
+                  <span className="text-[11px] block">
+                    {t.kode} di {t.kelompok} disambung dari tiang {panjang} m jauhnya — hampir pasti salah induk.
+                  </span>
+                  <span className="text-[10px] block">Klik → Ganti induk → klik tiang sebelumnya yang sebenarnya</span>
+                </Tooltip>
+              </Marker>
+            )}
+            {j === "putus" && !lompat && !jauh && gaya.tandaPutus && (
               <Marker
                 position={[(t.indukLat + t.lat) / 2, (t.indukLng + t.lng) / 2]}
                 icon={ikonTandaPutus}

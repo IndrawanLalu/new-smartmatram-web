@@ -77,11 +77,13 @@ export function useSuntingPeta(oleh: string) {
       "Induk tiang diganti.",
     );
 
-  /** Rantai induk terbalik karena salah pilih pangkal (`jtm-balik-arah.sql`). */
-  const balikArah = (dari: string, ke: string, hulu: string | null, alasan: string) =>
+  /** Rantai induk terbalik karena salah pilih pangkal (`jtm-balik-arah.sql`).
+   *  `penyulang` = penyulang yang menumpang: rantai induk khususnya saja
+   *  (`jtm-balik-arah-tumpang.sql`); null = batang. */
+  const balikArah = (dari: string, ke: string, hulu: string | null, alasan: string, penyulang: string | null) =>
     jalankan<{ tiang: unknown[]; segmen: unknown[] }>(
       "balik_arah_jtm",
-      { p_dari: dari, p_ke: ke, p_hulu: hulu, p_alasan: alasan, p_oleh: oleh },
+      { p_dari: dari, p_ke: ke, p_hulu: hulu, p_alasan: alasan, p_oleh: oleh, ...(penyulang ? { p_penyulang: penyulang } : {}) },
       (d) => `Arah ${d.tiang.length} tiang dibalik${d.segmen.length ? `, ${d.segmen.length} segmen ditukar` : ""}.`,
     );
 

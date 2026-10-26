@@ -37,9 +37,10 @@ export function usePilihObjek({ geserBanyak, pecah, koreksi, pulihInduk, onTutup
   const [calonGabung, setCalonGabung] = useState<TiangPeta | null>(null);
   const [calonInduk, setCalonInduk] = useState<TiangPeta | null>(null);
   /** Balik arah JTM: tiang terpilih = pangkal yang salah; menunggu klik pangkal
-   *  sebenarnya (`ke`), lalu tiang hulunya → `calonBalik` membuka pratinjau. */
-  const [balik, setBalik] = useState<{ ke: TiangPeta | null } | null>(null);
-  const [calonBalik, setCalonBalik] = useState<{ ke: TiangPeta; hulu: TiangPeta | null } | null>(null);
+   *  sebenarnya (`ke`), lalu tiang hulunya → `calonBalik` membuka pratinjau.
+   *  `penyulang` = rantai induk penyulang yang menumpang (null = batang). */
+  const [balik, setBalik] = useState<{ ke: TiangPeta | null; penyulang: string | null } | null>(null);
+  const [calonBalik, setCalonBalik] = useState<{ ke: TiangPeta; hulu: TiangPeta | null; penyulang: string | null } | null>(null);
   /** Tambah tiang JTM dari tiang terpilih: letaknya = `geser` (penggeser yang sama). */
   const [tambah, setTambah] = useState(false);
   /** Sambung hilir: tiang yang diklik menjadi anak tiang terpilih. */
@@ -96,8 +97,10 @@ export function usePilihObjek({ geserBanyak, pecah, koreksi, pulihInduk, onTutup
       }
       if (balik) {
         if (terpilih?.jenis !== "tiang" || t.jaringan !== "jtm" || t.id === terpilih.id) return;
-        if (!balik.ke) setBalik({ ke: t });
-        else if (t.id !== balik.ke.id) setCalonBalik({ ke: balik.ke, hulu: t });
+        // Di penyulang yang menumpang: tiang dari lapisan penyulang itu.
+        if (balik.penyulang && t.kelompok.toUpperCase() !== balik.penyulang.toUpperCase()) return;
+        if (!balik.ke) setBalik({ ke: t, penyulang: balik.penyulang });
+        else if (t.id !== balik.ke.id) setCalonBalik({ ke: balik.ke, hulu: t, penyulang: balik.penyulang });
         return;
       }
       setTerpilih({ jenis: "tiang", id: t.id, kelompok: t.kelompok, lat: t.lat, lng: t.lng, kode: t.kode, jaringan: t.jaringan === "jtr" ? "jtr" : "jtm" });

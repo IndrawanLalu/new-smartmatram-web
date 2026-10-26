@@ -157,9 +157,9 @@ export default function ObjekTerpilih({
             p.setIndukPenyulang(null);
           }}
           indukPenyulang={p.indukPenyulang}
-          balik={p.balik ? { ke: p.balik.ke?.kode ?? null } : null}
-          onBalikArah={() => p.setBalik({ ke: null })}
-          onTanpaHulu={() => p.balik?.ke && p.setCalonBalik({ ke: p.balik.ke, hulu: null })}
+          balik={p.balik ? { ke: p.balik.ke?.kode ?? null, penyulang: p.balik.penyulang } : null}
+          onBalikArah={(penyulang) => p.setBalik({ ke: null, penyulang })}
+          onTanpaHulu={() => p.balik?.ke && p.setCalonBalik({ ke: p.balik.ke, hulu: null, penyulang: p.balik.penyulang })}
           onBatalBalik={() => p.setBalik(null)}
           onIndukPenyulang={(x) => {
             p.setIndukPenyulang(x);
@@ -227,10 +227,11 @@ export default function ObjekTerpilih({
           dariId={terpilih.id}
           keId={p.calonBalik.ke.id}
           huluId={p.calonBalik.hulu?.id ?? null}
+          penyulang={p.calonBalik.penyulang}
           oleh={oleh}
           onBalik={async (alasan) => {
             const c = p.calonBalik;
-            const ok = !!c && (await sunting.balikArah(terpilih.id, c.ke.id, c.hulu?.id ?? null, alasan));
+            const ok = !!c && (await sunting.balikArah(terpilih.id, c.ke.id, c.hulu?.id ?? null, alasan, c.penyulang));
             if (ok) segarkan();
             return ok;
           }}

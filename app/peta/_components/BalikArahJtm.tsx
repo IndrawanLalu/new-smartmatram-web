@@ -17,6 +17,9 @@ import { TOMBOL_PANEL } from "./InfoTiang";
  * YANG DIBALIK saja: dari pangkal barunya ke hilir (user 22 Okt — dulu
  * Generate ulang seluruh penyulang, nama sampai ke pangkal penyulang ikut
  * berubah). Nama awalnya diketik admin, mis. lanjutan dari hulunya.
+ *
+ * `penyulang` = penyulang yang MENUMPANG (`jtm-balik-arah-tumpang.sql`): yang
+ * dibalik rantai induk khusus penyulang itu; batang pemiliknya tetap. Hulu wajib.
  */
 
 const ISIAN =
@@ -35,15 +38,26 @@ interface Pratinjau {
 interface LangkahProps {
   /** Pangkal sebenarnya yang sudah diklik (null = belum). */
   ke: string | null;
+  /** Penyulang yang menumpang (null = batang). */
+  penyulang: string | null;
   onTanpaHulu: () => void;
   onBatal: () => void;
 }
 
 /** Petunjuk di panel kanan selama menunggu klik di peta. */
-export function LangkahBalikArah({ ke, onTanpaHulu, onBatal }: LangkahProps) {
+export function LangkahBalikArah({ ke, penyulang, onTanpaHulu, onBatal }: LangkahProps) {
   return (
     <div className="rounded-lg border border-sky-400/60 p-3 text-xs text-sky-100 space-y-2">
-      {ke ? (
+      {penyulang && (
+        <p>
+          Balik arah <b>di {penyulang}</b> saja — klik tiang di lapisan {penyulang}. Arah batang pemiliknya tidak berubah.
+        </p>
+      )}
+      {ke && penyulang ? (
+        <p>
+          <b>{ke}</b> jadi pangkal. Klik tiang <b>hulu</b> {penyulang} tempat {ke} menyambung.
+        </p>
+      ) : ke ? (
         <>
           <p>
             <b>{ke}</b> jadi pangkal. Klik tiang <b>hulu</b> tempat {ke} menyambung ke jaringan — atau lewati kalau{" "}
@@ -65,6 +79,7 @@ interface Props {
   dariId: string;
   keId: string;
   huluId: string | null;
+  penyulang: string | null;
   oleh: string;
   onBalik: (alasan: string) => Promise<boolean>;
   /** Pratinjau ditolak / ditutup — mode klik tetap jalan (bisa pilih hulu lain). */
@@ -73,7 +88,7 @@ interface Props {
   onSelesai: () => void;
 }
 
-export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTutup, onSelesai }: Props) {
+export default function BalikArahJtm({ dariId, keId, huluId, penyulang, oleh, onBalik, onTutup, onSelesai }: Props) {
   const toast = useToast();
   const [p, setP] = useState<Pratinjau | null>(null);
   const [alasan, setAlasan] = useState("");
@@ -85,13 +100,13 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
   useEffect(() => {
     let hidup = true;
     void supabaseBrowser
-      .rpc("pratinjau_balik_arah_jtm", { p_dari: dariId, p_ke: keId, p_hulu: huluId })
+      .rpc("pratinjau_balik_arah_jtm", { p_dari: dariId, p_ke: keId, p_hulu: huluId, ...(penyulang ? { p_penyulang: penyulang } : {}) })
       .then(({ data, error }) => {
         if (!hidup) return;
         if (error) {
           toast.error(
             error.message.includes("Could not find the function")
-              ? "Fungsi balik arah belum ada — jalankan scripts/jtm-balik-arah.sql di Supabase."
+              ? `Fungsi balik arah belum ada — jalankan scripts/${penyulang ? "jtm-balik-arah-tumpang.sql" : "jtm-balik-arah.sql"} di Supabase.`
               : error.message,
           );
           onTutup();
@@ -176,7 +191,7 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
   return (
     <ModalShell
       title={`Balik arah ${p.tiang[p.tiang.length - 1].kode} … ${pangkal.kode}`}
-      subtitle={`Penyulang ${p.penyulang} · ${p.tiang.length} tiang`}
+      subtitle={`Penyulang ${p.penyulang}${penyulang ? " (menumpang)" : ""} · ${p.tiang.length} tiang`}
       maxWidth="max-w-xl"
       onClose={onTutup}
       footer={
@@ -193,7 +208,10 @@ export default function BalikArahJtm({ dariId, keId, huluId, oleh, onBalik, onTu
         <p className="text-ink-soft">
           {pangkal.kode} jadi pangkal{pangkal.induk_baru ? `, menyambung dari ${pangkal.induk_baru}` : ""}.
           {p.lepas_dari && ` ${p.tiang[p.tiang.length - 1].kode} tidak lagi menyambung dari ${p.lepas_dari}.`} Cabang
-          yang keluar dari tengah rantai tetap di tiangnya. Arah jalur utama di percabangan rantai ini dikosongkan.
+          yang keluar dari tengah rantai tetap di tiangnya.{" "}
+          {penyulang
+            ? `Hanya induk di ${p.penyulang} yang berubah — batang pemiliknya dan penyulang lain tetap.`
+            : "Arah jalur utama di percabangan rantai ini dikosongkan."}
         </p>
 
         <div className="max-h-56 overflow-y-auto rounded-lg border border-line">
