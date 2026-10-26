@@ -64,7 +64,7 @@ export function unduhBerkas(blob: Blob, nama: string) {
  * Foto diperkecil di peramban (sisi terpanjang `maks` px, JPEG). Foto HP
  * 12 MP terlalu berat untuk disimpan apa adanya dan untuk ditanam di PDF.
  */
-export async function perkecilFoto(sumber: Blob | string, maks: number): Promise<Blob> {
+export async function perkecilFoto(sumber: Blob | string, maks: number, mutu = 0.82): Promise<Blob> {
   const url = typeof sumber === "string" ? sumber : URL.createObjectURL(sumber);
   try {
     const img = await new Promise<HTMLImageElement>((ok, gagal) => {
@@ -79,7 +79,7 @@ export async function perkecilFoto(sumber: Blob | string, maks: number): Promise
     kanvas.width = Math.round(img.naturalWidth * k);
     kanvas.height = Math.round(img.naturalHeight * k);
     kanvas.getContext("2d")!.drawImage(img, 0, 0, kanvas.width, kanvas.height);
-    return await new Promise<Blob>((ok, gagal) => kanvas.toBlob((b) => (b ? ok(b) : gagal(new Error("Foto gagal diperkecil."))), "image/jpeg", 0.82));
+    return await new Promise<Blob>((ok, gagal) => kanvas.toBlob((b) => (b ? ok(b) : gagal(new Error("Foto gagal diperkecil."))), "image/jpeg", mutu));
   } finally {
     if (typeof sumber !== "string") URL.revokeObjectURL(url);
   }

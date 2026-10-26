@@ -328,7 +328,8 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
       const jalur = `harjar/${id}/${Date.now()}-${nama}.jpg`;
       const { error } = await supabaseBrowser.storage
         .from("inspections")
-        .upload(jalur, await perkecilFoto(f, 1600), { contentType: "image/jpeg" });
+        // Foto bukti: 1024 px / mutu 0,60 — teknisaplikasi.md butir 4, sama dengan HP.
+        .upload(jalur, await perkecilFoto(f, 1024, 0.6), { contentType: "image/jpeg" });
       if (error) throw new Error(`Foto ${nama} gagal diunggah: ${error.message}`);
       return supabaseBrowser.storage.from("inspections").getPublicUrl(jalur).data.publicUrl;
     };
