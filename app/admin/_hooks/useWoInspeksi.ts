@@ -37,6 +37,8 @@ export interface ItemWoInspeksi {
   inspeksi_status: string | null;
   inspeksi_petugas: string | null;
   tier: TierWo;
+  /** WO "Tier 2 + titik": regu boleh menitik tiang (jtm-tier2-titik.sql). */
+  titik: boolean;
 }
 
 /** Satu WO inspeksi beserta ringkasannya (`wo_inspeksi_capaian`, wo-daftar-garansi.sql). */
@@ -53,6 +55,7 @@ export interface WoInspeksiRingkas {
   item_selesai: number;
   rencana_km: number;
   capaian_km: number;
+  titik: boolean;
 }
 
 const kunciGardu = (ulp: string, kode: string) => `${ulp.toUpperCase()}|${kode.toUpperCase()}`;
@@ -64,7 +67,7 @@ const SUMBER = {
     kolom:
       // `as string`: daftar kolom sepanjang ini melewati batas pengurai tipe
       // supabase-js ("ParserError") — kuerinya sendiri sah.
-      "id,wo_id,wo_nama,tgl_wo,ulp,penyulang,segmen_id,objek_nama,panjang_km,panjang_dari,regu,status,inspeksi_status,inspeksi_petugas,tier" as string,
+      "id,wo_id,wo_nama,tgl_wo,ulp,penyulang,segmen_id,objek_nama,panjang_km,panjang_dari,regu,status,inspeksi_status,inspeksi_petugas,tier,titik" as string,
     rpc: "terbitkan_wo_inspeksi_jtm",
     sql: "scripts/wo-inspeksi-jtm.sql",
   },
@@ -77,35 +80,37 @@ const SUMBER = {
   },
 } as const;
 
-type BarisItem = Omit<ItemWoInspeksi, "objek" | "tier"> & {
+type BarisItem = Omit<ItemWoInspeksi, "objek" | "tier" | "titik"> & {
   segmen_id?: string | null;
   gardu_kode?: string | null;
   tier?: string | null;
+  titik?: boolean | null;
 };
 
 const keItem = (jenis: JenisWoInspeksi) => (r: BarisItem): ItemWoInspeksi => ({
   ...r,
   objek: jenis === "JTM" ? (r.segmen_id as string) : kunciGardu(r.ulp, r.gardu_kode ?? ""),
   tier: r.tier === "2" ? "2" : "1",
+  titik: !!r.titik,
 });
 
 /** Objek yang bisa dipilih, dalam bentuk `SegmenPilihan` yang dipakai Susun WO. */
-async function ambilObjek(jenis: JenisWoInspeksi): Promise<SegmenPilihan[]> {
+async function ambilObjek(jenis: JenisWoInspeksi, ulp: string | null): Promise<SegmenPilihan[]> {
   if (jenis === "JTM") {
-    return fetchAllRows<SegmenPilihan>(() =>
-      supabaseBrowser.from("master_segmen")
+    return fetchAllRows<SegmenPilihan>(() => {
+      const q = supabaseBrowser.from("master_segmen")
         .select("segmen_id,nama,penyulang,ulp,panjang_pakai_km,panjang_dari,umur_inspeksi_bulan,sumber")
-        .eq("status", "aktif").order("penyulang").order("nama").order("segmen_id"),
-    );
+        .eq("status", "aktif");
+      return (ulp ? q.eq("ulp", ulp) : q).order("penyulang").order("nama").order("segmen_id");
+    });
   }
   const gardu = await fetchAllRows<{
     gardu_kode: string; ulp: string; nama: string | null; penyulang: string | null;
     panjang_km: number | string | null; umur_inspeksi_bulan: number | null;
-  }>(() =>
-    supabaseBrowser.from("master_gardu_jtr")
-      .select("gardu_kode,ulp,nama,penyulang,panjang_km,umur_inspeksi_bulan")
-      .order("ulp").order("gardu_kode"),
-  );
+  }>(() => {
+    const q = supabaseBrowser.from("master_gardu_jtr").select("gardu_kode,ulp,nama,penyulang,panjang_km,umur_inspeksi_bulan");
+    return (ulp ? q.eq("ulp", ulp) : q).order("ulp").order("gardu_kode");
+  });
   return gardu.map((g) => {
     const km = Number(g.panjang_km ?? 0);
     return {
@@ -121,7 +126,11 @@ async function ambilObjek(jenis: JenisWoInspeksi): Promise<SegmenPilihan[]> {
   });
 }
 
-export function useWoInspeksi(jenis: JenisWoInspeksi) {
+/**
+ * `ulp` = ULP akun (huruf besar); null hanya untuk UP3 (semua ULP). Disaring
+ * di kueri, bukan di layar: admin ULP tidak pernah menerima WO ULP lain.
+ */
+export function useWoInspeksi(jenis: JenisWoInspeksi, ulp: string | null) {
   const toast = useToast();
   const src = SUMBER[jenis];
   const [objek, setObjek] = useState<SegmenPilihan[]>([]);
@@ -136,21 +145,24 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
   useEffect(() => {
     let hidup = true;
     Promise.all([
-      ambilObjek(jenis),
+      ambilObjek(jenis, ulp),
       // Hanya item TERBUKA: yang mengikat objek dan yang masih perlu diurus.
-      fetchAllRows<BarisItem>(() =>
-        supabaseBrowser.from(src.view).select(src.kolom).eq("status", "Terbuka")
-          .order("tgl_wo", { ascending: false }).order("id").returns<BarisItem[]>(),
-      ),
+      fetchAllRows<BarisItem>(() => {
+        const q = supabaseBrowser.from(src.view).select(src.kolom).eq("status", "Terbuka");
+        return (ulp ? q.eq("ulp", ulp) : q).order("tgl_wo", { ascending: false }).order("id").returns<BarisItem[]>();
+      }),
       // Hanya petugas yang rolenya boleh jenis inspeksi ini (menu HP jtm / jtr,
       // `scripts/regu-inspeksi-dari-roles.sql`).
-      supabaseBrowser.from("regu_inspeksi").select("regu,ulp").eq(jenis === "JTR" ? "jtr" : "jtm", true).order("ulp").order("regu"),
-      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }>(() =>
-        supabaseBrowser.from(src.view).select((jenis === "JTM" ? "id,ulp,tgl_wo,panjang_km,tier" : "id,ulp,tgl_wo,panjang_km") as string).neq("status", "Dibatalkan").order("id")
-          .returns<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>(),
-      ),
+      (ulp ? supabaseBrowser.from("regu_inspeksi").select("regu,ulp").eq("ulp", ulp) : supabaseBrowser.from("regu_inspeksi").select("regu,ulp"))
+        .eq(jenis === "JTR" ? "jtr" : "jtm", true).order("ulp").order("regu"),
+      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }>(() => {
+        const q = supabaseBrowser.from(src.view).select((jenis === "JTM" ? "id,ulp,tgl_wo,panjang_km,tier" : "id,ulp,tgl_wo,panjang_km") as string).neq("status", "Dibatalkan");
+        return (ulp ? q.eq("ulp", ulp) : q).order("id")
+          .returns<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>();
+      }),
       // Daftar WO. Gagal (SQL belum dijalankan) = daftar kosong, Susun WO tetap jalan.
-      supabaseBrowser.from("wo_inspeksi_capaian").select("*").eq("jenis", jenis).order("tgl_wo", { ascending: false }).order("created_at", { ascending: false }),
+      (ulp ? supabaseBrowser.from("wo_inspeksi_capaian").select("*").eq("ulp", ulp) : supabaseBrowser.from("wo_inspeksi_capaian").select("*"))
+        .eq("jenis", jenis).order("tgl_wo", { ascending: false }).order("created_at", { ascending: false }),
     ]).then(
       ([o, i, g, t, d]) => {
         if (!hidup) return;
@@ -158,6 +170,7 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
           ((d.data ?? []) as WoInspeksiRingkas[]).map((x) => ({
             ...x,
             tier: x.tier === "2" ? "2" : "1",
+            titik: !!x.titik,
             target_km: Number(x.target_km ?? 0),
             item: Number(x.item),
             item_selesai: Number(x.item_selesai),
@@ -184,7 +197,7 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
       },
     );
     return () => { hidup = false; };
-  }, [nonce, toast, jenis, src]);
+  }, [nonce, toast, jenis, src, ulp]);
 
   const muat = () => setNonce((n) => n + 1);
 
@@ -212,12 +225,14 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
     tglWo: string;
     oleh: string;
     tier: TierWo;
+    /** WO Tier 2 + titik. Dikirim hanya bila nyala — server lama tetap menerima WO biasa. */
+    titik: boolean;
   }) => {
     const umum = { p_ulp: v.ulp, p_nama: v.nama, p_target_km: v.targetKm, p_tgl_wo: v.tglWo, p_oleh: v.oleh };
     const { data, error } = await supabaseBrowser.rpc(
       src.rpc,
       jenis === "JTM"
-        ? { ...umum, p_segmen: v.segmen, p_regu: v.regu, p_tier: v.tier }
+        ? { ...umum, p_segmen: v.segmen, p_regu: v.regu, p_tier: v.tier, ...(v.titik ? { p_titik: true } : {}) }
         : {
             ...umum,
             p_gardu: v.segmen.map(kodeDariKunci),
@@ -230,7 +245,7 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
     }
     const h = data as { item: number; rencana_km: number; dilewati: { segmen?: string; gardu?: string; sebab: string }[] };
     toast.success(
-      `WO${jenis === "JTM" ? ` Tier ${v.tier}` : ""} terbit: ${h.item} ${jenis === "JTM" ? "segmen" : "gardu"} · ${Number(h.rencana_km ?? 0).toFixed(2).replace(".", ",")} KMS` +
+      `WO${jenis === "JTM" ? ` Tier ${v.tier}${v.titik ? " + titik" : ""}` : ""} terbit: ${h.item} ${jenis === "JTM" ? "segmen" : "gardu"} · ${Number(h.rencana_km ?? 0).toFixed(2).replace(".", ",")} KMS` +
         (h.dilewati?.length ? ` · ${h.dilewati.length} dilewati` : ""),
     );
     muat();
@@ -323,11 +338,23 @@ export function useWoInspeksi(jenis: JenisWoInspeksi) {
     return true;
   };
 
+  /** WO Tier 2 biasa → Tier 2 + titik, tanpa membatalkan (jtm-tier2-jadikan-titik.sql). */
+  const jadikanTitik = async (woId: string, oleh: string) => {
+    const { error } = await supabaseBrowser.rpc("jadikan_wo_jtm_titik", { p_wo_id: woId, p_oleh: oleh });
+    if (error) {
+      toast.error(error.message);
+      return false;
+    }
+    toast.success("WO jadi Tier 2 + titik — regu bisa menitik tiang setelah HP diperbarui.");
+    muat();
+    return true;
+  };
+
   /** KMS WO inspeksi yang sudah terbit untuk ULP itu di bulan tanggal itu. */
   const terbitBulan = (u: string, tgl: string, tier?: TierWo) =>
     terbitan
       .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7) && (!tier || (x.tier ?? "1") === tier))
       .reduce((n, x) => n + Number(x.panjang_km ?? 0), 0);
 
-  return { objek, item, wo, regu, objekTerikat, loading, terbitkan, tambah, tugaskan, batalkan, keluarkanBanyak, batalkanWo, muat, terbitBulan, nonce };
+  return { objek, item, wo, regu, objekTerikat, loading, terbitkan, tambah, tugaskan, batalkan, keluarkanBanyak, batalkanWo, jadikanTitik, muat, terbitBulan, nonce };
 }

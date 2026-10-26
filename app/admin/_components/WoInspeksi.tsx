@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, Loader2, PlusCircle } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Loader2, MapPin, PlusCircle } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -33,9 +33,13 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
  * garansi (wo-daftar-garansi.sql, 12 Okt 2026).
  */
 
-const PILIHAN_TIER: { tier: TierWo; label: string; bantu: string }[] = [
-  { tier: "1", label: "Tier 1 · rutin", bantu: "Pemeriksaan rutin tiap tiang" },
-  { tier: "2", label: "Tier 2 · detail", bantu: "Pemeriksaan malam / beban puncak (suhu, suara, flashover) — hanya segmen yang Tier 1-nya sudah disetujui" },
+/** Tier 2 punya dua mode (jtm-tier2-titik.sql, 26 Okt 2026): "Tier 2" hanya di
+ *  tiang yang sudah dititik; "Tier 2 + titik" boleh menitik tiang, juga di
+ *  segmen yang belum pernah Tier 1. Isiannya sama (Tier 2 ringkas). */
+const PILIHAN_TIER: { tier: TierWo; titik: boolean; label: string; bantu: string }[] = [
+  { tier: "1", titik: false, label: "Tier 1 · rutin", bantu: "Pemeriksaan rutin tiap tiang" },
+  { tier: "2", titik: false, label: "Tier 2 · detail", bantu: "Pemeriksaan malam / beban puncak (suhu, suara, flashover) — hanya segmen yang Tier 1-nya sudah disetujui, tanpa menitik tiang" },
+  { tier: "2", titik: true, label: "Tier 2 + titik", bantu: "Isian Tier 2, tapi regu boleh menitik / menyisip / menggeser tiang — segmen yang belum pernah Tier 1 boleh dipilih" },
 ];
 const BULAN_INI = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
@@ -73,7 +77,9 @@ const tahap = (x: ItemWoInspeksi) => {
 };
 
 export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: JenisWoInspeksi }) {
-  const w = useWoInspeksi(jenis);
+  const bolehSemua = canSeeAllUnits(user.role);
+  // Akun ULP tanpa unit tercatat tidak boleh jatuh ke "semua ULP".
+  const w = useWoInspeksi(jenis, bolehSemua ? null : (user.unit ?? "-").toUpperCase());
   const slaBulan = useSlaBulanan(jenis === "JTM" ? "jtm" : "jtr");
   // SLA Tier 2 punya kuncinya sendiri di Atur SLA.
   const slaBulan2 = useSlaBulanan("jtm2");
@@ -88,16 +94,20 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const jtm = jenis === "JTM";
   /** Tier WO yang sedang disusun — kosong sampai admin memilih (JTR selalu 1). */
   const [tierSusun, setTierSusun] = useState<TierWo | null>(jtm ? null : "1");
+  /** Mode "Tier 2 + titik" untuk WO yang sedang disusun. */
+  const [titikSusun, setTitikSusun] = useState(false);
   /** Saringan daftar WO berjalan. */
   const [saringTier, setSaringTier] = useState<TierWo | "semua">("semua");
   // WO berjalan hanya ULP sendiri — dulu semua ULP ikut tampil (bug 12 Okt
   // 2026). UP3 memilih ULP-nya; kosong = semua.
-  const bolehSemua = canSeeAllUnits(user.role);
   const [ulpLihat, setUlpLihat] = useState(bolehSemua ? "" : (user.unit ?? "").toUpperCase());
   const itemUlp = ulpLihat ? w.item.filter((x) => x.ulp.toUpperCase() === ulpLihat) : w.item;
   /** Dibuka dari Daftar WO: Susun WO langsung pada "Tambah ke WO" ini. */
   const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
   const [halWo, setHalWo] = useState(1);
+  /** Tiga tampilan bertab (26 Okt 2026): dulu satu halaman panjang, Daftar WO
+   *  terkubur di bawah daftar segmen Susun WO. */
+  const [tampilan, setTampilan] = useState<"daftar" | "susun" | "berjalan">("daftar");
   const atasRef = useRef<HTMLDivElement>(null);
 
   // WO Tier 2 hanya untuk segmen yang sudah dititik Tier 1 (Diverifikasi) —
@@ -111,10 +121,10 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
     });
   }, [tierSusun, dititik]);
   const terkunci = useMemo(
-    () => (tierSusun === "2" && dititik
+    () => (tierSusun === "2" && !titikSusun && dititik
       ? { segmen: new Set(w.objek.map((s) => s.segmen_id).filter((id) => !dititik.has(id))), label: "belum dititik Tier 1" }
       : undefined),
-    [tierSusun, dititik, w.objek],
+    [tierSusun, titikSusun, dititik, w.objek],
   );
   // Item WO yang di-WO-kan dalam masa garansi pekerjaan sebelumnya.
   const garansi1 = useGaransiItem(jtm ? "jtm" : "jtr", ulpLihat, w.nonce);
@@ -133,8 +143,18 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const jalanDi = (x: WoInspeksiRingkas) => x.item_selesai + itemUlp.filter((i) => i.wo_id === x.wo_id && !belumDiinspeksi(i)).length;
   const tambahKe = (x: WoInspeksiRingkas) => {
     setTierSusun(x.tier);
+    setTitikSusun(x.titik);
     setWoAwal({ id: x.wo_id, ulp: x.ulp });
+    setTampilan("susun");
     atasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+  /** Selesai terbit / tambah → kembali ke Daftar WO supaya hasilnya terlihat. */
+  const keDaftar = <T,>(h: T) => {
+    if (h) {
+      setWoAwal(null);
+      setTampilan("daftar");
+    }
+    return h;
   };
 
   const daftar = saringTier === "semua" ? itemUlp : itemUlp.filter((x) => x.tier === saringTier);
@@ -164,90 +184,51 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
 
   return (
     <div className="space-y-4" ref={atasRef}>
-      {jtm && (
-        <div className={`${CARD} p-5`}>
-          <p className={EYEBROW}>Tier WO</p>
-          <p className="text-xs text-ink-soft mt-1">
-            Pilih dulu tier WO yang akan disusun. Tier menentukan daftar isian regu di HP. Segmen yang
-            sudah ada di WO tier lain tetap bisa dipilih.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {PILIHAN_TIER.map((p) => (
-              <button
-                key={p.tier}
-                onClick={() => {
-                  setTierSusun(p.tier);
-                  setWoAwal(null);
+      <div className={`${CARD} px-4 pt-2 flex flex-wrap items-end justify-between gap-x-4 gap-y-2`}>
+        <div className="flex flex-wrap gap-1" role="tablist">
+          {(
+            [
+              ["daftar", "Daftar WO", daftarWo.length],
+              ["susun", woAwal ? "Tambah item" : "Susun WO", 0],
+              ["berjalan", `${Satuan} berjalan`, daftar.length],
+            ] as const
+          ).map(([k, label, n]) => (
+            <button
+              key={k}
+              role="tab"
+              aria-selected={tampilan === k}
+              onClick={() => {
+                setTampilan(k);
+                if (k !== "susun") setWoAwal(null);
+              }}
+              className={`inline-flex items-center gap-1.5 px-3 py-2.5 -mb-px border-b-2 text-[13px] font-semibold transition-colors ${
+                tampilan === k ? "border-brand-600 text-brand-700" : "border-transparent text-ink-soft hover:text-ink"
+              }`}
+            >
+              {k === "susun" && <PlusCircle size={14} />}
+              {label}
+              {n > 0 && <span className="tabular-nums text-[10px] font-bold px-1.5 rounded-full bg-surface text-ink-soft">{n}</span>}
+            </button>
+          ))}
+        </div>
+        {tampilan !== "susun" && (
+          <div className="flex flex-wrap items-center gap-2 pb-2">
+            {jtm && (
+              <select
+                value={saringTier}
+                onChange={(e) => {
+                  setSaringTier(e.target.value as TierWo | "semua");
+                  setHalaman(1);
+                  setHalWo(1);
                 }}
-                className={`${CHIP} ${tierSusun === p.tier ? CHIP_ON : CHIP_OFF}`}
-                title={p.bantu}
-                aria-pressed={tierSusun === p.tier}
+                className={`${FIELD} h-8 w-[130px] text-xs`}
+                aria-label="Saring tier"
               >
-                {p.label}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {tierSusun ? (
-        <SusunWoSegmen
-          // Ganti tier / WO tujuan = mulai susunan baru: centang tier lain tidak terbawa.
-          key={`${tierSusun}-${woAwal?.id ?? "baru"}`}
-          user={user}
-          istilah={
-            jtm
-              ? {
-                  ...ISTILAH.JTM,
-                  judul: `Susun WO inspeksi JTM Tier ${tierSusun}`,
-                  contohNama: `Inspeksi JTM Tier ${tierSusun} ${BULAN_INI}`,
-                }
-              : ISTILAH[jenis]
-          }
-          segmen={w.objek}
-          segmenTerikat={w.objekTerikat[tierSusun]}
-          terkunci={terkunci}
-          regu={w.regu}
-          woAwal={woAwal}
-          woTerbuka={w.wo
-            .filter((x) => x.status === "Terbit" && x.tier === tierSusun)
-            .map((x) => ({ wo_id: x.wo_id, ulp: x.ulp, nama: x.nama, tgl_wo: x.tgl_wo, target_km: x.target_km, item: x.item, rencana_km: x.rencana_km }))}
-          garansi={jtm ? (tierSusun === "2" ? "jtm2" : "jtm") : "jtr"}
-          infoSla={(u, tgl) => ({
-            sla: (tierSusun === "2" ? slaBulan2 : slaBulan)(u, tgl),
-            terbit: w.terbitBulan(u, tgl, jtm ? tierSusun : undefined),
-          })}
-          onTerbitkan={(v) => w.terbitkan({ ...v, oleh, tier: tierSusun })}
-          onTambah={async (v) => {
-            const h = await w.tambah({ ...v, oleh });
-            if (h) setWoAwal(null);
-            return h;
-          }}
-        />
-      ) : (
-        <div className={`${CARD} p-6 text-sm text-ink-soft text-center`}>
-          Pilih <b className="text-ink">Tier 1</b> atau <b className="text-ink">Tier 2</b> di atas untuk mulai menyusun WO.
-        </div>
-      )}
-
-      <DaftarWoInspeksi
-        baris={tampilWo}
-        total={daftarWo.length}
-        hal={hWo}
-        totalHal={totalWo}
-        onHal={setHalWo}
-        jtm={jtm}
-        satuan={satuan}
-        bolehUlp={bolehUlp}
-        jalanDi={jalanDi}
-        onTambah={tambahKe}
-        onBatalkan={(x) => setBatalWo({ id: x.wo_id, nama: x.nama })}
-      />
-
-      <div className={`${CARD} overflow-hidden`}>
-        <div className="px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <p className={EYEBROW}>{Satuan} WO berjalan</p>
+                <option value="semua">Semua tier</option>
+                <option value="1">Tier 1</option>
+                <option value="2">Tier 2</option>
+              </select>
+            )}
             {bolehSemua && (
               <select
                 value={ulpLihat}
@@ -265,31 +246,101 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
               </select>
             )}
           </div>
-          <p className="text-xs text-ink-soft mt-1">
+        )}
+      </div>
+
+      {tampilan === "susun" && jtm && (
+        <div className={`${CARD} p-4 flex flex-wrap items-center gap-x-3 gap-y-2`}>
+          <span className={EYEBROW}>Tier WO</span>
+          {PILIHAN_TIER.map((p) => (
+            <button
+              key={p.label}
+              onClick={() => {
+                setTierSusun(p.tier);
+                setTitikSusun(p.titik);
+                setWoAwal(null);
+              }}
+              disabled={!!woAwal}
+              className={`${CHIP} ${tierSusun === p.tier && titikSusun === p.titik ? CHIP_ON : CHIP_OFF} disabled:opacity-40`}
+              title={p.bantu}
+              aria-pressed={tierSusun === p.tier && titikSusun === p.titik}
+            >
+              {p.label}
+            </button>
+          ))}
+          <p className="basis-full text-[11px] text-ink-muted">
+            {tierSusun
+              ? PILIHAN_TIER.find((p) => p.tier === tierSusun && p.titik === titikSusun)?.bantu
+              : "Tier menentukan daftar isian regu di HP. Segmen yang sudah ada di WO tier lain tetap bisa dipilih."}
+          </p>
+        </div>
+      )}
+
+      {tampilan === "susun" && (tierSusun ? (
+        <SusunWoSegmen
+          // Ganti tier / WO tujuan = mulai susunan baru: centang tier lain tidak terbawa.
+          key={`${tierSusun}-${titikSusun}-${woAwal?.id ?? "baru"}`}
+          user={user}
+          istilah={
+            jtm
+              ? {
+                  ...ISTILAH.JTM,
+                  judul: `Susun WO inspeksi JTM Tier ${tierSusun}${titikSusun ? " + titik" : ""}`,
+                  contohNama: `Inspeksi JTM Tier ${tierSusun}${titikSusun ? " + titik" : ""} ${BULAN_INI}`,
+                }
+              : ISTILAH[jenis]
+          }
+          segmen={w.objek}
+          segmenTerikat={w.objekTerikat[tierSusun]}
+          terkunci={terkunci}
+          regu={w.regu}
+          woAwal={woAwal}
+          woTerbuka={w.wo
+            .filter((x) => x.status === "Terbit" && x.tier === tierSusun && x.titik === titikSusun)
+            .map((x) => ({ wo_id: x.wo_id, ulp: x.ulp, nama: x.nama, tgl_wo: x.tgl_wo, target_km: x.target_km, item: x.item, rencana_km: x.rencana_km }))}
+          garansi={jtm ? (tierSusun === "2" ? "jtm2" : "jtm") : "jtr"}
+          infoSla={(u, tgl) => ({
+            sla: (tierSusun === "2" ? slaBulan2 : slaBulan)(u, tgl),
+            terbit: w.terbitBulan(u, tgl, jtm ? tierSusun : undefined),
+          })}
+          onTerbitkan={async (v) => keDaftar(await w.terbitkan({ ...v, oleh, tier: tierSusun, titik: titikSusun }))}
+          onTambah={async (v) => keDaftar(await w.tambah({ ...v, oleh }))}
+        />
+      ) : (
+        <div className={`${CARD} p-6 text-sm text-ink-soft text-center`}>
+          Pilih tier di atas untuk mulai menyusun WO.
+        </div>
+      ))}
+
+      {tampilan === "daftar" && (
+        <DaftarWoInspeksi
+          baris={tampilWo}
+          total={daftarWo.length}
+          hal={hWo}
+          totalHal={totalWo}
+          onHal={setHalWo}
+          jtm={jtm}
+          satuan={satuan}
+          bolehUlp={bolehUlp}
+          jalanDi={jalanDi}
+          onTambah={tambahKe}
+          onBatalkan={(x) => setBatalWo({ id: x.wo_id, nama: x.nama })}
+          onJadikanTitik={(x) => {
+            if (window.confirm(`Jadikan "${x.nama}" Tier 2 + titik?
+
+Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi yang sudah berjalan tetap. Tidak bisa dikembalikan ke Tier 2 biasa.`))
+              void w.jadikanTitik(x.wo_id, oleh);
+          }}
+        />
+      )}
+
+      {tampilan === "berjalan" && (
+      <div className={`${CARD} overflow-hidden`}>
+        <div className="px-5 py-4">
+          <p className="text-xs text-ink-soft">
             {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
             Inspeksi. Yang sudah diinspeksi regu tidak bisa dikeluarkan dari WO.
           </p>
-          {jtm && itemUlp.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Saring tier">
-              {(["semua", "1", "2"] as const).map((t) => {
-                const n = t === "semua" ? itemUlp.length : itemUlp.filter((x) => x.tier === t).length;
-                return (
-                  <button
-                    key={t}
-                    onClick={() => {
-                      setSaringTier(t);
-                      setHalaman(1);
-                      setHalWo(1);
-                    }}
-                    className={`${CHIP} ${saringTier === t ? CHIP_ON : CHIP_OFF}`}
-                    aria-pressed={saringTier === t}
-                  >
-                    {t === "semua" ? "Semua tier" : `Tier ${t}`} · {n}
-                  </button>
-                );
-              })}
-            </div>
-          )}
           {dipilih.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
               <span className="text-ink">
@@ -356,7 +407,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                         </td>
                         {jtm && (
                           <td className={TD}>
-                            <TierLencana tier={x.tier} />
+                            <TierLencana tier={x.tier} titik={x.titik} />
                           </td>
                         )}
                         <td className={`${TD} text-ink-soft`}>
@@ -417,6 +468,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           </>
         )}
       </div>
+      )}
 
       {batal && (
         <BatalkanModal
@@ -457,7 +509,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
 /** Daftar WO inspeksi (12 Okt 2026). WO yang masih berjalan bisa ditambah
  *  item-nya, atau dibatalkan selama belum ada yang diinspeksi. */
 function DaftarWoInspeksi({
-  baris, total, hal, totalHal, onHal, jtm, satuan, bolehUlp, jalanDi, onTambah, onBatalkan,
+  baris, total, hal, totalHal, onHal, jtm, satuan, bolehUlp, jalanDi, onTambah, onBatalkan, onJadikanTitik,
 }: {
   baris: WoInspeksiRingkas[];
   total: number;
@@ -470,6 +522,7 @@ function DaftarWoInspeksi({
   jalanDi: (x: WoInspeksiRingkas) => number;
   onTambah: (x: WoInspeksiRingkas) => void;
   onBatalkan: (x: WoInspeksiRingkas) => void;
+  onJadikanTitik: (x: WoInspeksiRingkas) => void;
 }) {
   return (
     <div className={`${CARD} overflow-hidden`}>
@@ -505,7 +558,7 @@ function DaftarWoInspeksi({
                     <tr key={x.wo_id} className="hover:bg-navy-50/40">
                       <td className={TD}>
                         <p className="font-semibold text-ink text-sm flex flex-wrap items-center gap-1.5">
-                          {jtm && <TierLencana tier={x.tier} />} {x.nama}
+                          {jtm && <TierLencana tier={x.tier} titik={x.titik} />} {x.nama}
                         </p>
                         <p className="text-[11px] text-ink-muted">{x.ulp}</p>
                       </td>
@@ -527,6 +580,15 @@ function DaftarWoInspeksi({
                             >
                               <PlusCircle size={12} /> Tambah item
                             </button>
+                            {jtm && x.tier === "2" && !x.titik && (
+                              <button
+                                onClick={() => onJadikanTitik(x)}
+                                title="Regu boleh menitik / menyisip / menggeser tiang di WO ini"
+                                className="inline-flex items-center gap-1 text-[11px] font-semibold text-navy-600 hover:underline"
+                              >
+                                <MapPin size={12} /> Jadikan + titik
+                              </button>
+                            )}
                             <button
                               onClick={() => onBatalkan(x)}
                               disabled={jalan > 0}
@@ -564,14 +626,14 @@ function DaftarWoInspeksi({
 
 /** Lencana tier: Tier 1 navy muda, Tier 2 navy tegas — dibedakan teks DAN isi,
  *  bukan warna saja. Bukan warna status (tier bukan keadaan pekerjaan). */
-function TierLencana({ tier }: { tier: TierWo }) {
+function TierLencana({ tier, titik }: { tier: TierWo; titik: boolean }) {
   return (
     <span
       className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
         tier === "2" ? "bg-navy-600 text-white" : "bg-navy-50 text-navy-700 border border-navy-200"
       }`}
     >
-      Tier {tier}
+      Tier {tier}{titik ? " + titik" : ""}
     </span>
   );
 }
