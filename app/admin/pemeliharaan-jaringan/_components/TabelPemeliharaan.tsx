@@ -1,5 +1,6 @@
 "use client";
 
+import { fotoKecil } from "@/lib/fotoKecil";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
@@ -31,8 +32,9 @@ const TD = "px-3 py-2.5 border-b border-line align-top";
 
 function Mini({ url, label }: { url: string; label: string }) {
   return url ? (
+    // Gambar mini (lib/fotoKecil), bukan foto asli 12 MP — 40 foto per halaman.
     // eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage, dilihat sekilas
-    <img src={url} alt={label} title={label} className="w-9 h-9 rounded-md object-cover border border-line" />
+    <img src={fotoKecil(url, 72)} alt={label} title={label} loading="lazy" className="w-9 h-9 rounded-md object-cover border border-line" />
   ) : (
     <span className="w-9 h-9 rounded-md border border-dashed border-line grid place-items-center text-[9px] text-ink-muted">—</span>
   );

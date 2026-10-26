@@ -10,6 +10,7 @@ import type { BarisPemeliharaan, KategoriRef, KoreksiPemeliharaan } from "../_ho
 import { NADA_STATUS, tanggal } from "./TabelPemeliharaan";
 import FormKoreksiPemeliharaan, { ID_FORM_KOREKSI } from "./FormKoreksiPemeliharaan";
 import FotoTambahan from "@/app/admin/_components/FotoTambahan";
+import { fotoKecil } from "@/lib/fotoKecil";
 
 /**
  * Detail satu pemeliharaan — pola sama dengan Optimasi Trafo.
@@ -39,7 +40,7 @@ function Foto({ url, lain, label }: { url: string; lain: string[]; label: string
         <>
           <a href={url} target="_blank" rel="noreferrer" className="block group" title={`Buka foto ${label.toLowerCase()} ukuran penuh`}>
             {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage */}
-            <img src={url} alt={label} className="w-full h-64 object-cover rounded-xl border border-line group-hover:border-navy-300" />
+            <img src={fotoKecil(url, 384)} alt={label} className="w-full h-64 object-cover rounded-xl border border-line group-hover:border-navy-300" />
           </a>
           <FotoTambahan foto={lain} alt={label} />
         </>
@@ -165,7 +166,7 @@ export default function DetailPemeliharaanModal({
                 {b.tugasFoto && (
                   <a href={b.tugasFoto} target="_blank" rel="noreferrer" title="Foto temuan inspektur">
                     {/* eslint-disable-next-line @next/next/no-img-element -- foto Supabase Storage / Firebase lama */}
-                    <img src={b.tugasFoto} alt="Foto temuan" className="w-20 h-20 object-cover rounded-lg border border-line" />
+                    <img src={fotoKecil(b.tugasFoto, 160)} alt="Foto temuan" className="w-20 h-20 object-cover rounded-lg border border-line" />
                   </a>
                 )}
                 <div className="text-xs">
