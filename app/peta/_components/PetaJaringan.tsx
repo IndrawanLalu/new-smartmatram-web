@@ -9,7 +9,7 @@ import { bingkaiBatas, bingkaiSekitar, bingkaiTitik, DEKAT, type Bingkai } from 
 import { useLapisanNyala, type AwalPeta } from "../_hooks/useLapisanNyala";
 import { useLatarPeta } from "../_hooks/useLatarPeta";
 import { useModeSld } from "../_hooks/useModeSld";
-import { usePetaDaftar } from "../_hooks/usePetaDaftar";
+import { usePetaDaftar, type Lapisan } from "../_hooks/usePetaDaftar";
 import { usePetaIsi, type Kotak } from "../_hooks/usePetaIsi";
 import { usePenandaJtm } from "../_hooks/usePenandaJtm";
 import { useObjekPeta } from "../_hooks/useObjekPeta";
@@ -144,6 +144,19 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const tiangBatal = useTiangBatal(ulp);
   // Pecah segmen (Section X3, 23 Okt 2026): selama aktif, klik tiang = titik potong.
   const pecah = usePecahSegmen(oleh);
+  // Pohon segmen di panel Lapisan dibaca ulang sesudah Pecah/Gabung/ubah nama.
+  const [versiSegmen, setVersiSegmen] = useState(0);
+  // Pecah dari pohon segmen: peta dibingkai ke segmen itu sekali, begitu pratinjau pertamanya tiba.
+  const [bingkaiPecah, setBingkaiPecah] = useState<string | null>(null);
+  if (bingkaiPecah && pecah.hasil?.segmen.id === bingkaiPecah) {
+    setBingkaiPecah(null);
+    const titik = pecah.hasil.bagian.flatMap((b) => b.garis.flatMap((g) => [[g[0], g[1]], [g[2], g[3]]]));
+    if (titik.length) {
+      const lat = titik.map((t) => t[0]);
+      const lng = titik.map((t) => t[1]);
+      setFokus([[Math.min(...lat), Math.min(...lng)], [Math.max(...lat), Math.max(...lng)]]);
+    }
+  }
   const pilih = usePilihObjek({
     geserBanyak, koreksi, pecah: { aktif: pecah.aktif, pilih: pecah.alih }, pulihInduk: { aktif: tiangBatal.menungguInduk, pilih: tiangBatal.pilihInduk }, onTutup: simulasi.tutup,
   });
@@ -256,6 +269,18 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     const x = bingkaiBatas(b);
     if (x) setFokus(x);
   }, []);
+  /** Section/Pecah dari pohon segmen: tutup yang lain, penyulangnya dinyalakan
+   *  (dan dibingkai) kalau belum — section & tiangnya hanya digambar di sana. */
+  const bersihkanUntukSection = (l: Lapisan) => {
+    jtm.setBuka(null);
+    pilih.tutup();
+    setSegmenTampil(null);
+    setKartuPenyulang(null);
+    if (!nyala.has(`jtm:${l.kode}`)) {
+      lapisan.alih("jtm", l.kode);
+      lompat(l);
+    }
+  };
   const lompatDekat = (lat: number, lng: number) => setFokus(bingkaiSekitar(lat, lng, DEKAT));
 
   // ── Cari lokasi/koordinat (20 Okt 2026) ────────────────────────────────────
@@ -345,6 +370,18 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onTutup={() => setPanel(false)}
           segmenAktif={segmenId}
           onSegmen={(x) => { jtm.setBuka(null); setTerpilih(null); setKartuPenyulang(null); setSegmenTampil(x.id); }}
+          sectionAktif={section.aktif ? idSection : null}
+          onSection={(l, x) => {
+            bersihkanUntukSection(l);
+            section.setAktif(true);
+            section.setPilih(x.id);
+          }}
+          onPecah={boleh ? (l, x) => {
+            bersihkanUntukSection(l);
+            setBingkaiPecah(x.id);
+            pecah.mulai({ id: x.id, nama: x.nama });
+          } : undefined}
+          versiSegmen={versiSegmen}
           onPenyulang={(l) => { jtm.setBuka(null); setTerpilih(null); setSegmenTampil(null); setKartuPenyulang({ kode: l.kode, ulp: l.ulp }); }}
           sld={modeSld ? { keterangan: sld.keterangan } : undefined}
         />
@@ -518,7 +555,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         )}
 
         {pecah.aktif ? (
-          <PanelPecah p={pecah} onSelesai={() => { segarkan(); void muatDaftar(); }} />
+          <PanelPecah p={pecah} onSelesai={() => { segarkan(); void muatDaftar(); setVersiSegmen((n) => n + 1); }} />
         ) : section.aktif && section.terpilih && !terpilih && !geserBanyak.aktif && (
           <PanelSection
             s={section.terpilih}
@@ -527,7 +564,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             boleh={boleh}
             oleh={oleh}
             onPecah={pecah.mulai}
-            onBerubah={() => { section.muatUlang(); void muatDaftar(); }}
+            onBerubah={() => { section.muatUlang(); void muatDaftar(); setVersiSegmen((n) => n + 1); }}
           />
         )}
         {section.aktif && (section.galat || section.memuat) && (

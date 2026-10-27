@@ -13,7 +13,7 @@ import PengaturanGaya from "./PengaturanGaya";
 import { useGayaPeta } from "../_hooks/useGayaPeta";
 import Centang from "./Centang";
 import PohonSegmenJtm from "./PohonSegmenJtm";
-import { useSegmenDaftar, type SegmenSimpul } from "../_hooks/useSegmenDaftar";
+import { useSegmenDaftar, type SectionSimpul, type SegmenSimpul } from "../_hooks/useSegmenDaftar";
 
 /**
  * Panel lapisan — pohon folder, saringan, dan pencarian.
@@ -71,6 +71,13 @@ interface Props {
   /** "Segmen ini saja" yang sedang tampil (id segmen). */
   segmenAktif: string | null;
   onSegmen: (s: SegmenSimpul) => void;
+  /** Section yang sedang disorot (id). */
+  sectionAktif: string | null;
+  onSection: (l: Lapisan, s: SectionSimpul) => void;
+  /** undefined = tidak berhak memecah. */
+  onPecah?: (l: Lapisan, s: SegmenSimpul) => void;
+  /** Naik sesudah Pecah/Gabung/ubah nama — pohon segmen dibaca ulang. */
+  versiSegmen: number;
   /** Klik nama penyulang JTM: selain "ini saja", buka kartu rinciannya. */
   onPenyulang: (l: Lapisan) => void;
   /** Mode SLD: hanya folder JTM (tanpa pohon segmen), tiap penyulang diberi
@@ -82,7 +89,7 @@ const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
   user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
-  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, onPenyulang, sld,
+  nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, sectionAktif, onSection, onPecah, versiSegmen, onPenyulang, sld,
 }: Props) {
   const [cari, setCari] = useState("");
   const [folderBuka, setFolderBuka] = useState<Set<Jaringan>>(new Set(["jtm"]));
@@ -93,7 +100,7 @@ export default function PanelLapisan({
 
   const q = cari.trim().toUpperCase();
   // Segmen baru dibaca saat penyulang JTM pertama kali dibuka.
-  const segmen = useSegmenDaftar(ulp, [...grupBuka].some((k) => k.startsWith("jtm:")));
+  const segmen = useSegmenDaftar(ulp, [...grupBuka].some((k) => k.startsWith("jtm:")), versiSegmen);
 
   const hasil = useMemo(() => {
     if (!q) return [];
@@ -119,7 +126,7 @@ export default function PanelLapisan({
 
   return (
     <aside
-      className="w-[248px] shrink-0 h-full flex flex-col text-[#e2e8f0] border-r"
+      className="w-[340px] max-w-[85vw] shrink-0 h-full flex flex-col text-[#e2e8f0] border-r"
       style={{ background: "#0a1628", borderColor: GARIS }}
     >
       <div
@@ -218,6 +225,7 @@ export default function PanelLapisan({
               ) : (
                 perFolder.jtm.map((l) => {
                   const buka = !sld && grupBuka.has(`jtm:${l.kode}`);
+                  const pohonIni = segmen.perPenyulang?.get(l.kode.toUpperCase());
                   return (
                     <div key={l.kode}>
                       <div className="flex items-center">
@@ -239,18 +247,21 @@ export default function PanelLapisan({
                             onAlih={() => onAlih("jtm", l.kode)}
                             onHanya={() => { onHanya("jtm", l.kode); onLompat(l); if (!sld) onPenyulang(l); }}
                             onLompat={() => onLompat(l)}
-                            keterangan={sld?.keterangan(l.kode)}
+                            keterangan={sld ? sld.keterangan(l.kode) : pohonIni?.jumlahLintas ? `⚠ ${pohonIni.jumlahLintas} segmen melewati keypoint` : null}
                             rapat
                           />
                         </div>
                       </div>
                       {buka && (
                         <PohonSegmenJtm
-                          daftar={segmen.perPenyulang?.get(l.kode)}
+                          pohon={pohonIni}
                           memuat={!segmen.perPenyulang && !segmen.galat}
                           galat={segmen.galat}
                           aktif={segmenAktif}
+                          sectionAktif={sectionAktif}
                           onSegmen={onSegmen}
+                          onSection={(s) => onSection(l, s)}
+                          onPecah={onPecah && ((s) => onPecah(l, s))}
                         />
                       )}
                     </div>

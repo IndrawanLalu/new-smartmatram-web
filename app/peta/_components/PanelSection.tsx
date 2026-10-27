@@ -8,6 +8,7 @@ import type { SectionPeta } from "../_hooks/useSectionPeta";
 import { GARIS, JUDUL_BAGIAN, PANEL } from "../_ui";
 import { Baris } from "./InfoTiang";
 import BarisSegmenSection, { type SegmenDi } from "./BarisSegmenSection";
+import NamaSection from "./NamaSection";
 
 /**
  * Panel satu section JTM (X2): ringkasan, segmen di dalamnya, segmen yang
@@ -81,7 +82,7 @@ export default function PanelSection({ s, tiangIds, onTutup, boleh, oleh, onPeca
         <span className="mt-1 h-3 w-3 rounded-full shrink-0" style={{ background: s.warna }} />
         <div className="flex-1 min-w-0">
           <p className={JUDUL_BAGIAN}>Section</p>
-          <p className="text-sm font-semibold break-words">{s.nama}</p>
+          <NamaSection s={s} boleh={boleh} oleh={oleh} onBerubah={onBerubah} />
           <p className="text-[11px] text-gray-400">{s.penyulang} · {s.ulp}</p>
         </div>
         <button onClick={onTutup} className="p-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-white/5" aria-label="Tutup">

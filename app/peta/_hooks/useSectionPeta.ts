@@ -18,6 +18,10 @@ export interface SectionPeta {
   tiang_hulu_id: string;
   jenis_hulu: string;
   nama: string;
+  /** `scripts/jtm-section-nama.sql` — belum dijalankan = tidak ada. */
+  nama_otomatis?: string | null;
+  /** true = nama diubah admin. */
+  nama_bebas?: boolean;
   jumlah_tiang: number;
   panjang_km: number;
   warna: string;
@@ -55,7 +59,8 @@ export function useSectionPeta(ulp: string, penyulang: string[]) {
         if (eSusun) throw new Error(eSusun.message);
         let q = supabaseBrowser
           .from("section")
-          .select("id,penyulang,ulp,tiang_hulu_id,jenis_hulu,nama,jumlah_tiang,panjang_km")
+          // `*`: kolom nama_otomatis/nama_bebas baru ada sesudah jtm-section-nama.sql.
+          .select("*")
           .in("penyulang", kunciPenyulang.split("|"))
           .order("penyulang")
           .order("nama");

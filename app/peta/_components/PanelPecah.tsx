@@ -1,6 +1,7 @@
 "use client";
 
 import { Loader2, Scissors, TriangleAlert, X } from "lucide-react";
+import PilihArah from "./PilihArah";
 import { km } from "@/app/admin/jtm/_lib/tampilan";
 import { WARNA_POTONGAN, type PecahSegmen } from "../_hooks/usePecahSegmen";
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
@@ -8,7 +9,7 @@ import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 /**
  * Panel Pecah segmen (X3): titik potong diklik di peta, nama tiap potongan
  * diketik di sini. Potongan pertama tetap segmen lama — riwayat inspeksi &
- * WO-nya tidak berpindah.
+ * WO-nya tidak berpindah. Klik tiang percabangan = pilih arahnya (PilihArah).
  */
 export default function PanelPecah({ p, onSelesai }: { p: PecahSegmen; onSelesai: () => void }) {
   const h = p.hasil;
@@ -37,8 +38,11 @@ export default function PanelPecah({ p, onSelesai }: { p: PecahSegmen; onSelesai
 
       <p className="text-xs text-gray-400">
         Klik tiang di peta untuk memotong di sana; klik lagi untuk membatalkan. Tiang potong menjadi ujung potongan
-        sebelumnya sekaligus pangkal potongan sesudahnya.
+        sebelumnya sekaligus pangkal potongan sesudahnya. Di tiang percabangan, pilih arah yang dipotong.
       </p>
+      {p.simpang && (
+        <PilihArah key={p.simpang.id} c={p.simpang} dipilih={p.arah} onPotong={p.potongArah} onBatal={p.tutupSimpang} />
+      )}
       {usulBaru > 0 && (
         <button
           onClick={p.pakaiUsulan}
@@ -52,28 +56,31 @@ export default function PanelPecah({ p, onSelesai }: { p: PecahSegmen; onSelesai
         <p className="text-xs text-gray-400 flex items-center gap-2"><Loader2 size={12} className="animate-spin" /> Menghitung…</p>
       ) : (
         <ul className="space-y-2">
-          {h.bagian.map((b, i) => (
-            <li key={b.akar_id} className="rounded-lg border p-2 space-y-1.5" style={{ borderColor: GARIS }}>
+          {h.bagian.map((b, i) => {
+            const kunci = b.asal ? "asal" : (b.kunci ?? b.akar_id);
+            return (
+            <li key={kunci} className="rounded-lg border p-2 space-y-1.5" style={{ borderColor: GARIS }}>
               <div className="flex items-center gap-2 text-[11px] text-gray-400">
                 <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: WARNA_POTONGAN[i % WARNA_POTONGAN.length] }} />
                 <span className="flex-1 min-w-0 truncate">
-                  {b.asal ? "Segmen lama" : `Mulai ${b.akar_kode}`} · {b.jumlah_tiang} tiang · {km(b.panjang_km, 3)}
+                  {b.asal ? "Segmen lama" : b.arah_kode ? `${b.akar_kode} → ${b.arah_kode}` : `Mulai ${b.akar_kode}`} · {b.jumlah_tiang} tiang · {km(b.panjang_km, 3)}
                   {b.section.length > 0 && ` · ${b.section.join(" + ")}`}
                 </span>
                 {!b.asal && (
-                  <button onClick={() => p.lepas(b.akar_id)} className="text-gray-500 hover:text-white" aria-label="Batalkan potongan">
+                  <button onClick={() => p.lepas(kunci)} className="text-gray-500 hover:text-white" aria-label="Batalkan potongan">
                     <X size={13} />
                   </button>
                 )}
               </div>
               <input
                 className={INPUT}
-                value={p.nama[b.asal ? "asal" : b.akar_id] ?? b.nama_usul}
-                onChange={(e) => p.aturNama(b.asal ? "asal" : b.akar_id, e.target.value)}
+                value={p.nama[kunci] ?? b.nama_usul}
+                onChange={(e) => p.aturNama(kunci, e.target.value)}
                 placeholder={b.nama_usul}
               />
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
 
