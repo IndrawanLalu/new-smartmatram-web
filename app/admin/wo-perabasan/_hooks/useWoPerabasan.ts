@@ -283,6 +283,27 @@ export function useWoPerabasan() {
     [toast],
   );
 
+  /** Beberapa segmen ke satu regu (27 Okt 2026) — pintu server sama dengan satu segmen. */
+  const tugaskanReguBanyak = useCallback(
+    async (itemId: string[], namaRegu: string, oleh?: string) => {
+      const gagal: string[] = [];
+      for (const id of itemId) {
+        const { error } = await supabaseBrowser.rpc("tugaskan_regu_segmen", {
+          p_item_id: id,
+          p_regu: namaRegu,
+          p_oleh: oleh ?? null,
+        });
+        if (error) gagal.push(error.message);
+      }
+      const berhasil = itemId.length - gagal.length;
+      if (berhasil > 0) toast.success(`${berhasil} segmen ditugaskan ke ${namaRegu} — sudah masuk HP-nya.`);
+      if (gagal.length > 0) toast.error(`${gagal.length} gagal — ${gagal[0]}${gagal.length > 1 ? " …" : ""}`);
+      await muat();
+      return berhasil > 0;
+    },
+    [toast, muat],
+  );
+
   const batalkanItem = useCallback(
     async (itemId: string, alasan: string, oleh?: string) => {
       const { error } = await supabaseBrowser.rpc("batalkan_perabasan_item", {
@@ -394,7 +415,7 @@ export function useWoPerabasan() {
 
   return {
     wo, item, segmen, regu, loading, muat,
-    terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu,
+    terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu, tugaskanReguBanyak,
     ambilItemWo, ubahWo,
     segmenTerikat,
   };

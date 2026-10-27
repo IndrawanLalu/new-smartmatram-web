@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, PlusCircle, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, Download, FileText, Users, LayoutDashboard, ListChecks, Loader2, Map, PlusCircle, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
@@ -74,6 +74,7 @@ export default function WoPerabasanPage() {
   /** Segmen yang dicentang untuk dikeluarkan dari WO sekaligus. */
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [keluarkan, setKeluarkan] = useState(false);
+  const [tugaskanPilih, setTugaskanPilih] = useState(false);
   /** Dibuka dari Daftar WO → Susun WO langsung pada "Tambah ke WO" ini. */
   const [woAwal, setWoAwal] = useState<{ id: string; ulp: string } | null>(null);
   const slaBulan = useSlaBulanan("perabasan");
@@ -315,7 +316,10 @@ export default function WoPerabasanPage() {
                     {kmTeks(dipilih.reduce((a, b) => a + (b.panjangKm ?? 0), 0))} km
                   </span>
                   <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
-                  <Tombol ukuran="sm" className="ml-auto text-red-700" ikon={<Ban size={14} />} onClick={() => setKeluarkan(true)}>
+                  <Tombol ukuran="sm" ragam="utama" className="ml-auto" ikon={<Users size={14} />} onClick={() => setTugaskanPilih(true)}>
+                    Tugaskan ke regu ({dipilih.length})
+                  </Tombol>
+                  <Tombol ukuran="sm" className="text-red-700" ikon={<Ban size={14} />} onClick={() => setKeluarkan(true)}>
                     Keluarkan dari WO ({dipilih.length})
                   </Tombol>
                 </div>
@@ -348,10 +352,26 @@ export default function WoPerabasanPage() {
 
       {barisRegu && (
         <TugaskanReguModal
-          b={barisRegu}
+          daftar={[barisRegu]}
           regu={w.regu}
           onSimpan={(regu) => w.tugaskanRegu(barisRegu.id, regu, oleh).then(lalu(barisRegu.id))}
           onTutup={() => setIdRegu(null)}
+        />
+      )}
+
+      {tugaskanPilih && (
+        <TugaskanReguModal
+          daftar={dipilih}
+          regu={w.regu}
+          onSimpan={async (regu) => {
+            const ok = await w.tugaskanReguBanyak(dipilih.map((b) => b.id), regu, oleh);
+            if (ok) {
+              setPilih(new Set());
+              d.muat();
+            }
+            return ok;
+          }}
+          onTutup={() => setTugaskanPilih(false)}
         />
       )}
 

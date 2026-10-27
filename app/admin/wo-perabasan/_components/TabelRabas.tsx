@@ -18,7 +18,8 @@ import { rentangKerja, tanggal, umurStatus } from "../_lib/tampilan";
  * urut per kolom, WO + tgl WO dan regu + petugas digabung, umur tunggakan di
  * bawah status, menu ⋯ sesuai status. Klik baris → modal rincian.
  *
- * Kolom centang: keluarkan beberapa segmen dari WO sekaligus. Hanya segmen
+ * Kolom centang: tugaskan ke satu regu atau keluarkan dari WO beberapa segmen
+ * sekaligus. Hanya segmen
  * yang BELUM dikerjakan (Dijadwalkan) yang bisa dicentang.
  */
 
