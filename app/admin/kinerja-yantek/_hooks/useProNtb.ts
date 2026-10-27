@@ -62,8 +62,14 @@ export function useProNtb(ulpAwal: string) {
     (async () => {
       try {
         const [rows, kolom] = await Promise.all([
+          // Diurutkan pada kunci unik: tanpa itu halaman 1.000-an berikutnya bisa
+          // dobel / melompati baris (sebulan semua ULP > 1.000 baris, 27 Okt 2026).
           fetchAllRows<Record<string, unknown>>(() =>
-            supabaseBrowser.rpc("realisasi_rentang", { p_ulp: ulp, p_dari: dari, p_sampai: sampai }),
+            supabaseBrowser
+              .rpc("realisasi_rentang", { p_ulp: ulp, p_dari: dari, p_sampai: sampai })
+              .order("tgl")
+              .order("sumber")
+              .order("sumber_id"),
           ),
           supabaseBrowser.from("pro_ntb_jenis").select("kunci,jenis_pekerjaan"),
         ]);

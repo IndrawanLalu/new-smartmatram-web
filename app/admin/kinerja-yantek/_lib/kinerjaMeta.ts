@@ -41,6 +41,10 @@ export interface BarisKinerja {
   sla: number | null;
   realisasi: number | null;
   belumApprove: number | null;
+  /** Baris kecil di bawah angka Realisasi / Belum disetujui — rincian yang
+   *  membentuk angka itu (Pengukuran: beban & tegangan ujung, 27 Okt 2026). */
+  rincianRealisasi?: string[];
+  rincianBelum?: string[];
   /** Sumbernya gagal dibaca. Angkanya dikosongkan, BUKAN ditulis nol —
    *  nol yang dikarang tidak bisa dibedakan dari kinerja yang benar nihil. */
   gagal?: boolean;
@@ -179,7 +183,8 @@ export const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumA
     keadaan: "lengkap",
     satuan: "gardu",
     desimal: false,
-    catatan: "WO Pengukuran bulanan. Realisasi = gardu WO yang pengukurannya sudah masuk.",
+    catatan:
+      "WO Pengukuran bulanan. Realisasi = gardu WO yang pengukuran bebannya masuk DAN tegangan ujungnya sudah disetujui dan tidak tertahan usulan titik/kVA. Belum disetujui = tertahan usulan titik/kVA + tegangan ujung yang sudah dikirim tapi belum disetujui.",
   },
 ];
 

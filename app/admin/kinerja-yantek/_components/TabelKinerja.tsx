@@ -103,6 +103,18 @@ interface Props {
   onCentang?: (kunci: string) => void;
 }
 
+/** Baris kecil di bawah angka — apa saja yang membentuknya. */
+function Rincian({ baris }: { baris?: string[] }) {
+  if (!baris?.length) return null;
+  return (
+    <>
+      {baris.map((t) => (
+        <span key={t} className="block text-[11px] text-ink-soft tabular-nums whitespace-nowrap">{t}</span>
+      ))}
+    </>
+  );
+}
+
 // Garis sel tegas di semua sisi — diminta user: bentuk tabel, bukan daftar.
 const TD = "px-4 py-3 align-middle border border-slate-300";
 
@@ -221,9 +233,11 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                   </td>
                   <td className={`${TD} text-right`}>
                     <Angka v={b.realisasi} satuan={b.satuan} nada="text-emerald-700" desimal={b.desimal} />
+                    <Rincian baris={b.rincianRealisasi} />
                   </td>
                   <td className={`${TD} text-right`}>
                     <Angka v={b.belumApprove} satuan={b.satuan} nada="text-amber-700" desimal={b.desimal} />
+                    <Rincian baris={b.rincianBelum} />
                   </td>
                   <td className={`${TD} text-right`}>
                     {b.dinilaiSla ? (

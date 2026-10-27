@@ -120,10 +120,18 @@ export function useTeganganUjung(ulp: string, oleh: string) {
     return () => { hidup = false; };
   }, [ulp, tahun, bulan, nonce]);
 
+  // Per status: jumlah GARDU (satu gardu = beberapa jurusan) — angka yang
+  // sebanding dengan WO & realisasi Pengukuran. Jumlah jurusan ikut disebut
+  // (27 Okt 2026: "Disetujui 99" ternyata 99 jurusan dari 71 gardu).
   const hitung = useMemo(() => {
     const h = Object.fromEntries(STATUS_UJUNG.map((s) => [s, 0])) as Record<StatusUjung, number>;
-    for (const t of titik) h[t.status_tampil] += 1;
-    return { ...h, bawah: titik.filter((t) => t.di_bawah_standar && t.status !== "Dibatalkan").length };
+    const gardu = Object.fromEntries(STATUS_UJUNG.map((s) => [s, new Set<string>()])) as Record<StatusUjung, Set<string>>;
+    for (const t of titik) {
+      h[t.status_tampil] += 1;
+      gardu[t.status_tampil].add(`${t.ulp}|${t.gardu_kode.toUpperCase()}`);
+    }
+    const perGardu = Object.fromEntries(STATUS_UJUNG.map((s) => [s, gardu[s].size])) as Record<StatusUjung, number>;
+    return { ...h, perGardu, bawah: titik.filter((t) => t.di_bawah_standar && t.status !== "Dibatalkan").length };
   }, [titik]);
 
   const tambal = (id: string, p: Partial<TitikUjung>) => setTitik((d) => d.map((x) => (x.id === id ? { ...x, ...p } : x)));

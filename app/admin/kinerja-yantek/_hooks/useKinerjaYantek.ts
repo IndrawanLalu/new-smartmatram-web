@@ -46,6 +46,16 @@ export {
   type BarisKinerja, type Keadaan,
 } from "../_lib/kinerjaMeta";
 
+/** `rekap_pengukuran_rincian` — scripts/rekap-pengukuran-rincian.sql. */
+interface RincianUkur {
+  diukur: number;
+  tu_terkirim: number;
+  tu_disetujui: number;
+  tertahan_titik: number;
+  tu_menunggu: number;
+  tu_belum: number;
+}
+
 interface BarisRpc {
   kunci: string;
   wo_terbit: number | string | null;
@@ -89,6 +99,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [woGarduJtr, setWoGarduJtr] = useState<number | null>(null);
   /** KMS tempelan JTM Tier 2 yang dicentang di web — sisanya dari HP. */
   const [centangJtm2, setCentangJtm2] = useState<number | null>(null);
+  /** Rincian baris Pengukuran; null = belum/ gagal dibaca (SQL belum dijalankan). */
+  const [ukur, setUkur] = useState<RincianUkur | null>(null);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -143,6 +155,12 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     );
 
     supabaseBrowser
+      .rpc("rekap_pengukuran_rincian", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
+      .then(({ data: rows, error }) => {
+        if (hidup) setUkur(error ? null : (((rows ?? []) as RincianUkur[])[0] ?? null));
+      });
+
+    supabaseBrowser
       .rpc("rekap_kinerja", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
         // Jawaban rentang lama yang datang belakangan tidak boleh menimpa yang baru.
@@ -177,9 +195,17 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         m.kunci === "jtm2" && centangJtm2 !== null && r.realisasi !== null
           ? ` Realisasi: ${kmTeks(Math.max(0, Number(r.realisasi) - centangJtm2))} KMS dari HP · ${kmTeks(centangJtm2)} KMS dari centang tempelan.`
           : "";
+      const rUkur = m.kunci === "pengukuran" ? ukur : null;
+      const n = (v: number) => v.toLocaleString("id-ID");
       return {
         ...m,
         woGardu: m.kunci === "jtr" ? woGarduJtr : null,
+        rincianRealisasi: rUkur
+          ? [`Pengukuran beban ${n(rUkur.diukur)}`, `Tegangan ujung ${n(rUkur.tu_terkirim)} terkirim · ${n(rUkur.tu_disetujui)} disetujui`]
+          : undefined,
+        rincianBelum: rUkur
+          ? [`Titik/kVA ${n(rUkur.tertahan_titik)}`, `Tegangan ujung ${n(rUkur.tu_menunggu)}`]
+          : undefined,
         // Sudah ada WO (sistem atau tempelan) = baris lengkap, apa pun bawaannya.
         keadaan: r.wo_terbit !== null ? "lengkap" : m.keadaan,
         woTerbit: angka(r.wo_terbit),
@@ -197,10 +223,11 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
                 : m.kunci === "jtm" || m.kunci === "jtm2" || m.kunci === "jtr"
                   // Km inspeksi yang selesai tanpa WO (rencana-mobile-jtm-jtr.md keputusan e).
                   ? `${m.catatan} Di luar WO: ${kmTeks(luar)} KMS.`
-                  : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`) + rincianJtm2,
+                  : `${m.catatan} Di luar WO: ${luar} pemeliharaan lain terkirim.`) + rincianJtm2 +
+          (rUkur?.tu_belum ? ` ${n(rUkur.tu_belum)} gardu sudah diukur bebannya tapi tegangan ujungnya belum dikirim (atau dikembalikan).` : ""),
       };
     });
-  }, [data, woGarduJtr, centangJtm2]);
+  }, [data, woGarduJtr, centangJtm2, ukur]);
 
   return {
     baris,

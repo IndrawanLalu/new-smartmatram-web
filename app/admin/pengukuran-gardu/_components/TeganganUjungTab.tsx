@@ -78,9 +78,13 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
   const dtl: TitikUjung | null = detail ? (o.titik.find((t) => t.id === detail) ?? null) : null;
   const pilih = (s: Saring) => { setSaring(s); setHalaman(1); };
 
-  const chip = (s: Saring, label: string, n: number, merah = false) => (
+  /** `jurusan` = jumlah titik di belakang angka gardu (chip status). */
+  const chip = (s: Saring, label: string, n: number, merah = false, jurusan?: number) => (
     <button key={s} onClick={() => pilih(s)} className={`${CHIP} ${saring === s ? CHIP_ON : CHIP_OFF}`}>
       {label} <span className={`opacity-70 ${merah && n > 0 && saring !== s ? "text-red-700 opacity-100 font-bold" : ""}`}>{o.loading ? "" : n}</span>
+      {!o.loading && jurusan !== undefined && (
+        <span className="opacity-60 text-[10px]"> gardu · {jurusan} jurusan</span>
+      )}
     </button>
   );
 
@@ -105,7 +109,7 @@ export default function TeganganUjungTab({ ulp, oleh }: { ulp: string; oleh: str
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
-        {STATUS_UJUNG.map((s) => chip(s, s, o.hitung[s]))}
+        {STATUS_UJUNG.map((s) => chip(s, s, o.hitung.perGardu[s], false, o.hitung[s]))}
         <button onClick={() => pilih("SEMUA")} className={`${CHIP} ${saring === "SEMUA" ? CHIP_ON : CHIP_OFF}`}>Semua</button>
         <span className="w-px h-6 bg-line mx-1" />
         {chip("tanpa", "Gardu belum diukur ujung", o.tanpa.length, true)}
