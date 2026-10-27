@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler,
+  Globe, Zap, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -82,6 +82,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/pengukuran-gardu", label: "Pengukuran Gardu",          icon: Gauge, keterangan: "Pengukuran beban gardu, anomali, dan WO pengukuran." },
       { href: "/admin/jtm",              label: "Inspeksi JTM",              icon: Waypoints, keterangan: "Inspeksi jaringan tegangan menengah per segmen beserta temuannya." },
       { href: "/admin/jtr",              label: "Inspeksi JTR",              icon: Network, keterangan: "Inspeksi jaringan tegangan rendah per gardu beserta temuannya." },
+      { href: "/admin/inspeksi-gardu",   label: "Inspeksi Gardu",            icon: ScanSearch, keterangan: "Inspeksi gardu Tier 1 & 2 — temuan langsung ke Perlu Perbaikan Pemeliharaan Gardu." },
     ],
   },
   {

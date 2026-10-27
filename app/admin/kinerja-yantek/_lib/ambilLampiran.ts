@@ -43,7 +43,8 @@ export interface BahanLampiran {
   pengukuran: PengukuranGardu[];
   jtm: BarisJtm[];
   jtr: InspeksiMenunggu[];
-  /** Dicentang di web (wo_manual_item): JTM Tier 2 & Inspeksi Gardu Tier 1/2. */
+  /** Baris sederhana: dicentang di web (wo_manual_item, JTM Tier 2 & Inspeksi
+   *  Gardu Tier 1/2) + kunjungan Inspeksi Gardu dari aplikasi. */
   manual: BarisRealisasi[];
 }
 
@@ -149,6 +150,6 @@ export async function ambilLampiran(ulp: string, tahun: number, bulan: number): 
         tgl_wo: woJtr.get(d.id)?.tgl_wo ?? null,
       }))
       .sort((a, b) => (a.penyulang ?? "").localeCompare(b.penyulang ?? "") || a.gardu_kode.localeCompare(b.gardu_kode, "id", { numeric: true })),
-    manual: realisasi.filter((r) => r.sumber === "wo_manual_item"),
+    manual: realisasi.filter((r) => r.sumber === "wo_manual_item" || r.sumber === "inspeksi_gardu"),
   };
 }

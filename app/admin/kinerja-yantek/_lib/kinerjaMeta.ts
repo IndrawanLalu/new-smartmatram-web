@@ -155,20 +155,22 @@ export const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumA
   {
     kunci: "igardu1",
     jenis: "Inspeksi Gardu Tier 1",
-    href: null,
+    href: "/admin/inspeksi-gardu",
     keadaan: "tanpaWo",
     satuan: "gardu",
     desimal: false,
-    catatan: "WO dari tempelan Excel. Modulnya belum ada — realisasi dicentang per gardu di web.",
+    catatan:
+      "WO = WO Inspeksi Gardu yang disusun di aplikasi; bulan yang sudah ditempel Excel tetap memakai tempelan (dicentang per gardu). Realisasi = gardu WO yang kunjungannya sudah dikirim regu.",
   },
   {
     kunci: "igardu2",
     jenis: "Inspeksi Gardu Tier 2",
-    href: null,
+    href: "/admin/inspeksi-gardu",
     keadaan: "tanpaWo",
     satuan: "gardu",
     desimal: false,
-    catatan: "WO dari tempelan Excel. Modulnya belum ada — realisasi dicentang per gardu di web.",
+    catatan:
+      "WO = WO Inspeksi Gardu yang disusun di aplikasi; bulan yang sudah ditempel Excel tetap memakai tempelan (dicentang per gardu). Realisasi = gardu WO yang kunjungannya sudah dikirim regu.",
   },
   {
     kunci: "pengukuran",

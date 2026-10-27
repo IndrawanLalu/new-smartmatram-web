@@ -162,6 +162,7 @@ export const MOBILE_MENUS: { id: string; label: string }[] = [
   { id: "cekPerabasan",    label: "Cek Perabasan" },
   { id: "harjar",          label: "Pemeliharaan Jaringan" },
   { id: "optimasiTrafo",   label: "Optimasi Trafo" },
+  { id: "inspeksiGardu",   label: "Inspeksi Gardu" },
 ];
 // ⚠ Daftar ini HARUS sejalan dengan `menuConfig.ts` di repo mobile. Menambah
 // menu di sana saja tidak cukup: menu yang tidak terdaftar di sini tidak bisa
