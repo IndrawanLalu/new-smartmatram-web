@@ -55,7 +55,7 @@ import TeganganUjungTab from "./_components/TeganganUjungTab";
 import AnalisisJtrTab from "./_components/AnalisisJtrTab";
 import { useTahanAmg, labelTahan } from "./_hooks/useTahanAmg";
 import PenyeimbanganTab from "./_components/PenyeimbanganTab";
-import WoPengukuranTab from "./_components/WoPengukuranTab";
+import WoPengukuranMenu from "./_components/WoPengukuranMenu";
 import AlertDetailModal from "./_components/AlertDetailModal";
 import AnomalySettingsPanel from "./_components/AnomalySettingsPanel";
 import { useYearlyStats } from "./_hooks/useYearlyStats";
@@ -904,7 +904,7 @@ export default function PengukuranGarduPage() {
       {/* TAB: WO PENGUKURAN                                                  */}
       {/* ════════════════════════════════════════════════════════════════════ */}
       {activeTab === "wo-pengukuran" && (
-        <WoPengukuranTab
+        <WoPengukuranMenu
           user={user}
           ulp={canSeeAllUnits(user.role) ? filter.ulp : (user.unit ?? "")}
         />

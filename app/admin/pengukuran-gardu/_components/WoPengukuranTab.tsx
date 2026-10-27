@@ -86,12 +86,14 @@ interface WoPengukuranTabProps {
   user: CurrentUser;
   /** "" = semua ULP (hanya mungkin untuk UP3). */
   ulp: string;
+  /** Bulan WO yang dibuka pertama kali (YYYY-MM) — sesudah Susun WO. */
+  bulanAwal?: string;
 }
 
-export default function WoPengukuranTab({ user, ulp }: WoPengukuranTabProps) {
+export default function WoPengukuranTab({ user, ulp, bulanAwal }: WoPengukuranTabProps) {
   const sekarang = new Date();
-  const [tahun, setTahun] = useState(sekarang.getFullYear());
-  const [bulan, setBulan] = useState(sekarang.getMonth() + 1);
+  const [tahun, setTahun] = useState(bulanAwal ? Number(bulanAwal.slice(0, 4)) : sekarang.getFullYear());
+  const [bulan, setBulan] = useState(bulanAwal ? Number(bulanAwal.slice(5, 7)) : sekarang.getMonth() + 1);
   const [cari, setCari] = useState("");
   const [saring, setSaring] = useState<Saringan>("");
   const [bukaLuarWo, setBukaLuarWo] = useState(false);

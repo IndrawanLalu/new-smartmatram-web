@@ -8,7 +8,12 @@ import { canSeeAllUnits, UNITS, type CurrentUser } from "@/lib/roles";
 /**
  * Susun WO bersatuan GARDU, diukur JUMLAH gardu (W2 rencana-wo-gardu-dan-
  * inspeksi-gardu.md). Kembaran SusunWoSegmen — yang itu terikat kilometer.
- * Dipakai Inspeksi Gardu; kelak Pemeliharaan Gardu & Pengukuran.
+ * Dipakai Inspeksi Gardu, Pemeliharaan Gardu & Pengukuran.
+ *
+ * Mode `bulanan` (W3/W4, 27 Okt 2026) untuk WO satu-per-ULP-per-bulan
+ * (Pemeliharaan Gardu, Pengukuran): tanpa nama, target, maupun "tambah ke
+ * WO" — gardu pilihan MASUK ke WO bulan yang dipilih; gardu yang sudah ada di
+ * WO bulan itu (`muatTerikat`) tidak muncul.
  *
  * Data gardu dimuat lewat `muatGardu(ulp)` saat ULP dipilih: tiap modul
  * menentukan sendiri arti "terakhir dikerjakan".
@@ -41,6 +46,12 @@ interface Props {
   muatGardu: (ulp: string) => Promise<GarduPilihan[]>;
   /** `ULP|KODE` huruf besar yang masih terbuka di WO sejenis. */
   terikat: Set<string>;
+  /** WO bulanan: hanya ULP + bulan + gardu; `onTerbitkan` menerima nama "" dan target = jumlah gardu. */
+  bulanan?: boolean;
+  /** WO bulanan: gardu yang sudah ada di WO bulan itu (`ULP|KODE`). */
+  muatTerikat?: (ulp: string, bulan: string) => Promise<Set<string>>;
+  /** Kalimat saat ULP belum punya regu; tanpa ini tidak ada kalimat. */
+  pesanTanpaRegu?: (ulp: string) => string;
   regu: { regu: string; ulp: string }[];
   woTerbuka: WoGarduTerbuka[];
   woAwal: { id: string; ulp: string } | null;
@@ -78,7 +89,10 @@ export default function SusunWoGardu(p: Props) {
   const [cari, setCari] = useState("");
   const [batas, setBatas] = useState(LANGKAH_TAMPIL);
   const [sibuk, setSibuk] = useState(false);
-  const { muatGardu } = p;
+  /** WO bulanan: isi WO bulan terpilih (beserta kuncinya, supaya isi bulan lama tidak dipakai). */
+  const [terikatBulan, setTerikatBulan] = useState<{ k: string; isi: Set<string> } | null>(null);
+  const { muatGardu, muatTerikat } = p;
+  const kunciBulan = `${ulp}|${bulanWo}`;
 
   useEffect(() => {
     if (!ulp) return;
@@ -90,8 +104,22 @@ export default function SusunWoGardu(p: Props) {
     return () => { hidup = false; };
   }, [ulp, muatGardu]);
 
+  useEffect(() => {
+    if (!ulp || !muatTerikat) return;
+    let hidup = true;
+    muatTerikat(ulp, bulanWo).then(
+      (isi) => { if (hidup) setTerikatBulan({ k: `${ulp}|${bulanWo}`, isi }); },
+      () => { if (hidup) setTerikatBulan({ k: `${ulp}|${bulanWo}`, isi: new Set() }); },
+    );
+    return () => { hidup = false; };
+  }, [ulp, bulanWo, muatTerikat]);
+  const isiBulan = terikatBulan?.k === kunciBulan ? terikatBulan.isi : null;
+
   const kunci = (g: GarduPilihan) => `${g.ulp.toUpperCase()}|${g.kode.toUpperCase()}`;
-  const bebas = useMemo(() => (gardu ?? []).filter((g) => !p.terikat.has(kunci(g))), [gardu, p.terikat]);
+  const bebas = useMemo(
+    () => (gardu ?? []).filter((g) => !p.terikat.has(kunci(g)) && !isiBulan?.has(kunci(g))),
+    [gardu, p.terikat, isiBulan],
+  );
   const daftarPenyulang = useMemo(() => [...new Set(bebas.map((g) => g.penyulang))].sort(), [bebas]);
   const tersedia = useMemo(() => {
     const k = cari.trim().toUpperCase();
@@ -109,17 +137,22 @@ export default function SusunWoGardu(p: Props) {
   const woUlp = p.woTerbuka.filter((w) => w.ulp === ulp);
   const woDipilih = woUlp.find((w) => w.wo_id === woTujuan) ?? null;
   const targetNum = Math.round(Number(target) || 0);
-  const siap = !!ulp && dipilih.length > 0 && (mode === "baru" ? nama.trim().length > 2 && targetNum > 0 : !!woTujuan);
+  const siap = !!ulp && dipilih.length > 0 &&
+    (p.bulanan ? true : mode === "baru" ? nama.trim().length > 2 && targetNum > 0 : !!woTujuan);
+  const labelBulan = `${NAMA_BULAN[Number(bulanWo.slice(5, 7)) - 1]} ${bulanWo.slice(0, 4)}`;
 
   const kirim = async () => {
     setSibuk(true);
     const kode = dipilih.map((g) => g.kode);
     const regu = Object.fromEntries(kode.filter((k) => bagi[k]).map((k) => [k, bagi[k]]));
-    const ok = mode === "baru"
+    const ok = p.bulanan
+      ? await p.onTerbitkan({ ulp, nama: "", target: kode.length, gardu: kode, regu, tglWo: `${bulanWo}-01` })
+      : mode === "baru"
       ? await p.onTerbitkan({ ulp, nama: nama.trim(), target: targetNum, gardu: kode, regu, tglWo: `${bulanWo}-01` })
       : await p.onTambah({ woId: woTujuan, gardu: kode, regu, target: targetNum > 0 ? targetNum : null });
     setSibuk(false);
     if (ok) {
+      if (p.bulanan) setTerikatBulan(null);
       setPilih(new Set());
       setBagi({});
       setNama("");
@@ -131,6 +164,7 @@ export default function SusunWoGardu(p: Props) {
     <div className="space-y-4">
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>{p.judul}</p>
+        {!p.bulanan && (
         <div className="mt-3 flex flex-wrap gap-2">
           {([["baru", "Buat WO baru"], ["tambah", "Tambah ke WO yang sudah ada"]] as const).map(([k, label]) => (
             <button key={k} onClick={() => setMode(k)} disabled={k === "tambah" && woUlp.length === 0}
@@ -140,6 +174,7 @@ export default function SusunWoGardu(p: Props) {
             </button>
           ))}
         </div>
+        )}
         <div className="mt-4 flex flex-wrap items-end gap-3">
           <label>
             <span className={EYEBROW}>ULP</span>
@@ -150,7 +185,12 @@ export default function SusunWoGardu(p: Props) {
               {UNITS.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
             </select>
           </label>
-          {mode === "baru" ? (
+          {p.bulanan ? (
+            <label>
+              <span className={EYEBROW}>Bulan WO</span>
+              <input type="month" value={bulanWo} onChange={(e) => e.target.value && setBulanWo(e.target.value)} className={`${FIELD} mt-1 block w-[170px]`} />
+            </label>
+          ) : mode === "baru" ? (
             <>
               <label>
                 <span className={EYEBROW}>Nama WO</span>
@@ -187,7 +227,13 @@ export default function SusunWoGardu(p: Props) {
             </>
           )}
         </div>
-        {mode === "tambah" && woDipilih && (
+        {p.bulanan && ulp && (
+          <p className="text-xs text-ink-soft mt-3">
+            Satu WO per ULP per bulan — gardu pilihan masuk ke WO <b className="text-ink">{labelBulan}</b> {ulp}
+            {isiBulan === null ? " …" : isiBulan.size > 0 ? ` (sudah berisi ${isiBulan.size} gardu; yang sudah ada tidak ditampilkan)` : " (dibuat sekarang, belum ada)"}.
+          </p>
+        )}
+        {!p.bulanan && mode === "tambah" && woDipilih && (
           <p className="text-xs text-ink-soft mt-3">
             <b className="text-ink">{woDipilih.nama}</b> berisi {woDipilih.item} gardu, target {woDipilih.target ?? "—"}
             {dipilih.length > 0 && <> → jadi <b className="text-ink">{woDipilih.item + dipilih.length}</b> gardu</>}
@@ -198,7 +244,7 @@ export default function SusunWoGardu(p: Props) {
       <div className={`${CARD} p-4 sticky top-2 z-10 flex flex-wrap items-center gap-x-5 gap-y-2`}>
         <span className="text-sm">
           <b className="text-ink tabular-nums text-lg">{dipilih.length}</b> <span className="text-ink-soft">gardu dipilih</span>
-          {mode === "baru" && targetNum > 0 && <span className="ml-1.5 text-xs text-ink-muted">dari target {targetNum}</span>}
+          {!p.bulanan && mode === "baru" && targetNum > 0 && <span className="ml-1.5 text-xs text-ink-muted">dari target {targetNum}</span>}
         </span>
         {reguUlp.length > 0 && dipilih.length > 0 && (
           <span className="flex flex-wrap items-center gap-1.5 text-xs text-ink-soft">
@@ -212,7 +258,7 @@ export default function SusunWoGardu(p: Props) {
         )}
         <button onClick={() => void kirim()} disabled={!siap || sibuk} className={`${BTN_PRIMARY} ml-auto`}>
           {sibuk ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-          {mode === "baru" ? "Terbitkan WO" : "Tambahkan ke WO"}
+          {p.bulanan ? `Masukkan ke WO ${labelBulan}` : mode === "baru" ? "Terbitkan WO" : "Tambahkan ke WO"}
         </button>
       </div>
 
@@ -225,19 +271,19 @@ export default function SusunWoGardu(p: Props) {
             <option value="">Semua penyulang</option>
             {daftarPenyulang.map((x) => <option key={x} value={x}>{x}</option>)}
           </select>
-          {ulp && reguUlp.length === 0 && (
-            <span className="text-[11px] text-ink-muted">Belum ada regu ber-menu Inspeksi Gardu di {ulp} — WO tetap bisa terbit, semua tim se-ULP melihatnya.</span>
+          {ulp && reguUlp.length === 0 && p.pesanTanpaRegu && (
+            <span className="text-[11px] text-ink-muted">{p.pesanTanpaRegu(ulp)}</span>
           )}
         </div>
 
         {!ulp ? (
           <p className="text-xs text-ink-muted py-10 text-center">Pilih ULP dulu.</p>
-        ) : gardu === null ? (
+        ) : gardu === null || (p.bulanan && isiBulan === null) ? (
           <p className="text-xs text-ink-muted py-10 text-center"><Loader2 size={14} className="inline animate-spin" /> Memuat gardu…</p>
         ) : galat ? (
           <p className="text-xs text-red-700 py-10 text-center">Gardu gagal dimuat: {galat}</p>
         ) : tersedia.length === 0 ? (
-          <p className="text-xs text-ink-muted py-10 text-center">Tidak ada gardu yang bisa dipilih. Yang masih terbuka di WO tier ini tidak muncul.</p>
+          <p className="text-xs text-ink-muted py-10 text-center">Tidak ada gardu yang bisa dipilih. Yang sudah ada di WO sejenis tidak muncul.</p>
         ) : (
           <div className="mt-3 space-y-1">
             <label className="flex items-center gap-3 px-3 py-2 rounded-xl bg-surface cursor-pointer">

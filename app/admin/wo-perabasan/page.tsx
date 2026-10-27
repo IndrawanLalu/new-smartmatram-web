@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, Send, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, Download, FileText, LayoutDashboard, ListChecks, Loader2, Map, PlusCircle, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
@@ -10,6 +10,7 @@ import { nadaStatus } from "@/lib/statusUi";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
+import TabGaris from "@/app/admin/_kit/TabGaris";
 import { KotakCari } from "@/app/admin/_kit/Field";
 import ChipSaring, { type ItemChip } from "@/app/admin/_kit/ChipSaring";
 import CatatanInfo from "@/app/admin/_kit/CatatanInfo";
@@ -34,8 +35,11 @@ import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
  * Perabasan Pohon — satuan SEGMEN, ukuran KILOMETER.
  *
  * Pola halaman Kinerja Pelayanan Teknik (teknisaplikasi.md butir 7):
- * Daftar Segmen → Dashboard → Daftar WO → Susun WO. Persetujuan bukan tab,
- * melainkan chip "Menunggu verifikasi" di daftar; keputusannya di modal rincian.
+ * Daftar Segmen → Dashboard → WO. Persetujuan bukan tab, melainkan chip
+ * "Menunggu verifikasi" di daftar; keputusannya di modal rincian.
+ *
+ * W1 (27 Okt 2026): Daftar WO & Susun WO jadi SATU tab "WO" bertab bawah,
+ * bentuk WO Inspeksi JTM. Segmen yang berjalan tetap di Daftar Segmen.
  *
  * UI baru (rencana-ui-baru.md, 14 Okt 2026): kepala halaman dari kerangka
  * admin — tab dititipkan lewat IsiKepala, saringan lewat IsiTopbar.
@@ -52,7 +56,7 @@ const ISTILAH: IstilahWo = {
     `ULP ${ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN). WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya didaftarkan lalu ditugaskan dari daftar segmen.`,
 };
 
-type TabKey = "daftar" | "dashboard" | "wo" | "terbit";
+type TabKey = "daftar" | "dashboard" | "wo";
 type Chip = SaringStatus | "LUAR";
 
 const kmTeks = (v: number) => v.toFixed(2).replace(".", ",");
@@ -60,6 +64,7 @@ const kmTeks = (v: number) => v.toFixed(2).replace(".", ",");
 export default function WoPerabasanPage() {
   const user = useCurrentUser();
   const [tab, setTab] = useState<TabKey>("daftar");
+  const [tampilanWo, setTampilanWo] = useState<"daftar" | "susun">("daftar");
   const [idDetail, setIdDetail] = useState<string | null>(null);
   const [idRegu, setIdRegu] = useState<string | null>(null);
   const [mengunduh, setMengunduh] = useState(false);
@@ -136,9 +141,8 @@ export default function WoPerabasanPage() {
   const TAB: ItemTab<TabKey>[] = [
     { kunci: "daftar", label: "Daftar Segmen", ikon: ListChecks, angka: d.loading ? 0 : d.hitung["Belum ditugaskan"], angkaMasalah: true },
     { kunci: "dashboard", label: "Dashboard", ikon: LayoutDashboard },
-    // Daftar WO yang sudah terbit — lihat & ubah (permintaan user 25 Sep 2026).
-    { kunci: "wo", label: "Daftar WO", ikon: FileText },
-    { kunci: "terbit", label: "Susun WO", ikon: Send },
+    // Daftar WO (lihat & ubah, permintaan user 25 Sep 2026) + Susun WO.
+    { kunci: "wo", label: "WO", ikon: FileText },
   ];
   const CHIP: ItemChip<Chip>[] = [
     { kunci: "SEMUA", label: "Semua" },
@@ -179,7 +183,21 @@ export default function WoPerabasanPage() {
         />
       </IsiKepala>
 
-      {tab !== "terbit" && (
+      {tab === "wo" && (
+        <TabGaris
+          tab={[
+            { kunci: "daftar", label: "Daftar WO", ikon: <FileText size={14} /> },
+            { kunci: "susun", label: woAwal ? "Tambah segmen" : "Susun WO", ikon: <PlusCircle size={14} /> },
+          ]}
+          aktif={tampilanWo}
+          onPilih={(k) => {
+            setTampilanWo(k);
+            if (k === "daftar") setWoAwal(null);
+          }}
+        />
+      )}
+
+      {!(tab === "wo" && tampilanWo === "susun") && (
         <IsiTopbar>
           <PilihUlp nilai={d.ulp} onUbah={d.setUlp} daftar={d.daftarUlp} />
           {tab === "daftar" && (
@@ -195,7 +213,7 @@ export default function WoPerabasanPage() {
         </IsiTopbar>
       )}
 
-      {tab === "terbit" ? (
+      {tab === "wo" && tampilanWo === "susun" ? (
         <SusunWoSegmen
           key={woAwal?.id ?? "baru"}
           user={user}
@@ -207,14 +225,23 @@ export default function WoPerabasanPage() {
           segmenTerikat={w.segmenTerikat}
           regu={w.regu}
           woTerbuka={w.wo.filter((x) => x.status === "Terbit")}
+          // Selesai → kembali ke Daftar WO supaya hasilnya terlihat (bentuk WO JTM).
           onTerbitkan={async (v) => {
             const h = await w.terbitkan({ ...v, oleh });
-            if (h) d.muat();
+            if (h) {
+              d.muat();
+              setWoAwal(null);
+              setTampilanWo("daftar");
+            }
             return h;
           }}
           onTambah={async (v) => {
             const h = await w.tambahKeWo({ ...v, oleh });
-            if (h) d.muat();
+            if (h) {
+              d.muat();
+              setWoAwal(null);
+              setTampilanWo("daftar");
+            }
             return h;
           }}
         />
@@ -371,7 +398,8 @@ export default function WoPerabasanPage() {
           onTambahSegmen={() => {
             setWoAwal({ id: detailWo.wo_id, ulp: detailWo.ulp });
             setIdWo(null);
-            setTab("terbit");
+            setTab("wo");
+            setTampilanWo("susun");
           }}
           onTutup={() => setIdWo(null)}
         />

@@ -140,6 +140,7 @@ export default function WoIgardu({ user }: { user: CurrentUser }) {
               muatGardu={muatTier}
               terikat={w.terikat[tier]}
               regu={w.regu}
+              pesanTanpaRegu={(u) => `Belum ada regu ber-menu Inspeksi Gardu di ${u} — WO tetap bisa terbit, semua tim se-ULP melihatnya.`}
               woTerbuka={w.wo.filter((x) => x.status === "Terbit" && x.tier === tier)
                 .map((x) => ({ wo_id: x.wo_id, ulp: x.ulp, nama: x.nama, tgl_wo: x.tgl_wo, target: x.target, item: x.item }))}
               woAwal={woAwal}

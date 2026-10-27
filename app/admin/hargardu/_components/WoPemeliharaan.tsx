@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, TriangleAlert } from "lucide-react";
+import { FileText, Loader2, PlusCircle, TriangleAlert } from "lucide-react";
 import { canManageSettings, type CurrentUser } from "@/lib/roles";
 import { CARD, FIELD } from "@/app/admin/_ui";
 import { useWoHargardu } from "../_hooks/useWoHargardu";
@@ -9,6 +9,8 @@ import KartuWoUlp from "./KartuWoUlp";
 import TabelWoHar from "./TabelWoHar";
 import RencanaGardu from "@/app/admin/_components/RencanaGardu";
 import { RENCANA_HARGARDU } from "../_lib/rencanaJenis";
+import TabGaris from "@/app/admin/_kit/TabGaris";
+import SusunWoBulanan from "@/app/admin/_components/SusunWoBulanan";
 
 /**
  * Tab WO Pemeliharaan — langkah 7 `rencana-hargardu.md`, sepola WO Pengukuran.
@@ -19,6 +21,9 @@ import { RENCANA_HARGARDU } from "../_lib/rencanaJenis";
  * Realisasi dihitung saat regu MENGIRIM (keputusan user 24 Sep 2026); yang
  * belum disetujui tampil terpisah. HP HARGAR menampilkan WO ini sebagai daftar
  * "WO bulan ini" — tidak ada yang perlu dicentang.
+ *
+ * W3 (27 Okt 2026): dua tab — Daftar WO (bentuk di atas) · Susun WO (pilih
+ * gardu sendiri, masuk ke WO bulan itu). Rencana Excel & terbit otomatis tetap.
  */
 
 const BULAN = [
@@ -30,10 +35,23 @@ const bulanIni = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/
 
 export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: CurrentUser; ulp: string; daftarUlp: string[] }) {
   const [periode, setPeriode] = useState(bulanIni());
+  const [tampilan, setTampilan] = useState<"daftar" | "susun">("daftar");
   const daftar = ulp === "SEMUA" ? daftarUlp.filter((u) => u !== "SEMUA") : [ulp];
 
   return (
     <div className="flex flex-col gap-4">
+      <TabGaris
+        tab={[
+          { kunci: "daftar", label: "Daftar WO", ikon: <FileText size={14} /> },
+          { kunci: "susun", label: "Susun WO", ikon: <PlusCircle size={14} /> },
+        ]}
+        aktif={tampilan}
+        onPilih={setTampilan}
+      />
+      {tampilan === "susun" ? (
+        <SusunWoBulanan user={user} jenis="hargardu" onSelesai={(b) => { setPeriode(b); setTampilan("daftar"); }} />
+      ) : (
+      <>
       <RencanaGardu
         jenis={RENCANA_HARGARDU}
         keterangan="Selama riwayat belum ada, ULP menandai bulan pemeliharaan tiap gardu di templat Excel. WO bulan yang ada rencananya disusun dari sini; tanpa rencana, sistem menyusun dari riwayat."
@@ -60,6 +78,8 @@ export default function WoPemeliharaan({ user, ulp, daftarUlp }: { user: Current
       {/* key: ganti bulan/ULP = pasang ulang, jadi angka bulan lama tidak
           sempat tampil di bawah judul bulan baru. */}
       <IsiWo key={`${periode}|${daftar.join()}`} user={user} daftar={daftar} periode={periode} />
+      </>
+      )}
     </div>
   );
 }

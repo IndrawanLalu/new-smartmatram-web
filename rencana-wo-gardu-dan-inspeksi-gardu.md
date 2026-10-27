@@ -141,3 +141,10 @@ Masih terbuka (dipakai usulan kecuali user mengubah):
   `foto_riwayat` cabang `igardu`. Uji PGlite 9 + 3 lulus. Web: Rekap baris igardu bertaut ke
   /admin/inspeksi-gardu; lampiran Realisasi Bulanan ikut memuat kunjungan aplikasi.
 - Urutan jalankan SQL: inspeksi-gardu.sql → inspeksi-gardu-pengaturan.sql → inspeksi-gardu-rekap.sql.
+- **W1–W4 — SELESAI (lokal, 27 Okt), tanpa SQL baru.** `_kit/TabGaris` (bilah tab bergaris).
+  W1 Perabasan: tab utama "Daftar WO" + "Susun WO" → satu tab **WO** (Daftar WO · Susun WO);
+  Daftar Segmen tetap tab utama (segmen berjalan + persetujuan). W2 `SusunWoGardu` + mode `bulanan`.
+  W3 Pemeliharaan Gardu & W4 Pengukuran: tab WO → Daftar WO (bentuk lama: Rencana Excel, kartu ULP,
+  terbit otomatis/manual) · Susun WO (`SusunWoBulanan`, `lib/woGarduBulanan.ts`): pilih gardu →
+  masuk WO bulan itu lewat RPC `tempel_wo` yang sudah ada (alasan 'tempelan', keterangan
+  "Dipilih di Susun WO"); gardu yang sudah di WO bulan itu disembunyikan.
