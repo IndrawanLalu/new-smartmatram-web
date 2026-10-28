@@ -30,9 +30,11 @@ interface Deps {
   semuaLapisan: Lapisan[];
   /** Dibuka dari tabel (/peta?jtr=KODE): kode gardu JTR yang dituju. */
   awalJtr?: string;
+  /** Dibuka dari persetujuan Inspeksi JTM (/peta?jtm=…). */
+  awalJtm?: { inspeksi: string; segmen: string; penyulang: string };
 }
 
-export function useAntreanPeta({ ulp, boleh, nyalakan, setFokus, setTerpilih, setSegmenTampil, terpilih, semuaLapisan, awalJtr }: Deps) {
+export function useAntreanPeta({ ulp, boleh, nyalakan, setFokus, setTerpilih, setSegmenTampil, terpilih, semuaLapisan, awalJtr, awalJtm }: Deps) {
   // ── Persetujuan inspeksi JTR ───────────────────────────────────────────────
   const jtr = useAntreanJtr(ulp);
   const [jtrAktif, setJtrAktif] = useState(false);
@@ -145,6 +147,19 @@ export function useAntreanPeta({ ulp, boleh, nyalakan, setFokus, setTerpilih, se
       setAwalDibuka(true);
       const b = bingkaiBatas(l);
       if (b) setFokus(b);
+    }
+  }
+
+  // Dibuka dari persetujuan Inspeksi JTM: panel persetujuannya langsung terbuka;
+  // kalau sudah tidak menunggu (disetujui/dikembalikan), cukup segmen itu saja.
+  const [awalJtmDibuka, setAwalJtmDibuka] = useState(!awalJtm);
+  if (!awalJtmDibuka && awalJtm && jtm.siap) {
+    setAwalJtmDibuka(true);
+    const d = jtm.antrean.find((x) => x.id === awalJtm.inspeksi);
+    if (d) bukaAntreanJtm(d);
+    else {
+      nyalakan(`jtm:${awalJtm.penyulang}`);
+      setSegmenTampil(awalJtm.segmen);
     }
   }
 

@@ -7,11 +7,12 @@ export const metadata = { title: "Peta Jaringan — SMART Mataram" };
 export default async function PetaPage({
   searchParams,
 }: {
-  searchParams: Promise<{ jtr?: string; ulp?: string; pohon?: string; mode?: string; rencana?: string; jurusan?: string; opsi?: string; survey?: string }>;
+  searchParams: Promise<{ jtr?: string; ulp?: string; pohon?: string; mode?: string; rencana?: string; jurusan?: string; opsi?: string; survey?: string; jtm?: string; segmen?: string; penyulang?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   const sp = await searchParams;
   const rencana = sp.rencana && sp.jurusan ? { gardu: sp.rencana, jurusan: sp.jurusan.toUpperCase(), opsi: sp.opsi } : undefined;
-  return <PetaJaringan user={user} awal={{ jtr: sp.jtr, ulp: sp.ulp, pohon: sp.pohon === "1", sld: sp.mode === "sld", rencana, survey: sp.survey }} />;
+  const jtm = sp.jtm && sp.segmen && sp.penyulang ? { inspeksi: sp.jtm, segmen: sp.segmen, penyulang: sp.penyulang } : undefined;
+  return <PetaJaringan user={user} awal={{ jtr: sp.jtr, ulp: sp.ulp, pohon: sp.pohon === "1", sld: sp.mode === "sld", rencana, survey: sp.survey, jtm }} />;
 }

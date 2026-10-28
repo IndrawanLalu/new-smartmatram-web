@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Ban, Calendar, CheckCircle2, GitBranch, Loader2, MapPinned, Merge, Ruler, Trash2, TriangleAlert, XCircle } from "lucide-react";
+import Link from "next/link";
+import { Ban, Calendar, CheckCircle2, GitBranch, Globe, Loader2, MapPinned, Merge, Ruler, Trash2, TriangleAlert, XCircle } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import ConfirmDialog from "@/app/admin/_components/ConfirmDialog";
@@ -158,11 +159,20 @@ export default function DetailInspeksiJtmModal({
             {status}
           </span>
           {d.segmen_id && (
+            // Ke Peta Jaringan: panel persetujuan segmen ini terbuka di sana.
+            <Link
+              href={`/peta?jtm=${d.id}&segmen=${d.segmen_id}&penyulang=${encodeURIComponent(d.penyulang)}&ulp=${encodeURIComponent(d.ulp)}`}
+              className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:text-navy-500"
+            >
+              <Globe size={13} /> Lihat di peta
+            </Link>
+          )}
+          {d.segmen_id && (
             // Nama segmen disusun dari kedua titik ujungnya — dibetulkan di sini
             // juga, bukan hanya di Master Segmen (koreksi user 6 Okt 2026).
             <button
               onClick={() => setUbahNama(true)}
-              className="ml-auto inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:text-navy-500"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:text-navy-500"
             >
               <MapPinned size={13} /> Ubah nama segmen
             </button>

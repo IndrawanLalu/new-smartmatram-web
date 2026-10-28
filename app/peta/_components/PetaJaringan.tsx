@@ -184,7 +184,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const rincianPenyulang = useRincianPenyulang(kartuPenyulang);
 
   const antrean = useAntreanPeta({
-    ulp, boleh, nyalakan, setFokus, setTerpilih, setSegmenTampil, terpilih, semuaLapisan, awalJtr: awal?.jtr,
+    ulp, boleh, nyalakan, setFokus, setTerpilih, setSegmenTampil, terpilih, semuaLapisan, awalJtr: awal?.jtr, awalJtm: awal?.jtm,
   });
   const { jtr, jtm, portal } = antrean;
 

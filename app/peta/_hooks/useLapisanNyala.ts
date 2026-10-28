@@ -23,6 +23,9 @@ export interface AwalPeta {
   rencana?: { gardu: string; jurusan: string; opsi?: string };
   /** Survey Jaringan Baru (/peta?survey=<id|baru>). */
   survey?: string;
+  /** Dibuka dari persetujuan Inspeksi JTM (/peta?jtm=<id>&segmen=<id>&penyulang=…):
+   *  panel persetujuannya terbuka; kalau sudah tidak menunggu, segmen itu saja. */
+  jtm?: { inspeksi: string; segmen: string; penyulang: string };
 }
 
 export function useLapisanNyala(user: CurrentUser, awal?: AwalPeta) {
