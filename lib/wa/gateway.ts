@@ -40,6 +40,21 @@ export async function gatewaySend(payload: GatewaySendPayload): Promise<{ id?: s
   return { id: d.id };
 }
 
+let nomorBot: { kapan: number; id: string[] } | null = null;
+
+/**
+ * Bagian angka JID bot, untuk mengenali mention ke bot di grup: nomor dari
+ * status sesi gateway + LID dari env `WA_BOT_LID` (grup WA kini sering
+ * me-mention lewat `@lid`, yang tidak bisa diturunkan dari nomor).
+ */
+export async function gatewayBotId(): Promise<string[]> {
+  if (nomorBot && Date.now() - nomorBot.kapan < 600_000) return nomorBot.id;
+  const lid = (process.env.WA_BOT_LID || "").split(",").map((x) => x.trim()).filter(Boolean);
+  const nomor = gatewayEnabled() ? await gw(`/sessions/${SESSION}/status`).then((d) => d.phone as string | null).catch(() => null) : null;
+  nomorBot = { kapan: Date.now(), id: [...lid, ...(nomor ? [nomor] : [])] };
+  return nomorBot.id;
+}
+
 /** Daftar grup WA (untuk halaman konfigurasi group_id). */
 export async function gatewayListGroups(): Promise<{ id: string; nama: string }[]> {
   const d = await gw(`/sessions/${SESSION}/groups`);

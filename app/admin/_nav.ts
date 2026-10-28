@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch,
+  Globe, Zap, MessageCircleQuestion, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch,
   type LucideIcon,
 } from "lucide-react";
 
@@ -116,7 +116,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/petugas",          label: "Manajemen Petugas", icon: Users, keterangan: "Kelola data petugas lapangan." },
       { href: "/admin/user-management",  label: "Manajemen User",    icon: UserCog, keterangan: "Kelola akun dan hak akses pengguna." },
       { href: "/admin/settings/wa",      label: "Setting WA Group",  icon: MessageSquare, keterangan: "Konfigurasi group WA tujuan untuk setiap notifikasi." },
-      { href: "/admin/settings/amg",     label: "Setting AMG",       icon: Radio, keterangan: "Kredensial login AMG per ULP — dipakai agen lokal untuk mengirim pengukuran." },
+      { href: "/admin/settings/tanya-wa", label: "Tanya Jawab WA", icon: MessageCircleQuestion, keterangan: "Kata kunci, contoh, dan kamus yang dipakai bot WA (@smart) untuk memahami pertanyaan." },
+      { href: "/admin/settings/amg",    label: "Setting AMG",       icon: Radio, keterangan: "Kredensial login AMG per ULP — dipakai agen lokal untuk mengirim pengukuran." },
     ],
   },
   {
