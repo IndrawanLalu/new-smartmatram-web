@@ -21,6 +21,7 @@ export const cariGardu: FungsiTanya = {
   kode: "cari_gardu",
   nama: "Cari gardu",
   saringan: ["ulp"],
+  ulpBolehSemua: true,
   kata: [["cari", 2], ["alamat", 2], ["gardu di", 1], ["dimana", 2], ["di mana", 2], ["lokasi", 1], ["jalan", 1], ["jl", 1], ["dekat", 1]],
   contoh: ["@smart cari gardu jl yos sudarso", "@smart gardu di pagutan ampenan", "@smart alamat gardu kekalik"],
   async jalankan({ saringan: s, bebas }) {

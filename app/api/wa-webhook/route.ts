@@ -3,7 +3,7 @@ import { handleCommand } from "@/lib/wa/commands";
 import { handlePenormalanReport } from "@/lib/wa/handleLaporan";
 import { isPenormalanReport } from "@/lib/wa/parsePenormalan";
 import { gatewayBotId, gatewaySend } from "@/lib/wa/gateway";
-import { bacaPanggilan, bolehTanya } from "@/lib/wa/tanya/panggilan";
+import { bacaPanggilan, bolehTanya, mentionDari } from "@/lib/wa/tanya/panggilan";
 import { tanya } from "@/lib/wa/tanya/jawab";
 
 /**
@@ -31,7 +31,12 @@ export async function POST(req: NextRequest) {
   const isLaporan = isPenormalanReport(text);
   const pertanyaan =
     isCommand || isLaporan ? null : bacaPanggilan({ from, isGroup, text, raw: payload.raw }, isGroup ? await gatewayBotId() : []);
-  if (!isCommand && !isLaporan && pertanyaan === null) return NextResponse.json({ skipped: true });
+  if (!isCommand && !isLaporan && pertanyaan === null) {
+    // Mention yang bukan ke bot (atau LID bot yang belum ada di WA_BOT_LID) — salin dari log ke WA_BOT_LID.
+    const mention = isGroup ? mentionDari(payload.raw) : [];
+    if (mention.length) console.log(`[tanya-wa] mention tidak dikenali di ${from}: ${mention.join(", ")}`);
+    return NextResponse.json({ skipped: true });
+  }
 
   // Access control (sama seperti wa-bot lama) — berlaku untuk kedua jalur.
   const ALLOWED_GROUPS = new Set((process.env.WA_ALLOWED_GROUPS || "").split(",").filter(Boolean));

@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import type { Kamus } from "./rapikan";
+import { rapikan, type Kamus } from "./rapikan";
 import { bacaPeriode, hariIniWita, ULP_SEMUA, type Saringan } from "./saringan";
 import { urai, type Bahan, type HasilUrai, type KataKunci } from "./urai";
 import { FUNGSI, fungsiMenurutKode } from "./fungsi";
@@ -164,6 +164,30 @@ const kunciAsal = (a: AsalPesan) => `${a.grup ?? ""}|${a.dari ?? ""}`;
 const TANPA_PILIHAN: Lanjutan = { tetap: {}, dipilih: [], kata: [] };
 
 const PERIODE_TANYA = ["hari ini", "minggu ini", "bulan ini", "tahun ini"];
+
+/** Pesan yang isinya HANYA salam ("halo pak", "selamat pagi") → menu bernomor. */
+const SALAM = new Set([
+  "halo", "hallo", "helo", "hello", "hai", "hi", "hay", "hei", "hey", "p", "ping", "tes", "test", "permisi", "salam",
+  "assalamualaikum", "assalamu", "alaikum", "asalamualaikum", "ass", "wr", "wb", "selamat", "pagi", "siang", "sore", "malam",
+  "pak", "bu", "bapak", "ibu", "om", "kak", "min", "admin", "bot", "smart",
+]);
+const hanyaSalam = (rapi: string) => {
+  const k = rapi.split(" ").filter(Boolean);
+  return k.length > 0 && k.every((x) => SALAM.has(x));
+};
+/** Isi menu sapaan; fungsi yang dinonaktifkan dari web tidak tampil. */
+const MENU: [kode: string, label?: string][] = [
+  ["gangguan"], ["realisasi"], ["temuan"], ["gardu_overload"], ["tegangan_ujung"],
+  ["kartu_gardu", "Data gardu (perlu kode gardu)"], ["cari_gardu", "Cari gardu (perlu alamat)"], ["bantuan", "Contoh pertanyaan"],
+];
+
+function sapa(asal: AsalPesan, b: BahanLengkap): HasilTanya {
+  const opsi = MENU.filter(([k]) => b.nama.has(k)).map(([k, label]) => ({ label: label ?? b.nama.get(k)!, kode: k }));
+  const nama = asal.nama?.trim();
+  const kepala = [`👋 Halo Pak/Bu${nama ? ` ${nama}` : ""}, ada yang bisa saya bantu?`];
+  // Teks kosong: pilihan menu menjalankan fungsinya tanpa saringan dari salam.
+  return { balasan: tawarkan(asal, "", TANPA_PILIHAN, kepala, opsi), urai: null, fungsi: null, hasil: "tanya_balik" };
+}
 const besarAwal = (t: string) => t[0].toUpperCase() + t.slice(1).toLowerCase();
 
 /** Simpan pilihan yang ditunggu lalu susun daftar bernomornya. */
@@ -205,7 +229,7 @@ async function susun(teks: string, asal: AsalPesan, b: BahanLengkap, lanjut: Lan
   const kurang = (f.wajib ?? []).find((w) => !s[w]);
   if (kurang) {
     return {
-      balasan: [`🔎 *${nama}*`, `${LABEL_SARINGAN[kurang]} belum disebut. Contoh:`, ...contohSingkat(b, [f.kode])].join("\n"),
+      balasan: [`🔎 *${nama}*`, `${besarAwal(LABEL_SARINGAN[kurang])} belum disebut. Contoh:`, ...contohSingkat(b, [f.kode])].join("\n"),
       urai: u, fungsi: f.kode, hasil: "dijawab",
     };
   }
@@ -214,7 +238,7 @@ async function susun(teks: string, asal: AsalPesan, b: BahanLengkap, lanjut: Lan
   // sudah punya ULP; satu gardu sudah menentukan ULP dan memakai keadaan terakhirnya.
   const lanjutF = { ...lanjut, kode: f.kode };
   const satuGardu = f.saringan.includes("gardu") && !!s.gardu;
-  if (f.saringan.includes("ulp") && !s.ulpDisebut && !s.ulp && !satuGardu) {
+  if (f.saringan.includes("ulp") && !f.ulpBolehSemua && !s.ulpDisebut && !s.ulp && !satuGardu) {
     const opsi: Opsi[] = [
       { label: "Semua ULP", tetap: { ulp: null, ulpDisebut: true } },
       ...ULP_SEMUA.map((x) => ({ label: besarAwal(x), tetap: { ulp: x, ulpDisebut: true } })),
@@ -233,7 +257,7 @@ async function susun(teks: string, asal: AsalPesan, b: BahanLengkap, lanjut: Lan
   const isi = await f.jalankan({ saringan: s, contoh, rapi: u.rapi, bebas });
   const kepala = f.kode === "bantuan" ? null : judul(nama, f.saringan, s);
   // ULP/periode didapat dari tanya balik → tunjukkan cara bertanya langsung.
-  const saran = lanjut.kata.length ? `_Lain kali bisa langsung: @smart ${teks.replace(/^@?smart\b[\s,:.\-!]*/i, "")} ${lanjut.kata.join(" ")}_` : null;
+  const saran = lanjut.kata.length ? `_Lain kali bisa langsung: @smart ${teks.replace(/^@?smart\b[\s,:.\-!]*/i, "") || nama.toLowerCase()} ${lanjut.kata.join(" ")}_` : null;
   const balasan: Balasan =
     typeof isi === "string"
       ? // Jawaban #DATA sudah berkaki sendiri — jangan dobel.
@@ -262,9 +286,9 @@ export async function tanya(teks: string, asal: AsalPesan, catat: boolean): Prom
         dipilih: [...l.dipilih, o.label],
         kata: o.tetap ? [...l.kata, o.label.toLowerCase()] : l.kata,
       };
-      teksCatat = `${tunggu.teks} [${lanjut.dipilih.join(" · ")}]`;
+      teksCatat = `${tunggu.teks || "(menu sapaan)"} [${lanjut.dipilih.join(" · ")}]`;
       h = await susun(tunggu.teks, asal, b, lanjut);
-    } else h = await susun(teks, asal, b);
+    } else h = hanyaSalam(rapikan(teks)) ? sapa(asal, b) : await susun(teks, asal, b);
   } catch (e) {
     console.error("[tanya-wa]", (e as Error).message);
     h = { balasan: "⚠️ Maaf, terjadi kesalahan saat mengambil data. Coba lagi sebentar.", urai: null, fungsi: null, hasil: "galat" };

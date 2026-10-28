@@ -23,6 +23,8 @@ export interface FungsiTanya {
   nama: string;
   saringan: NamaSaringan[];
   wajib?: NamaSaringan[];
+  /** ULP tidak disebut = cari di semua ULP, tanpa ditanyakan dulu (mis. cari alamat). */
+  ulpBolehSemua?: boolean;
   kata: [string, number][];
   contoh: string[];
   jalankan: (k: KonteksFungsi) => Promise<Balasan>;

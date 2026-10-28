@@ -15,7 +15,7 @@ export interface PesanMasuk {
 const PANGGILAN = /^@?smart\b[\s,:.\-!]*/i;
 const BUKAN_ORANG = /@(broadcast|newsletter)$|^status@/;
 
-function mentionDari(raw: unknown): string[] {
+export function mentionDari(raw: unknown): string[] {
   const m = (raw as { message?: Record<string, { contextInfo?: { mentionedJid?: unknown } }> } | undefined)?.message;
   if (!m) return [];
   const daftar = Object.values(m).flatMap((x) => (Array.isArray(x?.contextInfo?.mentionedJid) ? x.contextInfo.mentionedJid : []));
