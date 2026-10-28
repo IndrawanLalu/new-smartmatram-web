@@ -8,12 +8,17 @@
  * 'harjtm:<kode kategori>'; lebih dari satu dijumlahkan. KMS dijumlah km-nya,
  * yang lain dicacah per pekerjaan. Sel bernilai 0 tersalin kosong, seperti
  * isian spreadsheet.
+ *
+ * `SUMBER_DRONE` (28 Okt 2026): baris "Inspeksi dengan Drone (Penyulang)" —
+ * jumlah PENYULANG berbeda per hari yang diinspeksi Tier 1 + drone.
  */
 
 import { META } from "./kinerjaMeta";
 
 export const HARI = 31;
 const AWALAN_KATEGORI = "harjtm:";
+/** Sumber khusus: penyulang berbeda per hari dari inspeksi JTM Tier 1 + drone. */
+export const SUMBER_DRONE = "jtm_drone_penyulang";
 
 export interface BarisLm {
   id: string;
@@ -29,6 +34,9 @@ export interface ItemLm {
   km: number | null;
   /** Pemeliharaan Jaringan: kode kategori catatannya. */
   kategori: string | null;
+  /** Inspeksi JTM: Tier 1 + drone, dan penyulangnya. */
+  drone: boolean;
+  penyulang: string | null;
 }
 
 export interface Kategori {
@@ -42,6 +50,7 @@ export const kunciKategori = (kode: string) => `${AWALAN_KATEGORI}${kode}`;
 
 /** Nama sumber untuk layar. */
 export function namaSumber(s: string, kategori: Map<string, string>) {
+  if (s === SUMBER_DRONE) return "Inspeksi JTM Tier 1 + drone (jumlah penyulang)";
   if (s.startsWith(AWALAN_KATEGORI)) {
     const kode = s.slice(AWALAN_KATEGORI.length);
     return `Pemeliharaan Jaringan · ${kategori.get(kode) ?? kode}`;
@@ -58,6 +67,11 @@ export function susunMatriks(baris: BarisLm[], item: ItemLm[]): Map<string, numb
   for (const b of baris) {
     const isi = Array<number>(HARI).fill(0);
     const sumber = new Set(b.sumber);
+    if (sumber.has(SUMBER_DRONE)) {
+      const per = Array.from({ length: HARI }, () => new Set<string>());
+      for (const x of item) if (x.kunci === "jtm" && x.drone && x.penyulang) per[Number(x.tgl.slice(8, 10)) - 1].add(x.penyulang);
+      per.forEach((p, h) => { isi[h] += p.size; });
+    }
     for (const x of item) {
       const kena = sumber.has(x.kunci) || (x.kategori !== null && sumber.has(kunciKategori(x.kategori)));
       if (!kena) continue;

@@ -130,7 +130,7 @@ export const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumA
     satuan: "KMS",
     desimal: true,
     catatan:
-      "WO = WO Inspeksi JTM (disusun di aplikasi atau ditempel) + tempelan yang segmennya belum ada di master. Realisasi = panjang segmen yang inspeksi tier 1-nya selesai.",
+      "WO = WO Inspeksi JTM (disusun di aplikasi atau ditempel) + tempelan yang segmennya belum ada di master. Realisasi = panjang segmen yang inspeksi tier 1-nya selesai. Tier 1 + drone termasuk di dalamnya (rinciannya di bawah angka).",
   },
   {
     kunci: "jtm2",

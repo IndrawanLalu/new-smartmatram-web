@@ -46,6 +46,8 @@ export interface BarisJtm extends InspeksiJtm {
   /** WO asal (J4): nama & tanggal WO inspeksi yang tersambung. null = di luar WO. */
   wo_nama: string | null;
   tgl_wo: string | null;
+  /** Tier 1 + drone (jtm-tier1-drone.sql); tidak diisi = tidak diketahui (lampiran tagihan). */
+  drone?: boolean;
   /** Jumlah catatan terbuka lain di segmen & tier yang sama (lahir sebelum `jtm-lanjut.sql`). */
   kembar: number;
 }
@@ -66,6 +68,8 @@ export interface JawabanTiang {
     /** Foto temuan tambahan (`foto_lain`). */
     fotoLain: string[];
   }[];
+  /** Foto drone tiang (Tier 1 + drone, `inspeksi_jtm_foto` kode 'drone'). */
+  fotoDrone: string[];
 }
 
 /** Tier 2 (jtm-tier2-malam.sql): baris turunan ΔT sesudah suhu pembanding. */
@@ -98,6 +102,7 @@ export function useDaftarJtm(user: CurrentUser) {
   const [data, setData] = useState<InspeksiJtm[]>([]);
   const [panjang, setPanjang] = useState<Map<string, number>>(new Map());
   const [woPeta, setWoPeta] = useState<Map<string, { nama: string; tgl: string }>>(new Map());
+  const [idDrone, setIdDrone] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
   const [memproses, setMemproses] = useState<string | null>(null);
@@ -152,12 +157,15 @@ export function useDaftarJtm(user: CurrentUser) {
     const sambung = () =>
       supabaseBrowser.from("inspeksi_jtm").select("id,wo_item_id").not("wo_item_id", "is", null).order("id");
     const itemWo = () => supabaseBrowser.from("wo_inspeksi_item_status").select("id,wo_nama,tgl_wo").order("id");
-    const [a, t, s, sb, iw] = await Promise.all([
+    // Inspeksi Tier 1 + drone — sedikit, ditarik utuh seperti sambungan WO.
+    const drone = () => supabaseBrowser.from("inspeksi_jtm").select("id").eq("drone", true).order("id");
+    const [a, t, s, sb, iw, dr] = await Promise.all([
       fetchAllRows<InspeksiJtm>(aktif),
       fetchAllRows<InspeksiJtm>(tertutup),
       fetchAllRows<{ segmen_id: string; panjang_km: number | null }>(segmen),
       fetchAllRows<{ id: string; wo_item_id: string }>(sambung).catch(() => []),
       fetchAllRows<{ id: string; wo_nama: string; tgl_wo: string }>(itemWo).catch(() => []),
+      fetchAllRows<{ id: string }>(drone).catch(() => []),
     ]);
     const woItem = new Map(iw.map((x) => [x.id, x]));
     const wo = new Map(
@@ -166,7 +174,7 @@ export function useDaftarJtm(user: CurrentUser) {
         return i ? [[x.id, { nama: i.wo_nama, tgl: i.tgl_wo }] as const] : [];
       }),
     );
-    return { rows: [...a, ...t], km: new Map(s.map((x) => [x.segmen_id, Number(x.panjang_km ?? 0)])), wo };
+    return { rows: [...a, ...t], km: new Map(s.map((x) => [x.segmen_id, Number(x.panjang_km ?? 0)])), wo, drone: new Set(dr.map((x) => x.id)) };
   }, [ulp, bulan, tahun]);
 
   useEffect(() => {
@@ -177,6 +185,7 @@ export function useDaftarJtm(user: CurrentUser) {
         setData(h.rows);
         setPanjang(h.km);
         setWoPeta(h.wo);
+        setIdDrone(h.drone);
         setGalat(null);
         setLoading(false);
       },
@@ -202,10 +211,11 @@ export function useDaftarJtm(user: CurrentUser) {
         panjang_km: d.segmen_id ? (panjang.get(d.segmen_id) ?? 0) : 0,
         wo_nama: woPeta.get(d.id)?.nama ?? null,
         tgl_wo: woPeta.get(d.id)?.tgl ?? null,
+        drone: idDrone.has(d.id),
         kembar: d.status !== "Diverifikasi" && d.status !== "Dibatalkan" ? (terbuka.get(kunci(d)) ?? 1) - 1 : 0,
       }))
       .sort((x, y) => (y.tgl_selesai ?? y.tgl_mulai ?? "").localeCompare(x.tgl_selesai ?? x.tgl_mulai ?? ""));
-  }, [data, panjang, woPeta]);
+  }, [data, panjang, woPeta, idDrone]);
 
   const dasarChip = useMemo(() => {
     const k = cari.trim().toUpperCase();
@@ -349,7 +359,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
   );
   if (titik.length === 0) return [];
 
-  const [periksa, item, opsi] = await Promise.all([
+  const [periksa, item, opsi, foto] = await Promise.all([
     Promise.all(
       potong(titik.map((t) => t.id)).map((ids) =>
         fetchAllRows<Periksa>(() =>
@@ -363,6 +373,13 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
     ).then((x) => x.flat()),
     supabaseBrowser.from("jtm_item_ref").select("kode,nama,urutan,satuan"),
     supabaseBrowser.from("jtm_opsi_ref").select("item_kode,kode,label,normal"),
+    Promise.all(
+      potong(titik.map((t) => t.id)).map((ids) =>
+        fetchAllRows<{ titik_id: string; url: string }>(() =>
+          supabaseBrowser.from("inspeksi_jtm_foto").select("titik_id,url").eq("kode", "drone").in("titik_id", ids).order("created_at").order("id"),
+        ),
+      ),
+    ).then((x) => x.flat()).catch(() => []),
   ]);
   if (item.error) throw new Error(item.error.message);
   if (opsi.error) throw new Error(opsi.error.message);
@@ -401,6 +418,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
       jarakM: t.jarak_m !== null ? Number(t.jarak_m) : null,
       dinilaiAt: t.dinilai_at,
       isi: denganDt((per.get(t.id) ?? []).sort((a, b) => (urut.get(a.itemKode) ?? 0) - (urut.get(b.itemKode) ?? 0)), periksa.filter((p) => p.titik_id === t.id)),
+      fotoDrone: foto.filter((f) => f.titik_id === t.id).map((f) => f.url),
     };
   });
 }

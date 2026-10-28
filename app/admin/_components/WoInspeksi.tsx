@@ -36,11 +36,17 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 /** Tier 2 punya dua mode (jtm-tier2-titik.sql, 26 Okt 2026): "Tier 2" hanya di
  *  tiang yang sudah dititik; "Tier 2 + titik" boleh menitik tiang, juga di
  *  segmen yang belum pernah Tier 1. Isiannya sama (Tier 2 ringkas). */
-const PILIHAN_TIER: { tier: TierWo; titik: boolean; label: string; bantu: string }[] = [
+const PILIHAN_TIER: { tier: TierWo; titik: boolean; drone?: boolean; label: string; bantu: string }[] = [
   { tier: "1", titik: false, label: "Tier 1 · rutin", bantu: "Pemeriksaan rutin tiap tiang" },
+  // Tier 1 + drone (jtm-tier1-drone.sql, 28 Okt 2026): tetap Tier 1 — WO & realisasinya ikut Tier 1.
+  { tier: "1", titik: false, drone: true, label: "Tier 1 + drone", bantu: "Isian Tier 1 dengan drone: tiap tiang wajib minimal 1 foto drone, jarak menilai memakai ambang drone (Pengaturan JTM). WO & realisasinya terhitung Tier 1." },
   { tier: "2", titik: false, label: "Tier 2 · detail", bantu: "Pemeriksaan malam / beban puncak (suhu, suara, flashover) — hanya segmen yang Tier 1-nya sudah disetujui, tanpa menitik tiang" },
   { tier: "2", titik: true, label: "Tier 2 + titik", bantu: "Isian Tier 2, tapi regu boleh menitik / menyisip / menggeser tiang — segmen yang belum pernah Tier 1 boleh dipilih" },
 ];
+/** Saringan tier daftar: "1" = semua Tier 1 (termasuk drone), "drone" = Tier 1 + drone saja. */
+type SaringTier = TierWo | "semua" | "drone";
+const cocokTier = (x: { tier: TierWo; drone: boolean }, s: SaringTier) =>
+  s === "semua" || (s === "drone" ? x.tier === "1" && x.drone : x.tier === s);
 const BULAN_INI = new Date().toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
 const reguKosong = (ulp: string) =>
@@ -96,8 +102,12 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const [tierSusun, setTierSusun] = useState<TierWo | null>(jtm ? null : "1");
   /** Mode "Tier 2 + titik" untuk WO yang sedang disusun. */
   const [titikSusun, setTitikSusun] = useState(false);
+  /** Mode "Tier 1 + drone" untuk WO yang sedang disusun. */
+  const [droneSusun, setDroneSusun] = useState(false);
+  const modeIni = (p: (typeof PILIHAN_TIER)[number]) => tierSusun === p.tier && titikSusun === p.titik && droneSusun === !!p.drone;
+  const akhiranMode = `${titikSusun ? " + titik" : ""}${droneSusun ? " + drone" : ""}`;
   /** Saringan daftar WO berjalan. */
-  const [saringTier, setSaringTier] = useState<TierWo | "semua">("semua");
+  const [saringTier, setSaringTier] = useState<SaringTier>("semua");
   // WO berjalan hanya ULP sendiri — dulu semua ULP ikut tampil (bug 12 Okt
   // 2026). UP3 memilih ULP-nya; kosong = semua.
   const [ulpLihat, setUlpLihat] = useState(bolehSemua ? "" : (user.unit ?? "").toUpperCase());
@@ -132,7 +142,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const garansiDi = (x: ItemWoInspeksi) => (x.tier === "2" ? garansi2 : garansi1).get(x.id);
 
   const daftarWo = w.wo
-    .filter((x) => (!ulpLihat || x.ulp.toUpperCase() === ulpLihat) && (saringTier === "semua" || x.tier === saringTier))
+    .filter((x) => (!ulpLihat || x.ulp.toUpperCase() === ulpLihat) && cocokTier(x, saringTier))
     // Yang masih berjalan di atas.
     .sort((a, b) => Number(b.status === "Terbit") - Number(a.status === "Terbit") || b.tgl_wo.localeCompare(a.tgl_wo));
   const totalWo = Math.max(1, Math.ceil(daftarWo.length / PAGE_WO));
@@ -144,6 +154,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   const tambahKe = (x: WoInspeksiRingkas) => {
     setTierSusun(x.tier);
     setTitikSusun(x.titik);
+    setDroneSusun(x.drone);
     setWoAwal({ id: x.wo_id, ulp: x.ulp });
     setTampilan("susun");
     atasRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -157,7 +168,12 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
     return h;
   };
 
-  const daftar = saringTier === "semua" ? itemUlp : itemUlp.filter((x) => x.tier === saringTier);
+  const daftar = itemUlp.filter((x) => cocokTier(x, saringTier));
+  // WO Tier 1 yang masih berjalan dan bagian dronenya (keputusan user 28 Okt: KMS drone terlihat).
+  const t1Jalan = w.wo.filter((x) => (!ulpLihat || x.ulp.toUpperCase() === ulpLihat) && x.status === "Terbit" && x.tier === "1");
+  const ringkasDrone = jtm && t1Jalan.some((x) => x.drone)
+    ? `WO Tier 1 berjalan ${kms(t1Jalan.reduce((n, x) => n + x.rencana_km, 0))} KMS · di antaranya drone ${kms(t1Jalan.filter((x) => x.drone).reduce((n, x) => n + x.rencana_km, 0))} KMS`
+    : null;
   const total = Math.max(1, Math.ceil(daftar.length / PAGE));
   const hal = Math.min(halaman, total);
   const tampil = daftar.slice((hal - 1) * PAGE, hal * PAGE);
@@ -217,7 +233,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
               <select
                 value={saringTier}
                 onChange={(e) => {
-                  setSaringTier(e.target.value as TierWo | "semua");
+                  setSaringTier(e.target.value as SaringTier);
                   setHalaman(1);
                   setHalWo(1);
                 }}
@@ -225,7 +241,8 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
                 aria-label="Saring tier"
               >
                 <option value="semua">Semua tier</option>
-                <option value="1">Tier 1</option>
+                <option value="1">Tier 1 (semua)</option>
+                <option value="drone">Tier 1 + drone</option>
                 <option value="2">Tier 2</option>
               </select>
             )}
@@ -258,19 +275,20 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
               onClick={() => {
                 setTierSusun(p.tier);
                 setTitikSusun(p.titik);
+                setDroneSusun(!!p.drone);
                 setWoAwal(null);
               }}
               disabled={!!woAwal}
-              className={`${CHIP} ${tierSusun === p.tier && titikSusun === p.titik ? CHIP_ON : CHIP_OFF} disabled:opacity-40`}
+              className={`${CHIP} ${modeIni(p) ? CHIP_ON : CHIP_OFF} disabled:opacity-40`}
               title={p.bantu}
-              aria-pressed={tierSusun === p.tier && titikSusun === p.titik}
+              aria-pressed={modeIni(p)}
             >
               {p.label}
             </button>
           ))}
           <p className="basis-full text-[11px] text-ink-muted">
             {tierSusun
-              ? PILIHAN_TIER.find((p) => p.tier === tierSusun && p.titik === titikSusun)?.bantu
+              ? PILIHAN_TIER.find(modeIni)?.bantu
               : "Tier menentukan daftar isian regu di HP. Segmen yang sudah ada di WO tier lain tetap bisa dipilih."}
           </p>
         </div>
@@ -279,14 +297,14 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
       {tampilan === "susun" && (tierSusun ? (
         <SusunWoSegmen
           // Ganti tier / WO tujuan = mulai susunan baru: centang tier lain tidak terbawa.
-          key={`${tierSusun}-${titikSusun}-${woAwal?.id ?? "baru"}`}
+          key={`${tierSusun}-${titikSusun}-${droneSusun}-${woAwal?.id ?? "baru"}`}
           user={user}
           istilah={
             jtm
               ? {
                   ...ISTILAH.JTM,
-                  judul: `Susun WO inspeksi JTM Tier ${tierSusun}${titikSusun ? " + titik" : ""}`,
-                  contohNama: `Inspeksi JTM Tier ${tierSusun}${titikSusun ? " + titik" : ""} ${BULAN_INI}`,
+                  judul: `Susun WO inspeksi JTM Tier ${tierSusun}${akhiranMode}`,
+                  contohNama: `Inspeksi JTM Tier ${tierSusun}${akhiranMode} ${BULAN_INI}`,
                 }
               : ISTILAH[jenis]
           }
@@ -296,14 +314,14 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           regu={w.regu}
           woAwal={woAwal}
           woTerbuka={w.wo
-            .filter((x) => x.status === "Terbit" && x.tier === tierSusun && x.titik === titikSusun)
+            .filter((x) => x.status === "Terbit" && x.tier === tierSusun && x.titik === titikSusun && x.drone === droneSusun)
             .map((x) => ({ wo_id: x.wo_id, ulp: x.ulp, nama: x.nama, tgl_wo: x.tgl_wo, target_km: x.target_km, item: x.item, rencana_km: x.rencana_km }))}
           garansi={jtm ? (tierSusun === "2" ? "jtm2" : "jtm") : "jtr"}
           infoSla={(u, tgl) => ({
             sla: (tierSusun === "2" ? slaBulan2 : slaBulan)(u, tgl),
             terbit: w.terbitBulan(u, tgl, jtm ? tierSusun : undefined),
           })}
-          onTerbitkan={async (v) => keDaftar(await w.terbitkan({ ...v, oleh, tier: tierSusun, titik: titikSusun }))}
+          onTerbitkan={async (v) => keDaftar(await w.terbitkan({ ...v, oleh, tier: tierSusun, titik: titikSusun, drone: droneSusun }))}
           onTambah={async (v) => keDaftar(await w.tambah({ ...v, oleh }))}
         />
       ) : (
@@ -323,6 +341,7 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
           satuan={satuan}
           bolehUlp={bolehUlp}
           jalanDi={jalanDi}
+          ringkas={ringkasDrone}
           onTambah={tambahKe}
           onBatalkan={(x) => setBatalWo({ id: x.wo_id, nama: x.nama })}
           onJadikanTitik={(x) => {
@@ -356,7 +375,7 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
         </div>
         {daftar.length === 0 ? (
           <p className="text-xs text-ink-muted px-5 pb-6">
-            {itemUlp.length === 0 ? "Belum ada WO inspeksi yang berjalan." : `Belum ada WO Tier ${saringTier} yang berjalan.`}
+            {itemUlp.length === 0 ? "Belum ada WO inspeksi yang berjalan." : `Belum ada WO ${saringTier === "drone" ? "Tier 1 + drone" : `Tier ${saringTier}`} yang berjalan.`}
           </p>
         ) : (
           <>
@@ -407,7 +426,7 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
                         </td>
                         {jtm && (
                           <td className={TD}>
-                            <TierLencana tier={x.tier} titik={x.titik} />
+                            <TierLencana tier={x.tier} titik={x.titik} drone={x.drone} />
                           </td>
                         )}
                         <td className={`${TD} text-ink-soft`}>
@@ -509,7 +528,7 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
 /** Daftar WO inspeksi (12 Okt 2026). WO yang masih berjalan bisa ditambah
  *  item-nya, atau dibatalkan selama belum ada yang diinspeksi. */
 function DaftarWoInspeksi({
-  baris, total, hal, totalHal, onHal, jtm, satuan, bolehUlp, jalanDi, onTambah, onBatalkan, onJadikanTitik,
+  baris, total, hal, totalHal, onHal, jtm, satuan, bolehUlp, jalanDi, ringkas, onTambah, onBatalkan, onJadikanTitik,
 }: {
   baris: WoInspeksiRingkas[];
   total: number;
@@ -520,6 +539,8 @@ function DaftarWoInspeksi({
   satuan: string;
   bolehUlp: (ulp: string) => boolean;
   jalanDi: (x: WoInspeksiRingkas) => number;
+  /** Ringkasan KMS WO Tier 1 berjalan & bagian dronenya; null = tidak ada WO drone. */
+  ringkas: string | null;
   onTambah: (x: WoInspeksiRingkas) => void;
   onBatalkan: (x: WoInspeksiRingkas) => void;
   onJadikanTitik: (x: WoInspeksiRingkas) => void;
@@ -532,6 +553,7 @@ function DaftarWoInspeksi({
           WO yang masih berjalan bisa ditambah {satuan}nya lewat <b className="text-ink">Tambah item</b>. Pembatalan WO
           hanya selama belum ada {satuan} yang diinspeksi.
         </p>
+        {ringkas && <p className="text-xs font-semibold text-ink mt-1.5">{ringkas}</p>}
       </div>
       {baris.length === 0 ? (
         <p className="text-xs text-ink-muted px-5 pb-6">Belum ada WO.</p>
@@ -558,7 +580,7 @@ function DaftarWoInspeksi({
                     <tr key={x.wo_id} className="hover:bg-navy-50/40">
                       <td className={TD}>
                         <p className="font-semibold text-ink text-sm flex flex-wrap items-center gap-1.5">
-                          {jtm && <TierLencana tier={x.tier} titik={x.titik} />} {x.nama}
+                          {jtm && <TierLencana tier={x.tier} titik={x.titik} drone={x.drone} />} {x.nama}
                         </p>
                         <p className="text-[11px] text-ink-muted">{x.ulp}</p>
                       </td>
@@ -626,14 +648,14 @@ function DaftarWoInspeksi({
 
 /** Lencana tier: Tier 1 navy muda, Tier 2 navy tegas — dibedakan teks DAN isi,
  *  bukan warna saja. Bukan warna status (tier bukan keadaan pekerjaan). */
-function TierLencana({ tier, titik }: { tier: TierWo; titik: boolean }) {
+function TierLencana({ tier, titik, drone }: { tier: TierWo; titik: boolean; drone: boolean }) {
   return (
     <span
       className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold whitespace-nowrap ${
         tier === "2" ? "bg-navy-600 text-white" : "bg-navy-50 text-navy-700 border border-navy-200"
       }`}
     >
-      Tier {tier}{titik ? " + titik" : ""}
+      Tier {tier}{titik ? " + titik" : ""}{drone ? " + drone" : ""}
     </span>
   );
 }

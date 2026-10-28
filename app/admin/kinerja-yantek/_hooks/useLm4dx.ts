@@ -14,6 +14,21 @@ import { susunMatriks, type BarisLm, type ItemLm, type Kategori } from "../_lib/
 
 const POTONG = 200;
 
+/** Id inspeksi JTM yang Tier 1 + drone (jtm-tier1-drone.sql). */
+async function ambilDrone(id: string[]) {
+  const ada = new Set<string>();
+  for (let i = 0; i < id.length; i += POTONG) {
+    const { data, error } = await supabaseBrowser
+      .from("inspeksi_jtm")
+      .select("id")
+      .in("id", id.slice(i, i + POTONG))
+      .eq("drone", true);
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) ada.add(String(r.id));
+  }
+  return ada;
+}
+
 async function ambilKodeKategori(id: string[]) {
   const peta = new Map<string, string>();
   for (let i = 0; i < id.length; i += POTONG) {
@@ -62,13 +77,17 @@ export function useLm4dx(ulpAwal: string) {
         // Tegangan ujung bukan realisasi pengukuran (sama dengan Rekap Kinerja).
         const pakai = rows.filter((r) => r.bagian !== "ujung");
         const idHarjtm = pakai.filter((r) => r.kunci === "harjtm" && r.sumber_id).map((r) => String(r.sumber_id));
-        const kodeKat = await ambilKodeKategori(idHarjtm);
+        const idJtm = pakai.filter((r) => r.kunci === "jtm" && r.sumber_id).map((r) => String(r.sumber_id));
+        const [kodeKat, drone] = await Promise.all([ambilKodeKategori(idHarjtm), ambilDrone(idJtm)]);
         if (!hidup) return;
         setItem(pakai.map((r) => ({
           tgl: r.tgl as string,
           kunci: r.kunci as string,
           km: r.km === null || r.km === undefined ? null : Number(r.km),
           kategori: r.sumber_id ? kodeKat.get(String(r.sumber_id)) ?? null : null,
+          drone: drone.has(String(r.sumber_id)),
+          // Baris JTM realisasi_rentang: rincian = penyulang.
+          penyulang: r.kunci === "jtm" ? ((r.rincian as string | null) ?? null) : null,
         })));
         setBaris(daftar.data as BarisLm[]);
         setKategori(kat.data as Kategori[]);

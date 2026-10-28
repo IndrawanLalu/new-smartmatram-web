@@ -7,7 +7,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { META } from "../_lib/kinerjaMeta";
-import { kunciKategori, namaSumber, type BarisLm, type Kategori } from "../_lib/lm4dx";
+import { kunciKategori, namaSumber, SUMBER_DRONE, type BarisLm, type Kategori } from "../_lib/lm4dx";
 
 /**
  * Daftar baris spreadsheet LM 4DX (`lm4dx_baris`) dan sumber angkanya di
@@ -113,6 +113,11 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
                       <option key={m.kunci} value={m.kunci}>{m.jenis}</option>
                     ))}
                   </optgroup>
+                  {!b.sumber.includes(SUMBER_DRONE) && (
+                    <optgroup label="Khusus">
+                      <option value={SUMBER_DRONE}>{namaSumber(SUMBER_DRONE, namaKategori)}</option>
+                    </optgroup>
+                  )}
                   <optgroup label="Pemeliharaan Jaringan · kategori">
                     {kategori.filter((k) => !b.sumber.includes(kunciKategori(k.kode))).map((k) => (
                       <option key={k.kode} value={kunciKategori(k.kode)}>{k.label}</option>

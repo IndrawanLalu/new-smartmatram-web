@@ -75,7 +75,7 @@ export default function TabelJtm({ baris, loading, onDetail }: Props) {
                   <td className={TD}>
                     <p className="font-semibold text-ink max-w-64 truncate">{d.segmen_nama ?? "(segmen terhapus)"}</p>
                     <p className="text-[11px] text-ink-muted">
-                      {d.ulp} · tier {d.tier}
+                      {d.ulp} · tier {d.tier}{d.drone ? " + drone" : ""}
                       {d.kembar > 0 && (
                         <span className="inline-flex items-center gap-0.5 ml-1.5 text-amber-700 font-semibold" title="Segmen ini punya lebih dari satu catatan terbuka — satukan di detail">
                           <Merge size={10} /> {d.kembar + 1} catatan

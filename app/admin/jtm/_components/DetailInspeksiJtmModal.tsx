@@ -148,7 +148,7 @@ export default function DetailInspeksiJtmModal({
     <>
       <ModalShell
         title={`Inspeksi JTM · ${d.segmen_nama ?? "(segmen terhapus)"}`}
-        subtitle={`${d.penyulang} · ${d.ulp} · tier ${d.tier} · ${status}`}
+        subtitle={`${d.penyulang} · ${d.ulp} · tier ${d.tier}${d.drone ? " + drone" : ""} · ${status}`}
         maxWidth="max-w-4xl"
         onClose={onTutup}
         footer={footer}
@@ -353,6 +353,12 @@ function IsiTiang({ t }: { t: JawabanTiang }) {
           {t.jarakM !== null ? ` · ${t.jarakM} m dari petugas` : ""}
         </span>
         <span className="flex-1" />
+        {t.fotoDrone.map((u, n) => (
+          <a key={u} href={u} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            className="text-[11px] font-semibold text-navy-600 hover:underline">
+            foto drone{t.fotoDrone.length > 1 ? ` ${n + 1}` : ""}
+          </a>
+        ))}
         {temuan.length > 0 && <span className="text-[11px] font-semibold text-amber-700">{temuan.length} temuan</span>}
       </button>
 

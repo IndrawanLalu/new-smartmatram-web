@@ -56,6 +56,13 @@ interface RincianUkur {
   tu_belum: number;
 }
 
+/** `rekap_jtm_drone` — bagian Tier 1 + drone dari baris Inspeksi JTM Tier 1 (jtm-tier1-drone.sql). */
+interface RincianDrone {
+  wo_km: number;
+  realisasi_km: number;
+  disetujui_km: number;
+}
+
 interface BarisRpc {
   kunci: string;
   wo_terbit: number | string | null;
@@ -101,6 +108,8 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [centangJtm2, setCentangJtm2] = useState<number | null>(null);
   /** Rincian baris Pengukuran; null = belum/ gagal dibaca (SQL belum dijalankan). */
   const [ukur, setUkur] = useState<RincianUkur | null>(null);
+  /** Rincian drone baris Inspeksi JTM Tier 1; null = belum/gagal dibaca. */
+  const [drone, setDrone] = useState<RincianDrone | null>(null);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
 
@@ -161,6 +170,12 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       });
 
     supabaseBrowser
+      .rpc("rekap_jtm_drone", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
+      .then(({ data: rows, error }) => {
+        if (hidup) setDrone(error ? null : (((rows ?? []) as RincianDrone[])[0] ?? null));
+      });
+
+    supabaseBrowser
       .rpc("rekap_kinerja", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
         // Jawaban rentang lama yang datang belakangan tidak boleh menimpa yang baru.
@@ -196,13 +211,17 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
           ? ` Realisasi: ${kmTeks(Math.max(0, Number(r.realisasi) - centangJtm2))} KMS dari HP · ${kmTeks(centangJtm2)} KMS dari centang tempelan.`
           : "";
       const rUkur = m.kunci === "pengukuran" ? ukur : null;
+      // Tier 1 + drone sudah termasuk angka Tier 1; di sini hanya disebut bagiannya.
+      const rDrone = m.kunci === "jtm" && drone && (Number(drone.wo_km) > 0 || Number(drone.realisasi_km) > 0) ? drone : null;
       const n = (v: number) => v.toLocaleString("id-ID");
       return {
         ...m,
         woGardu: m.kunci === "jtr" ? woGarduJtr : null,
         rincianRealisasi: rUkur
           ? [`Pengukuran beban ${n(rUkur.diukur)}`, `Tegangan ujung ${n(rUkur.tu_terkirim)} terkirim · ${n(rUkur.tu_disetujui)} disetujui`]
-          : undefined,
+          : rDrone
+            ? [`Drone: WO ${kmTeks(Number(rDrone.wo_km))} KMS`, `Drone: realisasi ${kmTeks(Number(rDrone.realisasi_km))} KMS`]
+            : undefined,
         rincianBelum: rUkur
           ? [`Titik/kVA ${n(rUkur.tertahan_titik)}`, `Tegangan ujung ${n(rUkur.tu_menunggu)}`]
           : undefined,
@@ -227,7 +246,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
           (rUkur?.tu_belum ? ` ${n(rUkur.tu_belum)} gardu sudah diukur bebannya tapi tegangan ujungnya belum dikirim (atau dikembalikan).` : ""),
       };
     });
-  }, [data, woGarduJtr, centangJtm2, ukur]);
+  }, [data, woGarduJtr, centangJtm2, ukur, drone]);
 
   return {
     baris,
