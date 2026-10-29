@@ -1,6 +1,8 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { ULP_SEMUA, type Periode } from "../saringan";
 import type { FungsiTanya } from "./jenis";
+import { barisGarduBelum, garduBelumTu, rincianUkur } from "./rincianUkur";
 
 /**
  * Tegangan ujung (`tegangan_ujung_daftar`). Dengan kode gardu: ukuran terakhir
@@ -28,6 +30,7 @@ interface Ujung {
 const KOLOM = "id,gardu_kode,ulp,jurusan,penyulang,v_rn,v_sn,v_tn,v_min,di_bawah_standar,tgl_ukur,jam_ukur,status_tampil";
 const LEWATI = '("Dikembalikan","Dibatalkan")';
 const BATAS = 15;
+const BATAS_BELUM = 20;
 
 const tgl = (iso: string) => {
   const [, m, d] = iso.split("-").map(Number);
@@ -46,13 +49,35 @@ function terakhir(rows: Ujung[], kunci: (u: Ujung) => string) {
   return [...m.values()];
 }
 
+/** WO Pengukuran bulanan: periode → bulan WO-nya (setahun penuh = 0, selain itu bulan akhir periode). */
+function bulanWo(p: Periode) {
+  const [tahun, bulan] = p.sampai.split("-").map(Number);
+  return { tahun, bulan: p.dari.endsWith("-01-01") && p.dari.slice(0, 7) !== p.sampai.slice(0, 7) ? 0 : bulan };
+}
+
+/** "tegangan ujung belum diukur": gardu WO yang bebannya sudah diukur tapi TU belum; daftar hanya bila diminta detail. */
+async function belumDiukur(ulp: string | null, p: Periode, detail: boolean) {
+  const { tahun, bulan } = bulanWo(p);
+  const { baris: L, diukur, belum } = await rincianUkur(ulp ? [ulp] : [...ULP_SEMUA], tahun, bulan);
+  if (!diukur) return "Belum ada pengukuran beban WO pada periode ini.";
+  if (!belum) return [...L, "", "✅ Semua gardu yang bebannya diukur sudah diukur tegangan ujungnya."].join("\n");
+  if (!detail) {
+    L.push("", `_Ketik *@smart tegangan ujung belum diukur detail${ulp ? ` ${ulp.toLowerCase()}` : ""}* untuk daftar gardunya (maks. ${BATAS_BELUM})._`);
+    return L.join("\n");
+  }
+  const g = await garduBelumTu(ulp, tahun, bulan);
+  L.push("", `_Belum diukur tegangan ujung (beban paling lama dulu):_`, ...g.slice(0, BATAS_BELUM).map((x, i) => barisGarduBelum(x, i, !ulp)));
+  if (g.length > BATAS_BELUM) L.push(`_…dan ${g.length - BATAS_BELUM} lainnya_`);
+  return L.join("\n");
+}
+
 export const teganganUjung: FungsiTanya = {
   kode: "tegangan_ujung",
   nama: "Tegangan ujung",
   saringan: ["gardu", "ulp", "periode", "penyulang"],
   kata: [["tegangan ujung", 2], ["tegangan", 1], ["ujung", 1], ["tu", 1], ["drop", 1], ["voltase", 1], ["under voltage", 2], ["di bawah standar", 1]],
-  contoh: ["@smart tegangan ujung drop ampenan bulan ini", "@smart tegangan ujung AM001"],
-  async jalankan({ saringan: s }) {
+  contoh: ["@smart tegangan ujung drop ampenan bulan ini", "@smart tegangan ujung AM001", "@smart tegangan ujung belum diukur cakra bulan ini"],
+  async jalankan({ saringan: s, rapi }) {
     if (s.gardu) {
       let q = supabaseAdmin.from("tegangan_ujung_daftar").select(KOLOM).ilike("gardu_kode", s.gardu).not("status_tampil", "in", LEWATI);
       if (s.ulpDisebut && s.ulp) q = q.eq("ulp", s.ulp);
@@ -70,6 +95,8 @@ export const teganganUjung: FungsiTanya = {
     }
 
     const p = s.periode!;
+    if (/\bbelum\b/.test(rapi)) return belumDiukur(s.ulp, p, /\b(detail|daftar|rincian|list|mana saja|apa saja)\b/.test(rapi));
+
     const rows = await fetchAllRows<Ujung>(() => {
       let q = supabaseAdmin.from("tegangan_ujung_daftar").select(KOLOM).gte("tgl_ukur", p.dari).lte("tgl_ukur", p.sampai).not("status_tampil", "in", LEWATI);
       if (s.ulp) q = q.eq("ulp", s.ulp);

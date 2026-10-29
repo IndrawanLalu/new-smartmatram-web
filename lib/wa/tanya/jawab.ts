@@ -103,7 +103,7 @@ function judul(nama: string, pakai: NamaSaringan[], s: Saringan) {
   const bagian = [`*${nama}*`];
   if (pakai.includes("gardu") && s.gardu) bagian.push(s.gardu);
   if (pakai.includes("penyulang") && s.penyulang) bagian.push(`penyulang ${s.penyulang}`);
-  if (pakai.includes("ulp") && !pakai.includes("gardu")) bagian.push(s.ulp ?? "semua ULP");
+  if (pakai.includes("ulp") && !(pakai.includes("gardu") && s.gardu)) bagian.push(s.ulp ?? "semua ULP");
   // Satu gardu = keadaan terakhirnya, periode tidak dipakai.
   if (pakai.includes("periode") && s.periode && !(pakai.includes("gardu") && s.gardu)) bagian.push(s.periode.label);
   return `🔎 ${bagian.join(" · ")}`;

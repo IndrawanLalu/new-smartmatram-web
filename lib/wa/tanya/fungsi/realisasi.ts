@@ -7,6 +7,7 @@ import { buatGambarRealisasiHarian } from "@/lib/gambar/buatRealisasiHarian";
 import { ULP_SEMUA, type Periode } from "../saringan";
 import type { BalasanMedia } from "../../dataGardu";
 import type { FungsiTanya } from "./jenis";
+import { rincianUkur } from "./rincianUkur";
 
 /**
  * Realisasi pekerjaan (11 jenis Rekap Kinerja). Sumbernya SAMA dengan layar:
@@ -76,6 +77,11 @@ async function perBulan(ulps: string[], tahun: number, bulan: number, jenis: str
         L.push(`• ${x.ulp}: ${angka(r, k)}${t !== null ? ` / SLA ${angka(t, k)}${persen(r, t)}` : ""}`);
       }
     }
+  }
+  // Pengukuran: realisasi baru terhitung bila TU disetujui — tunjukkan yang tertahan di mana.
+  if (jenis === "pengukuran") {
+    const r = await rincianUkur(ulps, tahun, bulan);
+    if (r.baris.length) L.push("", ...r.baris);
   }
   L.push("", "_Sama dengan halaman Rekap Kinerja. Capaian = realisasi ÷ SLA._");
   return L.join("\n");
