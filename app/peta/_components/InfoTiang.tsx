@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownUp, Columns2, GitBranch, Link2, Loader2, Move, Pencil, Plus, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
+import { ArrowDownUp, Columns2, GitBranch, Layers, Link2, Loader2, Move, Pencil, Plus, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
 import { PENANDA_ALAT } from "../_hooks/useSimulasiBuka";
 import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
@@ -41,6 +41,8 @@ interface Props {
   onTambahTiang: () => void;
   /** Sambung hilir: tiang yang diklik berikutnya menyambung dari tiang ini. */
   onSambungHilir: () => void;
+  /** Penyulang lain lewat tiang ini (titik pertemuan) — dari peta, tanpa ke lapangan. */
+  onTambahTumpang: () => void;
   /** Rantai induk terbalik (salah pilih pangkal): tiang ini = pangkal yang salah.
    *  `penyulang` = penyulang yang menumpang (rantai induk khususnya); null = batang. */
   onBalikArah: (penyulang: string | null) => void;
@@ -66,7 +68,7 @@ interface Props {
 }
 
 export default function InfoTiang({
-  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onTambahTiang, onSambungHilir, onBalikArah, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onSimulasi, simulasiSibuk,
+  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onTambahTiang, onSambungHilir, onTambahTumpang, onBalikArah, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onSimulasi, simulasiSibuk,
   tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah, milik, onPemilikPeralatan,
 }: Props) {
   const jtr = !!t.gardu_kode;
@@ -237,6 +239,7 @@ export default function InfoTiang({
           {!jtr && !tanpaGantiInduk && <button onClick={onGantiInduk} className={TOMBOL_PANEL}><Waypoints size={13} /> Ganti induk</button>}
           {!jtr && !tanpaGantiInduk && <button onClick={onSambungHilir} className={TOMBOL_PANEL}><Link2 size={13} /> Sambung hilir</button>}
           {!jtr && !tanpaGantiInduk && <button onClick={onTambahTiang} className={TOMBOL_PANEL}><Plus size={13} /> Tambah tiang</button>}
+          {!jtr && !tanpaGantiInduk && <button onClick={onTambahTumpang} className={TOMBOL_PANEL}><Layers size={13} /> Tambah penyulang menumpang</button>}
           {!jtr && !tanpaGantiInduk && <button onClick={() => onBalikArah(null)} className={TOMBOL_PANEL}><ArrowDownUp size={13} /> Balik arah</button>}
           {!jtr && !tanpaGantiInduk &&
             t.nama

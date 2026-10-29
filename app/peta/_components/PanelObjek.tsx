@@ -50,6 +50,10 @@ interface Props {
   modeHilir: boolean;
   onSambungHilir: () => void;
   onBatalHilir: () => void;
+  /** Tambah penyulang menumpang: menunggu klik tiang penyulang lain yang menyambung ke sini. */
+  modeTumpang: boolean;
+  onTambahTumpang: () => void;
+  onBatalTumpang: () => void;
   /** Mode pilih induk di penyulang yang menumpang (null = induk batang). */
   indukPenyulang: string | null;
   onIndukPenyulang: (penyulang: string) => void;
@@ -233,6 +237,16 @@ export default function PanelObjek(p: Props) {
           </div>
         )}
 
+        {p.modeTumpang && (
+          <div className="rounded-lg border border-sky-400/60 p-3 text-xs text-sky-100 space-y-2">
+            <p>
+              Klik tiang <b>penyulang lain</b> yang menyambung ke {terpilih.kode} — lapisan penyulang itu harus menyala.
+              Penyulang itu lalu tercatat lewat tiang ini; batang dan pemiliknya tidak berubah.
+            </p>
+            <button onClick={p.onBatalTumpang} className={TOMBOL_PANEL}>Batal</button>
+          </div>
+        )}
+
         {p.balik && (
           <LangkahBalikArah ke={p.balik.ke} penyulang={p.balik.penyulang} onTanpaHulu={p.onTanpaHulu} onBatal={p.onBatalBalik} />
         )}
@@ -264,7 +278,7 @@ export default function PanelObjek(p: Props) {
           />
         )}
 
-        {tiang && !geser && !p.modeInduk && !p.modeGabung && !p.balik && !p.modeHilir && (
+        {tiang && !geser && !p.modeInduk && !p.modeGabung && !p.balik && !p.modeHilir && !p.modeTumpang && (
           <InfoTiang
             t={tiang}
             pilihan={p.pilihan}
@@ -275,6 +289,7 @@ export default function PanelObjek(p: Props) {
             onGantiInduk={p.onGantiInduk}
             onTambahTiang={p.onMulaiTambah}
             onSambungHilir={p.onSambungHilir}
+            onTambahTumpang={p.onTambahTumpang}
             onBalikArah={p.onBalikArah}
             onIndukPenyulang={p.onIndukPenyulang}
             onPercabangan={p.onPercabangan}

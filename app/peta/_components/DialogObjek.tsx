@@ -20,7 +20,7 @@ interface Props {
 }
 
 export default function DialogObjek({ p, sunting, segarkan, onIndukPenyulang, onIndukJtr }: Props) {
-  const { terpilih, calonGabung, calonInduk, calonHilir, indukPenyulang, alasanInduk } = p;
+  const { terpilih, calonGabung, calonInduk, calonHilir, calonTumpang, indukPenyulang, alasanInduk } = p;
   if (terpilih?.jenis !== "tiang") return null;
   const jtr = terpilih.jaringan === "jtr";
 
@@ -65,6 +65,28 @@ export default function DialogObjek({ p, sunting, segarkan, onIndukPenyulang, on
           }
         }}
         onClose={tutupHilir}
+      />
+    );
+  }
+
+  if (calonTumpang && !jtr) {
+    const tutupTumpang = () => p.setCalonTumpang(null);
+    const py = calonTumpang.kelompok;
+    return (
+      <ConfirmDialog
+        title={`${py} lewat ${terpilih.kode}?`}
+        message={`${py} tercatat menumpang di ${terpilih.kode}, menyambung dari ${calonTumpang.kode}, dan tiang ini mendapat nama ${py} sendiri. Batang, pemilik, dan nama pemiliknya tidak berubah.`}
+        confirmLabel="Tambahkan"
+        onConfirm={async () => {
+          const t = calonTumpang;
+          tutupTumpang();
+          const ok = await sunting.tumpangDari(terpilih.id, t.id, t.kelompok);
+          if (ok) {
+            p.setModeTumpang(false);
+            segarkan();
+          }
+        }}
+        onClose={tutupTumpang}
       />
     );
   }

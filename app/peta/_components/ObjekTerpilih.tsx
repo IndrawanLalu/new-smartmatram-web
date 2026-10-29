@@ -152,6 +152,9 @@ export default function ObjekTerpilih({
           modeHilir={p.modeHilir}
           onSambungHilir={() => p.setModeHilir(true)}
           onBatalHilir={() => p.setModeHilir(false)}
+          modeTumpang={p.modeTumpang}
+          onTambahTumpang={() => p.setModeTumpang(true)}
+          onBatalTumpang={() => p.setModeTumpang(false)}
           onBatalInduk={() => {
             p.setModeInduk(false);
             p.setIndukPenyulang(null);

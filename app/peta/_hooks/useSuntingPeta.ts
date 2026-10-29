@@ -101,6 +101,14 @@ export function useSuntingPeta(oleh: string) {
       (d) => `${d.penyulang} dilepas dari tiang ini — ${d.kode} dihapus${d.penilaian ? `, ${d.penilaian} penilaian ikut terhapus` : ""}.`,
     );
 
+  /** Penyulang `penyulang` menumpang di tiang ini, menyambung dari `dariId` (`jtm-tumpang-dari-peta.sql`). */
+  const tumpangDari = (id: string, dariId: string, penyulang: string) =>
+    jalankan<{ kode: string; penyulang: string; dari: string; tiang: string }>(
+      "tumpang_jtm_dari_peta",
+      { p_tiang_id: id, p_dari_id: dariId, p_penyulang: penyulang, p_oleh: oleh },
+      (d) => `${d.penyulang} kini lewat ${d.tiang} sebagai ${d.kode}, menyambung dari ${d.dari}.`,
+    );
+
   /** Tambah tiang JTM yang lolos dititik (jtm-tambah-pulihkan-tiang.sql).
    *  Galat DIKEMBALIKAN, bukan hanya di-toast: "sudah berdiri" dijawab panel
    *  dengan centang "batang berbeda". */
@@ -180,7 +188,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, tumpangDari, buatPasanganPortal,
     tambahTiang,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
