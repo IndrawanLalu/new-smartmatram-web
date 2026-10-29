@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { ketSusulan, ketTunggakan } from "@/lib/woTunggakan";
 import {
   DEFAULT_WO_HAR, garduAktif, kunciGardu, susunKandidat, tanggalWo,
   type AlasanWoHar, type KandidatHar, type MasterGardu, type WoHarSettings,
@@ -51,6 +52,58 @@ export interface BarisWoHar {
   petugas_nama: string | null;
   terealisasi: boolean;
   disetujui: boolean;
+  /** Tabel saja: tunggakan WO bulan lalu (lib/woTunggakan), dihitung di bulan WO-nya. */
+  lalu?: string | null;
+  /** Tabel saja: WO bulan ini yang dikerjakan sesudah bulannya — "Selesai di November". */
+  susulan?: string | null;
+}
+
+/** Tunggakan WO bulan lalu (scripts/wo-tunggakan.sql): keadaannya = pemeliharaan SUSULAN. */
+interface BarisLaluHar extends BarisWoHar {
+  susulan_status: string | null;
+  tgl_susulan: string | null;
+  susulan_petugas: string | null;
+}
+
+const KOLOM_LALU =
+  "id,wo_id,gardu_kode,ulp,nama,alamat,penyulang,lat,lng,alasan,tgl_pelihara_terakhir,umur_bulan,urutan,bulan,tahun,tgl_wo,pemeliharaan_id,status_pemeliharaan,tgl_realisasi,petugas_nama,terealisasi,disetujui,susulan_status,tgl_susulan,susulan_petugas";
+
+/**
+ * WO bulan-bulan sebelum periode yang tidak dikerjakan di bulan WO-nya (belum
+ * sama sekali, atau susulan DI periode ini), dan tanggal susulan baris WO
+ * periode ini sendiri. Gagal dibaca (SQL belum dijalankan) = kosong.
+ */
+async function tarikTunggakan(ulp: string[], tahun: number, bulan: number) {
+  const dua = (n: number) => String(n).padStart(2, "0");
+  const awal = `${tahun}-${dua(bulan)}-01`;
+  const akhir = bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${dua(bulan + 1)}-01`;
+  const [awalTs, akhirTs] = [`${awal}T00:00:00+08:00`, `${akhir}T00:00:00+08:00`];
+  const [lalu, sus] = await Promise.all([
+    fetchAllRows<BarisLaluHar>(() =>
+      supabaseBrowser
+        .from("wo_hargardu_realisasi")
+        .select(KOLOM_LALU)
+        .lt("tgl_wo", awal)
+        .is("pemeliharaan_id", null)
+        .or(`susulan_id.is.null,and(tgl_susulan.gte.${awalTs},tgl_susulan.lt.${akhirTs})`)
+        .in("ulp", ulp)
+        .order("tgl_wo")
+        .order("ulp")
+        .order("urutan")
+        .order("id"),
+    ),
+    fetchAllRows<{ id: string; tgl_susulan: string | null }>(() =>
+      supabaseBrowser
+        .from("wo_hargardu_realisasi")
+        .select("id,tgl_susulan")
+        .eq("tahun", tahun)
+        .eq("bulan", bulan)
+        .eq("susulan_terealisasi", true)
+        .in("ulp", ulp)
+        .order("id"),
+    ),
+  ]);
+  return { lalu, susulan: new Map(sus.filter((x) => x.tgl_susulan).map((x) => [x.id, x.tgl_susulan!])) };
 }
 
 export type StatusWoHar = "Belum dikerjakan" | "Sedang dikerjakan" | "Menunggu persetujuan" | "Disetujui";
@@ -75,6 +128,8 @@ interface Muatan {
   settings: Map<string, WoHarSettings>;
   headers: WoHarHeader[];
   rows: BarisWoHar[];
+  tunggakan: BarisLaluHar[];
+  susulan: Map<string, string>;
   master: MasterGardu[];
   terakhir: Map<string, string>;
 }
@@ -152,6 +207,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     ]);
     if (set.error) throw new Error(set.error.message);
     if (head.error) throw new Error(head.error.message);
+    const tunggak = await tarikTunggakan(ulp, tahun, bulan).catch(() => ({ lalu: [], susulan: new Map<string, string>() }));
 
     const terakhir = new Map<string, string>();
     for (const k of kerja) {
@@ -174,6 +230,8 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
       settings: new Map((set.data ?? []).map((s) => [s.ulp as string, s as WoHarSettings])),
       headers: (head.data ?? []) as WoHarHeader[],
       rows,
+      tunggakan: tunggak.lalu,
+      susulan: tunggak.susulan,
       master,
       terakhir,
     };
@@ -187,6 +245,30 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     );
     return () => { hidup = false; };
   }, [tarik, nonce]);
+
+  /**
+   * Baris tabel: WO bulan ini (yang dikerjakan susulan diberi keterangan) +
+   * tunggakan WO bulan lalu. Kartu per ULP tetap memakai `rows` saja — angka
+   * bulan WO tidak berubah karena tunggakan.
+   */
+  const barisTabel = useMemo<BarisWoHar[]>(() => {
+    if (!data) return [];
+    const kunci = (r: BarisWoHar) => kunciGardu(r.gardu_kode, r.ulp);
+    const diWoIni = new Set(data.rows.map(kunci));
+    return [
+      ...data.rows.map((r) => {
+        const s = data.susulan.get(r.id);
+        return s ? { ...r, susulan: ketSusulan(s, r.tahun) } : r;
+      }),
+      ...data.tunggakan.map((r) => ({
+        ...r,
+        status_pemeliharaan: r.susulan_status,
+        tgl_realisasi: r.tgl_susulan,
+        petugas_nama: r.susulan_petugas,
+        lalu: ketTunggakan(r.tgl_wo, { tahun, bulan }, !!r.susulan_status, diWoIni.has(kunci(r))),
+      })),
+    ];
+  }, [data, tahun, bulan]);
 
   const settingsUntuk = useCallback(
     (ulp: string): WoHarSettings => data?.settings.get(ulp) ?? DEFAULT_WO_HAR,
@@ -330,6 +412,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
     loading: data === null && galat === null,
     galat,
     rows: data?.rows ?? [],
+    barisTabel,
     perUlp,
     settingsUntuk,
     memproses,

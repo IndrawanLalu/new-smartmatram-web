@@ -47,7 +47,8 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
   const garansi = useGaransiItem("hargardu", "");
   const [pilih, setPilih] = useState<Set<string>>(new Set());
   const [keluarkan, setKeluarkan] = useState(false);
-  const bisaPilih = (r: BarisWoHar) => bolehKelola && statusWo(r) === "Belum dikerjakan";
+  // Tunggakan bulan lalu & yang sudah dikerjakan susulan tidak bisa dikeluarkan dari sini.
+  const bisaPilih = (r: BarisWoHar) => bolehKelola && !r.lalu && !r.susulan && statusWo(r) === "Belum dikerjakan";
   const [cari, setCari] = useState("");
   const [halaman, setHalaman] = useState(1);
 
@@ -176,6 +177,7 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
                           )}
                         </p>
                         <p className="text-[11px] text-ink-muted max-w-56 truncate">{r.nama ?? "—"} · {r.ulp}</p>
+                        {r.lalu && <p className="mt-0.5 text-[11px] font-medium text-amber-700 whitespace-nowrap">{r.lalu}</p>}
                         {garansi.get(r.id) && <div className="mt-1"><LencanaGaransi g={garansi.get(r.id)!} namaWoGardu="WO Pemeliharaan" /></div>}
                       </td>
                       <td className={`${TD} text-xs text-ink-soft`}>{r.penyulang ?? "—"}</td>
@@ -186,7 +188,12 @@ export default function TabelWoHar({ rows, bolehKelola, onKeluarkan }: Props) {
                         )}
                       </td>
                       <td className={TD}>
-                        <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA[s]}`}>{s}</span>
+                        {/* Dikerjakan sesudah bulan WO: di bulan ini tetap tidak terhitung. */}
+                        {r.susulan ? (
+                          <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA["Menunggu persetujuan"]}`}>{r.susulan}</span>
+                        ) : (
+                          <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold whitespace-nowrap ${NADA[s]}`}>{s}</span>
+                        )}
                       </td>
                       <td className={`${TD} text-xs text-ink-soft whitespace-nowrap`}>{tgl(r.tgl_realisasi)}</td>
                       <td className={`${TD} text-xs text-ink-soft`}>{r.petugas_nama ?? "—"}</td>

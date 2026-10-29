@@ -134,7 +134,7 @@ function IsiWo({ user, daftar, periode }: { user: CurrentUser; daftar: string[];
             })}
           </div>
           <TabelWoHar
-            rows={w.rows}
+            rows={w.barisTabel}
             bolehKelola={canManageSettings(user.role)}
             onKeluarkan={(id, alasan) => w.keluarkan(id, alasan, user.name ?? user.email ?? "")}
           />

@@ -62,6 +62,48 @@ export interface BarisWo {
 const KOLOM_BARIS =
   "id,wo_id,kode_gardu,ulp,nama,alamat,penyulang,kva_master,lat,lng,alasan,tgl_ukur_terakhir,umur_bulan,urutan,bulan,tahun,tgl_wo,pengukuran_id,tgl_realisasi,petugas_nama,persen_beban,beban_kva,kva_pengukuran,terealisasi";
 
+/** Tunggakan WO bulan lalu (scripts/wo-tunggakan.sql): realisasinya pengukuran SUSULAN. */
+export interface BarisLalu extends BarisWo {
+  tgl_susulan: string | null;
+  susulan_petugas: string | null;
+}
+
+const KOLOM_LALU =
+  "id,wo_id,kode_gardu,ulp,nama,alamat,penyulang,kva_master,lat,lng,alasan,tgl_ukur_terakhir,umur_bulan,urutan,bulan,tahun,tgl_wo,pengukuran_id,tgl_realisasi,petugas_nama,persen_beban,beban_kva,kva_pengukuran,terealisasi,tgl_susulan,susulan_petugas";
+
+/**
+ * WO bulan-bulan sebelum periode yang tidak diukur di bulan WO-nya: belum
+ * diukur sama sekali, atau diukur susulan DI periode ini. Ditambah tanggal
+ * susulan baris WO periode ini sendiri (yang diukur sesudah bulannya).
+ */
+async function tarikTunggakan(unit: string, tahun: number, bulan: number) {
+  const { awal, akhir } = batasBulanWo(tahun, bulan);
+  const lalu = await fetchAllRows<BarisLalu>(() => {
+    const q = supabaseBrowser
+      .from("wo_pengukuran_realisasi")
+      .select(KOLOM_LALU)
+      .lt("tgl_wo", awal)
+      .is("pengukuran_id", null)
+      .or(`susulan_id.is.null,and(tgl_susulan.gte.${awal},tgl_susulan.lt.${akhir})`)
+      .order("tgl_wo")
+      .order("ulp")
+      .order("urutan")
+      .order("id");
+    return unit ? q.eq("ulp", unit) : q;
+  });
+  const sus = await fetchAllRows<{ id: string; tgl_susulan: string }>(() => {
+    const q = supabaseBrowser
+      .from("wo_pengukuran_realisasi")
+      .select("id,tgl_susulan")
+      .eq("tahun", tahun)
+      .eq("bulan", bulan)
+      .not("susulan_id", "is", null)
+      .order("id");
+    return unit ? q.eq("ulp", unit) : q;
+  });
+  return { lalu, susulan: new Map(sus.map((x) => [x.id, x.tgl_susulan])) };
+}
+
 /**
  * Satu pengukuran di bulan WO — hanya kolom yang dibutuhkan untuk memisahkan
  * mana yang di dalam WO dan mana yang di luar.
@@ -100,6 +142,8 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
   const [headers, setHeaders] = useState<WoHeader[]>([]);
   const [rows, setRows] = useState<BarisWo[]>([]);
   const [pengukuranBulan, setPengukuranBulan] = useState<PengukuranBulan[]>([]);
+  const [tunggakan, setTunggakan] = useState<BarisLalu[]>([]);
+  const [susulan, setSusulan] = useState<Map<string, string>>(new Map());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -154,14 +198,21 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
         return unit ? q.eq("petugas_unit", unit) : q;
       });
 
+      // Gagal dibaca (SQL wo-tunggakan belum dijalankan) = tanpa keterangan.
+      const t = await tarikTunggakan(unit, tahun, bulan).catch(() => ({ lalu: [], susulan: new Map<string, string>() }));
+
       setHeaders((h ?? []) as WoHeader[]);
       setRows(r);
       setPengukuranBulan(pg);
+      setTunggakan(t.lalu);
+      setSusulan(t.susulan);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal mengambil data WO");
       setHeaders([]);
       setRows([]);
       setPengukuranBulan([]);
+      setTunggakan([]);
+      setSusulan(new Map());
     } finally {
       setLoading(false);
     }
@@ -181,7 +232,8 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
    * kode saja akan menganggap gardu Gerung sudah tercakup WO Cakranegara.
    */
   const luarWo = useMemo<GarduLuarWo[]>(() => {
-    const diWo = new Set(rows.map((r) => `${r.kode_gardu.toUpperCase()}|${r.ulp.toUpperCase()}`));
+    // Tunggakan WO bulan lalu yang diukur bulan ini tetap pekerjaan WO, bukan di luar WO.
+    const diWo = new Set([...rows, ...tunggakan].map((r) => `${r.kode_gardu.toUpperCase()}|${r.ulp.toUpperCase()}`));
     const terlihat = new Map<string, GarduLuarWo>();
 
     for (const p of pengukuranBulan) {
@@ -195,7 +247,7 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
       });
     }
     return [...terlihat.values()].sort((a, b) => a.kode_gardu.localeCompare(b.kode_gardu));
-  }, [rows, pengukuranBulan]);
+  }, [rows, tunggakan, pengukuranBulan]);
 
   /**
    * Terbitkan WO satu ULP lewat penyusun di database — fungsi yang sama dengan
@@ -258,5 +310,5 @@ export function useWoPengukuran(user: CurrentUser, ulp: string, tahun: number, b
     [muat],
   );
 
-  return { headers, rows, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan, refresh: muat };
+  return { headers, rows, tunggakan, susulan, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan, refresh: muat };
 }

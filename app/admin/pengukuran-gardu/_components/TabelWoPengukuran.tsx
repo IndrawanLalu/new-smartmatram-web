@@ -35,6 +35,10 @@ export interface BarisTampil {
   id?: string;
   /** Sudah diukur = tidak boleh keluar dari WO. */
   dikerjakan?: boolean;
+  /** Tunggakan WO bulan lalu — tampil di sini, dihitung di bulan WO-nya (lib/woTunggakan). */
+  lalu?: string | null;
+  /** WO bulan ini yang baru dikerjakan sesudah bulannya: "Selesai di November". */
+  susulan?: string | null;
 }
 
 const PAGE_SIZE = 20;
@@ -133,7 +137,7 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
           <tbody className="divide-y divide-line">
             {halaman.map((r, i) => (
               <tr
-                key={`${r.ulp}|${r.kode_gardu}`}
+                key={`${r.ulp}|${r.kode_gardu}|${r.tgl_wo ?? ""}`}
                 className={r.id && pilih?.has(r.id) ? "bg-navy-50/70" : "hover:bg-surface transition-colors"}
               >
                 {onPilih && (
@@ -152,6 +156,7 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
                 <td className={`${TD} text-center text-ink-muted`}>{(page - 1) * PAGE_SIZE + i + 1}</td>
                 <td className={`${TD} font-semibold whitespace-nowrap`}>
                   {r.kode_gardu}
+                  {r.lalu && <p className="mt-1 text-[11px] font-medium text-amber-700 whitespace-nowrap">{r.lalu}</p>}
                   {r.id && garansi.get(r.id) && <div className="mt-1 font-normal"><LencanaGaransi g={garansi.get(r.id)!} namaWoGardu="WO Pengukuran" /></div>}
                 </td>
                 <td className={`${TD} max-w-[260px]`}>
@@ -196,6 +201,10 @@ export default function TabelWoPengukuran({ rows, tampilkanUlp, pilih, onPilih }
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium bg-green-50 text-green-700">
                       <CheckCircle2 size={11} />
                       Selesai
+                    </span>
+                  ) : r.susulan ? (
+                    <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-amber-50 text-amber-700 whitespace-nowrap">
+                      {r.susulan}
                     </span>
                   ) : (
                     <span className="inline-block px-2 py-0.5 rounded-full text-[11px] font-medium bg-gray-100 text-gray-500">

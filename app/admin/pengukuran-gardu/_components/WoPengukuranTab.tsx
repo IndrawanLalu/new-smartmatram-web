@@ -9,7 +9,8 @@ import { canManageSettings, UNITS, type CurrentUser } from "@/lib/roles";
 import StatTile from "@/app/admin/_components/StatTile";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import RencanaGardu from "@/app/admin/_components/RencanaGardu";
-import { useWoPengukuran, type BarisWo } from "../_hooks/useWoPengukuran";
+import { ketSusulan, ketTunggakan } from "@/lib/woTunggakan";
+import { useWoPengukuran, type BarisLalu, type BarisWo } from "../_hooks/useWoPengukuran";
 import { useWoPengukuranSettings } from "../_hooks/useWoPengukuranSettings";
 import { usePratinjauWo, type BarisPratinjau } from "../_hooks/usePratinjauWo";
 import { tanggalWo } from "../_lib/kandidatWo";
@@ -61,6 +62,16 @@ const dariWo = (r: BarisWo): BarisTampil => ({
   petugas_nama: r.petugas_nama,
   id: r.id,
   dikerjakan: !!r.pengukuran_id,
+});
+
+/** Tunggakan WO bulan lalu: realisasinya pengukuran susulan; tidak bisa dikeluarkan dari sini. */
+const dariLalu = (r: BarisLalu, acuan: { tahun: number; bulan: number }, diWoIni: boolean): BarisTampil => ({
+  ...dariWo(r),
+  tgl_realisasi: r.tgl_susulan,
+  petugas_nama: r.susulan_petugas,
+  id: undefined,
+  dikerjakan: true,
+  lalu: ketTunggakan(r.tgl_wo, acuan, !!r.tgl_susulan, diWoIni),
 });
 
 /** Calon isi WO (pratinjau server) belum punya tanggal WO maupun realisasi —
@@ -121,7 +132,7 @@ export default function WoPengukuranTab({ user, ulp, bulanAwal }: WoPengukuranTa
   } = useWoPengukuranSettings(ulp);
 
   const {
-    headers, rows, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan: keluarkanWo, refresh,
+    headers, rows, tunggakan, susulan, luarWo, loading, error, unit, terbitkan, tambahPengingat, batalkan, keluarkan: keluarkanWo, refresh,
   } = useWoPengukuran(user, ulp, tahun, bulan);
 
   /** ULP yang dikelola layar ini: satu, atau keempatnya untuk UP3 "Semua". */
@@ -169,10 +180,18 @@ export default function WoPengukuranTab({ user, ulp, bulanAwal }: WoPengukuranTa
 
   // ── Baris tabel ─────────────────────────────────────────────────────────────
 
-  const semuaBaris = useMemo<BarisTampil[]>(
-    () => [...rows.map(dariWo), ...rencanaTerbit.flatMap((r) => r.wo.map(dariPratinjau))],
-    [rows, rencanaTerbit],
-  );
+  const semuaBaris = useMemo<BarisTampil[]>(() => {
+    const kunci = (r: { kode_gardu: string; ulp: string }) => `${r.kode_gardu.toUpperCase()}|${r.ulp.toUpperCase()}`;
+    const diWoIni = new Set(rows.map(kunci));
+    return [
+      ...rows.map((r) => {
+        const s = susulan.get(r.id);
+        return { ...dariWo(r), susulan: s ? ketSusulan(s, r.tahun) : null };
+      }),
+      ...tunggakan.map((r) => dariLalu(r, { tahun, bulan }, diWoIni.has(kunci(r)))),
+      ...rencanaTerbit.flatMap((r) => r.wo.map(dariPratinjau)),
+    ];
+  }, [rows, tunggakan, susulan, rencanaTerbit, tahun, bulan]);
 
   const barisTampil = useMemo(() => {
     let data = semuaBaris;
@@ -235,14 +254,16 @@ export default function WoPengukuranTab({ user, ulp, bulanAwal }: WoPengukuranTa
 
   const unduh = () => {
     const namaUlp = ulp || (headers.length === 1 ? headers[0].ulp : "Semua ULP");
+    // Lembar WO = WO bulan ini saja; tunggakan ada di lembar bulan WO-nya.
+    const lembar = barisTampil.filter((b) => !b.lalu);
     downloadWoPengukuranXlsx(
-      barisTampil,
+      lembar,
       {
         periode: namaPeriode,
         ulp: namaUlp,
         tglWo: headers.length > 0 ? tglWo : null,
-        total: barisTampil.length,
-        terealisasi: barisTampil.filter((b) => b.tgl_realisasi).length,
+        total: lembar.length,
+        terealisasi: lembar.filter((b) => b.tgl_realisasi).length,
       },
       `wo-pengukuran-${namaUlp.toLowerCase().replace(/\s+/g, "-")}-${tahun}-${String(bulan).padStart(2, "0")}.xlsx`,
     );
