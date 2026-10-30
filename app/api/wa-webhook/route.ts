@@ -5,13 +5,16 @@ import { isPenormalanReport } from "@/lib/wa/parsePenormalan";
 import { gatewayBotId, gatewaySend } from "@/lib/wa/gateway";
 import { bacaPanggilan, bolehTanya, mentionDari } from "@/lib/wa/tanya/panggilan";
 import { tanya } from "@/lib/wa/tanya/jawab";
+import { bacaKoordinat } from "@/lib/koordinat";
+import { jawabLokasi, koordinatDariTeks } from "@/lib/wa/lokasiTerdekat";
 
 /**
  * Webhook pesan masuk dari wa-gateway (Baileys) — menggantikan client.on("message")
- * di wa-bot lama. Tiga jalur:
+ * di wa-bot lama. Empat jalur:
  *   1. Command "#..."                → handleCommand (baca data)
  *   2. Laporan "INFO REALTIME PENORMALAN GANGGUAN" (auto-deteksi, tanpa "#") → handlePenormalanReport (tulis)
  *   3. Tanya Jawab (@smart di grup / semua chat pribadi) → lib/wa/tanya (rencana-tanya-jawab-wa.md)
+ *   4. Lokasi / koordinat, HANYA chat pribadi → gardu & JTR terdekat (lib/wa/lokasiTerdekat). Di grup diam.
  * Balasannya dikirim balik lewat gateway. Verifikasi asal via X-Webhook-Secret (= WA_WEBHOOK_SECRET).
  */
 export async function POST(req: NextRequest) {
@@ -29,9 +32,15 @@ export async function POST(req: NextRequest) {
 
   const isCommand = text.startsWith("#");
   const isLaporan = isPenormalanReport(text);
+  const loc = payload.location as { lat?: number; lng?: number } | null | undefined;
+  const lokasi =
+    isGroup || isCommand || isLaporan ? null
+    : loc?.lat != null && loc?.lng != null ? bacaKoordinat(`${loc.lat}, ${loc.lng}`)
+    : koordinatDariTeks(text);
   const pertanyaan =
-    isCommand || isLaporan ? null : bacaPanggilan({ from, isGroup, text, raw: payload.raw }, isGroup ? await gatewayBotId() : []);
-  if (!isCommand && !isLaporan && pertanyaan === null) {
+    isCommand || isLaporan || lokasi ? null : bacaPanggilan({ from, isGroup, text, raw: payload.raw }, isGroup ? await gatewayBotId() : []);
+  if (isGroup && pertanyaan && koordinatDariTeks(pertanyaan)) return NextResponse.json({ skipped: true }); // terdekat hanya lewat japri
+  if (!isCommand && !isLaporan && !lokasi && pertanyaan === null) {
     // Mention yang bukan ke bot (atau LID bot yang belum ada di WA_BOT_LID) — salin dari log ke WA_BOT_LID.
     const mention = isGroup ? mentionDari(payload.raw) : [];
     if (mention.length) console.log(`[tanya-wa] mention tidak dikenali di ${from}: ${mention.join(", ")}`);
@@ -45,12 +54,14 @@ export async function POST(req: NextRequest) {
   if (isGroup && ALLOWED_GROUPS.size > 0 && !ALLOWED_GROUPS.has(from)) return NextResponse.json({ skipped: true });
   if (!isGroup && ALLOWED_DMS.size > 0 && !ALLOWED_DMS.has(senderNum)) return NextResponse.json({ skipped: true });
   const pengirim: string = payload.participant || from;
-  if (pertanyaan !== null && !bolehTanya(pengirim)) return NextResponse.json({ skipped: true });
+  if ((pertanyaan !== null || lokasi) && !bolehTanya(pengirim)) return NextResponse.json({ skipped: true });
 
   // Proses & balas di background — respons cepat ke gateway.
   (async () => {
     try {
-      const reply = isLaporan
+      const reply = lokasi
+        ? "galat" in lokasi ? `⚠️ ${lokasi.galat}` : await jawabLokasi(lokasi.titik)
+        : isLaporan
         ? await handlePenormalanReport(text, { from, messageId: payload.messageId })
         : isCommand
           ? await handleCommand(text)

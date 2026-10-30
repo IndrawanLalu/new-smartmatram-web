@@ -186,7 +186,10 @@ function sapa(asal: AsalPesan, b: BahanLengkap): HasilTanya {
   const nama = asal.nama?.trim();
   const kepala = [`👋 Halo Pak/Bu${nama ? ` ${nama}` : ""}, ada yang bisa saya bantu?`];
   // Teks kosong: pilihan menu menjalankan fungsinya tanpa saringan dari salam.
-  return { balasan: tawarkan(asal, "", TANPA_PILIHAN, kepala, opsi), urai: null, fungsi: null, hasil: "tanya_balik" };
+  const menu = tawarkan(asal, "", TANPA_PILIHAN, kepala, opsi);
+  // Cari terdekat hanya lewat japri (app/api/wa-webhook → lib/wa/lokasiTerdekat).
+  const balasan = asal.grup ? menu : `${menu}\n\n📍 Kirim *lokasi* (📎 → Lokasi) atau koordinat → gardu & JTR terdekat.`;
+  return { balasan, urai: null, fungsi: null, hasil: "tanya_balik" };
 }
 const besarAwal = (t: string) => t[0].toUpperCase() + t.slice(1).toLowerCase();
 
