@@ -5,7 +5,7 @@ import { KartuDataGardu, LEBAR, tinggiDataGardu } from "./KartuDataGardu";
 import { siapkanIkon } from "./ikon";
 
 /** "21 Okt 2026 20.15" — waktu WITA sekarang. */
-function kiniWita() {
+export function kiniWita() {
   const w = new Date(Date.now() + 8 * 3600 * 1000);
   const bln = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"][w.getUTCMonth()];
   const dua = (n: number) => String(n).padStart(2, "0");
