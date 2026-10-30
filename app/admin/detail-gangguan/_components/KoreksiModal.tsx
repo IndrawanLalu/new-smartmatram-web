@@ -1,9 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, Copy, Check, Save, Loader2, Clock } from "lucide-react";
+import { X, Copy, Check, Save, Loader2, Clock, ClipboardCheck } from "lucide-react";
 import { BTN_PRIMARY, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { STEPS, loadSettings, saveSettings } from "./koreksiSettings";
+import { APKT_PENANDA, type DataApkt } from "./apktBookmarklet";
 import type { KoreksiRow } from "../_lib/gangguan";
 
 interface GangguanLite {
@@ -57,6 +58,7 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
   const [err, setErr] = useState<string | null>(null);
   const [copiedSet, setCopiedSet] = useState<Set<number>>(new Set());
   const [copiedNo, setCopiedNo] = useState(false);
+  const [copiedApkt, setCopiedApkt] = useState(false);
 
   // Hitung timestamp terkoreksi kumulatif.
   const steps = useMemo(() => {
@@ -94,6 +96,20 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
       await navigator.clipboard.writeText(row.no_laporan);
       setCopiedNo(true);
       setTimeout(() => setCopiedNo(false), 1500);
+    } catch { /* abaikan */ }
+  }
+
+  // Semua waktu sekaligus → dibaca bookmarklet "Isi APKT dari Smart" di halaman APKT.
+  async function copyApkt() {
+    if (!steps || !row.no_laporan) return;
+    const [penugasan, perjalanan, pengerjaan, nyalaSmt, nyala, selesai] = steps.map((s) => fmtDt(s.date));
+    const data: DataApkt = {
+      smart: APKT_PENANDA, no: row.no_laporan,
+      penugasan, perjalanan, pengerjaan, nyala_sementara: nyalaSmt, nyala, selesai,
+    };
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(data));
+      setCopiedApkt(true);
     } catch { /* abaikan */ }
   }
 
@@ -207,6 +223,14 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
             {/* Hasil timestamp */}
             <div className="space-y-2">
               <p className={EYEBROW}>Timestamp terkoreksi (klik salin)</p>
+              <button onClick={copyApkt} disabled={!steps}
+                title="Salin No Laporan + semua waktu, lalu klik bookmark 'Isi APKT dari Smart' di halaman APKT"
+                className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+                  copiedApkt ? "border-green-300 bg-green-50 text-green-700" : "border-navy-300 bg-navy-50 text-navy-700 hover:bg-navy-100"
+                }`}>
+                {copiedApkt ? <Check size={14} /> : <ClipboardCheck size={14} />}
+                {copiedApkt ? "Tersalin — klik bookmark di APKT" : "Salin untuk APKT (semua waktu)"}
+              </button>
               {steps?.map((st, i) => {
                 const done = copiedSet.has(i);
                 return (

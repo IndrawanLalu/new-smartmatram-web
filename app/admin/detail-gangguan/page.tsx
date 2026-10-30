@@ -26,6 +26,7 @@ import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
 import KoreksiModal from "./_components/KoreksiModal";
+import PasangBookmarkApkt from "./_components/PasangBookmarkApkt";
 import RekapTab from "./_components/RekapTab";
 import DashboardTab from "./_components/DashboardTab";
 import ImportPanel from "./_components/ImportPanel";
@@ -531,6 +532,7 @@ export default function DetailGangguanPage() {
                 )}
               </button>
             </div>
+            <PasangBookmarkApkt />
           </div>
         )}
       </div>
