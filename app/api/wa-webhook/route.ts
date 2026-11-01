@@ -7,6 +7,7 @@ import { bacaPanggilan, bolehTanya, mentionDari } from "@/lib/wa/tanya/panggilan
 import { tanya } from "@/lib/wa/tanya/jawab";
 import { bacaKoordinat } from "@/lib/koordinat";
 import { jawabLokasi, koordinatDariTeks } from "@/lib/wa/lokasiTerdekat";
+import { prediksiDariLaporan } from "@/lib/wa/prediksiLaporan";
 
 /**
  * Webhook pesan masuk dari wa-gateway (Baileys) — menggantikan client.on("message")
@@ -15,6 +16,8 @@ import { jawabLokasi, koordinatDariTeks } from "@/lib/wa/lokasiTerdekat";
  *   2. Laporan "INFO REALTIME PENORMALAN GANGGUAN" (auto-deteksi, tanpa "#") → handlePenormalanReport (tulis)
  *   3. Tanya Jawab (@smart di grup / semua chat pribadi) → lib/wa/tanya (rencana-tanya-jawab-wa.md)
  *   4. Lokasi / koordinat, HANYA chat pribadi → gardu & JTR terdekat (lib/wa/lokasiTerdekat). Di grup diam.
+ * Laporan dispatcher yang diteruskan ke japri bot juga dibalas prediksi lokasi
+ * gangguannya (lib/prediksiGangguan) — masa uji, di grup tidak.
  * Balasannya dikirim balik lewat gateway. Verifikasi asal via X-Webhook-Secret (= WA_WEBHOOK_SECRET).
  */
 export async function POST(req: NextRequest) {
@@ -68,6 +71,10 @@ export async function POST(req: NextRequest) {
           : (await tanya(pertanyaan!, { dari: pengirim, grup: isGroup ? from : null, nama: payload.pushName ?? null }, true)).balasan;
       if (typeof reply === "string") await gatewaySend({ to: from, text: reply, replyTo: payload.messageId });
       else if (reply) await gatewaySend({ to: from, mediaUrl: reply.mediaUrl, caption: reply.caption, replyTo: payload.messageId });
+      if (isLaporan && !isGroup) {
+        const prediksi = await prediksiDariLaporan(text);
+        if (prediksi) await gatewaySend({ to: from, text: prediksi, replyTo: payload.messageId });
+      }
     } catch (e) {
       console.error("[wa-webhook] error:", (e as Error).message);
       await gatewaySend({ to: from, text: "⚠️ Terjadi kesalahan saat memproses pesan. Coba lagi." }).catch(() => {});
