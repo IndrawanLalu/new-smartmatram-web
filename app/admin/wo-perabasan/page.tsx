@@ -249,7 +249,7 @@ export default function WoPerabasanPage() {
       ) : tab === "dashboard" ? (
         <DashboardPerabasan key={`${d.ulp}-${d.tahun}`} ulp={d.ulp} tahun={d.tahun} />
       ) : tab === "wo" ? (
-        <DaftarWo wo={w.wo} ulp={d.ulp} loading={w.loading} onDetail={(x) => setIdWo(x.wo_id)} />
+        <DaftarWo wo={w.wo} bagiRegu={w.bagiRegu} ulp={d.ulp} loading={w.loading} onDetail={(x) => setIdWo(x.wo_id)} />
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-3">

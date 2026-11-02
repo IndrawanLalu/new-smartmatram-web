@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
-import type { WoRingkas } from "../_hooks/useWoPerabasan";
+import type { BagiRegu, WoRingkas } from "../_hooks/useWoPerabasan";
 import { tanggal } from "../_lib/tampilan";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
@@ -26,11 +26,14 @@ const NADA: Record<string, string> = {
 
 export default function DaftarWo({
   wo,
+  bagiRegu,
   ulp,
   loading,
   onDetail,
 }: {
   wo: WoRingkas[];
+  /** wo_id → jumlah segmen per regu (null = belum ada regu). */
+  bagiRegu: Map<string, BagiRegu[]>;
   /** "SEMUA" atau satu ULP — mengikuti penyaring halaman. */
   ulp: string;
   loading: boolean;
@@ -41,6 +44,17 @@ export default function DaftarWo({
   const total = Math.max(1, Math.ceil(baris.length / PAGE));
   const hal = Math.min(halaman, total);
   const tampil = baris.slice((hal - 1) * PAGE, hal * PAGE);
+  // Satu kolom per regu yang muncul di WO yang tersaring (RABAS 1, 2, …), plus
+  // "Belum ada regu" hanya bila memang ada segmen yang belum ditugaskan.
+  const { kolomRegu, adaTanpaRegu } = useMemo(() => {
+    const nama = new Set<string>();
+    let tanpa = false;
+    for (const w of baris) for (const b of bagiRegu.get(w.wo_id) ?? []) {
+      if (b.regu) nama.add(b.regu);
+      else tanpa = true;
+    }
+    return { kolomRegu: [...nama].sort((a, b) => a.localeCompare(b, "id", { numeric: true })), adaTanpaRegu: tanpa };
+  }, [baris, bagiRegu]);
 
   if (loading) {
     return (
@@ -70,6 +84,10 @@ export default function DaftarWo({
               <th className={`${TH} text-right`}><IkonKolom teks="Rencana" />Rencana</th>
               <th className={`${TH} text-right`}><IkonKolom teks="Capaian" />Capaian</th>
               <th className={`${TH} text-right`}><IkonKolom teks="Segmen selesai" />Segmen selesai</th>
+              {kolomRegu.map((r) => (
+                <th key={r} className={`${TH} text-right`}>{r}</th>
+              ))}
+              {adaTanpaRegu && <th className={`${TH} text-right text-amber-700`}>Belum ada regu</th>}
               <th className={`${TH} text-left`}><IkonKolom teks="Status" />Status</th>
             </tr>
           </thead>
@@ -92,6 +110,10 @@ export default function DaftarWo({
                   {w.capaian_persen !== null && <span className="text-ink-muted font-normal"> · {w.capaian_persen}%</span>}
                 </td>
                 <td className={`${TD} text-right tabular-nums`}>{w.item_selesai}/{w.item}</td>
+                {kolomRegu.map((r) => (
+                  <SelRegu key={r} b={bagiRegu.get(w.wo_id)?.find((x) => x.regu === r)} />
+                ))}
+                {adaTanpaRegu && <SelRegu b={bagiRegu.get(w.wo_id)?.find((x) => x.regu === null)} peringatan />}
                 <td className={TD}>
                   <span className={`inline-block px-2 py-0.5 rounded-full border text-[10px] font-semibold ${NADA[w.status] ?? NADA.Terbit}`}>
                     {w.status}
@@ -115,5 +137,16 @@ export default function DaftarWo({
         </div>
       </div>
     </div>
+  );
+}
+
+/** Jumlah segmen satu regu di satu WO, km di bawahnya. Kosong = "—". */
+function SelRegu({ b, peringatan }: { b: BagiRegu | undefined; peringatan?: boolean }) {
+  if (!b) return <td className={`${TD} text-right text-ink-muted`}>—</td>;
+  return (
+    <td className={`${TD} text-right tabular-nums whitespace-nowrap`}>
+      <p className={`font-semibold ${peringatan ? "text-amber-700" : "text-ink"}`}>{b.segmen} segmen</p>
+      <p className="text-[10px] text-ink-muted">{kms(b.km)} KMS</p>
+    </td>
   );
 }

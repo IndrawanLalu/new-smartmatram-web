@@ -60,6 +60,9 @@ export interface WoItem {
   verified_note: string | null;
 }
 
+/** Pembagian segmen satu WO per regu (null = belum ada regu). Item Dibatalkan tidak dihitung. */
+export interface BagiRegu { regu: string | null; segmen: number; km: number }
+
 export interface SegmenPilihan {
   segmen_id: string;
   nama: string;
@@ -105,6 +108,7 @@ export function useWoPerabasan() {
   const [item, setItem] = useState<WoItem[]>([]);
   const [segmen, setSegmen] = useState<SegmenPilihan[]>([]);
   const [regu, setRegu] = useState<Regu[]>([]);
+  const [bagiRegu, setBagiRegu] = useState<Map<string, BagiRegu[]>>(new Map());
   const [loading, setLoading] = useState(true);
 
   const muat = useCallback(async () => {
@@ -113,7 +117,7 @@ export function useWoPerabasan() {
       // sudah bisa melewati 1.000 baris, dan segmen yang terpotong tidak akan
       // pernah bisa dipilih di Susun WO — tanpa pesan apa pun. Item yang dimuat
       // hanya yang MASIH MENGIKAT segmen (bahan `segmenTerikat`).
-      const [w, i, s, g] = await Promise.all([
+      const [w, i, s, g, b] = await Promise.all([
         fetchAllRows<WoRingkas>(() =>
           supabaseBrowser.from("wo_perabasan_capaian").select(KOLOM_WO).order("tgl_wo", { ascending: false }).order("wo_id"),
         ),
@@ -138,6 +142,10 @@ export function useWoPerabasan() {
           .select("regu,ulp,segmen_berjalan,km_berjalan")
           .order("ulp")
           .order("regu"),
+        // Semua item yang masih berlaku (termasuk Diverifikasi) — untuk kolom per regu di Daftar WO.
+        fetchAllRows<{ wo_id: string; regu: string | null; panjang_km: number | null }>(() =>
+          supabaseBrowser.from("wo_perabasan_item").select("wo_id,regu,panjang_km").neq("status", "Dibatalkan").order("id"),
+        ),
       ]);
       if (g.error) throw new Error(g.error.message);
 
@@ -145,6 +153,14 @@ export function useWoPerabasan() {
       setItem(i);
       setSegmen(s);
       setRegu((g.data ?? []) as unknown as Regu[]);
+      const bagi = new Map<string, BagiRegu[]>();
+      for (const x of b) {
+        const daftar = bagi.get(x.wo_id) ?? bagi.set(x.wo_id, []).get(x.wo_id)!;
+        const r = daftar.find((d) => d.regu === x.regu) ?? (daftar.push({ regu: x.regu, segmen: 0, km: 0 }), daftar[daftar.length - 1]);
+        r.segmen++;
+        r.km += Number(x.panjang_km ?? 0);
+      }
+      setBagiRegu(bagi);
     } catch (e) {
       const pesan = e instanceof Error ? e.message : String(e);
       toast.error(
@@ -414,7 +430,7 @@ export function useWoPerabasan() {
   );
 
   return {
-    wo, item, segmen, regu, loading, muat,
+    wo, item, segmen, regu, bagiRegu, loading, muat,
     terbitkan, tambahKeWo, putuskan, batalkanItem, keluarkanBanyak, batalkanWo, tugaskanRegu, tugaskanReguBanyak,
     ambilItemWo, ubahWo,
     segmenTerikat,
