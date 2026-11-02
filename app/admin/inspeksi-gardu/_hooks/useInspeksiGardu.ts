@@ -48,6 +48,8 @@ export interface BarisInspeksiGardu {
   batalAlasan: string | null;
   woNama: string | null;
   tertahan: boolean;
+  /** Tier 2: false = HP tanpa sinyal, jam belum terverifikasi (jam-tier2.sql). */
+  jamTerverifikasi: boolean | null;
 }
 
 export interface TemuanGardu {
@@ -110,6 +112,7 @@ const petaBaris = (r: Record<string, unknown>): BarisInspeksiGardu => {
     batalAlasan: teks(r.batal_alasan),
     woNama: teks(r.wo_nama),
     tertahan: !!r.tertahan,
+    jamTerverifikasi: typeof r.jam_terverifikasi === "boolean" ? r.jam_terverifikasi : null,
   };
 };
 

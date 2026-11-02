@@ -17,6 +17,7 @@ import TabelInspeksiGardu from "./_components/TabelInspeksiGardu";
 import DetailInspeksiGardu from "./_components/DetailInspeksiGardu";
 import WoIgardu from "./_components/WoIgardu";
 import PengaturanKategoriIgardu from "./_components/PengaturanKategoriIgardu";
+import JamTier2 from "@/app/admin/_components/JamTier2";
 
 /**
  * Inspeksi Gardu Tier 1 / Tier 2 (rencana-wo-gardu-dan-inspeksi-gardu.md, G2).
@@ -53,8 +54,11 @@ export default function InspeksiGarduPage() {
       {tab === "wo" && <WoIgardu user={user} />}
 
       {tab === "pengaturan" && (
-        <PengaturanKategoriIgardu kategori={o.kategori} oleh={oleh} onSimpan={o.simpanKategori}
-          bolehUbah={canSeeAllUnits(user.role) || user.role === "admin"} />
+        <>
+          <JamTier2 />
+          <PengaturanKategoriIgardu kategori={o.kategori} oleh={oleh} onSimpan={o.simpanKategori}
+            bolehUbah={canSeeAllUnits(user.role) || user.role === "admin"} />
+        </>
       )}
 
       {tab === "daftar" && (

@@ -361,7 +361,13 @@ function IsiTiang({ t }: { t: JawabanTiang }) {
         <span className="text-[11px] text-ink-muted">
           {t.isi.length} isian
           {t.jarakM !== null ? ` · ${t.jarakM} m dari petugas` : ""}
+          {t.dinilaiAt ? ` · ${jamWita(t.dinilaiAt)} WITA` : ""}
         </span>
+        {t.jamTerverifikasi === false && (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800" title="HP tanpa sinyal saat menilai — jam diambil dari HP, bukan jam server">
+            Jam belum terverifikasi
+          </span>
+        )}
         <span className="flex-1" />
         {t.fotoDrone.map((u, n) => (
           <a key={u} href={u} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
@@ -395,4 +401,9 @@ function IsiTiang({ t }: { t: JawabanTiang }) {
       )}
     </div>
   );
+}
+
+/** Jam menilai (WITA) — Tier 2 hanya boleh pada jam kerjanya (jam-tier2.sql). */
+function jamWita(iso: string): string {
+  return new Date(iso).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", timeZone: "Asia/Makassar" });
 }

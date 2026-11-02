@@ -99,6 +99,13 @@ export default function DetailInspeksiGardu({ b, oleh, temuanDari, onTutup, onVe
             <b>Dikembalikan ke petugas:</b> {b.dikembalikanAlasan ?? "—"} — menunggu dikirim ulang dari HP.
           </p>
         )}
+        {b.tier === "2" && b.jamTerverifikasi === false && (
+          <p className="text-xs rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+            <b>Jam belum terverifikasi:</b> HP tanpa sinyal saat Simpan, jadi waktu kunjungan (
+            {new Date(b.tgl).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Makassar" })} WITA)
+            diambil dari jam HP, bukan jam server. Periksa sebelum menyetujui.
+          </p>
+        )}
         {b.tertahan && (
           <p className="text-xs rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
             Regu mengusulkan titik gardu baru — belum dihitung realisasi sampai usulannya diputuskan di Master Gardu.

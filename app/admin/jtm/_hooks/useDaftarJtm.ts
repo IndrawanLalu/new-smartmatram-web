@@ -57,6 +57,8 @@ export interface JawabanTiang {
   tiangKode: string;
   jarakM: number | null;
   dinilaiAt: string | null;
+  /** Tier 2: false = HP tanpa sinyal, jam belum terverifikasi (jam-tier2.sql). */
+  jamTerverifikasi: boolean | null;
   isi: {
     itemKode: string;
     itemNama: string;
@@ -351,11 +353,11 @@ export interface PratinjauBatalJtm {
  * per 100 titik supaya URL-nya tidak kepanjangan.
  */
 export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
-  interface Titik { id: string; tiang_id: string; jarak_m: number | null; dinilai_at: string | null; tiang: { kode: string } | { kode: string }[] | null }
+  interface Titik { id: string; tiang_id: string; jarak_m: number | null; dinilai_at: string | null; jam_terverifikasi: boolean | null; tiang: { kode: string } | { kode: string }[] | null }
   interface Periksa { titik_id: string; item_kode: string; bagian: string | null; nilai: string | null; nilai_angka: number | null; catatan: string | null; foto_url: string | null; foto_lain: string[] | null }
 
   const titik = await fetchAllRows<Titik>(() =>
-    supabaseBrowser.from("inspeksi_jtm_titik").select("id,tiang_id,jarak_m,dinilai_at,tiang(kode)").eq("inspeksi_id", id).order("dinilai_at").order("id"),
+    supabaseBrowser.from("inspeksi_jtm_titik").select("id,tiang_id,jarak_m,dinilai_at,jam_terverifikasi,tiang(kode)").eq("inspeksi_id", id).order("dinilai_at").order("id"),
   );
   if (titik.length === 0) return [];
 
@@ -417,6 +419,7 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
       tiangKode: tg?.kode ?? "—",
       jarakM: t.jarak_m !== null ? Number(t.jarak_m) : null,
       dinilaiAt: t.dinilai_at,
+      jamTerverifikasi: t.jam_terverifikasi ?? null,
       isi: denganDt((per.get(t.id) ?? []).sort((a, b) => (urut.get(a.itemKode) ?? 0) - (urut.get(b.itemKode) ?? 0)), periksa.filter((p) => p.titik_id === t.id)),
       fotoDrone: foto.filter((f) => f.titik_id === t.id).map((f) => f.url),
     };

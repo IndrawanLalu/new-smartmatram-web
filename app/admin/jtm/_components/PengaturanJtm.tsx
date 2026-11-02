@@ -8,6 +8,7 @@ import { kodeTitik } from "@/lib/jenisTitikJtm";
 import IsianJtm from "./IsianJtm";
 import AmbangDtJtm from "./AmbangDtJtm";
 import AmbangLapanganJtm from "./AmbangLapanganJtm";
+import JamTier2 from "@/app/admin/_components/JamTier2";
 
 const DAFTAR: { kategori: Kategori; judul: string; bantu: string; pakaiIkon: boolean }[] = [
   {
@@ -89,6 +90,8 @@ export default function PengaturanJtm() {
   return (
     <div className="space-y-4">
       <AmbangLapanganJtm />
+
+      <JamTier2 />
 
       <div className={`${CARD} p-5`}>
         <p className={EYEBROW}>Pengaturan JTM</p>
