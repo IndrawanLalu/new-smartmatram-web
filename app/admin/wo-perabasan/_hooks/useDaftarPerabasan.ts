@@ -148,14 +148,15 @@ export function useDaftarPerabasan(user: CurrentUser) {
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     };
-    // Tertutup: diverifikasi menurut TANGGAL PEKERJAAN selesai, dibatalkan
-    // menurut kapan dibatalkan (tidak punya tanggal pekerjaan).
+    // Tertutup: diverifikasi menurut TANGGAL MULAI dirabas (bulan realisasi,
+    // sama dengan Rekap Kinerja — 3 Nov 2026), dibatalkan menurut kapan
+    // dibatalkan (tidak punya tanggal pekerjaan).
     const tertutup = () => {
       let x = supabaseBrowser
         .from("wo_perabasan_item")
         .select(KOLOM)
         .or(
-          `and(status.eq.Diverifikasi,tgl_selesai.gte.${awal},tgl_selesai.lte.${akhir}),` +
+          `and(status.eq.Diverifikasi,tgl_mulai.gte.${awal},tgl_mulai.lte.${akhir}),` +
             `and(status.eq.Dibatalkan,updated_at.gte.${awal},updated_at.lte.${akhir}T23:59:59)`,
         )
         .order("id");

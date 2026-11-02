@@ -9,13 +9,14 @@ import type { ItemBatang } from "@/app/admin/_components/DaftarBatang";
 /**
  * Ringkasan setahun Perabasan — dalam KILOMETER.
  *
- * Capaian = segmen DIVERIFIKASI saja, dibukukan pada tanggal pekerjaannya
- * selesai — aturan yang sama dengan view `wo_perabasan_capaian`. Laporan yang
+ * Capaian = segmen DIVERIFIKASI saja, dibukukan pada tanggal MULAI dirabas
+ * (3 Nov 2026) — aturan yang sama dengan Rekap Kinerja. Laporan yang
  * belum diperiksa bukan capaian: kalau ikut dihitung, angkanya turun lagi saat
  * admin mengembalikannya.
  */
 
-interface Item { ulp: string; regu: string | null; panjang_km: number | null; tgl_selesai: string }
+/** `tgl` = tanggal MULAI dirabas — bulan realisasi (keputusan user 3 Nov 2026), sama dengan Rekap Kinerja. */
+interface Item { ulp: string; regu: string | null; panjang_km: number | null; tgl: string }
 interface Wo { target_km: number; pohon_dirabas: number }
 
 const BULAN_PENDEK = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -33,10 +34,10 @@ export function useDashboardPerabasan(ulp: string, tahun: number) {
     const qItem = () => {
       let x = supabaseBrowser
         .from("wo_perabasan_item")
-        .select("ulp,regu,panjang_km,tgl_selesai")
+        .select("ulp,regu,panjang_km,tgl:tgl_mulai")
         .eq("status", "Diverifikasi")
-        .gte("tgl_selesai", `${tahun - 1}-01-01`)
-        .lte("tgl_selesai", `${tahun}-12-31`)
+        .gte("tgl_mulai", `${tahun - 1}-01-01`)
+        .lte("tgl_mulai", `${tahun}-12-31`)
         .order("id");
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
@@ -80,16 +81,16 @@ export function useDashboardPerabasan(ulp: string, tahun: number) {
     const sekarang = new Date();
     const bulanIni = sekarang.getFullYear() === tahun ? sekarang.getMonth() : sekarang.getFullYear() > tahun ? 11 : -1;
     const kmDari = (a: Item[]) => bulat2(a.reduce((n, x) => n + Number(x.panjang_km ?? 0), 0));
-    const kini = item.filter((x) => x.tgl_selesai.startsWith(String(tahun)));
-    const lalu = item.filter((x) => x.tgl_selesai.startsWith(String(tahun - 1)));
+    const kini = item.filter((x) => x.tgl.startsWith(String(tahun)));
+    const lalu = item.filter((x) => x.tgl.startsWith(String(tahun - 1)));
 
     const bulanan: TitikBulan[] = BULAN_PENDEK.map((label, i) => {
       const k = `-${String(i + 1).padStart(2, "0")}-`;
       return {
         key: label,
         label,
-        kini: kmDari(kini.filter((x) => x.tgl_selesai.slice(4, 8) === k)),
-        lalu: kmDari(lalu.filter((x) => x.tgl_selesai.slice(4, 8) === k)),
+        kini: kmDari(kini.filter((x) => x.tgl.slice(4, 8) === k)),
+        lalu: kmDari(lalu.filter((x) => x.tgl.slice(4, 8) === k)),
         lewat: i <= bulanIni,
         berjalan: i === bulanIni && sekarang.getFullYear() === tahun,
       };
