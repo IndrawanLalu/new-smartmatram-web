@@ -44,6 +44,8 @@ export interface BarisKinerja {
   /** Baris kecil di bawah angka Realisasi / Belum disetujui — rincian yang
    *  membentuk angka itu (Pengukuran: beban & tegangan ujung, 27 Okt 2026). */
   rincianRealisasi?: string[];
+  /** Rincian di bawah WO terbit (Pengukuran: WO bulan ini + tunggakan, 3 Nov 2026). */
+  rincianWo?: string[];
   rincianBelum?: string[];
   /** Sumbernya gagal dibaca. Angkanya dikosongkan, BUKAN ditulis nol —
    *  nol yang dikarang tidak bisa dibedakan dari kinerja yang benar nihil. */
@@ -184,7 +186,7 @@ export const META: Omit<BarisKinerja, "woTerbit" | "sla" | "realisasi" | "belumA
     satuan: "gardu",
     desimal: false,
     catatan:
-      "WO Pengukuran bulanan. Realisasi = gardu WO yang pengukuran bebannya masuk DAN tegangan ujungnya sudah disetujui dan tidak tertahan usulan titik/kVA. Belum disetujui = tertahan usulan titik/kVA + tegangan ujung yang sudah dikirim tapi belum disetujui.",
+      "WO Pengukuran bulanan, ditambah tunggakan WO bulan lalu yang belum tuntas dan tidak terbit lagi bulan ini. Realisasi = semua gardu yang diukur bulan ini menurut tanggal ukur, sekali per gardu, yang pengukuran bebannya masuk DAN tegangan ujungnya sudah disetujui dan tidak tertahan usulan titik/kVA — gardu WO maupun di luar WO. Sama dengan Excel Realisasi Bulanan. Belum disetujui = tertahan usulan titik/kVA + tegangan ujung yang sudah dikirim tapi belum disetujui.",
   },
 ];
 

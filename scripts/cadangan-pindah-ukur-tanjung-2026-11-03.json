@@ -1,0 +1,392 @@
+{
+  "keterangan": "3 Nov 2026 — permintaan user: realisasi pengukuran Tanjung Oktober dibuat 204; 25 pengukuran di luar WO paling akhir dipindah ke 2026-11-01. Nilai ASLI di bawah.",
+  "pengukuran_gardu": [
+    {
+      "id": "b409c9f8-bfb6-4ec2-b0ec-030d641bcc22",
+      "no_gardu": "PM015",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:57:00"
+    },
+    {
+      "id": "009d174b-e90a-4857-a2aa-1ad586a9ac10",
+      "no_gardu": "TJ043",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:55:00"
+    },
+    {
+      "id": "3e3bcdd1-8cc5-4591-b38a-5f801947a312",
+      "no_gardu": "PM007",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:47:00"
+    },
+    {
+      "id": "049d4053-4761-4a3d-bfa9-b50bf03a2c15",
+      "no_gardu": "TJ069",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:45:00"
+    },
+    {
+      "id": "b62c6b1c-4d61-4d42-aef4-76216102ad2e",
+      "no_gardu": "TJ067",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:33:00"
+    },
+    {
+      "id": "bdabdb36-74c9-4482-aab5-d41ce0f3e822",
+      "no_gardu": "TJ068",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:19:00"
+    },
+    {
+      "id": "de54e2b0-2bc8-4f74-a9c4-60f8b437ea36",
+      "no_gardu": "TJ088",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "20:01:00"
+    },
+    {
+      "id": "e775786f-d009-4021-85cf-bf53ea99f648",
+      "no_gardu": "TJ087",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "19:46:00"
+    },
+    {
+      "id": "f2cc3126-dbc8-4c08-878b-69a27c640aa8",
+      "no_gardu": "PM026",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "19:15:00"
+    },
+    {
+      "id": "3b3cbc60-0f9e-4228-8ee4-b5ed4f06a383",
+      "no_gardu": "TJ071",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "19:15:00"
+    },
+    {
+      "id": "023e1864-a003-4b94-81a8-21a7f60ae0d3",
+      "no_gardu": "PM013",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "18:47:00"
+    },
+    {
+      "id": "30fe658a-c0a4-4d4b-a08e-604af4ac0347",
+      "no_gardu": "TJ039",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "18:40:00"
+    },
+    {
+      "id": "f9751de2-8af9-47c6-986e-a3a337669acb",
+      "no_gardu": "PM036",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "18:21:00"
+    },
+    {
+      "id": "6809b278-f740-48a3-b21a-0041381f7d5e",
+      "no_gardu": "TJ024",
+      "tanggal_pengukuran": "2026-10-28",
+      "jam_pengukuran": "18:16:00"
+    },
+    {
+      "id": "5991d1b8-8af2-4171-9cea-b64d34f10fbc",
+      "no_gardu": "GG074",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "21:06:00"
+    },
+    {
+      "id": "fb6105c5-5482-42e0-8996-e4cd1029cb24",
+      "no_gardu": "TJ021",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "20:48:00"
+    },
+    {
+      "id": "02d9fe28-a799-4bc7-bdb9-f0514550ecb2",
+      "no_gardu": "TJ015",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "20:31:00"
+    },
+    {
+      "id": "082d06b9-3b0b-49bc-b4ba-dbface06c419",
+      "no_gardu": "GG044",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "20:24:00"
+    },
+    {
+      "id": "13d46b4e-0556-4446-8a54-330890aa0cb3",
+      "no_gardu": "TJ032",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "20:11:00"
+    },
+    {
+      "id": "b80f3b54-cdd6-46a8-9c07-6f73becec300",
+      "no_gardu": "GG052",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "20:07:00"
+    },
+    {
+      "id": "d38101a3-7dd7-4055-afef-da92c54bb9b7",
+      "no_gardu": "GG004",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "19:51:00"
+    },
+    {
+      "id": "cd60555b-d161-4e28-97cb-cd08174bc4ca",
+      "no_gardu": "GG034",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "19:30:00"
+    },
+    {
+      "id": "97d2fd47-8ac2-4232-b389-e434d56a8911",
+      "no_gardu": "TJ023",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "19:30:00"
+    },
+    {
+      "id": "f3e689f0-5847-40fa-90e4-e952d55a1218",
+      "no_gardu": "GG073",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "19:16:00"
+    },
+    {
+      "id": "20232e31-8196-428e-9297-187a224891da",
+      "no_gardu": "GG003",
+      "tanggal_pengukuran": "2026-10-27",
+      "jam_pengukuran": "19:01:00"
+    }
+  ],
+  "pengukuran_tegangan_ujung": [
+    {
+      "id": "0e1f11b1-095c-49c5-ab23-c607b8489d8d",
+      "pengukuran_id": "20232e31-8196-428e-9297-187a224891da",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "ed8b1f46-a97b-45e1-b1d2-3cc80fb9cee3",
+      "pengukuran_id": "20232e31-8196-428e-9297-187a224891da",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "92666b62-13c8-4e38-9a59-1d6f73d79306",
+      "pengukuran_id": "97d2fd47-8ac2-4232-b389-e434d56a8911",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "9d7fce88-bec1-402b-a757-deb6f28fe81f",
+      "pengukuran_id": "97d2fd47-8ac2-4232-b389-e434d56a8911",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "a7ac387b-d9af-49d7-9f72-6f80272e0b81",
+      "pengukuran_id": "f3e689f0-5847-40fa-90e4-e952d55a1218",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "cd496c0b-fdee-4889-ab42-9c306741eff3",
+      "pengukuran_id": "f3e689f0-5847-40fa-90e4-e952d55a1218",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "d1aedc82-568f-4fc1-b321-9615bf8d7861",
+      "pengukuran_id": "cd60555b-d161-4e28-97cb-cd08174bc4ca",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "e9d39227-4dae-4c68-9f92-0989b9cdcf8c",
+      "pengukuran_id": "d38101a3-7dd7-4055-afef-da92c54bb9b7",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "3360742f-ffd0-4160-a2a8-a47134ca7463",
+      "pengukuran_id": "cd60555b-d161-4e28-97cb-cd08174bc4ca",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "54df8804-5ccb-405f-b46d-7ec662840498",
+      "pengukuran_id": "d38101a3-7dd7-4055-afef-da92c54bb9b7",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "55a1c201-8f53-463c-b194-bcbbb4aa2b07",
+      "pengukuran_id": "13d46b4e-0556-4446-8a54-330890aa0cb3",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "6a001f06-7018-43e8-9262-210ba91fb200",
+      "pengukuran_id": "b80f3b54-cdd6-46a8-9c07-6f73becec300",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "7a9355ce-2aec-4ac6-b06c-41197640f83a",
+      "pengukuran_id": "13d46b4e-0556-4446-8a54-330890aa0cb3",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "35aea5e6-64aa-4065-a88e-979a55278fcf",
+      "pengukuran_id": "02d9fe28-a799-4bc7-bdb9-f0514550ecb2",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "3d6a1427-72c9-440f-b293-581f4aaa4c2c",
+      "pengukuran_id": "082d06b9-3b0b-49bc-b4ba-dbface06c419",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "588f0ec2-53dd-4321-956a-c694b8ccd45f",
+      "pengukuran_id": "5991d1b8-8af2-4171-9cea-b64d34f10fbc",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "7a3216f7-a006-4ae8-9af4-31bfccc3a5ff",
+      "pengukuran_id": "fb6105c5-5482-42e0-8996-e4cd1029cb24",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "91552e7b-9090-415f-9a19-d60595cb64d9",
+      "pengukuran_id": "fb6105c5-5482-42e0-8996-e4cd1029cb24",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "c9d02bed-3f92-4d90-a78f-0185ccd71132",
+      "pengukuran_id": "5991d1b8-8af2-4171-9cea-b64d34f10fbc",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "d0ad24ca-ee2a-4e72-8138-e4ba1efee120",
+      "pengukuran_id": "02d9fe28-a799-4bc7-bdb9-f0514550ecb2",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "ec1fbfe5-5acb-4c15-af18-399b54637d78",
+      "pengukuran_id": "082d06b9-3b0b-49bc-b4ba-dbface06c419",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "1181991f-9614-4310-92ec-eafd88f7dace",
+      "pengukuran_id": "b80f3b54-cdd6-46a8-9c07-6f73becec300",
+      "tgl_ukur": "2026-10-27"
+    },
+    {
+      "id": "46287b59-1a29-4e51-a782-409f6f38c993",
+      "pengukuran_id": "f9751de2-8af9-47c6-986e-a3a337669acb",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "af979627-7001-4a48-a800-fed23bde6bcf",
+      "pengukuran_id": "f9751de2-8af9-47c6-986e-a3a337669acb",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "b9a63cd2-6a59-4fa7-8bb3-6167009cfb70",
+      "pengukuran_id": "6809b278-f740-48a3-b21a-0041381f7d5e",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "e9b8c38d-d677-4b07-8b39-b70eb0ebee09",
+      "pengukuran_id": "6809b278-f740-48a3-b21a-0041381f7d5e",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "4258770b-f277-4aab-bf1e-51800159d127",
+      "pengukuran_id": "30fe658a-c0a4-4d4b-a08e-604af4ac0347",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "8fcda921-f8de-45c4-aaec-506c06e7f45b",
+      "pengukuran_id": "30fe658a-c0a4-4d4b-a08e-604af4ac0347",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "35a01213-88df-4c85-8849-c8e6027b8f19",
+      "pengukuran_id": "3b3cbc60-0f9e-4228-8ee4-b5ed4f06a383",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "af5a7518-386d-49cf-aa53-65d845b11402",
+      "pengukuran_id": "f2cc3126-dbc8-4c08-878b-69a27c640aa8",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "b569c05b-3c4e-40e5-a9ca-29fd7f2c7f34",
+      "pengukuran_id": "3b3cbc60-0f9e-4228-8ee4-b5ed4f06a383",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "d0e127ff-505a-45e0-a16d-78eef6b91fd4",
+      "pengukuran_id": "f2cc3126-dbc8-4c08-878b-69a27c640aa8",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "0a12b609-8fb6-4621-89ab-c7168ce07ae4",
+      "pengukuran_id": "bdabdb36-74c9-4482-aab5-d41ce0f3e822",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "4025932c-591c-4bf7-930b-c989036ea856",
+      "pengukuran_id": "e775786f-d009-4021-85cf-bf53ea99f648",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "5eed6cfc-e304-477a-921a-8e873cda82bf",
+      "pengukuran_id": "de54e2b0-2bc8-4f74-a9c4-60f8b437ea36",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "6e6b85bd-7996-4a6e-91cd-f8452a6c3a1a",
+      "pengukuran_id": "e775786f-d009-4021-85cf-bf53ea99f648",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "b63dd655-6a19-4c93-8a95-135c7e3c507e",
+      "pengukuran_id": "de54e2b0-2bc8-4f74-a9c4-60f8b437ea36",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "407d857d-ea92-4036-961d-5d5ebfa2dd81",
+      "pengukuran_id": "b409c9f8-bfb6-4ec2-b0ec-030d641bcc22",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "43b1dfe4-e4f1-464b-abf5-ad25dc5854f9",
+      "pengukuran_id": "b409c9f8-bfb6-4ec2-b0ec-030d641bcc22",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "51078c8e-c3a0-4df7-b23b-0e7ca7fd8f3c",
+      "pengukuran_id": "049d4053-4761-4a3d-bfa9-b50bf03a2c15",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "51f5c5e1-34ab-4def-b73f-bb843b17adac",
+      "pengukuran_id": "bdabdb36-74c9-4482-aab5-d41ce0f3e822",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "6e3f7153-d3f1-4a96-a291-4809dbe97029",
+      "pengukuran_id": "009d174b-e90a-4857-a2aa-1ad586a9ac10",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "79fd3a4e-235f-43fb-b749-670b17d56129",
+      "pengukuran_id": "049d4053-4761-4a3d-bfa9-b50bf03a2c15",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "8c250bc1-3b8c-45a2-b7f4-16a650a05f37",
+      "pengukuran_id": "009d174b-e90a-4857-a2aa-1ad586a9ac10",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "9ddb4012-47d7-4c9d-9ada-073391d4cfb9",
+      "pengukuran_id": "3e3bcdd1-8cc5-4591-b38a-5f801947a312",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "cfe23504-2876-4de9-ac8c-1d794384410b",
+      "pengukuran_id": "b62c6b1c-4d61-4d42-aef4-76216102ad2e",
+      "tgl_ukur": "2026-10-28"
+    },
+    {
+      "id": "f20b5758-6518-4143-9c4c-8c0e43bfcf0b",
+      "pengukuran_id": "023e1864-a003-4b94-81a8-21a7f60ae0d3",
+      "tgl_ukur": "2026-10-28"
+    }
+  ]
+}

@@ -54,6 +54,12 @@ interface RincianUkur {
   tertahan_titik: number;
   tu_menunggu: number;
   tu_belum: number;
+  /** Pembentuk Realisasi (rekap-pengukuran-semua.sql). Server lama tanpa kolom ini = undefined. */
+  wo_dihitung?: number;
+  luar_dihitung?: number;
+  /** Pembentuk WO terbit: WO bulan ini + tunggakan bulan lalu yang tidak terbit lagi. */
+  wo_bulan_ini?: number;
+  wo_tunggakan?: number;
 }
 
 /** `rekap_jtm_drone` — bagian Tier 1 + drone dari baris Inspeksi JTM Tier 1 (jtm-tier1-drone.sql). */
@@ -218,10 +224,18 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
         ...m,
         woGardu: m.kunci === "jtr" ? woGarduJtr : null,
         rincianRealisasi: rUkur
-          ? [`Pengukuran beban ${n(rUkur.diukur)}`, `Tegangan ujung ${n(rUkur.tu_terkirim)} terkirim · ${n(rUkur.tu_disetujui)} disetujui`]
+          ? [
+              rUkur.wo_dihitung !== undefined
+                ? `Gardu WO ${n(rUkur.wo_dihitung)} · di luar WO ${n(rUkur.luar_dihitung ?? 0)}`
+                : `Pengukuran beban ${n(rUkur.diukur)}`,
+              `Tegangan ujung (gardu WO) ${n(rUkur.tu_terkirim)} terkirim · ${n(rUkur.tu_disetujui)} disetujui`,
+            ]
           : rDrone
             ? [`Drone: WO ${kmTeks(Number(rDrone.wo_km))} KMS`, `Drone: realisasi ${kmTeks(Number(rDrone.realisasi_km))} KMS`]
             : undefined,
+        rincianWo: rUkur?.wo_tunggakan
+          ? [`WO bulan ini ${n(rUkur.wo_bulan_ini ?? 0)} · tunggakan ${n(rUkur.wo_tunggakan)}`]
+          : undefined,
         rincianBelum: rUkur
           ? [`Titik/kVA ${n(rUkur.tertahan_titik)}`, `Tegangan ujung ${n(rUkur.tu_menunggu)}`]
           : undefined,

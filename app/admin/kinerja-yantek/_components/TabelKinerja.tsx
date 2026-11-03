@@ -222,6 +222,7 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                   </td>
                   <td className={`${TD} text-right`}>
                     <Angka v={b.woTerbit} satuan={b.satuan} desimal={b.desimal} />
+                    <Rincian baris={b.rincianWo} />
                     {!!b.woGardu && (
                       <span className="block text-[11px] text-ink-soft tabular-nums whitespace-nowrap" title="Jumlah gardu di WO — KMS-nya belum semua terukur">
                         {b.woGardu.toLocaleString("id-ID")} gardu
