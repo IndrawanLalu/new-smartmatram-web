@@ -68,7 +68,7 @@ export function useYearlyStats(
               .gte("tgl_penyeimbangan", startDate)
               .lt("tgl_penyeimbangan", endDate);
             if (unitFilter) q = q.eq("ulp", unitFilter);
-            return q.order("tgl_penyeimbangan", { ascending: true });
+            return q.order("tgl_penyeimbangan", { ascending: true }).order("id");
           }),
         ]);
 

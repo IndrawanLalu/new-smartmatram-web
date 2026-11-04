@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { CloudRain, Target, Microscope, History } from "lucide-react";
-import type { FeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
+import type { FeederRisk } from "@/app/admin/_hooks/useFeederRisk";
 
 export interface WeatherRow {
   ulp: string;

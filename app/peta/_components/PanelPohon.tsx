@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2, Send, X } from "lucide-react";
-import { LABEL_SUMBER, WARNA_CEK, WARNA_POHON, type SaringPohon, type TemuanPohon } from "../_hooks/usePohonPeta";
+import { LABEL_SUMBER, LABEL_VEGETASI, WARNA_CEK, WARNA_POHON, type SaringPohon, type TemuanPohon } from "../_hooks/usePohonPeta";
 import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
 
 /**
@@ -9,15 +9,15 @@ import { GARIS, INPUT, JUDUL_BAGIAN, PANEL } from "../_ui";
  * folder Pohon panel kiri; bagian di sini hanya muncul untuk sumber yang
  * dicentang di sana.
  *
- *   Dari inspeksi JTM  menyentuh / berpotensi, sembunyikan yang sudah dirabas.
+ *   Dari inspeksi JTM  Resiko Tinggi / Rawan, sembunyikan yang sudah dirabas.
  *                      Tidak per bulan — temuan menunggu sampai dirabas.
  *   Dari perabasan     bulan tanggal kerja (WO dan di luar WO).
  */
 
 const BULAN = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const VEGETASI: { k: TemuanPohon["vegetasi"]; label: string }[] = [
-  { k: "menyentuh", label: "Menyentuh" },
-  { k: "berpotensi", label: "Berpotensi" },
+  { k: "menyentuh", label: LABEL_VEGETASI.menyentuh },
+  { k: "berpotensi", label: LABEL_VEGETASI.berpotensi },
 ];
 
 const CHIP = "px-2 py-1 rounded-lg text-[11px] border transition-colors";

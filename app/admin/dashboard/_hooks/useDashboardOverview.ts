@@ -42,7 +42,7 @@ import { fetchSheetData } from "@/lib/sheets";
 import { parseIndonesianDate } from "@/lib/gangguanAnalytics";
 import { canSeeAllUnits, type CurrentUser } from "@/lib/roles";
 import { buildWoStats, type WoStats } from "@/app/admin/work-order/_lib/woStats";
-import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
+import { useFeederRisk } from "@/app/admin/_hooks/useFeederRisk";
 // Ambang "pengukuran sudah basi" diimpor, tidak disalin: kalau ULP mengubah
 // kebijakannya, dashboard dan halaman pengukuran-gardu harus ikut bersama.
 import { AMBANG_BASI } from "@/app/admin/_hooks/useGarduStatus";
@@ -732,7 +732,7 @@ export function useDashboardOverview(user: CurrentUser, period: PeriodKey, ulpFi
       apkt.targetResponse ? `Response > ${apkt.targetResponse} menit` : "Melewati target response",
       "waspada", "/admin/yantek");
     add("risiko", risiko.kritis, "penyulang risiko kritis",
-      riskTgl ? `Prediksi ML untuk ${riskTgl}` : "Prediksi ML", "kritis", "/admin/command-center");
+      riskTgl ? `Prediksi ML untuk ${riskTgl}` : "Prediksi ML", "kritis", "/admin/cara-kerja-ml");
     // Tidak ada pil "pohon lewat tenggat": aplikasi mobile mengisi
     // `prediksi_inspektur` dengan "1" secara tetap (inspectionService.ts),
     // bukan penilaian inspektur — turunannya membuat 81% pohon terbuka

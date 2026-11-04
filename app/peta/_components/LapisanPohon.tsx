@@ -4,7 +4,7 @@ import { memo } from "react";
 import { Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import { fotoKecil } from "@/lib/fotoKecil";
-import { WARNA_CEK, WARNA_POHON, type JenisPohon, type PohonCek, type PohonDirabas, type TemuanPohon } from "../_hooks/usePohonPeta";
+import { LABEL_VEGETASI, WARNA_CEK, WARNA_POHON, type JenisPohon, type PohonCek, type PohonDirabas, type TemuanPohon } from "../_hooks/usePohonPeta";
 
 /**
  * Lapisan pohon — ikon pohon (permintaan user 8 Okt 2026, bukan lingkaran).
@@ -78,7 +78,7 @@ function IsiTemuan({ t, onTugaskan }: { t: TemuanPohon; onTugaskan?: (t: TemuanP
   return (
     <div className="text-xs w-[220px]">
       <p className="font-semibold text-sm" style={{ color: WARNA_POHON[t.vegetasi] }}>
-        {t.vegetasi === "menyentuh" ? "Menyentuh jaringan" : "Berpotensi"}
+        {LABEL_VEGETASI[t.vegetasi]}
         {t.jenisPohon ? ` · ${t.jenisPohon}` : ""}
       </p>
       <p className="mt-1">Tiang <b>{t.tiangKode}</b> · {t.penyulang}</p>

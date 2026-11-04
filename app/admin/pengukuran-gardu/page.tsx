@@ -198,12 +198,20 @@ export default function PengukuranGarduPage() {
     refresh, patchRow, fetchAndPatchRow, deleteRow,
   } = usePengukuranGardu(user);
 
-  // Reset tampilan tabel Realisasi saat filter berubah — paksa user klik "Tampilkan" ulang
-  useEffect(() => {
+  // Reset tampilan tabel Realisasi saat filter berubah — paksa user klik "Tampilkan" ulang.
+  // Disesuaikan SAAT RENDER (bukan efek): tanpa satu render tambahan berisi state lama.
+  const kunciFilter = `${filter.month}|${filter.year}|${filter.ulp}|${filter.penyulang}`;
+  const [filterLalu, setFilterLalu] = useState(kunciFilter);
+  if (filterLalu !== kunciFilter) {
+    setFilterLalu(kunciFilter);
     setShowTable(false);
-  }, [filter.month, filter.year, filter.ulp, filter.penyulang]);
-
-  useEffect(() => { setPage(1); }, [amgSaring, search]);
+  }
+  const kunciCari = `${amgSaring}|${search}`;
+  const [cariLalu, setCariLalu] = useState(kunciCari);
+  if (cariLalu !== kunciCari) {
+    setCariLalu(kunciCari);
+    setPage(1);
+  }
 
   type AlertModalKey = "overload" | "underload" | "highCurrent" | "phaseOverload" | "highTemp";
   const [alertModal, setAlertModal] = useState<AlertModalKey | null>(null);

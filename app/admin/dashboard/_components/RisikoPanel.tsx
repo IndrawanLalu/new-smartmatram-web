@@ -32,9 +32,9 @@ export default function RisikoPanel({ tgl, kritis, waspada, teratas, loading }: 
           </span>
         </div>
         <Link
-          href="/admin/command-center"
+          href="/admin/cara-kerja-ml"
           className="shrink-0 text-white/70 hover:text-white transition-colors"
-          aria-label="Buka Command Center"
+          aria-label="Buka SMART Learning"
         >
           <ArrowUpRight size={14} />
         </Link>

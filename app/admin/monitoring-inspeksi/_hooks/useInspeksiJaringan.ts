@@ -81,7 +81,9 @@ export function useInspeksiJaringan(user: CurrentUser) {
           // seluruh aplikasi. Diukur pada 2.071 baris: 273 KB gzip -> 183 KB.
           .select("id,category,deskripsi,temuan,status,lokasi,ulp,penyulang,inspektor,nama_inspektor,eksekutor,team_name,keterangan,koordinat,foto_sebelum_url,foto_lokasi_url,foto_sesudah_url,tgl_inspeksi,tgl_eksekusi,created_at")
           .order("tgl_inspeksi", { ascending: false })
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          // Kolom unik di akhir: tanpa ini baris bertanggal sama bisa dobel/terlewat antarhalaman (butir 13).
+          .order("id");
         // Push date filter ke DB — hindari full table scan
         if (filter.startDate) query = query.gte("tgl_inspeksi", filter.startDate);
         if (filter.endDate)   query = query.lte("tgl_inspeksi", filter.endDate);

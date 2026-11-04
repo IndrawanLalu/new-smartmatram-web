@@ -87,7 +87,8 @@ export function useSegmen(user: CurrentUser, ulpPilihan: string) {
           .select("*")
           .eq("status", "aktif")
           .order("penyulang")
-          .order("nama");
+          .order("nama")
+          .order("segmen_id"); // nama segmen bisa kembar ("UJUNG") — kolom unik di akhir (butir 13)
         return unit ? q.eq("ulp", unit) : q;
       });
       setBaris(rows);

@@ -57,13 +57,10 @@ interface RincianUkur {
   /** Pembentuk Realisasi (rekap-pengukuran-semua.sql). Server lama tanpa kolom ini = undefined. */
   wo_dihitung?: number;
   luar_dihitung?: number;
-  /** Pembentuk WO terbit: WO bulan ini + tunggakan bulan lalu yang tidak terbit lagi. */
-  wo_bulan_ini?: number;
-  wo_tunggakan?: number;
 }
 
-/** `rekap_pemerataan_rincian` — scripts/wo-pemerataan-tunggakan.sql. */
-interface RincianPemerataan { wo_bulan_ini: number; wo_tunggakan: number }
+/** `rekap_wo_tunggakan` — scripts/wo-tunggakan-semua.sql: tunggakan WO bulan lalu yang ikut WO terbit. */
+interface TunggakanWo { kunci: string; jumlah: number | string }
 
 /** `rekap_jtm_drone` — bagian Tier 1 + drone dari baris Inspeksi JTM Tier 1 (jtm-tier1-drone.sql). */
 interface RincianDrone {
@@ -117,7 +114,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [centangJtm2, setCentangJtm2] = useState<number | null>(null);
   /** Rincian baris Pengukuran; null = belum/ gagal dibaca (SQL belum dijalankan). */
   const [ukur, setUkur] = useState<RincianUkur | null>(null);
-  const [pemerataan, setPemerataan] = useState<RincianPemerataan | null>(null);
+  const [tunggakan, setTunggakan] = useState<Map<string, number>>(new Map());
   /** Rincian drone baris Inspeksi JTM Tier 1; null = belum/gagal dibaca. */
   const [drone, setDrone] = useState<RincianDrone | null>(null);
   const [loading, setLoading] = useState(true);
@@ -180,9 +177,9 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       });
 
     supabaseBrowser
-      .rpc("rekap_pemerataan_rincian", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
+      .rpc("rekap_wo_tunggakan", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
-        if (hidup) setPemerataan(error ? null : (((rows ?? []) as RincianPemerataan[])[0] ?? null));
+        if (hidup) setTunggakan(new Map(error ? [] : ((rows ?? []) as TunggakanWo[]).map((t) => [t.kunci, Number(t.jumlah)])));
       });
 
     supabaseBrowser
@@ -243,12 +240,10 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
           : rDrone
             ? [`Drone: WO ${kmTeks(Number(rDrone.wo_km))} KMS`, `Drone: realisasi ${kmTeks(Number(rDrone.realisasi_km))} KMS`]
             : undefined,
-        rincianWo: rUkur?.wo_tunggakan
-          ? [`WO bulan ini ${n(rUkur.wo_bulan_ini ?? 0)} · tunggakan ${n(rUkur.wo_tunggakan)}`]
-          : m.kunci === "penyeimbangan" && pemerataan?.wo_tunggakan
-            // WO terbit = tempelan + anomali bulan ini + tunggakan; "bulan ini" = selain tunggakan.
-            ? [`WO bulan ini ${n(Math.max(0, Number(r.wo_terbit ?? 0) - pemerataan.wo_tunggakan))} · tunggakan ${n(pemerataan.wo_tunggakan)}`]
-            : undefined,
+        // WO terbit = WO bulan ini + tunggakan bulan lalu (semua pekerjaan, wo-tunggakan-semua.sql).
+        rincianWo: (tunggakan.get(m.kunci) ?? 0) > 0
+          ? [`WO bulan ini ${angkaRincian(Math.max(0, Number(r.wo_terbit ?? 0) - tunggakan.get(m.kunci)!), m.desimal)} · tunggakan ${angkaRincian(tunggakan.get(m.kunci)!, m.desimal)}`]
+          : undefined,
         rincianBelum: rUkur
           ? [`Titik/kVA ${n(rUkur.tertahan_titik)}`, `Tegangan ujung ${n(rUkur.tu_menunggu)}`]
           : undefined,
@@ -273,7 +268,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
           (rUkur?.tu_belum ? ` ${n(rUkur.tu_belum)} gardu sudah diukur bebannya tapi tegangan ujungnya belum dikirim (atau dikembalikan).` : ""),
       };
     });
-  }, [data, woGarduJtr, centangJtm2, ukur, pemerataan, drone]);
+  }, [data, woGarduJtr, centangJtm2, ukur, tunggakan, drone]);
 
   return {
     baris,
@@ -289,4 +284,9 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
     daftarTahun,
     muatUlang: () => { mulai(); setNonce((n) => n + 1); },
   };
+}
+
+/** Angka rincian: KMS (desimal) dua angka di belakang koma, objek bulat. */
+function angkaRincian(v: number, desimal: boolean): string {
+  return v.toLocaleString("id-ID", { maximumFractionDigits: desimal ? 2 : 0, minimumFractionDigits: desimal ? 2 : 0 });
 }

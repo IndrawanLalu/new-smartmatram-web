@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, useContext, useMemo, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { itemUntuk } from "@/app/admin/_nav";
 
@@ -31,7 +31,8 @@ export function SlotProvider({ children }: { children: ReactNode }) {
   const [kepala, setKepala] = useState<HTMLElement | null>(null);
   const ini = itemUntuk(usePathname());
   const adaKepala = !!ini && !ini.item.layarPenuh;
-  return <Ctx.Provider value={{ topbar, kepala, adaKepala, setTopbar, setKepala }}>{children}</Ctx.Provider>;
+  const nilai = useMemo(() => ({ topbar, kepala, adaKepala, setTopbar, setKepala }), [topbar, kepala, adaKepala]);
+  return <Ctx.Provider value={nilai}>{children}</Ctx.Provider>;
 }
 
 export function useSlot(): Slot {

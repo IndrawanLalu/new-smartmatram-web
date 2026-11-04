@@ -316,7 +316,8 @@ export function usePengukuranGardu(user: CurrentUser) {
           // sebagai kartu Penyeimbangan di riwayat gardu.
           .is("hasil_penyeimbangan_id", null)
           .order("tanggal_pengukuran", { ascending: false })
-          .order("created_at", { ascending: false });
+          .order("created_at", { ascending: false })
+          .order("id"); // kolom unik di akhir (butir 13)
 
         // month=0 → Semua Bulan, tidak filter tanggal
         if (filter.month !== 0) {

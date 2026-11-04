@@ -8,8 +8,9 @@ import type { Lapisan } from "./usePetaDaftar";
 /**
  * Lapisan pohon (8 Okt 2026) — dua sumber, satu peta:
  *
- *   TEMUAN   `perabasan_pohon`: jawaban vegetasi inspeksi JTM yang menyentuh /
- *            berpotensi, di koordinat TIANGNYA (regu tidak menitik pohon).
+ *   TEMUAN   `perabasan_pohon`: jawaban vegetasi inspeksi JTM yang tidak normal
+ *            (Resiko Tinggi / Rawan; kode lama Menyentuh / Berpotensi), di
+ *            koordinat TIANGNYA (regu tidak menitik pohon).
  *            Bukan per bulan — temuan menunggu sampai dirabas.
  *   DIRABAS  `perabasan_realisasi` (WO) + `perabasan_luar_wo`, di koordinat
  *            GPS pohonnya, satu bulan tanggal kerja.
@@ -33,6 +34,13 @@ export const WARNA_POHON: Record<JenisPohon, string> = {
   berpotensi: "#F59E0B",
   dirabas: "#16A34A",
 };
+/** Dua tingkat temuan: "menyentuh" = tinggi, "berpotensi" = rendah. Label
+ *  mengikuti pilihan jawaban yang dipakai sekarang (jtm_opsi_ref). */
+export const LABEL_VEGETASI: Record<TemuanPohon["vegetasi"], string> = {
+  menyentuh: "Resiko Tinggi",
+  berpotensi: "Rawan",
+};
+const VEGETASI_TINGGI = new Set(["menyentuh", "resiko_tinggi"]);
 
 /** Alamat temuan di `jtm_temuan` — kunci `tugaskan_temuan_jtm`. */
 export interface KunciTugas {
@@ -234,7 +242,7 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
             tiangId: String(r.tiang_id),
             tiangKode: String(r.tiang_kode ?? "—"),
             lat, lng,
-            vegetasi: r.vegetasi === "menyentuh" ? "menyentuh" : "berpotensi",
+            vegetasi: VEGETASI_TINGGI.has(String(r.vegetasi)) ? "menyentuh" : "berpotensi",
             jenisPohon: (r.jenis_pohon as string | null) ?? null,
             tgl,
             disetujui: !!r.terverifikasi,

@@ -2,7 +2,7 @@
 
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
-import type { TemuanPohon } from "../_hooks/usePohonPeta";
+import { LABEL_VEGETASI, type TemuanPohon } from "../_hooks/usePohonPeta";
 
 /**
  * Menugaskan temuan pohon langsung dari peta (8 Okt 2026) — merencanakan regu
@@ -28,7 +28,7 @@ export default function TugaskanPohonPeta({ daftar, oleh, onTutup, onSelesai }: 
       daftar={bisa.map((t) => ({
         kunci: t.tiangId,
         judul: t.tiangKode,
-        keterangan: `${t.vegetasi === "menyentuh" ? "Menyentuh" : "Berpotensi"}${t.jenisPohon ? ` · ${t.jenisPohon}` : ""} · ${t.penyulang}`,
+        keterangan: `${LABEL_VEGETASI[t.vegetasi]}${t.jenisPohon ? ` · ${t.jenisPohon}` : ""} · ${t.penyulang}`,
       }))}
       eksekutorAwal="PERABASAN"
       prioritasAwal={bisa.some((t) => t.vegetasi === "menyentuh") ? "Urgent" : "Normal"}

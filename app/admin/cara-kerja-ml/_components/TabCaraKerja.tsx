@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Gauge, Info, Clock, AlertTriangle } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { useFeederRisk } from "@/app/admin/command-center/_hooks/useFeederRisk";
+import { useFeederRisk } from "@/app/admin/_hooks/useFeederRisk";
 import EngineFlowAnimation from "./EngineFlowAnimation";
 import RealDataPanels, { type WeatherRow, type EventRow } from "./RealDataPanels";
 import ModelBStatus, { type MlbStatus, type F1Point } from "./ModelBStatus";

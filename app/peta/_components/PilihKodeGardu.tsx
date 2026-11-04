@@ -36,7 +36,7 @@ export default function PilihKodeGardu({
     if (!ulp) return;
     let batal = false;
     void fetchAllRows<{ kode: string; nama: string | null; lat: number | null; lng: number | null }>(() =>
-      supabaseBrowser.from("gardu").select("kode,nama,lat,lng").eq("ulp", ulp),
+      supabaseBrowser.from("gardu").select("kode,nama,lat,lng").eq("ulp", ulp).order("kode"),
     ).then((rows) => {
       if (batal) return;
       setMaster(

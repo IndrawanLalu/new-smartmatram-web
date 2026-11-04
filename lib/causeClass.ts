@@ -3,7 +3,7 @@ import { CHART_SERIES, CHART_OTHER } from "./chartColors";
 /**
  * Klasifikasi penyebab gangguan → 5 kelas + palet warna.
  * Cermin dari ml-engine/src/cause_labels.py (jaga keduanya tetap sinkron).
- * Dipakai oleh donut, heatmap, dan ringkasan penyebab di command-center.
+ * Dipakai analitik gangguan (lib/gangguanAnalytics).
  */
 
 export const CAUSE_CLASSES = [

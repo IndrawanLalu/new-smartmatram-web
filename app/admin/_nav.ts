@@ -1,6 +1,6 @@
 import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
-  MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, Radar,
+  MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, 
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
   Globe, Zap, MessageCircleQuestion, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch,
   type LucideIcon,
@@ -90,7 +90,6 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Monitoring",
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck, keterangan: "Temuan inspeksi jaringan dan pohon beserta tindak lanjutnya." },
-      { href: "/admin/command-center",      label: "Command Center",       icon: Radar, layarPenuh: true },
       { href: "/admin/peta-gardu",          label: "Peta SLD",             icon: Map, layarPenuh: true },
       { href: "/admin/peta",                label: "Peta Jaringan",        icon: Globe, layarPenuh: true },
     ],

@@ -10,7 +10,9 @@ import type { PohonSegmen } from "../_hooks/usePohonSegmenRabas";
  * (bukti sebelum–sesudah), dan inspeksi (yang belum tersentuh regu ditandai).
  */
 
-const LABEL_VEGETASI: Record<string, string> = { berpotensi: "berpotensi mengganggu", menyentuh: "menyentuh jaringan" };
+const LABEL_VEGETASI: Record<string, string> = {
+  berpotensi: "berpotensi mengganggu", menyentuh: "menyentuh jaringan", rawan: "rawan", resiko_tinggi: "resiko tinggi",
+};
 
 function Foto({ url, label }: { url: string; label: string }) {
   return (
