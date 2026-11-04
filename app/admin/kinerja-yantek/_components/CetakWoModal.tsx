@@ -97,6 +97,20 @@ export default function CetakWoModal({ user, ulpAwal, onTutup, onBerubah }: Prop
     if (error) throw new Error(error.message);
   };
 
+  const [sibukSla, setSibukSla] = useState<string | null>(null);
+  /** Sakelar WO / SLA satu pekerjaan (scripts/wo-surat-sla.sql) — Rekap Kinerja ikut. */
+  const aturSla = async (kunci: string, sla: boolean) => {
+    setSibukSla(kunci);
+    const { error } = await supabaseBrowser.rpc("atur_wo_surat_mode", {
+      p_ulp: ulp, p_tahun: tahun, p_bulan: bulan, p_kunci: kunci, p_sla: sla, p_oleh: oleh,
+    });
+    setSibukSla(null);
+    if (error) return toast.error(error.message);
+    const nama = JENIS_SURAT.find((j) => j.kunci === kunci)?.nama ?? kunci;
+    toast.success(sla ? `${nama}: volume SESUAI SLA, lampiran tanpa daftar objek.` : `${nama}: volume kembali ke WO tersusun.`);
+    berubah();
+  };
+
   const hapusTempelan = async (kunci: string) => {
     const { error } = await supabaseBrowser.rpc("simpan_wo_manual", {
       p_ulp: ulp, p_tahun: tahun, p_bulan: bulan, p_jenis: kunci, p_item: [], p_oleh: oleh,
@@ -188,13 +202,15 @@ export default function CetakWoModal({ user, ulpAwal, onTutup, onBerubah }: Prop
           </div>
         )}
         {data && !loading && (
-          <DaftarJenisWo data={data} bolehUbah onTempel={setTempel} onHapus={setHapus} />
+          <DaftarJenisWo data={data} bolehUbah onTempel={setTempel} onHapus={setHapus} onSla={aturSla} sibukSla={sibukSla} />
         )}
         <p className="text-[11px] text-ink-soft leading-relaxed">
           Angka = kolom <b>WO terbit</b> Rekap Kinerja bulan itu. ULP yang belum menyusun WO di aplikasi memakai
           <b> Tempel dari Excel</b>: pekerjaan yang punya modul langsung menjadi WO modulnya dan tampil di HP regu, yang
           belum punya modul tersimpan untuk surat dan rekap. Kisi harian lampiran dibagi rata ke hari efektif (tanpa Sabtu,
-          Minggu, dan hari libur).
+          Minggu, dan hari libur). Sakelar <b>WO / SLA</b>: SLA = volume sesuai SLA kontrak (mis. rintis JTM yang segmennya
+          baru lahir dari penitikan) — surat menulis &quot;SESUAI SLA&quot;, lampirannya tanpa daftar objek, dan WO terbit
+          Rekap Kinerja ikut.
         </p>
       </ModalShell>
 

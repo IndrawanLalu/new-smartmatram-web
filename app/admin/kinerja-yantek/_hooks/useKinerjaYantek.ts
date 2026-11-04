@@ -62,6 +62,9 @@ interface RincianUkur {
   wo_tunggakan?: number;
 }
 
+/** `rekap_pemerataan_rincian` — scripts/wo-pemerataan-tunggakan.sql. */
+interface RincianPemerataan { wo_bulan_ini: number; wo_tunggakan: number }
+
 /** `rekap_jtm_drone` — bagian Tier 1 + drone dari baris Inspeksi JTM Tier 1 (jtm-tier1-drone.sql). */
 interface RincianDrone {
   wo_km: number;
@@ -114,6 +117,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
   const [centangJtm2, setCentangJtm2] = useState<number | null>(null);
   /** Rincian baris Pengukuran; null = belum/ gagal dibaca (SQL belum dijalankan). */
   const [ukur, setUkur] = useState<RincianUkur | null>(null);
+  const [pemerataan, setPemerataan] = useState<RincianPemerataan | null>(null);
   /** Rincian drone baris Inspeksi JTM Tier 1; null = belum/gagal dibaca. */
   const [drone, setDrone] = useState<RincianDrone | null>(null);
   const [loading, setLoading] = useState(true);
@@ -176,6 +180,12 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
       });
 
     supabaseBrowser
+      .rpc("rekap_pemerataan_rincian", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
+      .then(({ data: rows, error }) => {
+        if (hidup) setPemerataan(error ? null : (((rows ?? []) as RincianPemerataan[])[0] ?? null));
+      });
+
+    supabaseBrowser
       .rpc("rekap_jtm_drone", { p_ulp: ulp === "SEMUA" ? null : ulp, p_tahun: tahun, p_bulan: bulan })
       .then(({ data: rows, error }) => {
         if (hidup) setDrone(error ? null : (((rows ?? []) as RincianDrone[])[0] ?? null));
@@ -235,7 +245,10 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
             : undefined,
         rincianWo: rUkur?.wo_tunggakan
           ? [`WO bulan ini ${n(rUkur.wo_bulan_ini ?? 0)} · tunggakan ${n(rUkur.wo_tunggakan)}`]
-          : undefined,
+          : m.kunci === "penyeimbangan" && pemerataan?.wo_tunggakan
+            // WO terbit = tempelan + anomali bulan ini + tunggakan; "bulan ini" = selain tunggakan.
+            ? [`WO bulan ini ${n(Math.max(0, Number(r.wo_terbit ?? 0) - pemerataan.wo_tunggakan))} · tunggakan ${n(pemerataan.wo_tunggakan)}`]
+            : undefined,
         rincianBelum: rUkur
           ? [`Titik/kVA ${n(rUkur.tertahan_titik)}`, `Tegangan ujung ${n(rUkur.tu_menunggu)}`]
           : undefined,
@@ -260,7 +273,7 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
           (rUkur?.tu_belum ? ` ${n(rUkur.tu_belum)} gardu sudah diukur bebannya tapi tegangan ujungnya belum dikirim (atau dikembalikan).` : ""),
       };
     });
-  }, [data, woGarduJtr, centangJtm2, ukur, drone]);
+  }, [data, woGarduJtr, centangJtm2, ukur, pemerataan, drone]);
 
   return {
     baris,

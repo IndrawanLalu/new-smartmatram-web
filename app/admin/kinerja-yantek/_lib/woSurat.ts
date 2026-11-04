@@ -215,6 +215,8 @@ export interface Lampiran {
   perObjek: boolean;
   /** Objek berjenis KMS yang KMS-nya kosong. */
   tanpaKm: number;
+  /** WO SESUAI SLA (sakelar WO/SLA): tabel tanpa objek, hanya tulisan "SESUAI SLA". */
+  sesuaiSla?: { nilai: number | null };
 }
 
 /** Semua bahan PDF dan Excel — disusun sekali, dipakai keduanya. */
@@ -234,8 +236,15 @@ export interface PaketSurat {
   ttdTl: string | null;
 }
 
-export function susunLampiran(objek: ObjekWo[], tahun: number, bulan: number, libur: Set<number>): Lampiran[] {
+/** `sla` = kunci bersakelar SLA → nilainya; lampirannya tabel kosong "SESUAI SLA". */
+export function susunLampiran(
+  objek: ObjekWo[], tahun: number, bulan: number, libur: Set<number>, sla: Record<string, number | null> = {},
+): Lampiran[] {
   return JENIS_SURAT.flatMap((jenis) => {
+    if (jenis.kunci in sla) {
+      return [{ jenis, objek: [], hari: [], total: sla[jenis.kunci] ?? 0, perHari: 0, perObjek: false, tanpaKm: 0,
+                sesuaiSla: { nilai: sla[jenis.kunci] } }];
+    }
     const milik = objek.filter((o) => o.kunci === jenis.kunci).sort((a, b) => a.urutan - b.urutan);
     if (milik.length === 0) return [];
     const j = jadwalRata(milik, jenis.km, tahun, bulan, libur);
@@ -245,6 +254,7 @@ export function susunLampiran(objek: ObjekWo[], tahun: number, bulan: number, li
 
 /** Baris jumlah di bawah lampiran — sama untuk PDF dan Excel. */
 export function ringkasLampiran(l: Lampiran) {
+  if (l.sesuaiSla) return `${fmtAngka(l.sesuaiSla.nilai, l.jenis.km)} ${l.jenis.satuan} · SESUAI SLA`;
   const n = l.objek.length;
   const objek = l.jenis.kolomObjek.toLowerCase();
   if (!l.jenis.km) return `${fmtAngka(n, false)} ${l.jenis.satuan} · ${fmtAngka(l.perHari, true)} ${l.jenis.satuan.toLowerCase()}/hari efektif`;

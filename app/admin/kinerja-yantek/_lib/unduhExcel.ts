@@ -152,7 +152,11 @@ function sheetLampiran(wb: ExcelJS.Workbook, p: PaketSurat, l: Lampiran) {
     }
   });
 
-  let r = 8 + l.objek.length;
+  if (l.sesuaiSla) {
+    // Tabel kosong — volumenya SLA, bukan daftar objek (sakelar WO/SLA).
+    mergeSet(ws, 8, 1, 8, akhir, "SESUAI SLA", { bold: true, size: 10 });
+  }
+  let r = 8 + Math.max(l.objek.length, l.sesuaiSla ? 1 : 0);
   // Jumlah di bawah kolom KMS (atau kolom objek untuk yang bersatuan gardu).
   const cJumlah = 2 + Math.max(0, kolom.findIndex((k) => k.isi === (km ? "km" : "objek")));
   const tot = ws.getCell(r, cJumlah);

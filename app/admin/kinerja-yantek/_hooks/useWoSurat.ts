@@ -27,17 +27,22 @@ export interface DataSurat {
   terbit: SuratTerbit | null;
   /** Jenis yang WO-nya dari tempelan bulan ini. */
   manual: Set<string>;
+  /** Jenis yang WO-nya SESUAI SLA bulan ini (scripts/wo-surat-sla.sql). */
+  sla: Set<string>;
+  /** SLA tiap jenis (dari Rekap Kinerja) — sakelar SLA mati bila kosong. */
+  nilaiSla: Record<string, number | null>;
 }
 
 interface RekapRpc {
   kunci: string;
   wo_terbit: number | string | null;
+  sla: number | string | null;
 }
 
 async function muat(ulp: string, tahun: number, bulan: number): Promise<DataSurat> {
   const awal = isoTgl(tahun, bulan, 1);
   const akhir = isoTgl(tahun, bulan, jumlahHari(tahun, bulan));
-  const [rekap, objek, set, libur, terbit, manual] = await Promise.all([
+  const [rekap, objek, set, libur, terbit, manual, mode] = await Promise.all([
     supabaseBrowser.rpc("rekap_kinerja", { p_ulp: ulp, p_tahun: tahun, p_bulan: bulan }),
     // Pengukuran saja bisa ratusan gardu sebulan — jangan terpotong di 1000.
     fetchAllRows<ObjekWo>(() =>
@@ -54,8 +59,9 @@ async function muat(ulp: string, tahun: number, bulan: number): Promise<DataSura
       .eq("ulp", ulp).eq("tahun", tahun).eq("bulan", bulan)
       .maybeSingle(),
     supabaseBrowser.from("wo_manual").select("jenis").eq("ulp", ulp).eq("tahun", tahun).eq("bulan", bulan),
+    supabaseBrowser.from("wo_surat_mode").select("kunci").eq("ulp", ulp).eq("tahun", tahun).eq("bulan", bulan),
   ]);
-  const gagal = rekap.error ?? set.error ?? libur.error ?? terbit.error ?? manual.error;
+  const gagal = rekap.error ?? set.error ?? libur.error ?? terbit.error ?? manual.error ?? mode.error;
   if (gagal) throw new Error(gagal.message);
 
   return {
@@ -71,6 +77,10 @@ async function muat(ulp: string, tahun: number, bulan: number): Promise<DataSura
     libur: (libur.data ?? []) as DataSurat["libur"],
     terbit: (terbit.data as SuratTerbit | null) ?? null,
     manual: new Set((manual.data ?? []).map((m: { jenis: string }) => m.jenis)),
+    sla: new Set((mode.data ?? []).map((m: { kunci: string }) => m.kunci)),
+    nilaiSla: Object.fromEntries(
+      ((rekap.data ?? []) as RekapRpc[]).map((r) => [r.kunci, r.sla === null ? null : Number(r.sla)]),
+    ),
   };
 }
 

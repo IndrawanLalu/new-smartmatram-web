@@ -17,11 +17,15 @@ interface Props {
   bolehUbah: boolean;
   onTempel: (kunci: string) => void;
   onHapus: (kunci: string) => void;
+  /** Sakelar WO / SLA (scripts/wo-surat-sla.sql). */
+  onSla: (kunci: string, sla: boolean) => void;
+  /** Kunci yang sakelarnya sedang disimpan. */
+  sibukSla: string | null;
 }
 
 const TH = "px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-ink border-b border-slate-300";
 
-export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Props) {
+export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus, onSla, sibukSla }: Props) {
   return (
     <div className="rounded-xl border border-line overflow-x-auto">
       <table className="w-full border-collapse text-sm min-w-[620px]">
@@ -31,7 +35,7 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
             <th className={`${TH} text-left`}><IkonKolom teks="Work Order" />Work Order</th>
             <th className={`${TH} text-right`}>Jumlah</th>
             <th className={`${TH} text-left`}>Sumber</th>
-            <th className={`${TH} text-right w-[150px]`} />
+            <th className={`${TH} text-right w-[230px]`} />
           </tr>
         </thead>
         <tbody>
@@ -39,7 +43,11 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
             const nilai = data.angka[j.kunci] ?? null;
             const objek = data.objek.filter((o) => o.kunci === j.kunci).length;
             const ditempel = data.manual.has(j.kunci);
-            const sumber = ditempel
+            const pakaiSla = data.sla.has(j.kunci);
+            const adaSla = data.nilaiSla[j.kunci] != null;
+            const sumber = pakaiSla
+              ? { teks: "sesuai SLA", cls: "bg-violet-50 text-violet-700 border-violet-200" }
+              : ditempel
               ? { teks: "tempelan", cls: "bg-sky-50 text-sky-700 border-sky-200" }
               : nilai !== null && (objek > 0 || !j.tempel)
                 ? { teks: "sistem", cls: "bg-emerald-50 text-emerald-700 border-emerald-200" }
@@ -50,7 +58,7 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
                 <td className="px-3 py-2">
                   <p className="font-semibold text-ink">{j.nama}</p>
                   <p className="text-[11px] text-ink-muted">
-                    {objek > 0 ? `${objek} objek di lampiran` : "tanpa lampiran"}
+                    {pakaiSla ? "SESUAI SLA — tanpa daftar objek di lampiran" : objek > 0 ? `${objek} objek di lampiran` : "tanpa lampiran"}
                   </p>
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
@@ -63,6 +71,23 @@ export default function DaftarJenisWo({ data, bolehUbah, onTempel, onHapus }: Pr
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
+                  {bolehUbah && (
+                    <div
+                      className={`inline-flex mr-1 align-middle rounded-lg border border-line overflow-hidden text-[11px] font-semibold ${!adaSla || sibukSla === j.kunci ? "opacity-40" : ""}`}
+                      title={adaSla ? "Volume WO: WO tersusun, atau sesuai SLA" : "SLA pekerjaan ini belum diatur"}
+                    >
+                      {([false, true] as const).map((sla) => (
+                        <button
+                          key={String(sla)}
+                          disabled={!adaSla || sibukSla !== null || pakaiSla === sla}
+                          onClick={() => onSla(j.kunci, sla)}
+                          className={`h-7 px-2 ${pakaiSla === sla ? "bg-brand-600 text-white" : "bg-white text-ink-soft hover:bg-surface"}`}
+                        >
+                          {sla ? "SLA" : "WO"}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   {j.tempel && bolehUbah && (
                     <div className="inline-flex gap-1">
                       <button

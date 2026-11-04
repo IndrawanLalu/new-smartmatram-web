@@ -176,6 +176,14 @@ function HalamanLampiran({ p, l }: { p: PaketSurat; l: Lampiran }) {
         </View>
       </View>
 
+      {l.sesuaiSla && (
+        <View style={S.tr} wrap={false}>
+          <View style={[S.sel, { width: 842 - 36, alignItems: "center", paddingVertical: 6 }]}>
+            <Text style={{ fontFamily: "Helvetica-Bold", fontSize: 10 }}>SESUAI SLA</Text>
+          </View>
+        </View>
+      )}
+
       {l.objek.map((o, i) => (
         <View key={i} style={S.tr} wrap={false}>
           <Sel w={NO} gaya={{ alignItems: "center" }}>{i + 1}</Sel>

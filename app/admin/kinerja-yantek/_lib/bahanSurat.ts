@@ -36,7 +36,9 @@ export async function susunPaket(d: DataSurat, ulp: string, tahun: number, bulan
     tglSurat: tglSurat(tahun, bulan),
     set: d.set,
     baris: JENIS_SURAT.map((jenis) => ({ jenis, nilai: d.angka[jenis.kunci] ?? null })),
-    lampiran: susunLampiran(d.objek, tahun, bulan, libur),
+    // WO SESUAI SLA: lampirannya tabel kosong bertuliskan "SESUAI SLA", tanpa daftar objek.
+    lampiran: susunLampiran(d.objek, tahun, bulan, libur,
+      Object.fromEntries([...d.sla].map((k) => [k, d.angka[k] ?? null]))),
     libur,
     logo,
     ttdManager,
