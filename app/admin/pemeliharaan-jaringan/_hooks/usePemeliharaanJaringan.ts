@@ -16,7 +16,9 @@ import { perkecilFoto } from "@/lib/gambarSurvey/latar";
  * ditandai sumber = web (pemeliharaan-jaringan-input-admin.sql).
  */
 
-export type JenisJaringan = "JTM" | "JTR";
+/** GARDU (5 Nov 2026): regu Harjar memilih kode gardu (pekerjaan-tindakan.sql). */
+export type JenisJaringan = "JTM" | "GARDU" | "JTR";
+export const NAMA_JENIS: Record<JenisJaringan, string> = { JTM: "JTM", GARDU: "Gardu", JTR: "JTR" };
 
 /** Nama status yang tampil. `Selesai` di database = "Menunggu verifikasi"
  *  dari sisi admin — sama dengan Optimasi Trafo. */
@@ -68,12 +70,16 @@ export interface BarisPemeliharaan {
   tugasFoto: string | null;
   dikembalikanAlasan: string | null;
   dikembalikanOleh: string | null;
+  /** Jumlah barang yang dikerjakan (keterangan; realisasi tetap per pekerjaan). */
+  jumlahItem: number | null;
+  /** Kode gardu bila jenis = GARDU. */
+  garduKode: string | null;
 }
 
 export interface KategoriRef {
   kode: string;
   label: string;
-  jenis: "JTM" | "JTR" | "SEMUA";
+  jenis: JenisJaringan | "SEMUA";
   urutan: number;
   aktif: boolean;
 }
@@ -162,6 +168,8 @@ export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     tugasFoto: teks(r.tugas_foto),
     dikembalikanAlasan: teks(r.dikembalikan_alasan),
     dikembalikanOleh: teks(r.dikembalikan_oleh),
+    jumlahItem: r.jumlah_item === null || r.jumlah_item === undefined ? null : Number(r.jumlah_item),
+    garduKode: (r.gardu_kode as string | null) ?? null,
   };
 };
 

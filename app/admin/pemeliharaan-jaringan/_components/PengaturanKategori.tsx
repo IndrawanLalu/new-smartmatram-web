@@ -24,7 +24,7 @@ import type { KategoriRef } from "../_hooks/usePemeliharaanJaringan";
  * database (ada FK), dan itu memang yang benar.
  */
 
-const JENIS: KategoriRef["jenis"][] = ["SEMUA", "JTM", "JTR"];
+const JENIS: KategoriRef["jenis"][] = ["SEMUA", "JTM", "GARDU", "JTR"];
 
 const kodeDari = (label: string) =>
   label
@@ -87,8 +87,8 @@ export default function PengaturanKategori({ kategori, onSimpan }: Props) {
         <p className={EYEBROW}>Kategori pemeliharaan</p>
         <p className="text-xs text-ink-soft mt-1.5 max-w-3xl">
           Daftar ini yang muncul sebagai pilihan di HP. Berlaku seketika — tidak perlu OTA.
-          Kategori <b>JTM</b> hanya muncul saat regu memilih JTM, <b>JTR</b> sebaliknya, dan{" "}
-          <b>SEMUA</b> muncul di keduanya.
+          Kategori <b>JTM</b> hanya muncul saat regu memilih JTM, <b>GARDU</b> saat memilih Gardu,{" "}
+          <b>JTR</b> saat memilih JTR, dan <b>SEMUA</b> muncul di ketiganya.
         </p>
         <p className="text-[11px] text-ink-muted mt-1.5 max-w-3xl">
           Kodenya terkunci sesudah dibuat — kode itulah yang tersimpan di tiap catatan, dan

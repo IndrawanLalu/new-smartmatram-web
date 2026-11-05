@@ -110,6 +110,7 @@ export function useDashboardPemeliharaan(ulp: string, tahun: number, kategori: K
       menunggu,
       diverifikasi: kini.filter((b) => b.status === "Diverifikasi").length,
       jtm: kini.filter((b) => b.jenis === "JTM").length,
+      gardu: kini.filter((b) => b.jenis === "GARDU").length,
       jtr: kini.filter((b) => b.jenis === "JTR").length,
       perUlp,
       perKategori,

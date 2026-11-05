@@ -4,7 +4,7 @@ import { fotoKecil } from "@/lib/fotoKecil";
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
-import type { BarisPemeliharaan, StatusTabel } from "../_hooks/usePemeliharaanJaringan";
+import { NAMA_JENIS, type BarisPemeliharaan, type StatusTabel } from "../_hooks/usePemeliharaanJaringan";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 /**
@@ -101,8 +101,9 @@ export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
                 </td>
                 <td className={TD}>
                   <span className="px-2 py-0.5 rounded-md bg-navy-50 border border-navy-200 text-[11px] font-bold text-navy-700">
-                    {b.jenis}
+                    {NAMA_JENIS[b.jenis]}
                   </span>
+                  {b.garduKode && <p className="text-[11px] text-ink-muted mt-0.5">{b.garduKode}</p>}
                 </td>
                 <td className={`${TD} text-xs text-ink-soft`}>{b.kategoriLabel ?? b.kategori}</td>
                 <td className={`${TD} text-xs text-ink max-w-64`}>

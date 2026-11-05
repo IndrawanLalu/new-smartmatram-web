@@ -87,6 +87,7 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
             className={FIELD}
           >
             <option value="JTM">JTM</option>
+            <option value="GARDU">Gardu</option>
             <option value="JTR">JTR</option>
           </select>
         </Kolom>

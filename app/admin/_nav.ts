@@ -90,6 +90,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Monitoring",
     items: [
       { href: "/admin/monitoring-inspeksi", label: "Monitoring Inspeksi",  icon: SearchCheck, keterangan: "Temuan inspeksi jaringan dan pohon beserta tindak lanjutnya." },
+      { href: "/admin/realisasi-harian-lm", label: "Realisasi Harian LM",  icon: CalendarDays, keterangan: "Realisasi harian pekerjaan yang sudah disetujui untuk Lead Measure 4DX dan Penurunan Susut." },
       { href: "/admin/peta-gardu",          label: "Peta SLD",             icon: Map, layarPenuh: true },
       { href: "/admin/peta",                label: "Peta Jaringan",        icon: Globe, layarPenuh: true },
     ],

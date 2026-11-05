@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Camera, ExternalLink, Radio, Loader2 } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
+import DaftarTindakan from "@/app/admin/_components/DaftarTindakan";
 import { calcUnbalancePct } from "@/lib/anomaliGardu";
 import {
   urlFoto,
@@ -125,6 +126,8 @@ export default function DetailPemerataanModal({ record, amgBusy, onKirimAmg, onC
             />
           ))}
         </div>
+
+        <DaftarTindakan modul="penyeimbangan" sumberId={record.id} />
 
         {record.catatan && (
           <div className="rounded-xl border border-navy-100 bg-navy-50 px-4 py-3">

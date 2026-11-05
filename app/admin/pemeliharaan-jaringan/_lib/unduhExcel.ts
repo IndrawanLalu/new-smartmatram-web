@@ -1,6 +1,6 @@
 import ExcelJS from "exceljs";
 import { CLR_HEADER, CLR_WHITE, downloadBuffer, mergeSet, styleCell, type GayaSel } from "@/lib/xlsxGaya";
-import type { BarisPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
+import { NAMA_JENIS, type BarisPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
 
 /**
  * Unduhan Excel Pemeliharaan Jaringan — gaya bersama `lib/xlsxGaya.ts`
@@ -67,7 +67,7 @@ export function lembarPemeliharaan(wb: ExcelJS.Workbook, baris: BarisPemeliharaa
     set(2, b.tgl);
     set(3, b.ulp);
     set(4, b.penyulang, { align: "left" });
-    set(5, b.jenis);
+    set(5, b.garduKode ? `${NAMA_JENIS[b.jenis]} ${b.garduKode}` : NAMA_JENIS[b.jenis]);
     set(6, b.kategoriLabel ?? b.kategori, { align: "left" });
     set(7, b.pekerjaan, { align: "left" });
     set(8, b.alamat ?? "", { align: "left" });

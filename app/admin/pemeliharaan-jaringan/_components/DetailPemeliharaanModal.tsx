@@ -6,7 +6,7 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
-import type { BarisPemeliharaan, KategoriRef, KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
+import { NAMA_JENIS, type BarisPemeliharaan, type KategoriRef, type KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
 import { NADA_STATUS, tanggal } from "./TabelPemeliharaan";
 import FormKoreksiPemeliharaan, { ID_FORM_KOREKSI } from "./FormKoreksiPemeliharaan";
 import FotoTambahan from "@/app/admin/_components/FotoTambahan";
@@ -130,7 +130,7 @@ export default function DetailPemeliharaanModal({
   return (
     <>
       <ModalShell
-        title={`${mode === "koreksi" ? "Koreksi pemeliharaan" : "Pemeliharaan"} ${b.jenis} · ${b.penyulang}`}
+        title={`${mode === "koreksi" ? "Koreksi pemeliharaan" : "Pemeliharaan"} ${NAMA_JENIS[b.jenis]}${b.garduKode ? ` ${b.garduKode}` : ""} · ${b.penyulang}`}
         subtitle={`${b.ulp} · ${tanggal(b.tgl)} · ${b.status}`}
         maxWidth="max-w-4xl"
         onClose={onTutup}
@@ -199,7 +199,10 @@ export default function DetailPemeliharaanModal({
               </Nilai>
             </div>
 
-            <Nilai label="Pekerjaan"><span className="font-normal">{b.pekerjaan}</span></Nilai>
+            <Nilai label="Pekerjaan">
+              <span className="font-normal">{b.pekerjaan}</span>
+              {b.jumlahItem !== null && <span className="ml-2 text-xs text-ink-soft">· {b.jumlahItem} item</span>}
+            </Nilai>
             {b.alamat && <Nilai label="Alamat"><span className="font-normal">{b.alamat}</span></Nilai>}
             {b.catatan && <p className="text-xs text-ink-soft italic">{b.catatan}</p>}
 

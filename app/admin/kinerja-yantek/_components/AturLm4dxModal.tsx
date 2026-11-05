@@ -7,17 +7,25 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { META } from "../_lib/kinerjaMeta";
-import { kunciKategori, namaSumber, SUMBER_DRONE, type BarisLm, type Kategori } from "../_lib/lm4dx";
+import {
+  KELOMPOK, kunciKategori, kunciTindakan, NAMA_KELOMPOK, NAMA_LAPORAN, NAMA_MODUL_TINDAKAN, namaSumber,
+  SUMBER_DRONE, SUMBER_JTM2_TITIK, type BarisLm, type Kategori, type Kelompok, type Laporan, type Tindakan,
+} from "../_lib/lm4dx";
 
 /**
  * Daftar baris spreadsheet LM 4DX (`lm4dx_baris`) dan sumber angkanya di
  * SMART. Urutan WAJIB sama dengan spreadsheet — salinan ditempel apa adanya.
- * UP3 dan admin boleh mengubah (dijaga RLS).
+ * Per ULP (lm-baris-per-ulp.sql): admin mengatur ULP-nya, UP3 semua termasuk
+ * "Semua ULP" (dijaga RLS).
  */
 
 interface Props {
+  laporan: Laporan;
+  /** ULP pemilik daftar; "SEMUA" = daftar tampilan Semua ULP (ulp NULL). */
+  ulp: string;
   baris: BarisLm[];
   kategori: Kategori[];
+  tindakan: Tindakan[];
   oleh: string;
   onTutup: () => void;
   onTersimpan: () => void;
@@ -27,11 +35,14 @@ interface Props {
 const JENIS_SUMBER = META.filter((m) => m.kunci !== "harjtm");
 const IKON = "p-1 rounded text-ink-soft hover:bg-surface hover:text-ink disabled:opacity-30";
 
-export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersimpan }: Props) {
+const KHUSUS = [SUMBER_DRONE, SUMBER_JTM2_TITIK];
+
+export default function AturLm4dxModal({ laporan, ulp, baris, kategori, tindakan, oleh, onTutup, onTersimpan }: Props) {
   const toast = useToast();
   const [isi, setIsi] = useState<BarisLm[]>(baris);
   const [sibuk, setSibuk] = useState(false);
   const namaKategori = new Map(kategori.map((k) => [k.kode, k.label]));
+  const namaTindakan = new Map(tindakan.map((t) => [t.kode, `${NAMA_MODUL_TINDAKAN[t.modul]} · ${t.nama}`]));
 
   const ubah = (i: number, patch: Partial<BarisLm>) => setIsi((xs) => xs.map((x, j) => (j === i ? { ...x, ...patch } : x)));
   const geser = (i: number, arah: -1 | 1) => setIsi((xs) => {
@@ -39,9 +50,10 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
     [ys[i], ys[i + arah]] = [ys[i + arah], ys[i]];
     return ys;
   });
-  const tambah = () => setIsi((xs) => [...xs, { id: crypto.randomUUID(), urutan: xs.length + 1, uraian: "", sumber: [] }]);
+  const tambah = () => setIsi((xs) => [...xs, { id: crypto.randomUUID(), urutan: xs.length + 1, uraian: "", sumber: [], kelompok: xs.at(-1)?.kelompok ?? null }]);
 
   const kosong = isi.some((b) => !b.uraian.trim());
+  const namaUlp = ulp === "SEMUA" ? "Semua ULP" : ulp;
 
   const simpan = async () => {
     setSibuk(true);
@@ -53,13 +65,13 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
     }
     const { error } = await supabaseBrowser.from("lm4dx_baris").upsert(
       isi.map((b, i) => ({
-        id: b.id, urutan: i + 1, uraian: b.uraian.trim(), sumber: b.sumber,
+        id: b.id, laporan, ulp: ulp === "SEMUA" ? null : ulp, urutan: i + 1, uraian: b.uraian.trim(), sumber: b.sumber, kelompok: b.kelompok,
         updated_at: new Date().toISOString(), updated_by: oleh,
       })),
     );
     setSibuk(false);
     if (error) { toast.error(error.message); return; }
-    toast.success(`Daftar baris LM 4DX tersimpan (${isi.length} baris).`);
+    toast.success(`Daftar baris ${NAMA_LAPORAN[laporan]} ${namaUlp} tersimpan (${isi.length} baris).`);
     onTersimpan();
     onTutup();
   };
@@ -76,7 +88,7 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
 
   return (
     <ModalShell
-      title="Baris LM 4DX"
+      title={`Baris ${NAMA_LAPORAN[laporan]} · ${namaUlp}`}
       subtitle="Urutan sama persis dengan baris di spreadsheet — tiap baris boleh lebih dari satu sumber (dijumlahkan)"
       maxWidth="max-w-4xl"
       onClose={onTutup}
@@ -87,16 +99,27 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
           <div key={b.id} className="py-2 flex items-start gap-2">
             <span className="w-6 pt-2 text-right text-xs text-ink-muted tabular-nums">{i + 1}.</span>
             <div className="flex-1 min-w-0 flex flex-col gap-1.5">
-              <input
-                value={b.uraian}
-                onChange={(e) => ubah(i, { uraian: e.target.value })}
-                placeholder="Uraian pekerjaan seperti di spreadsheet"
-                className={`${FIELD} w-full text-xs`}
-              />
+              <div className="flex gap-1.5">
+                <select
+                  value={b.kelompok ?? ""}
+                  onChange={(e) => ubah(i, { kelompok: (e.target.value || null) as Kelompok | null })}
+                  className={`${FIELD} w-[110px] text-xs`}
+                  aria-label="Kelompok"
+                >
+                  <option value="">Tanpa kelompok</option>
+                  {KELOMPOK.map((k) => <option key={k} value={k}>{NAMA_KELOMPOK[k]}</option>)}
+                </select>
+                <input
+                  value={b.uraian}
+                  onChange={(e) => ubah(i, { uraian: e.target.value })}
+                  placeholder="Uraian pekerjaan seperti di spreadsheet"
+                  className={`${FIELD} flex-1 min-w-0 text-xs`}
+                />
+              </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {b.sumber.map((s) => (
                   <span key={s} className="inline-flex items-center gap-1 rounded-full bg-brand-50 text-brand-700 px-2 py-0.5 text-[11px] font-medium">
-                    {namaSumber(s, namaKategori)}
+                    {namaSumber(s, namaKategori, namaTindakan)}
                     <button onClick={() => ubah(i, { sumber: b.sumber.filter((x) => x !== s) })} aria-label="Lepas sumber">
                       <X size={11} />
                     </button>
@@ -113,9 +136,11 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
                       <option key={m.kunci} value={m.kunci}>{m.jenis}</option>
                     ))}
                   </optgroup>
-                  {!b.sumber.includes(SUMBER_DRONE) && (
+                  {KHUSUS.some((k) => !b.sumber.includes(k)) && (
                     <optgroup label="Khusus">
-                      <option value={SUMBER_DRONE}>{namaSumber(SUMBER_DRONE, namaKategori)}</option>
+                      {KHUSUS.filter((k) => !b.sumber.includes(k)).map((k) => (
+                        <option key={k} value={k}>{namaSumber(k, namaKategori)}</option>
+                      ))}
                     </optgroup>
                   )}
                   <optgroup label="Pemeliharaan Jaringan · kategori">
@@ -123,6 +148,13 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
                       <option key={k.kode} value={kunciKategori(k.kode)}>{k.label}</option>
                     ))}
                   </optgroup>
+                  {(["hargardu", "penyeimbangan"] as const).map((m) => (
+                    <optgroup key={m} label={`${NAMA_MODUL_TINDAKAN[m]} · pekerjaan yang dikerjakan`}>
+                      {tindakan.filter((t) => t.modul === m && !b.sumber.includes(kunciTindakan(t.kode))).map((t) => (
+                        <option key={t.kode} value={kunciTindakan(t.kode)}>{t.nama}{t.aktif ? "" : " (nonaktif)"}</option>
+                      ))}
+                    </optgroup>
+                  ))}
                 </select>
               </div>
             </div>
@@ -138,6 +170,8 @@ export default function AturLm4dxModal({ baris, kategori, oleh, onTutup, onTersi
       </div>
       <p className="text-[11px] text-ink-soft leading-relaxed">
         Baris tanpa sumber tetap ikut tersalin (kosong) supaya letak baris di spreadsheet tidak bergeser.
+        Kelompok hanya judul di tabel (tidak ikut tersalin) — susun barisnya berurutan per kelompok supaya
+        judulnya tidak berulang.
       </p>
     </ModalShell>
   );

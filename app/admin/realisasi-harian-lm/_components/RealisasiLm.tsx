@@ -4,38 +4,41 @@ import { useState } from "react";
 import { Copy, Loader2, RefreshCw, Settings2, TriangleAlert } from "lucide-react";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
-import { useLm4dx } from "../_hooks/useLm4dx";
-import { BULAN } from "../_lib/kinerjaMeta";
-import { hariIniWita } from "../_lib/realisasiHarian";
-import { teksTempelLm } from "../_lib/lm4dx";
-import TabelLm4dx from "./TabelLm4dx";
-import AturLm4dxModal from "./AturLm4dxModal";
+import { useLm4dx } from "@/app/admin/kinerja-yantek/_hooks/useLm4dx";
+import { hariIniWita } from "@/app/admin/kinerja-yantek/_lib/realisasiHarian";
+import { BULAN } from "@/app/admin/kinerja-yantek/_lib/kinerjaMeta";
+import { NAMA_LAPORAN, teksTempelLm, type BarisLm, type Laporan } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
+import TabelLm4dx from "@/app/admin/kinerja-yantek/_components/TabelLm4dx";
+import AturLm4dxModal from "@/app/admin/kinerja-yantek/_components/AturLm4dxModal";
+import RincianLmModal from "./RincianLmModal";
 
 /**
- * Copy to LM 4DX (27 Okt 2026): blok bulanan spreadsheet Lead Measure 4DX —
- * baris pekerjaan × tanggal 1–31 — disalin lalu ditempel di sel tanggal.
+ * Tabel harian satu laporan (LM 4DX / Penurunan Susut), hanya yang disetujui,
+ * plus salin ke spreadsheet (dulu "Copy to LM 4DX" di Rekap Kinerja).
  * "Salin tanggal" hanya satu kolom, supaya isian manual hari lain di
  * spreadsheet (baris yang tidak ada di SMART) tidak tertimpa sel kosong.
  */
 
 interface Props {
+  laporan: Laporan;
   ulpAwal: string;
   daftarUlp: string[];
   /** Pengatur daftar baris: UP3 & admin. null = tidak boleh. */
   pengatur: string | null;
 }
 
-export default function CopyLm4dx({ ulpAwal, daftarUlp, pengatur }: Props) {
-  const o = useLm4dx(ulpAwal);
+export default function RealisasiLm({ laporan, ulpAwal, daftarUlp, pengatur }: Props) {
+  const o = useLm4dx(ulpAwal, laporan);
   const toast = useToast();
   const [atur, setAtur] = useState(false);
+  const [rincian, setRincian] = useState<{ baris: BarisLm; hari: number | null } | null>(null);
   const hariIni = hariIniWita();
-  const [pilihHari, setPilihHari] = useState(() => Number(hariIni.slice(8, 10)));
-
   const [y, m] = o.bulan.split("-").map(Number);
   const jumlahHari = new Date(y, m, 0).getDate();
+  const [pilihHari, setPilihHari] = useState(() => Number(hariIni.slice(8, 10)));
   const hari = Math.min(pilihHari, jumlahHari);
   const namaBulan = `${BULAN[m - 1]} ${y}`;
+  const siap = !o.loading && !o.galat && o.baris.length > 0;
 
   const salin = async (h: number | null) => {
     try {
@@ -47,8 +50,6 @@ export default function CopyLm4dx({ ulpAwal, daftarUlp, pengatur }: Props) {
       toast.error("Gagal menyalin — izinkan akses papan klip di peramban.");
     }
   };
-
-  const siap = !o.loading && !o.galat && o.baris.length > 0;
 
   return (
     <>
@@ -88,9 +89,11 @@ export default function CopyLm4dx({ ulpAwal, daftarUlp, pengatur }: Props) {
       </div>
 
       <p className="text-xs text-ink-soft -mt-1">
-        Pekerjaan yang dikirim regu, <b>termasuk yang belum disetujui</b>. Salinan hanya angka, tanpa uraian —
-        tempel di sel tanggal pada <b>baris pertama</b> blok bulan itu. Baris yang tidak ada di SMART tersalin
-        kosong dan <b>menghapus</b> isian manual di sel tujuan; pakai <b>Salin tanggal</b> supaya hari lain aman.
+        Hanya pekerjaan yang <b>sudah disetujui</b>, di tanggal pekerjaannya. Yang masih menunggu persetujuan
+        belum terhitung — angka hari ini bisa bertambah setelah admin menyetujui. Klik uraian (sebulan) atau
+        angka (satu tanggal) untuk melihat daftar pekerjaannya. Salinan hanya angka, tanpa uraian — tempel di sel
+        tanggal pada <b>baris pertama</b> blok bulan itu. Baris yang tidak ada di SMART tersalin kosong dan
+        <b> menghapus</b> isian manual di sel tujuan; pakai <b>Salin tanggal</b> supaya hari lain aman.
       </p>
 
       {o.galat && !o.loading && (
@@ -109,18 +112,35 @@ export default function CopyLm4dx({ ulpAwal, daftarUlp, pengatur }: Props) {
           baris={o.baris}
           matriks={o.matriks}
           namaKategori={o.namaKategori}
+          namaTindakan={o.namaTindakan}
           jumlahHari={jumlahHari}
           hariTerpilih={hari}
           hariIni={hariIni.slice(0, 7) === o.bulan ? Number(hariIni.slice(8, 10)) : null}
+          teksTanpaSumber="belum ada sumber di SMART"
+          onPilih={(baris, hari) => setRincian({ baris, hari })}
         />
       ) : (
-        !o.galat && <p className="text-xs text-ink-muted">Daftar baris LM 4DX masih kosong — isi lewat Atur baris.</p>
+        !o.galat && <p className="text-xs text-ink-muted">Daftar baris {NAMA_LAPORAN[laporan]} masih kosong — isi lewat Atur baris.</p>
+      )}
+
+      {rincian && (
+        <RincianLmModal
+          baris={rincian.baris}
+          hari={rincian.hari}
+          bulan={o.bulan}
+          item={o.item}
+          namaTindakan={o.namaTindakan}
+          onTutup={() => setRincian(null)}
+        />
       )}
 
       {atur && pengatur && (
         <AturLm4dxModal
+          laporan={laporan}
+          ulp={o.ulp}
           baris={o.baris}
           kategori={o.kategori}
+          tindakan={o.tindakan}
           oleh={pengatur}
           onTutup={() => setAtur(false)}
           onTersimpan={o.muat}

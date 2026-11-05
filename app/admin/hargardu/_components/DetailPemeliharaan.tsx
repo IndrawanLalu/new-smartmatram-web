@@ -19,6 +19,7 @@ import {
   type UsulanTitik,
 } from "../_hooks/useHargarduApproval";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
+import DaftarTindakan from "@/app/admin/_components/DaftarTindakan";
 
 const tgl = (iso: string | null) =>
   iso
@@ -419,6 +420,7 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
         </Bagian>
       </section>
 
+      <DaftarTindakan modul="hargardu" sumberId={aktif.id} />
 
       {(aktif.catatan_perbaikan || aktif.pr_keterangan) && (
             <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">

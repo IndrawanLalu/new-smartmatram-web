@@ -62,8 +62,8 @@ export default function DashboardPemeliharaan({ ulp, tahun, kategori }: Props) {
           hint={`${d.diverifikasi.toLocaleString("id-ID")} dari ${d.total.toLocaleString("id-ID")} pekerjaan`}
         />
         <StatTile
-          label="JTM · JTR"
-          value={nol ?? `${d.jtm} · ${d.jtr}`}
+          label="JTM · Gardu · JTR"
+          value={nol ?? `${d.jtm} · ${d.gardu} · ${d.jtr}`}
           icon={Network}
           tone="accent"
           hint="Jumlah pekerjaan per jenis jaringan"

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ClipboardList, ClipboardPlus, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
-import { usePemeliharaanJaringan, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
+import { usePemeliharaanJaringan, NAMA_JENIS, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
 import TabelPemeliharaan from "./_components/TabelPemeliharaan";
 import DetailPemeliharaanModal from "./_components/DetailPemeliharaanModal";
 import DashboardPemeliharaan from "./_components/DashboardPemeliharaan";
@@ -41,7 +41,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-const JENIS: ("SEMUA" | JenisJaringan)[] = ["SEMUA", "JTM", "JTR"];
+const JENIS: ("SEMUA" | JenisJaringan)[] = ["SEMUA", "JTM", "GARDU", "JTR"];
 
 export default function PemeliharaanJaringanPage() {
   const user = useCurrentUser();
@@ -101,7 +101,7 @@ export default function PemeliharaanJaringanPage() {
             <div className="flex flex-wrap items-center gap-2">
               {JENIS.map((j) => (
                 <button key={j} onClick={() => o.setJenis(j)} className={`${CHIP} ${o.jenis === j ? CHIP_ON : CHIP_OFF}`}>
-                  {j === "SEMUA" ? "JTM & JTR" : j}
+                  {j === "SEMUA" ? "Semua jenis" : NAMA_JENIS[j]}
                 </button>
               ))}
             </div>
