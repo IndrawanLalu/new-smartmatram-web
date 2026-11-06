@@ -19,7 +19,7 @@ export async function GET(req: Request) {
     const temuan = temuanUntuk(p, await daftarTemuan(p.tanggal, p.tanggal, null)) ?? null;
     // Gangguan bertemuan dinilai tanpa kalibrasi dari dirinya sendiri — sama dengan rapor.
     const hasil = await prediksiLokasi({
-      penyulang: p.penyulang, keypoint: p.keypoint, arus: p.arus, bebanKw: p.bebanKw,
+      penyulang: p.penyulang, keypoint: p.keypoint, kunci: p.kunci, arus: p.arus, bebanKw: p.bebanKw,
       trafoGi: p.trafoGi ?? (await trafoPenyulang(p.penyulang)),
       kecualiTemuan: temuan?.id, tiangTemuan: temuan?.tiang_id ?? undefined,
     });

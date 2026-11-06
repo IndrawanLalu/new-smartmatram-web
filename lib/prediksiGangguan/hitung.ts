@@ -1,5 +1,6 @@
 import { arusDiTitik, bacaArus, xsDariArus, type Arus, type BacaanArus } from "./arus";
 import { alatMilik, cariAlat, hilir, muatJaringan, namaAlat, namaPenyulangJtm, type Jaringan, type Titik } from "./jaringan";
+import { tentukanPenyulang, type AsalPenyulang } from "./penyulangTrip";
 import { garduSekitar, patokanDekat, temuanTerbuka, namaTitikAlat, type Gardu, type Patokan } from "./patokan";
 import { sumberTrafo, trafoPenyulang, type Sumber } from "./sumber";
 
@@ -16,6 +17,8 @@ import { sumberTrafo, trafoPenyulang, type Sumber } from "./sumber";
 export interface MasukanPrediksi {
   penyulang: string;
   keypoint: string | null;
+  /** Kunci gangguan — untuk koreksi penyulang yang trip dari web. */
+  kunci?: string;
   arus: Arus;
   bebanKw: number | null;
   trafoGi: string | null;
@@ -86,6 +89,10 @@ export interface Seksi {
 export interface HasilPrediksi {
   penyulang: string;
   penyulangJtm: string | null;
+  /** Dari mana jaringan itu ditentukan (penyulangTrip.ts). */
+  asalPenyulang: AsalPenyulang;
+  /** Outlet Gardu Hubung: GH pangkalnya. */
+  gh: string | null;
   bacaan: BacaanArus;
   sumber: Sumber | null;
   alat: { nama: string; kode: string | null; km: number | null; ditemukan: boolean };
@@ -138,15 +145,20 @@ export async function prediksiLokasi(m: MasukanPrediksi): Promise<HasilPrediksi>
   const bacaan = bacaArus(m.arus, m.bebanKw);
   const catatan: string[] = [];
   const kosong: HasilPrediksi = {
-    penyulang: m.penyulang, penyulangJtm: null, bacaan, sumber: null,
+    penyulang: m.penyulang, penyulangJtm: null, asalPenyulang: "tidak", gh: null, bacaan, sumber: null,
     alat: { nama: m.keypoint ?? m.penyulang, kode: null, km: null, ditemukan: false },
     zona: null, calon: [], kelompok: [], peralatan: [], seksi: [], arusZona: null, catatan,
   };
 
   // Sheet kadang menulis recloser di kolom penyulang ("REC. TATO"); laporan WA benar.
-  const nama = await namaPenyulangJtm(m.penyulang);
+  // Koreksi web → nama disamakan → nama langsung → outlet GH (penyulangTrip.ts).
+  const trip = await tentukanPenyulang(m.penyulang, m.keypoint, m.kunci);
+  if (trip.catatan) catatan.push(trip.catatan);
+  kosong.asalPenyulang = trip.asal;
+  kosong.gh = trip.gh;
+  const nama = trip.penyulang;
   if (!nama) {
-    catatan.push(`Jaringan penyulang ${m.penyulang} belum ada di data JTM — lokasi belum bisa dihitung.`);
+    if (!trip.catatan) catatan.push(`Jaringan penyulang ${m.penyulang} belum ada di data JTM — lokasi belum bisa dihitung. Kalau sudah dititik dengan nama lain, koreksi penyulang yang trip di web.`);
     return kosong;
   }
   const j = await muatJaringan(nama);
@@ -155,7 +167,7 @@ export async function prediksiLokasi(m: MasukanPrediksi): Promise<HasilPrediksi>
     return { ...kosong, penyulangJtm: nama };
   }
 
-  const keypoint = m.keypoint && namaAlat(m.keypoint) !== namaAlat(nama) && namaAlat(m.keypoint) !== namaAlat(m.penyulang) ? m.keypoint : null;
+  const keypoint = trip.keypoint && namaAlat(trip.keypoint) !== namaAlat(nama) && namaAlat(trip.keypoint) !== namaAlat(m.penyulang) ? trip.keypoint : null;
   const alat = keypoint ? cariAlat(j, keypoint) : null;
   const akar = [...j.titik.values()].filter((t) => !t.induk).map((t) => t.id);
   if (keypoint && !alat) catatan.push(`${keypoint} belum tercatat di peta JTM — zona dihitung untuk seluruh penyulang.`);
@@ -169,7 +181,7 @@ export async function prediksiLokasi(m: MasukanPrediksi): Promise<HasilPrediksi>
   const hasil: HasilPrediksi = {
     ...kosong,
     penyulangJtm: nama,
-    alat: { nama: keypoint ?? `PMT ${nama} (GI)`, kode: alat?.kode ?? null, km: alat?.km ?? null, ditemukan: !!alat || !keypoint },
+    alat: { nama: keypoint ?? (trip.gh ? `PMT ${nama} (${trip.gh})` : `PMT ${nama} (GI)`), kode: alat?.kode ?? null, km: alat?.km ?? null, ditemukan: !!alat || !keypoint },
     zona: {
       tiang: zonaTitik.length,
       km: zonaTitik.reduce((s, t) => s + panjangRuas(j, t), 0),
@@ -191,10 +203,11 @@ export async function prediksiLokasi(m: MasukanPrediksi): Promise<HasilPrediksi>
 
   if (bacaan.jenis === "OC2" || bacaan.jenis === "OC3") {
     const jenis = bacaan.jenis;
-    const sumber = await sumberTrafo(m.trafoGi ?? (await trafoPenyulang(m.penyulang)), m.kecualiTemuan);
+    const sumber = await sumberTrafo(m.trafoGi ?? (await trafoPenyulang(m.penyulang)) ?? (await trafoPenyulang(nama)), m.kecualiTemuan, trip.gh);
     hasil.sumber = sumber;
     if (!sumber.trafo) catatan.push("Trafo GI penyulang ini belum diketahui — kekuatan sumber diperkirakan kasar.");
     else if (sumber.asal === "perkiraan") catatan.push(`${sumber.trafo} belum terkalibrasi — isi lokasi temuan gangguan OC di web supaya lebih tepat.`);
+    if (trip.gh && sumber.asal === "perkiraan") catatan.push(`Kabel masuk ${trip.gh} belum dititik — jarak dihitung dari ${trip.gh} dengan perkiraan kasar kabelnya, rentang calon lebih lebar.`);
 
     const [lo, hi] = bacaan.rentang!;
     const tengah = (lo + hi) / 2;
@@ -305,6 +318,7 @@ export async function prediksiLokasi(m: MasukanPrediksi): Promise<HasilPrediksi>
   return hasil;
 }
 
+/** Jaringan untuk nama penyulang di data JTM (atau nama yang mirip). */
 export async function jaringanUntuk(penyulang: string): Promise<Jaringan | null> {
   const nama = await namaPenyulangJtm(penyulang);
   return nama ? muatJaringan(nama) : null;

@@ -40,7 +40,7 @@ export function teksPrediksi(h: HasilPrediksi): string {
   if (h.kelompok.length) {
     const c = h.calon.map((x) => x.km);
     const dariAlat = h.alat.km != null ? ` (±${km(Math.min(...c) - h.alat.km)}–${km(Math.max(...c) - h.alat.km)} km hilir ${h.alat.nama})` : "";
-    L.push(`Perkiraan ${km(Math.min(...c))}–${km(Math.max(...c))} km dari GI${dariAlat}`, "", "*Rekomendasi cek* (urut paling cocok):");
+    L.push(`Perkiraan ${km(Math.min(...c))}–${km(Math.max(...c))} km dari ${h.gh ?? "GI"}${dariAlat}`, "", "*Rekomendasi cek* (urut paling cocok):");
     h.kelompok.slice(0, MAKS_KELOMPOK).forEach((k, i) => {
       const alat = k.patokan.find((p) => p.jenis === "alat");
       const gardu = k.patokan.find((p) => p.jenis === "gardu");

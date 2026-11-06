@@ -180,7 +180,8 @@ export function hilir(j: Jaringan, id: string): string[] {
 
 /** Nama alat tanpa awalan jenis: "REC. KARANG SEME" → "KARANG SEME". */
 export function namaAlat(s: string): string {
-  return s.toUpperCase().replace(/^(REC|RECLOSER|LBSM|LBS|SSO|FCO|OL|GH|PMT)\.?\s+/, "").replace(/\s+/g, " ").trim();
+  // "ALANG-ALANG" = "ALANG ALANG" (7 Nov 2026: laporan dispatcher vs nama di peta).
+  return s.toUpperCase().replace(/^(REC|RECLOSER|LBSM|LBS|SSO|FCO|OL|GH|PMT)\.?\s+/, "").replace(/[-_]/g, " ").replace(/\s+/g, " ").trim();
 }
 
 /** Tiang tempat sebuah peralatan (recloser dsb.) terpasang di jaringan ini. */
@@ -205,16 +206,43 @@ export function alatMilik(j: Jaringan, t: Titik): boolean {
 
 // ── Nama penyulang: sheet/WA ↔ master JTM ────────────────────────────────────
 
-interface BarisSegmen { id: string; penyulang: string; titik_awal_nama: string | null; titik_akhir_nama: string | null }
+interface BarisSegmen { id: string; penyulang: string; titik_awal_jenis: string | null; titik_awal_nama: string | null; titik_akhir_nama: string | null }
 let segmenAktif: { t: number; baris: BarisSegmen[] } | null = null;
 
 async function daftarSegmen(): Promise<BarisSegmen[]> {
   if (!segmenAktif || Date.now() - segmenAktif.t > SIMPAN_MS) {
     const baris = await fetchAllRows<BarisSegmen>(() =>
-      supabaseAdmin.from("segmen").select("id,penyulang,titik_awal_nama,titik_akhir_nama").eq("status", "aktif").order("id"));
+      supabaseAdmin.from("segmen").select("id,penyulang,titik_awal_jenis,titik_awal_nama,titik_akhir_nama").eq("status", "aktif").order("id"));
     segmenAktif = { t: Date.now(), baris };
   }
   return segmenAktif.baris;
+}
+
+/** Nama penyulang yang punya segmen aktif di data JTM — pilihan koreksi di web. */
+export async function daftarPenyulangJtm(): Promise<string[]> {
+  return [...new Set((await daftarSegmen()).map((x) => x.penyulang))].sort();
+}
+
+/**
+ * Gardu Hubung pangkal penyulang ini (outlet "OL. KERANDANGAN" → "GH SENGGIGI"),
+ * dari nama titik awal segmennya. null = berpangkal di GI/PLTD — penyulang
+ * yang sekadar MELEWATI sebuah GH tidak dihitung keluaran GH.
+ */
+export async function pangkalGh(penyulang: string): Promise<string | null> {
+  const semua = await daftarSegmen();
+  const seg = semua.filter((x) => x.penyulang === penyulang);
+  if (seg.some((x) => ["GI", "PLTD"].includes((x.titik_awal_jenis ?? "").toUpperCase()))) return null;
+  // Dua cara tulis: jenis PENG + nama "GH SENGGIGI", atau jenis GH + nama "SENGGIGI".
+  const nama = (x: BarisSegmen) => {
+    const n = (x.titik_awal_nama ?? "").toUpperCase().trim();
+    if ((x.titik_awal_jenis ?? "").toUpperCase() === "GH") return n.replace(/^GH\.?\s+/, "") || null;
+    return n.match(/\bGH\.?\s+([A-Z0-9 .-]+)/)?.[1].trim() ?? null;
+  };
+  const calon = [...new Set(seg.map(nama).filter((n): n is string => !!n))];
+  if (!calon.length) return null;
+  // Salah ketik ("GH SENGIGI") kalah dari nama yang paling sering dipakai segmen lain.
+  const sering = (n: string) => semua.filter((x) => nama(x) === n).length;
+  return `GH ${calon.sort((a, b) => sering(b) - sering(a))[0]}`;
 }
 
 const ringkas = (s: string) =>

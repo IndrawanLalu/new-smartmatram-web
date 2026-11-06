@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { jaringanUntuk } from "@/lib/prediksiGangguan/hitung";
+import { muatJaringan } from "@/lib/prediksiGangguan/jaringan";
+import { tentukanPenyulang } from "@/lib/prediksiGangguan/penyulangTrip";
 import { ambilPeristiwa } from "@/lib/prediksiGangguan/peristiwa";
 import { hapusTemuan, nilaiSemuaTemuan, simpanTemuan } from "@/lib/prediksiGangguan/temuan";
 import { akses } from "../_akses";
@@ -28,9 +29,11 @@ export async function POST(req: Request) {
     }
     const r = await izin(String(body.kunci ?? ""));
     if ("galat" in r) return r.galat;
-    const j = await jaringanUntuk(r.p.penyulang);
+    // Jaringan yang sama dengan prediksinya (outlet GH / koreksi web).
+    const trip = await tentukanPenyulang(r.p.penyulang, r.p.keypoint, r.p.kunci);
+    const j = trip.penyulang ? await muatJaringan(trip.penyulang) : null;
     const t = j?.titik.get(String(body.tiangId ?? ""));
-    if (!t?.anggota) return NextResponse.json({ error: `Tiang tidak ada di jaringan ${r.p.penyulang}.` }, { status: 400 });
+    if (!t?.anggota) return NextResponse.json({ error: `Tiang tidak ada di jaringan ${trip.penyulang ?? r.p.penyulang}.` }, { status: 400 });
     const temuan = await simpanTemuan(r.p, { id: t.id, kode: t.kode }, body.catatan ?? null, r.a.me.name);
     return NextResponse.json({ temuan });
   } catch (e) {

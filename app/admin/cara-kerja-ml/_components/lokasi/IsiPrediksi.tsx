@@ -34,7 +34,7 @@ export default function IsiPrediksi({ h }: { h: HasilPrediksi }) {
           {h.zona ? (
             <>
               <p className="font-semibold text-ink">Hilir {h.alat.nama}</p>
-              <p className="text-ink-soft">{ribu(h.zona.tiang)} tiang · {km(h.zona.km)} km · {km(h.zona.kmDari)}–{km(h.zona.kmSampai)} km dari GI</p>
+              <p className="text-ink-soft">{ribu(h.zona.tiang)} tiang · {km(h.zona.km)} km · {km(h.zona.kmDari)}–{km(h.zona.kmSampai)} km dari {h.gh ?? "GI"}</p>
             </>
           ) : <p className="font-semibold text-ink">–</p>}
         </div>

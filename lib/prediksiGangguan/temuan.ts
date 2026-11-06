@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { prediksiLokasi } from "./hitung";
 import { daftarPeristiwa, temuanUntuk, type Peristiwa } from "./peristiwa";
-import { kunciTrafo, trafoPenyulang } from "./sumber";
+import { kunciSumber, trafoPenyulang } from "./sumber";
 
 /**
  * Lokasi temuan gangguan yang sebenarnya, diisi UP3/admin di web — termasuk
@@ -58,12 +58,13 @@ export async function nilaiTemuan(t: BarisTemuan): Promise<BarisTemuan> {
   if (!p || !t.tiang_id) return t;
   const trafoGi = p.trafoGi ?? (await trafoPenyulang(p.penyulang));
   const h = await prediksiLokasi({
-    penyulang: p.penyulang, keypoint: p.keypoint, arus: p.arus, bebanKw: p.bebanKw, trafoGi,
+    penyulang: p.penyulang, keypoint: p.keypoint, kunci: p.kunci, arus: p.arus, bebanKw: p.bebanKw, trafoGi,
     kecualiTemuan: t.id, tiangTemuan: t.tiang_id,
   });
   const ubah = {
     kunci: p.kunci,
-    trafo: kunciTrafo(trafoGi),
+    // Outlet GH: kalibrasi per "trafo · GH" (sumber.ts).
+    trafo: h.sumber?.trafo ?? kunciSumber(trafoGi, h.gh),
     jenis: h.bacaan.jenis,
     xs_hitung: h.uji?.xsHitung ?? null,
     peringkat: h.uji?.peringkat ?? null,

@@ -8,6 +8,7 @@ import type { BarisTemuan } from "@/lib/prediksiGangguan/temuan";
 import type { BarisGangguan } from "../../_hooks/usePrediksiLokasi";
 import IsiPrediksi from "./IsiPrediksi";
 import FormTemuan from "./FormTemuan";
+import KoreksiPenyulang from "./KoreksiPenyulang";
 
 interface Props {
   baris: BarisGangguan;
@@ -75,13 +76,17 @@ export default function DetailLokasiModal({ baris, bolehIsi, onTemuan, onClose }
           <span className="w-5 h-5 border-4 border-line border-t-brand-600 rounded-full animate-spin" /> Menghitung dari data jaringan JTM…
         </div>
       ) : (
-        <IsiPrediksi h={hasil} />
+        <>
+          <KoreksiPenyulang kunci={baris.kunci} penyulangLaporan={baris.penyulang} hasil={hasil} bolehIsi={bolehIsi} onTersimpan={hitungUlang} />
+          <IsiPrediksi h={hasil} />
+        </>
       )}
 
-      {bolehIsi && (
+      {bolehIsi && hasil && (
         <FormTemuan
+          key={hasil.penyulangJtm ?? "-"}
           kunci={baris.kunci}
-          penyulang={baris.penyulang}
+          penyulang={hasil.penyulangJtm ?? baris.penyulang}
           temuan={baris.temuan}
           onTersimpan={(t) => { onTemuan(baris.kunci, t); hitungUlang(); }}
         />
