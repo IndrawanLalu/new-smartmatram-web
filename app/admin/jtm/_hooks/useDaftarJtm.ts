@@ -72,6 +72,8 @@ export interface JawabanTiang {
   }[];
   /** Foto drone tiang (Tier 1 + drone, `inspeksi_jtm_foto` kode 'drone'). */
   fotoDrone: string[];
+  /** Foto thermal Tier 2 (kode 'thermal'); `ragu` = warnanya tidak mirip layar thermal. */
+  fotoThermal: { url: string; ragu: boolean }[];
 }
 
 /** Tier 2 (jtm-tier2-malam.sql): baris turunan ΔT sesudah suhu pembanding. */
@@ -377,8 +379,8 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
     supabaseBrowser.from("jtm_opsi_ref").select("item_kode,kode,label,normal"),
     Promise.all(
       potong(titik.map((t) => t.id)).map((ids) =>
-        fetchAllRows<{ titik_id: string; url: string }>(() =>
-          supabaseBrowser.from("inspeksi_jtm_foto").select("titik_id,url").eq("kode", "drone").in("titik_id", ids).order("created_at").order("id"),
+        fetchAllRows<{ titik_id: string; url: string; kode: string; ragu: boolean | null }>(() =>
+          supabaseBrowser.from("inspeksi_jtm_foto").select("titik_id,url,kode,ragu").in("kode", ["drone", "thermal"]).in("titik_id", ids).order("created_at").order("id"),
         ),
       ),
     ).then((x) => x.flat()).catch(() => []),
@@ -421,7 +423,8 @@ export async function ambilIsiInspeksi(id: string): Promise<JawabanTiang[]> {
       dinilaiAt: t.dinilai_at,
       jamTerverifikasi: t.jam_terverifikasi ?? null,
       isi: denganDt((per.get(t.id) ?? []).sort((a, b) => (urut.get(a.itemKode) ?? 0) - (urut.get(b.itemKode) ?? 0)), periksa.filter((p) => p.titik_id === t.id)),
-      fotoDrone: foto.filter((f) => f.titik_id === t.id).map((f) => f.url),
+      fotoDrone: foto.filter((f) => f.titik_id === t.id && f.kode === "drone").map((f) => f.url),
+      fotoThermal: foto.filter((f) => f.titik_id === t.id && f.kode === "thermal").map((f) => ({ url: f.url, ragu: !!f.ragu })),
     };
   });
 }

@@ -375,6 +375,13 @@ function IsiTiang({ t }: { t: JawabanTiang }) {
             foto drone{t.fotoDrone.length > 1 ? ` ${n + 1}` : ""}
           </a>
         ))}
+        {t.fotoThermal.map((f, n) => (
+          <a key={f.url} href={f.url} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()}
+            title={f.ragu ? "Warnanya tidak mirip layar thermal menurut HP — cek fotonya" : undefined}
+            className={`text-[11px] font-semibold hover:underline ${f.ragu ? "text-amber-700" : "text-navy-600"}`}>
+            foto thermal{t.fotoThermal.length > 1 ? ` ${n + 1}` : ""}{f.ragu ? " · perlu dicek" : ""}
+          </a>
+        ))}
         {temuan.length > 0 && <span className="text-[11px] font-semibold text-amber-700">{temuan.length} temuan</span>}
       </button>
 
