@@ -15,6 +15,11 @@ import IkonKolom from "@/app/admin/_kit/IkonKolom";
  * (`pro_ntb_jenis`). Ditulis persis seperti di spreadsheet UIW — ARRAYFORMULA
  * di sana mencari TIM PELAKSANA, KONTRAK, KELOMPOK dan SATUAN dari teks ini.
  * UP3 dan admin boleh mengubah (dijaga RLS).
+ *
+ * Spasi di belakang TIDAK dibuang (8 Nov 2026): dropdown UIW menulis
+ * "INSPEKSI JTM TIER-2  " dengan dua spasi, dan Google membandingkan persis.
+ * NAMA TIM tetap per jenis (mis. "INSPEKSI GARDU 1") untuk pekerjaan yang
+ * timnya bukan nama regu SMART — kosong = diketik di layar / nama regu.
  */
 
 interface Props {
@@ -29,10 +34,13 @@ const TH = "px-2 py-2 text-left text-[11px] font-semibold text-ink-soft border-b
 export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: Props) {
   const toast = useToast();
   const [isi, setIsi] = useState(() => META.map((m) => jenis.get(m.kunci)?.jenis_pekerjaan ?? ""));
+  const [tim, setTim] = useState(() => META.map((m) => jenis.get(m.kunci)?.nama_tim ?? ""));
   const [sibuk, setSibuk] = useState(false);
 
-  const berubah = META.map((m, i) => ({ kunci: m.kunci, nilai: isi[i].trim() }))
-    .filter((x) => x.nilai !== (jenis.get(x.kunci)?.jenis_pekerjaan ?? ""));
+  // Kosong (hanya spasi) = tidak diatur; selain itu disimpan apa adanya.
+  const apaAdanya = (s: string) => (s.trim() ? s : "");
+  const berubah = META.map((m, i) => ({ kunci: m.kunci, nilai: apaAdanya(isi[i]), tim: apaAdanya(tim[i]) }))
+    .filter((x) => x.nilai !== (jenis.get(x.kunci)?.jenis_pekerjaan ?? "") || x.tim !== (jenis.get(x.kunci)?.nama_tim ?? ""));
 
   const simpan = async () => {
     setSibuk(true);
@@ -40,6 +48,7 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
       berubah.map((x) => ({
         kunci: x.kunci,
         jenis_pekerjaan: x.nilai || null,
+        nama_tim: x.tim || null,
         updated_at: new Date().toISOString(),
         updated_by: oleh,
       })),
@@ -68,7 +77,7 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
     <ModalShell
       title="Jenis pekerjaan PRO NTB"
       subtitle="Ditulis persis seperti di spreadsheet UIW — formula di sana mengisi kolom lainnya dari teks ini"
-      maxWidth="max-w-2xl"
+      maxWidth="max-w-3xl"
       onClose={onTutup}
       footer={footer}
     >
@@ -77,6 +86,7 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
           <tr>
             <th className={TH}>Rekap Kinerja</th>
             <th className={TH}><IkonKolom teks="JENIS PEKERJAAN di spreadsheet" />JENIS PEKERJAAN di spreadsheet</th>
+            <th className={TH}>NAMA TIM tetap</th>
           </tr>
         </thead>
         <tbody>
@@ -93,6 +103,14 @@ export default function AturProNtbModal({ jenis, oleh, onTutup, onTersimpan }: P
                     className={`${FIELD} w-full text-xs`}
                   />
                 )}
+              </td>
+              <td className="px-1 py-1.5 border-b border-line">
+                <input
+                  value={tim[i]}
+                  onChange={(e) => setTim((xs) => xs.map((x, j) => (j === i ? e.target.value : x)))}
+                  placeholder="kosong = nama regu / diketik"
+                  className={`${FIELD} w-full text-xs`}
+                />
               </td>
             </tr>
           ))}

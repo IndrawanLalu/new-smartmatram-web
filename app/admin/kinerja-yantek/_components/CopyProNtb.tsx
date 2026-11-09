@@ -1,14 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Download, Loader2, RefreshCw, Settings2, TriangleAlert } from "lucide-react";
+import { Copy, Download, FileSearch, Loader2, RefreshCw, Settings2, TriangleAlert } from "lucide-react";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, FIELD } from "@/app/admin/_ui";
 import { useProNtb } from "../_hooks/useProNtb";
 import { META } from "../_lib/kinerjaMeta";
-import { teksTempel, type BarisPro } from "../_lib/proNtb";
+import { teksTempel, timBawaan, type BarisPro } from "../_lib/proNtb";
 import TabelProNtb from "./TabelProNtb";
 import AturProNtbModal from "./AturProNtbModal";
+import CekProNtb from "./CekProNtb";
 
 /**
  * Copy to PRO NTB (13 Okt 2026): realisasi harian disusun dalam 14 kolom
@@ -28,9 +29,6 @@ interface Props {
 }
 
 const kunciPetugas = (b: BarisPro) => (b.item.petugas ? `${b.item.kunci}|${b.item.petugas}` : null);
-/** Jenis yang nama regunya di SMART sudah sama dengan NAMA TIM PRO NTB
- *  (RABAS 1, RABAS 2 …) — terisi otomatis, tetap boleh diketik ulang. */
-const TIM_DARI_SMART = new Set(["perabasan"]);
 
 export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
   const o = useProNtb(ulpAwal);
@@ -41,6 +39,8 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
   const [atur, setAtur] = useState(false);
   const [unduh, setUnduh] = useState(false);
   const [pilihKerja, setPilihKerja] = useState("SEMUA");
+  /** Tahap 1 sinkron spreadsheet (8 Nov 2026): bandingkan, baca saja. */
+  const [cek, setCek] = useState(false);
 
   const adaKerja = META.map((m) => ({ ...m, n: o.baris.filter((b) => b.item.kunci === m.kunci).length })).filter((m) => m.n > 0);
   // Pekerjaan yang dipilih hilang sesudah ganti tanggal/ULP → kembali ke semua.
@@ -50,8 +50,7 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
 
   const timDari = (b: BarisPro) => {
     const kp = kunciPetugas(b);
-    return timBaris[b.id] ?? (kp ? timPetugas[kp] : undefined) ??
-      (TIM_DARI_SMART.has(b.item.kunci) ? b.item.petugas ?? "" : "");
+    return timBaris[b.id] ?? (kp ? timPetugas[kp] : undefined) ?? timBawaan(b);
 
   };
   const onTim = (b: BarisPro, v: string) => {
@@ -125,6 +124,10 @@ export default function CopyProNtb({ ulpAwal, daftarUlp, pengatur }: Props) {
           </button>
         )}
         <div className="ml-auto flex gap-2">
+          <button onClick={() => setCek((v) => !v)} className={cek ? BTN_PRIMARY : BTN_GHOST} disabled={o.ulp === "SEMUA"}
+            title={o.ulp === "SEMUA" ? "Pilih satu ULP" : "Bandingkan dengan tab WO di spreadsheet PRO NTB"}>
+            <FileSearch size={14} /> {cek ? "Tutup cek" : "Cek ke spreadsheet"}
+          </button>
           <button onClick={() => void keExcel()} className={BTN_GHOST} disabled={!siap || unduh}>
             {unduh ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />} Unduh Excel
           </button>
@@ -161,6 +164,8 @@ belumDiatur.map((m) => m.jenis).join(", ")}.`,
         <div className="p-8 flex items-center justify-center gap-2 text-sm text-ink-soft">
           <Loader2 size={16} className="animate-spin" /> Memuat realisasi…
         </div>
+      ) : cek ? (
+        <CekProNtb ulp={o.ulp} dari={o.dari} sampai={o.sampai} pengatur={pengatur} onDariAwalBulan={() => o.setDari(`${o.sampai.slice(0, 8)}01`)} />
       ) : baris.length > 0 ? (
         <TabelProNtb key={`${o.ulp}-${o.dari}-${o.sampai}-${kerja}`} baris={baris} timDari={timDari} onTim={onTim} />
       ) : (

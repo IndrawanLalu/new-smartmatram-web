@@ -38,6 +38,17 @@ export interface ItemPro extends ItemHarian {
   tgl: string;
   /** Pemeliharaan Jaringan: label kategori catatannya (lihat `JENIS_DARI_KATEGORI`). */
   kategori?: string | null;
+  /** Asal catatan di SMART — penanda baris di spreadsheet (cekProNtb.kodeBaris). */
+  sumber?: string | null;
+  sumberId?: string | null;
+  /** Dari `pro_ntb_baris` (9 Nov 2026, PRO NTB ber-WO). undefined = baris lama
+   *  `realisasi_rentang` (Copy to PRO NTB). */
+  wo?: number | null;
+  realisasi?: number | null;
+  /** Dasar kode SMART-xxxxxxxx — tetap selama baris WO itu ada. */
+  kodeSumber?: string | null;
+  /** 'wo' belum dikerjakan · 'wo_jadi' · 'luar' di luar WO · 'sla' penyesuaian SLA. */
+  jalur?: string | null;
 }
 
 /**
@@ -50,6 +61,8 @@ export const JENIS_DARI_KATEGORI = "harjtm";
 export interface KolomJenis {
   kunci: string;
   jenis_pekerjaan: string | null;
+  /** NAMA TIM tetap per jenis (pro-ntb-jenis-tim.sql), mis. "INSPEKSI GARDU 1". */
+  nama_tim?: string | null;
 }
 
 export interface BarisPro {
@@ -60,10 +73,20 @@ export interface BarisPro {
   lokasi: string;
   /** null = jenis ini belum diatur. */
   jenis: KolomJenis | null;
-  /** null = nilainya tidak tercatat (perabasan di luar WO tanpa KMS). */
+  /** REALISASI. null = belum dikerjakan / tidak tercatat (perabasan di luar WO tanpa KMS). */
   nilai: number | null;
+  /** WORK ORDER (PRO NTB ber-WO). undefined = baris lama: WO = REALISASI. */
+  wo?: number | null;
   desimal: boolean;
 }
+
+/** Jenis yang nama regunya di SMART sudah sama dengan NAMA TIM PRO NTB
+ *  (RABAS 1, RABAS 2 …) — terisi otomatis, tetap boleh diketik ulang. */
+const TIM_DARI_SMART = new Set(["perabasan"]);
+
+/** NAMA TIM tanpa ketikan di layar — dipakai juga Kirim otomatis. */
+export const timBawaan = (b: BarisPro) =>
+  TIM_DARI_SMART.has(b.item.kunci) ? b.item.petugas ?? "" : b.jenis?.nama_tim ?? "";
 
 const dua = (n: number) => String(n).padStart(2, "0");
 
@@ -98,7 +121,8 @@ export function susunBaris(
     );
   return urut.map(({ x, i }) => {
     const desimal = DESIMAL.get(x.kunci) ?? false;
-    const lokasi = OBJEK_GARDU.has(x.kunci)
+    const bulat = (n: number | null | undefined) => (n === null || n === undefined ? null : Math.round(n * 100) / 100);
+    const lokasi = x.jalur === "sla" ? x.objek : OBJEK_GARDU.has(x.kunci)
       ? [KODE_UP3, x.objek, alamat.get(kunciGardu(x.ulp, x.objek)) ?? (x.kunci.startsWith("igardu") ? x.rincian : null)]
           .filter(Boolean).join("_")
       : x.objek.replaceAll(" · ", " - ");
@@ -110,7 +134,10 @@ export function susunBaris(
       jenis: x.kunci === JENIS_DARI_KATEGORI
         ? { kunci: x.kunci, jenis_pekerjaan: x.kategori ?? null }
         : jenis.get(x.kunci) ?? null,
-      nilai: desimal ? (x.km === null ? null : Math.round(x.km * 100) / 100) : 1,
+      nilai: x.realisasi !== undefined
+        ? (desimal ? bulat(x.realisasi) : x.realisasi === null ? null : 1)
+        : desimal ? bulat(x.km) : 1,
+      ...(x.wo !== undefined ? { wo: desimal ? bulat(x.wo) : x.wo } : {}),
       desimal,
     };
   });

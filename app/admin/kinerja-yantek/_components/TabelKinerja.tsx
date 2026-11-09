@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import {
-  Activity, ArrowUpDown, ArrowUpRight, BarChart3, CheckCircle2, CheckSquare, Gauge, HardHat, Hourglass, Info, Layers, Loader2,
+  Activity, ArrowUpDown, ArrowUpRight, BarChart3, CheckCircle2, CheckSquare, FileSearch, Gauge, HardHat, Hourglass, Layers, Loader2,
   Network, Scale, ScanSearch, Target, TrendingUp, Trees, Waypoints, Wrench,
   type LucideIcon,
 } from "lucide-react";
@@ -12,6 +12,8 @@ import { IKON as IKON_UI } from "@/lib/ikonUi";
 import { NADA_UI, type NadaStatus } from "@/lib/statusUi";
 import { capaianSla, capaianWo, type BarisKinerja } from "../_hooks/useKinerjaYantek";
 import { KUNCI_CENTANG } from "../_lib/woSurat";
+import type { useStatusProNtb } from "../_hooks/useStatusProNtb";
+import SelProNtb from "./SelProNtb";
 
 /**
  * Tabel rekap kinerja — bergaris tegas di tiap sel, ikon per jenis pekerjaan,
@@ -101,6 +103,8 @@ interface Props {
   periode: string;
   /** Buka centang realisasi (JTM Tier 2, Inspeksi Gardu) — hanya untuk yang boleh. */
   onCentang?: (kunci: string) => void;
+  /** Kolom PRO NTB (8 Nov 2026, menggantikan Keterangan): cek tersimpan vs spreadsheet UIW. */
+  proNtb: ReturnType<typeof useStatusProNtb>;
 }
 
 /** Baris kecil di bawah angka — apa saja yang membentuknya. */
@@ -118,7 +122,7 @@ function Rincian({ baris }: { baris?: string[] }) {
 // Garis sel tegas di semua sisi — diminta user: bentuk tabel, bukan daftar.
 const TD = "px-4 py-3 align-middle border border-slate-300";
 
-export default function TabelKinerja({ baris, loading, periode, onCentang }: Props) {
+export default function TabelKinerja({ baris, loading, periode, onCentang, proNtb }: Props) {
   const belum = baris.filter((b) => b.keadaan !== "lengkap").length;
 
   return (
@@ -140,6 +144,20 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
             </span>
           )}
         </div>
+        {proNtb.adaBulan && (
+          <div className="flex items-center gap-2 text-[11.5px]">
+            {proNtb.galat && <span className="text-red-700 max-w-[320px]">{proNtb.galat}</span>}
+            <button
+              onClick={() => void proNtb.cekSekarang()}
+              disabled={proNtb.mengecek}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-line text-ink-soft hover:text-brand-700 hover:border-brand-300 disabled:opacity-50"
+              title="Bandingkan SMART dengan spreadsheet PRO NTB sekarang (otomatis tiap malam & sesudah kirim)"
+            >
+              {proNtb.mengecek ? <Loader2 size={13} className="animate-spin" /> : <FileSearch size={13} />}
+              {proNtb.mengecek ? "Mengecek PRO NTB…" : "Cek PRO NTB sekarang"}
+            </button>
+          </div>
+        )}
         <div className="flex items-center gap-4 text-[11.5px] text-ink-soft" aria-label="Arti warna capaian">
           <span className="font-semibold">Capaian</span>
           {AMBANG.map((a) => (
@@ -162,7 +180,7 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
               <Kolom bergaris kanan ikon={Hourglass}>Belum disetujui</Kolom>
               <Kolom bergaris kanan ikon={TrendingUp} lebar="min-w-[170px]">Capaian WO</Kolom>
               <Kolom bergaris kanan ikon={Gauge} lebar="min-w-[170px]">Capaian SLA</Kolom>
-              <Kolom bergaris ikon={Info} lebar="min-w-[280px]">Keterangan</Kolom>
+              <Kolom bergaris ikon={FileSearch} lebar="min-w-[280px]">PRO NTB</Kolom>
             </tr>
           </thead>
           <tbody>
@@ -252,7 +270,13 @@ export default function TabelKinerja({ baris, loading, periode, onCentang }: Pro
                   <td className={`${TD} text-right`}>
                     <Capaian p={capaianSla(b)} />
                   </td>
-                  <td className={`${TD} text-[11px] text-ink-soft leading-snug`}>{b.catatan}</td>
+                  <td className={`${TD} text-[11px] text-ink-soft leading-snug`}>
+                    {!proNtb.adaBulan
+                      ? <span className="text-ink-muted">pilih satu bulan</span>
+                      : mati
+                        ? <span className="text-ink-muted">—</span>
+                        : <SelProNtb kunci={b.kunci} satuan={b.satuan} desimal={!!b.desimal} status={proNtb.status} />}
+                  </td>
                 </tr>
               );
             })}

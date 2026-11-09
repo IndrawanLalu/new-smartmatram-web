@@ -1,5 +1,5 @@
 const DEFAULT_SPREADSHEET_ID = "153-gxDh8XrlT1AbNWb5jws0MVc-qD9IQNxxJLRqlKJg";
-const API_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
+export const API_KEY = "AIzaSyAZ1aJVdOVCv4Of60ZwPRsabQsgLaBxzQU";
 
 // Module-level cache — bertahan selama browser session, TTL 5 menit
 const _cache = new Map<string, { data: Record<string, string>[]; ts: number }>();

@@ -8,6 +8,7 @@ import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
 import Tombol from "@/app/admin/_kit/Tombol";
 import { BULAN, useKinerjaYantek } from "./_hooks/useKinerjaYantek";
+import { useStatusProNtb } from "./_hooks/useStatusProNtb";
 import TabelKinerja from "./_components/TabelKinerja";
 import AturSlaModal from "./_components/AturSlaModal";
 import CetakWoModal from "./_components/CetakWoModal";
@@ -52,6 +53,8 @@ export default function KinerjaYantekPage() {
   } = useKinerjaYantek(user);
 
   const periode = bulan === 0 ? String(tahun) : `${BULAN[bulan - 1]} ${tahun}`;
+  // Kolom PRO NTB: hasil cek tersimpan (pro-ntb-cek.sql), per bulan saja.
+  const proNtb = useStatusProNtb(ulp, tahun, bulan);
   // SLA diisi UP3 (semua ULP) atau admin ULP sendiri — dijaga database juga.
   const bolehSla = user.role === "UP3" || user.role === "admin";
   const [aturSla, setAturSla] = useState(false);
@@ -108,7 +111,7 @@ export default function KinerjaYantekPage() {
         </div>
       )}
 
-      <TabelKinerja baris={baris} loading={loading} periode={periode} onCentang={bolehSla ? setCentang : undefined} />
+      <TabelKinerja baris={baris} loading={loading} periode={periode} onCentang={bolehSla ? setCentang : undefined} proNtb={proNtb} />
       </>
       )}
 

@@ -30,6 +30,8 @@ const WEB = (process.env.WEB_URL || "http://web:3000").replace(/\/$/, "");
 const JAM_PENGINGAT = (process.env.JAM_PENGINGAT || "8,11,15,18").split(",").map(Number);
 const JAM_REKAP_KINERJA = Number(process.env.JAM_REKAP_KINERJA || 18);
 const JAM_PERIKSA_KONDISI = Number(process.env.JAM_PERIKSA_KONDISI || 2);
+// Cek PRO NTB (spreadsheet UIW) vs SMART → kolom PRO NTB Rekap Kinerja (pro-ntb-cek.sql).
+const JAM_CEK_PRO_NTB = Number(process.env.JAM_CEK_PRO_NTB || 23);
 
 const log = (...a) => console.log(new Date().toISOString(), ...a);
 
@@ -50,6 +52,18 @@ async function kirim(path, init, label) {
       log(`→ ${label}: gagal (${e.message}), coba ${ke}/3`);
     }
     await new Promise((r) => setTimeout(r, ke * 5000));
+  }
+}
+
+// Seperti kirim(), tapi hanya mencatat bila ada ULP yang dikirim / galat —
+// dipanggil tiap menit, log tidak boleh penuh baris "tidak ada".
+async function kirimHening(path, init, label) {
+  try {
+    const res = await fetch(`${WEB}${path}`, init);
+    const isi = await res.text();
+    if (res.status !== 200 || !/"ulp":\[\]/.test(isi)) log(`→ ${label}: HTTP ${res.status} ${isi.slice(0, 160)}`);
+  } catch (e) {
+    log(`→ ${label}: gagal (${e.message})`);
   }
 }
 
@@ -152,7 +166,17 @@ pantau("temuan-jtm", [["inspeksi_jtm_periksa", tanganiJtm]]);
 
 // ── 2. Jadwal (WITA = UTC+8) ─────────────────────────────────────────────────
 let terakhirJadwal = "";
+let terakhirMenit = "";
 setInterval(() => {
+  // Tiap menit: web yang memilih ULP mana yang jam kirim otomatis PRO NTB-nya
+  // tiba (jam + menit diatur di web). Hening bila tidak ada.
+  const w = new Date(Date.now() + 8 * 3600 * 1000);
+  const m = w.toISOString().slice(0, 16);
+  if (m !== terakhirMenit) {
+    terakhirMenit = m;
+    void kirimHening("/api/pro-ntb/otomatis", { method: "POST", headers: { "X-Cron-Secret": SECRET } }, `kirim otomatis PRO NTB ${m.slice(11)} WITA`);
+  }
+
   const wita = new Date(Date.now() + 8 * 3600 * 1000);
   const jam = wita.getUTCHours();
   const menit = wita.getUTCMinutes();
@@ -163,6 +187,7 @@ setInterval(() => {
   if (JAM_PENGINGAT.includes(jam)) void kirim("/api/wa-reminder", kepala, `pengingat ${jam}:00 WITA`);
   if (jam === JAM_REKAP_KINERJA) void kirim("/api/rekap-kinerja-wa", kepala, `rekap kinerja ${jam}:00 WITA`);
   if (jam === JAM_PERIKSA_KONDISI) void kirim("/api/kondisi-tiang-periksa", kepala, `periksa kondisi tiang ${jam}:00 WITA`);
+  if (jam === JAM_CEK_PRO_NTB) void kirim("/api/pro-ntb/cek", kepala, `cek PRO NTB ${jam}:00 WITA`);
 }, 20 * 1000);
 
-log(`pekerja jalan — web ${WEB}, pengingat jam ${JAM_PENGINGAT.join("/")} WITA, rekap kinerja jam ${JAM_REKAP_KINERJA} WITA, periksa kondisi tiang jam ${JAM_PERIKSA_KONDISI} WITA`);
+log(`pekerja jalan — web ${WEB}, pengingat jam ${JAM_PENGINGAT.join("/")} WITA, rekap kinerja jam ${JAM_REKAP_KINERJA} WITA, periksa kondisi tiang jam ${JAM_PERIKSA_KONDISI} WITA, cek PRO NTB jam ${JAM_CEK_PRO_NTB} WITA`);
