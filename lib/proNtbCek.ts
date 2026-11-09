@@ -50,6 +50,22 @@ export async function cekProNtb(ulp: string, bulan: string, sumber: SumberCek, o
   return { ringkas, galat };
 }
 
+/**
+ * Cek dengan coba ulang — untuk jalur tanpa orang menunggu (sesudah kirim,
+ * malam). Gangguan jaringan sesaat di homelab ("fetch failed", 9 Nov 2026)
+ * tidak boleh membuat kolom PRO NTB "cek gagal" sampai cek berikutnya.
+ * Jeda 15 lalu 30 detik; hasil terakhir (berhasil atau galatnya) yang tersimpan.
+ */
+export async function cekProNtbUlang(ulp: string, bulan: string, sumber: SumberCek, oleh: string | null, kali = 3) {
+  let r: { ringkas: RingkasKunci[]; galat: string | null } = { ringkas: [], galat: null };
+  for (let ke = 1; ke <= kali; ke++) {
+    r = await cekProNtb(ulp, bulan, sumber, oleh).catch((e: Error) => ({ ringkas: [], galat: e.message }));
+    if (!r.galat || ke === kali) return r;
+    await new Promise((s) => setTimeout(s, 15000 * ke));
+  }
+  return r;
+}
+
 /** ULP yang spreadsheet PRO NTB-nya sudah diatur. */
 export async function ulpBerSheet(): Promise<string[]> {
   const { data, error } = await supabaseAdmin.from("pro_ntb_sheet").select("ulp");

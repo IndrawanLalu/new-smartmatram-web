@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { canSeeAllUnits } from "@/lib/roles";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { TAB_PRO_NTB, type TabProNtb } from "@/lib/proNtbSheet";
-import { cekProNtb } from "@/lib/proNtbCek";
+import { cekProNtbUlang } from "@/lib/proNtbCek";
 import { kirimTab, siapkanMuatan } from "@/lib/proNtbKirim";
 
 export const dynamic = "force-dynamic";
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
       const r = await kirimTab({ ulp, tab, baris: muatan.filter((b) => b.tab === tab), dari, sampai, coba, oleh, sumber: "tombol" });
       // Tab terakhir kiriman sungguhan: status PRO NTB Rekap Kinerja ikut
       // diperbarui (gagal mengecek tidak menggagalkan kiriman).
-      if (!coba && body.cekSesudah === true) await cekProNtb(ulp, bulan, "kirim", oleh).catch(() => null);
+      if (!coba && body.cekSesudah === true) await cekProNtbUlang(ulp, bulan, "kirim", oleh);
       if (!r.ok) return NextResponse.json({ error: r.error ?? "gagal", hasil: r.hasil }, { status: r.status });
       return NextResponse.json({ ok: true, coba, hasil: r.hasil });
     }

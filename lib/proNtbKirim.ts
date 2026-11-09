@@ -1,6 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { bacaSheetPro, TAB_PRO_NTB, type TabProNtb } from "@/lib/proNtbSheet";
-import { cekProNtb } from "@/lib/proNtbCek";
+import { cekProNtbUlang } from "@/lib/proNtbCek";
 import { ambilBarisBulan, barisDariData } from "@/app/admin/kinerja-yantek/_lib/ambilProNtb";
 import { bandingkan, muatanKirim, type BarisKirim } from "@/app/admin/kinerja-yantek/_lib/cekProNtb";
 import { timBawaan } from "@/app/admin/kinerja-yantek/_lib/proNtb";
@@ -84,12 +84,21 @@ export async function kirimTab(o: {
   // Jejak hanya baris yang BERUBAH / gagal / sisa — baris "ubah" tanpa sel
   // berubah (mayoritas kiriman harian) tidak disimpan, supaya log harian
   // otomatis 4 ULP tidak tumbuh ratusan MB setahun.
-  const catat = (hasil: { aksi: string; berubah?: Record<string, unknown> }[] | null, galat: string | null) =>
-    supabaseAdmin.from("pro_ntb_kirim_log").insert({
+  // Coba ulang 3× (jeda 5/10 dtk): catatan tab WO INS JTM & GARDU sempat
+  // hilang karena gangguan jaringan sesaat (9 Nov 2026). Gagal mencatat tidak
+  // menggagalkan kiriman — isinya sudah tertulis di spreadsheet.
+  const catat = async (hasil: { aksi: string; berubah?: Record<string, unknown> }[] | null, galat: string | null) => {
+    const baris = {
       ulp: o.ulp, tab: o.tab, sumber: o.sumber, coba: o.coba, dari: o.dari, sampai: o.sampai,
       jumlah: o.baris.length, oleh: o.oleh, galat,
       hasil: hasil?.filter((h) => h.aksi !== "ubah" || Object.keys(h.berubah ?? {}).length > 0).slice(0, LOG_MAKS) ?? null,
-    });
+    };
+    for (let ke = 1; ke <= 3; ke++) {
+      const { error: e } = await supabaseAdmin.from("pro_ntb_kirim_log").insert(baris).then((x) => x, (x: Error) => ({ error: x }));
+      if (!e) return;
+      if (ke < 3) await new Promise((s) => setTimeout(s, 5000 * ke));
+    }
+  };
 
   const { data: k, error } = await supabaseAdmin.from("pro_ntb_sheet_kunci").select("script_url,rahasia").eq("ulp", o.ulp).maybeSingle();
   if (error) throw new Error(error.message);
@@ -156,6 +165,6 @@ export async function kirimOtomatisBulan(ulp: string, bulan: string): Promise<st
     if (!r.ok) gagal.push(`${tab}: ${r.error ?? "gagal"}`);
     else if (n) gagal.push(`${tab}: ${n} baris gagal`);
   }
-  await cekProNtb(ulp, bulan, "kirim", "otomatis").catch(() => null);
+  await cekProNtbUlang(ulp, bulan, "kirim", "otomatis");
   return `${bulan}: ${jumlah} baris${gagal.length ? ` · ${gagal.join(" · ")}` : " · semua tab berhasil"}`;
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { canSeeAllUnits } from "@/lib/roles";
-import { cekProNtb, ulpBerSheet } from "@/lib/proNtbCek";
+import { cekProNtb, cekProNtbUlang, ulpBerSheet } from "@/lib/proNtbCek";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     for (const ulp of await ulpBerSheet()) {
       for (const b of bulan) {
         try {
-          const r = await cekProNtb(ulp, b, "malam", "pekerja");
+          const r = await cekProNtbUlang(ulp, b, "malam", "pekerja");
           hasil[`${ulp} ${b}`] = r.galat ?? `${r.ringkas.length} jenis`;
         } catch (e) {
           hasil[`${ulp} ${b}`] = (e as Error).message;
