@@ -17,22 +17,26 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
  *
  * "Jarak menilai tiang · drone" (scripts/jtm-tier1-drone.sql, 28 Okt 2026):
  * angka & sakelar sendiri untuk inspeksi Tier 1 + drone — pilot tidak berdiri
- * di tiap tiang. Dibaca server (nilai_tiang_jtm) dan HP.
+ * di tiap tiang. Dibaca server (nilai_tiang_jtm) dan HP. Bawaan 500 m
+ * (jtm-drone-segmen.sql, 9 Nov 2026), bersama "Target drone" — % SLA Tier 1
+ * yang direncanakan drone (panduan di WO Inspeksi, bukan penolakan).
  */
 
 type Kolom =
   | "jarak_maks_nilai_m" | "jarak_maks_drone_m" | "akurasi_minimum_m" | "radius_tumpang_m"
-  | "radius_cari_tumpang_m" | "radius_peta_tumpang_m" | "bentang_maks_wajar_m";
+  | "radius_cari_tumpang_m" | "radius_peta_tumpang_m" | "bentang_maks_wajar_m" | "target_drone_persen";
 
 type Sakelar = "cek_jarak_nilai" | "cek_jarak_drone";
 
-const KOLOM: { k: Kolom; label: string; bantu: string; min: number; maks: number; sakelar?: Sakelar; mati?: string }[] = [
+const KOLOM: { k: Kolom; label: string; bantu: string; min: number; maks: number; sakelar?: Sakelar; mati?: string; satuan?: string }[] = [
   { k: "jarak_maks_nilai_m", label: "Jarak menilai tiang", min: 5, maks: 500, sakelar: "cek_jarak_nilai",
     bantu: "Jarak terjauh regu dari tiang saat menilai. Lebih jauh dari ini, tombol simpan ditolak.",
     mati: "Nonaktif — jarak regu ke tiang TIDAK diperiksa saat menilai (Tier 1 & 2)." },
   { k: "jarak_maks_drone_m", label: "Jarak menilai tiang · drone", min: 5, maks: 5000, sakelar: "cek_jarak_drone",
     bantu: "Khusus Tier 1 + drone: jarak terjauh pilot dari tiang yang dinilai.",
     mati: "Nonaktif — jarak pilot ke tiang TIDAK diperiksa pada inspeksi Tier 1 + drone." },
+  { k: "target_drone_persen", label: "Target drone", min: 0, maks: 100, satuan: "% SLA",
+    bantu: "Bagian SLA Tier 1 yang direncanakan Tier 1 + drone (sisanya Tier 1 biasa). Tampil sebagai panduan saat memilih segmen di WO Inspeksi." },
   { k: "akurasi_minimum_m", label: "Ketelitian GPS", min: 5, maks: 200,
     bantu: "Pembacaan GPS lebih kasar dari ini dianggap belum layak — regu diminta menunggu." },
   { k: "radius_tumpang_m", label: "Radius tiang kembar", min: 2, maks: 100,
@@ -93,7 +97,7 @@ export default function AmbangLapanganJtm() {
         HP lama pun ikut aturan baru.
       </p>
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {KOLOM.map(({ k, label, bantu, min, maks, sakelar, mati: teksMati }) => {
+        {KOLOM.map(({ k, label, bantu, min, maks, sakelar, mati: teksMati, satuan }) => {
           const keliru = salah.some((x) => x.k === k) || (k === "radius_peta_tumpang_m" && petaKecil);
           const mati = !!sakelar && !isi[sakelar];
           return (
@@ -121,7 +125,7 @@ export default function AmbangLapanganJtm() {
                   className={`${FIELD} w-24 disabled:opacity-50 ${keliru ? "border-red-400" : ""}`}
                   aria-label={label}
                 />
-                <span className="text-ink-muted">m</span>
+                <span className="text-ink-muted">{satuan ?? "m"}</span>
                 <span className="text-[10px] text-ink-muted">({min}–{maks})</span>
               </span>
               <span className={`mt-1 block text-[11px] leading-snug ${mati ? "text-amber-700 font-semibold" : "text-ink-muted"}`}>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, Loader2, MapPin, PlusCircle } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Loader2, MapPin, Plane, PlusCircle, Undo2 } from "lucide-react";
 import SusunWoSegmen, { type IstilahWo } from "@/app/admin/_components/SusunWoSegmen";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
@@ -12,6 +12,7 @@ import { bulanTahun, useGaransiItem } from "@/app/admin/_hooks/useGaransi";
 import LencanaGaransi from "@/app/admin/_components/LencanaGaransi";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 import { supabaseBrowser } from "@/lib/supabase-browser";
+import PitaDroneWo, { type BarisPitaDrone } from "@/app/admin/_components/PitaDroneWo";
 
 /**
  * Tab Susun WO inspeksi JTM / JTR (J4, J5c `rencana-mobile-jtm-jtr.md`):
@@ -70,6 +71,10 @@ const kms = (v: number | null) => (v === null ? "—" : v.toFixed(2).replace("."
 
 /** Belum ada inspeksi yang berjalan = masih boleh keluar dari WO. */
 const belumDiinspeksi = (x: ItemWoInspeksi) => !x.inspeksi_status;
+/** Mode drone boleh diubah selama inspeksinya belum DIKIRIM (keputusan user P5). */
+const bisaUbahDrone = (x: ItemWoInspeksi) => x.tier === "1" && x.inspeksi_status !== "Selesai" && x.inspeksi_status !== "Diverifikasi";
+/** Bulan WITA berjalan "YYYY-MM". */
+const bulanWita = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 7);
 
 /** Tahap item DITURUNKAN dari inspeksi terakhirnya. */
 const tahap = (x: ItemWoInspeksi) => {
@@ -123,6 +128,14 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   // WO Tier 2 hanya untuk segmen yang sudah dititik Tier 1 (Diverifikasi) —
   // jtm-tier2-malam.sql; server menolak sisanya lewat pemicu yang sama.
   const [dititik, setDititik] = useState<Set<string> | null>(null);
+  /** Target drone % SLA per ULP (jtm-drone-segmen.sql); kosong = bawaan 20. */
+  const [targetDrone, setTargetDrone] = useState<Map<string, number>>(new Map());
+  useEffect(() => {
+    if (!jtm) return;
+    void supabaseBrowser.from("jtm_settings").select("ulp,target_drone_persen").then(({ data, error }) => {
+      if (!error) setTargetDrone(new Map((data ?? []).map((x: { ulp: string; target_drone_persen: number }) => [x.ulp.toUpperCase(), Number(x.target_drone_persen)])));
+    });
+  }, [jtm]);
   useEffect(() => {
     if (tierSusun !== "2" || dititik) return;
     // Galat (SQL belum dijalankan) = tanpa kunci di layar; server tetap menjaga.
@@ -169,16 +182,25 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
   };
 
   const daftar = itemUlp.filter((x) => cocokTier(x, saringTier));
-  // WO Tier 1 yang masih berjalan dan bagian dronenya (keputusan user 28 Okt: KMS drone terlihat).
-  const t1Jalan = w.wo.filter((x) => (!ulpLihat || x.ulp.toUpperCase() === ulpLihat) && x.status === "Terbit" && x.tier === "1");
-  const ringkasDrone = jtm && t1Jalan.some((x) => x.drone)
-    ? `WO Tier 1 berjalan ${kms(t1Jalan.reduce((n, x) => n + x.rencana_km, 0))} KMS · di antaranya drone ${kms(t1Jalan.filter((x) => x.drone).reduce((n, x) => n + x.rencana_km, 0))} KMS`
+  // WO Tier 1 bulan ini dan bagian dronenya (keputusan user 28 Okt: KMS drone terlihat).
+  // Per SEGMEN (jtm-drone-segmen.sql) — segmen bisa dijadikan drone sesudah WO terbit.
+  const t1Bulan = (ulpLihat ? [ulpLihat] : [...new Set(w.wo.map((x) => x.ulp.toUpperCase()))])
+    .map((u) => w.rencanaDrone(u, bulanWita()))
+    .reduce((a, r) => ({ droneKm: a.droneKm + r.droneKm, biasaKm: a.biasaKm + r.biasaKm }), { droneKm: 0, biasaKm: 0 });
+  const ringkasDrone = jtm && t1Bulan.droneKm > 0
+    ? `WO Tier 1 ${BULAN_INI} ${kms(t1Bulan.droneKm + t1Bulan.biasaKm)} KMS · di antaranya drone ${kms(t1Bulan.droneKm)} KMS`
     : null;
   const total = Math.max(1, Math.ceil(daftar.length / PAGE));
   const hal = Math.min(halaman, total);
   const tampil = daftar.slice((hal - 1) * PAGE, hal * PAGE);
-  const dipilih = itemUlp.filter((x) => pilih.has(x.id) && belumDiinspeksi(x));
-  const bisaDiHal = tampil.filter(belumDiinspeksi).map((x) => x.id);
+  /** Boleh dicentang: dikeluarkan dari WO, atau (JTM Tier 1) diubah mode dronenya. */
+  const bisaPilih = (x: ItemWoInspeksi) => belumDiinspeksi(x) || (jtm && bisaUbahDrone(x));
+  const dipilih = itemUlp.filter((x) => pilih.has(x.id) && bisaPilih(x));
+  const dipilihKeluar = dipilih.filter(belumDiinspeksi);
+  // Drone hanya segmen yang sudah dititik Tier 1 & disetujui (P1); undefined = SQL belum jalan.
+  const jadiDrone = jtm ? dipilih.filter((x) => bisaUbahDrone(x) && !x.drone && x.sudah_dititik !== false) : [];
+  const jadiBiasa = jtm ? dipilih.filter((x) => bisaUbahDrone(x) && x.drone) : [];
+  const bisaDiHal = tampil.filter(bisaPilih).map((x) => x.id);
   const semuaHal = bisaDiHal.length > 0 && bisaDiHal.every((id) => pilih.has(id));
   const ubahPilih = (id: string[], aktif: boolean) =>
     setPilih((p) => {
@@ -189,6 +211,24 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
       }
       return n;
     });
+
+  // Pita % SLA drone bulan ini per ULP yang tampil (Pengaturan JTM: target_drone_persen).
+  const bulanIni = bulanWita();
+  const pitaDrone: BarisPitaDrone[] = jtm
+    ? [...new Set((ulpLihat ? [ulpLihat] : itemUlp.map((x) => x.ulp.toUpperCase())))].sort().map((u) => {
+        const r = w.rencanaDrone(u, bulanIni);
+        const ikut = (x: ItemWoInspeksi) => x.ulp.toUpperCase() === u && x.tgl_wo.slice(0, 7) === bulanIni;
+        return {
+          ulp: u,
+          sla: slaBulan(u, `${bulanIni}-01`),
+          droneKm: r.droneKm,
+          biasaKm: r.biasaKm,
+          target: targetDrone.get(u) ?? targetDrone.get("ALL") ?? 20,
+          tambahKm: jadiDrone.filter(ikut).reduce((n, x) => n + (x.panjang_km ?? 0), 0)
+            - jadiBiasa.filter(ikut).reduce((n, x) => n + (x.panjang_km ?? 0), 0),
+        };
+      }).filter((b) => b.droneKm + b.biasaKm > 0)
+    : [];
 
   if (w.loading) {
     return (
@@ -359,7 +399,9 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
           <p className="text-xs text-ink-soft">
             {Satuan} WO yang belum disetujui. Item tertutup sendiri begitu inspeksinya disetujui di Daftar
             Inspeksi. Yang sudah diinspeksi regu tidak bisa dikeluarkan dari WO.
+            {jtm && <> Segmen Tier 1 yang sudah dititik &amp; disetujui bisa dijadikan <b className="text-ink">Tier 1 + drone</b> selama inspeksinya belum dikirim.</>}
           </p>
+          <PitaDroneWo bulan={BULAN_INI} baris={pitaDrone} />
           {dipilih.length > 0 && (
             <div className="mt-3 flex flex-wrap items-center gap-3 rounded-xl border border-navy-200 bg-navy-50/60 px-4 py-2.5 text-sm">
               <span className="text-ink">
@@ -367,9 +409,24 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
                 {kms(dipilih.reduce((n, x) => n + (x.panjang_km ?? 0), 0))} KMS
               </span>
               <button onClick={() => setPilih(new Set())} className="text-xs text-ink-soft hover:text-ink">Batal pilih</button>
-              <button onClick={() => setKeluarkan(true)} className={`${BTN_GHOST} ml-auto text-red-700`}>
-                <Ban size={14} /> Keluarkan dari WO ({dipilih.length})
-              </button>
+              <span className="ml-auto flex flex-wrap items-center gap-2">
+                {jtm && (
+                  <button onClick={() => void w.aturDrone(jadiDrone.map((x) => x.id), true, oleh).then((ok) => ok && setPilih(new Set()))}
+                    disabled={jadiDrone.length === 0} className={BTN_GHOST}
+                    title={jadiDrone.length === 0 ? "Pilih segmen Tier 1 yang sudah dititik & disetujui" : undefined}>
+                    <Plane size={14} /> Jadikan Tier 1 + drone ({jadiDrone.length})
+                  </button>
+                )}
+                {jtm && jadiBiasa.length > 0 && (
+                  <button onClick={() => void w.aturDrone(jadiBiasa.map((x) => x.id), false, oleh).then((ok) => ok && setPilih(new Set()))}
+                    className={BTN_GHOST}>
+                    <Undo2 size={14} /> Kembalikan ke Tier 1 ({jadiBiasa.length})
+                  </button>
+                )}
+                <button onClick={() => setKeluarkan(true)} disabled={dipilihKeluar.length === 0} className={`${BTN_GHOST} text-red-700`}>
+                  <Ban size={14} /> Keluarkan dari WO ({dipilihKeluar.length})
+                </button>
+              </span>
             </div>
           )}
         </div>
@@ -409,7 +466,7 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
                     return (
                       <tr key={x.id} className={pilih.has(x.id) ? "bg-navy-50/70" : "hover:bg-navy-50/40"}>
                         <td className={TD}>
-                          {belumDiinspeksi(x) && (
+                          {bisaPilih(x) && (
                             <input
                               type="checkbox"
                               checked={pilih.has(x.id)}
@@ -427,6 +484,9 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
                         {jtm && (
                           <td className={TD}>
                             <TierLencana tier={x.tier} titik={x.titik} drone={x.drone} />
+                            {x.tier === "1" && !x.drone && x.sudah_dititik === false && (
+                              <p className="text-[10px] text-ink-muted mt-0.5" title="Drone hanya untuk segmen yang pernah Tier 1 & disetujui">belum dititik</p>
+                            )}
                           </td>
                         )}
                         <td className={`${TD} text-ink-soft`}>
@@ -501,12 +561,12 @@ Regu boleh menitik, menyisip dan menggeser tiang di semua segmennya. Inspeksi ya
       )}
       {keluarkan && (
         <BatalkanModal
-          judul={`Keluarkan ${dipilih.length} ${satuan} dari WO?`}
+          judul={`Keluarkan ${dipilihKeluar.length} ${satuan} dari WO?`}
           keterangan={`${Satuan} keluar dari WO dan dari HP tim, tetap tercatat berstatus Dibatalkan beserta alasannya. Yang ternyata sudah diinspeksi dilewati.`}
           labelTombol="Keluarkan"
           onTutup={() => setKeluarkan(false)}
           onBatalkan={async (alasan) => {
-            const ok = await w.keluarkanBanyak(dipilih.map((x) => x.id), alasan, oleh);
+            const ok = await w.keluarkanBanyak(dipilihKeluar.map((x) => x.id), alasan, oleh);
             if (ok) setPilih(new Set());
             return ok;
           }}

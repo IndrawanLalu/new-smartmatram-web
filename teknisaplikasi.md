@@ -757,3 +757,49 @@ diubah dan butir 15–17 ditambahkan 25 September 2026, butir 18–19 ditambahka
 5 Oktober 2026.
 Tambahkan butir baru di bawah, dengan bentuk yang sama: aturan, kenapa, cara
 menerapkan, contoh nyata.*
+
+---
+
+## 23. Kueri database: rekap di DB, daftar ringkas, dan batas 8 detik
+
+**Aturan.** Pasangan butir 13, untuk SQL dan cara web/HP memanggilnya. Akun yang login
+dibatasi Supabase **8 detik per kueri** (anon 3 detik). Kueri yang biasanya cepat pun
+ikut gagal begitu database jenuh oleh kueri berat lain — jadi satu kueri boros
+merusak SEMUA layar, termasuk HP regu di lapangan.
+
+1. **Tiga lapis.** *Rekap* = angka yang dihitung di database (view/RPC), web menerima
+   puluhan baris. *Daftar* = kolom tabel saja, disaring & dipaginasi di server.
+   *Rincian* = baru dimuat saat baris diklik. Jangan menarik ribuan baris ke peramban
+   untuk dihitung di sana (Rekap JTR dulu menarik 13 ribu tiang tiap dibuka).
+2. **Paginasi RPC lewat `?offset=&limit=`** (supabase-js `.range()` sudah begitu).
+   Header `Range` pada **POST RPC diabaikan** PostgREST — perulangan "sampai halaman
+   < 1.000" tidak pernah berhenti (9 Nov 2026, ±190 panggilan sebelum dihentikan).
+3. **`.in(...)` berpotongan: hitung barisnya, bukan id-nya.** 150 tiang × ±27 baris
+   keadaan = 4.000 baris → terpotong di 1.000 tanpa galat. Ukuran potongan =
+   1.000 ÷ baris maksimum per id (keadaan tiang JTM: 20 tiang).
+4. **Jangan ada hitungan berat per baris.** `LATERAL` / subkueri berkorelasi ke VIEW
+   yang menghitung ulang seluruh data (mis. `gardu_jtr_penghantar`, `segmen_panjang`)
+   dijalankan sekali per baris. Hitung sekali (GROUP BY lalu JOIN) atau baca tabel
+   simpanan. Ukur sebelum merilis: waktu satu halaman REST ≤ ±2 detik.
+5. **CTE yang dipakai dua kali dimaterialkan** — saringan `ulp=eq.X` dari web tidak
+   masuk, seluruh data dihitung lalu baru disaring. View yang disaring web: tanpa CTE
+   bersama, atau saringannya dibawa sebagai parameter RPC. Join `upper(x) = upper(y)`
+   hanya cepat bila ada indeks ekspresi yang sama.
+6. **Tabel simpanan (cache) hanya untuk TAMPILAN.** Pemeriksaan yang bisa MENOLAK
+   kiriman regu menghitung langsung dari tabel — simpanan yang telat semenit membuat
+   NM059 "belum punya satu tiang pun" padahal 81 tiang sedang dikirim (9 Nov 2026).
+7. **Mengubah fungsi/view yang hidup = tambalan pada definisi hidup**
+   (`pg_get_functiondef` / `pg_get_viewdef` + penanda yang harus ketemu tepat sekali,
+   berhenti bila tidak). Menulis ulang dari berkas lama bisa membatalkan perbaikan
+   sesudahnya tanpa ketahuan — mis. menimpa `gardu_jtr_panjang` dengan hitungan asli
+   membuatnya lambat lagi.
+8. **Jejak/log menyimpan yang BERUBAH saja.** Log kiriman yang menyimpan semua baris
+   tiap hari tumbuh ratusan MB per tahun (PRO NTB: hanya baris berubah, ≤ 500).
+9. **Satu aturan, satu tempat.** Syarat yang dipakai layar DAN server (mis. "segmen
+   sudah dititik" untuk drone) ditulis sebagai satu fungsi SQL yang dipanggil keduanya,
+   supaya tombol di layar dan penolakan server tidak pernah berbeda pendapat.
+
+**Contoh nyata (9 Nov 2026).** `gardu_jtr_panjang` 1,3–9 dtk → tabel simpanan + cron
+(0,65 dtk); `rekap_kinerja` semua ULP 8,3 → 3 dtk (inti dihitung sekali per ULP-bulan);
+daftar Inspeksi JTR berjalan 2,6 → 1,3 dtk (jumlah temuan per baris yang diminta, bukan
+GROUP BY seluruh inspeksi); kondisi luring JTM 150 → 20 tiang per permintaan.

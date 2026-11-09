@@ -97,6 +97,10 @@ const akhirBulan = (t: number, b: number) => new Date(t, b, 0).getDate();
 const potong = <T,>(a: T[], n = 100) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, (i + 1) * n));
 
 export type SaringStatus = "SEMUA" | StatusJtm;
+/** "1" = Tier 1 tanpa drone · "drone" = Tier 1 + drone · "2" = Tier 2. */
+export type SaringTier = "SEMUA" | "1" | "drone" | "2";
+const tierDari = (d: { tier: string; drone?: boolean }): Exclude<SaringTier, "SEMUA"> =>
+  d.tier === "2" ? "2" : d.drone ? "drone" : "1";
 
 export function useDaftarJtm(user: CurrentUser) {
   const bolehSemua = canSeeAllUnits(user.role);
@@ -115,6 +119,8 @@ export function useDaftarJtm(user: CurrentUser) {
   const [tahun, gantiTahun] = useState(tahunIni);
   const [cari, setCari] = useState("");
   const [status, setStatus] = useState<SaringStatus>("SEMUA");
+  /** Saringan tier: Tier 1 (tanpa drone), Tier 1 + drone, Tier 2 (9 Nov 2026). */
+  const [tier, setTier] = useState<SaringTier>("SEMUA");
   const [nonce, setNonce] = useState(0);
 
   const daftarUlp = useMemo(() => (bolehSemua ? ["SEMUA", ...UNIT] : [user.unit ?? ""]), [bolehSemua, user.unit]);
@@ -221,13 +227,25 @@ export function useDaftarJtm(user: CurrentUser) {
       .sort((x, y) => (y.tgl_selesai ?? y.tgl_mulai ?? "").localeCompare(x.tgl_selesai ?? x.tgl_mulai ?? ""));
   }, [data, panjang, woPeta, idDrone]);
 
-  const dasarChip = useMemo(() => {
+  const dicari = useMemo(() => {
     const k = cari.trim().toUpperCase();
     if (!k) return semua;
     return semua.filter((d) =>
       [d.segmen_nama ?? "", d.penyulang, d.petugas_nama ?? ""].some((v) => v.toUpperCase().includes(k)),
     );
   }, [semua, cari]);
+
+  const hitungTier = useMemo(() => {
+    const h: Record<Exclude<SaringTier, "SEMUA">, number> = { "1": 0, drone: 0, "2": 0 };
+    for (const d of dicari) h[tierDari(d)] += 1;
+    return h;
+  }, [dicari]);
+
+  // Chip status menghitung baris yang lolos saringan tier.
+  const dasarChip = useMemo(
+    () => (tier === "SEMUA" ? dicari : dicari.filter((d) => tierDari(d) === tier)),
+    [dicari, tier],
+  );
 
   const baris = useMemo(
     () => dasarChip.filter((d) => status === "SEMUA" || statusTampil(d.status) === status),
@@ -337,6 +355,7 @@ export function useDaftarJtm(user: CurrentUser) {
   return {
     semua, baris, hitung, loading, galat, memproses,
     ulp, setUlp, daftarUlp, bulan, setBulan, tahun, setTahun, daftarTahun, cari, setCari, status, setStatus,
+    tier, setTier, hitungTier,
     muat, putuskan, batalkan, buang, gabung, pratinjauBatalSegmen, batalkanSegmen, ubahTitikSegmen, tutupSegmen,
   };
 }

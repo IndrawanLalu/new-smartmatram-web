@@ -41,6 +41,15 @@ export interface ItemWoInspeksi {
   titik: boolean;
   /** WO "Tier 1 + drone": tiap tiang wajib ≥1 foto drone (jtm-tier1-drone.sql). */
   drone: boolean;
+  /** Segmen pernah Tier 1 & disetujui — syarat dijadikan drone (jtm-drone-segmen.sql).
+   *  undefined = SQL belum dijalankan. */
+  sudah_dititik?: boolean;
+}
+
+/** Rencana drone satu ULP-bulan: KMS item WO Tier 1 (drone vs biasa). */
+export interface RencanaDrone {
+  droneKm: number;
+  biasaKm: number;
 }
 
 /** Satu WO inspeksi beserta ringkasannya (`wo_inspeksi_capaian`, wo-daftar-garansi.sql). */
@@ -70,7 +79,7 @@ const SUMBER = {
     kolom:
       // `as string`: daftar kolom sepanjang ini melewati batas pengurai tipe
       // supabase-js ("ParserError") — kuerinya sendiri sah.
-      "id,wo_id,wo_nama,tgl_wo,ulp,penyulang,segmen_id,objek_nama,panjang_km,panjang_dari,regu,status,inspeksi_status,inspeksi_petugas,tier,titik,drone" as string,
+      "id,wo_id,wo_nama,tgl_wo,ulp,penyulang,segmen_id,objek_nama,panjang_km,panjang_dari,regu,status,inspeksi_status,inspeksi_petugas,tier,titik,drone,sudah_dititik" as string,
     rpc: "terbitkan_wo_inspeksi_jtm",
     sql: "scripts/wo-inspeksi-jtm.sql",
   },
@@ -83,12 +92,13 @@ const SUMBER = {
   },
 } as const;
 
-type BarisItem = Omit<ItemWoInspeksi, "objek" | "tier" | "titik" | "drone"> & {
+type BarisItem = Omit<ItemWoInspeksi, "objek" | "tier" | "titik" | "drone" | "sudah_dititik"> & {
   segmen_id?: string | null;
   gardu_kode?: string | null;
   tier?: string | null;
   titik?: boolean | null;
   drone?: boolean | null;
+  sudah_dititik?: boolean | null;
 };
 
 const keItem = (jenis: JenisWoInspeksi) => (r: BarisItem): ItemWoInspeksi => ({
@@ -97,6 +107,7 @@ const keItem = (jenis: JenisWoInspeksi) => (r: BarisItem): ItemWoInspeksi => ({
   tier: r.tier === "2" ? "2" : "1",
   titik: !!r.titik,
   drone: !!r.drone,
+  sudah_dititik: r.sudah_dititik === null || r.sudah_dititik === undefined ? undefined : !!r.sudah_dititik,
 });
 
 /** Objek yang bisa dipilih, dalam bentuk `SegmenPilihan` yang dipakai Susun WO. */
@@ -142,7 +153,7 @@ export function useWoInspeksi(jenis: JenisWoInspeksi, ulp: string | null) {
   const [item, setItem] = useState<ItemWoInspeksi[]>([]);
   const [tim, setTim] = useState<{ regu: string; ulp: string }[]>([]);
   /** Semua item yang tidak dibatalkan — bahan "sudah terbit bulan ini" di info SLA. */
-  const [terbitan, setTerbitan] = useState<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>([]);
+  const [terbitan, setTerbitan] = useState<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null; drone?: boolean | null }[]>([]);
   const [wo, setWo] = useState<WoInspeksiRingkas[]>([]);
   const [loading, setLoading] = useState(true);
   const [nonce, setNonce] = useState(0);
@@ -160,10 +171,11 @@ export function useWoInspeksi(jenis: JenisWoInspeksi, ulp: string | null) {
       // `scripts/regu-inspeksi-dari-roles.sql`).
       (ulp ? supabaseBrowser.from("regu_inspeksi").select("regu,ulp").eq("ulp", ulp) : supabaseBrowser.from("regu_inspeksi").select("regu,ulp"))
         .eq(jenis === "JTR" ? "jtr" : "jtm", true).order("ulp").order("regu"),
-      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }>(() => {
-        const q = supabaseBrowser.from(src.view).select((jenis === "JTM" ? "id,ulp,tgl_wo,panjang_km,tier" : "id,ulp,tgl_wo,panjang_km") as string).neq("status", "Dibatalkan");
+      // Hanya kolom tabel (tanpa kolom turunan view) — view memangkas yang tak diminta.
+      fetchAllRows<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null; drone?: boolean | null }>(() => {
+        const q = supabaseBrowser.from(src.view).select((jenis === "JTM" ? "id,ulp,tgl_wo,panjang_km,tier,drone" : "id,ulp,tgl_wo,panjang_km") as string).neq("status", "Dibatalkan");
         return (ulp ? q.eq("ulp", ulp) : q).order("id")
-          .returns<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null }[]>();
+          .returns<{ ulp: string; tgl_wo: string; panjang_km: number | null; tier?: string | null; drone?: boolean | null }[]>();
       }),
       // Daftar WO. Gagal (SQL belum dijalankan) = daftar kosong, Susun WO tetap jalan.
       (ulp ? supabaseBrowser.from("wo_inspeksi_capaian").select("*").eq("ulp", ulp) : supabaseBrowser.from("wo_inspeksi_capaian").select("*"))
@@ -358,11 +370,33 @@ export function useWoInspeksi(jenis: JenisWoInspeksi, ulp: string | null) {
     return true;
   };
 
+  /** Jadikan / kembalikan Tier 1 + drone per segmen (jtm-drone-segmen.sql). */
+  const aturDrone = async (itemId: string[], drone: boolean, oleh: string) => {
+    const { data, error } = await supabaseBrowser.rpc("atur_drone_wo_item", { p_item: itemId, p_drone: drone, p_oleh: oleh });
+    if (error) {
+      toast.error(/atur_drone_wo_item/.test(error.message) ? "Jalankan scripts/jtm-drone-segmen.sql di Supabase dulu." : error.message);
+      return false;
+    }
+    const h = data as { diubah: number; ditolak: { nama: string; alasan: string }[] };
+    if (h.diubah > 0) toast.success(`${h.diubah} segmen ${drone ? "jadi Tier 1 + drone" : "kembali ke Tier 1 biasa"} — HP regu ikut setelah memuat ulang.`);
+    if (h.ditolak.length > 0) toast.error(`${h.ditolak.length} dilewati — ${h.ditolak.map((d) => `${d.nama}: ${d.alasan}`).join(" · ")}`);
+    muat();
+    return true;
+  };
+
+  /** KMS item WO Tier 1 satu ULP-bulan, drone vs biasa — bahan "% dari SLA". */
+  const rencanaDrone = (u: string, bulan: string): RencanaDrone =>
+    terbitan
+      .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === bulan && (x.tier ?? "1") === "1")
+      .reduce((a, x) => (x.drone
+        ? { ...a, droneKm: a.droneKm + Number(x.panjang_km ?? 0) }
+        : { ...a, biasaKm: a.biasaKm + Number(x.panjang_km ?? 0) }), { droneKm: 0, biasaKm: 0 });
+
   /** KMS WO inspeksi yang sudah terbit untuk ULP itu di bulan tanggal itu. */
   const terbitBulan = (u: string, tgl: string, tier?: TierWo) =>
     terbitan
       .filter((x) => x.ulp === u && x.tgl_wo.slice(0, 7) === tgl.slice(0, 7) && (!tier || (x.tier ?? "1") === tier))
       .reduce((n, x) => n + Number(x.panjang_km ?? 0), 0);
 
-  return { objek, item, wo, regu, objekTerikat, loading, terbitkan, tambah, tugaskan, batalkan, keluarkanBanyak, batalkanWo, jadikanTitik, muat, terbitBulan, nonce };
+  return { objek, item, wo, regu, objekTerikat, loading, terbitkan, tambah, tugaskan, batalkan, keluarkanBanyak, batalkanWo, jadikanTitik, aturDrone, rencanaDrone, muat, terbitBulan, nonce };
 }

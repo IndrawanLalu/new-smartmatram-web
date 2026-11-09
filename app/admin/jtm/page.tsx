@@ -98,6 +98,17 @@ export default function JtmPage() {
           <div className="flex flex-wrap items-center gap-2 -mt-1">
             <ChipSaring
               item={[
+                { kunci: "SEMUA" as const, label: "Semua tier" },
+                { kunci: "1" as const, label: "Tier 1", angka: o.loading ? null : o.hitungTier["1"] },
+                { kunci: "drone" as const, label: "Tier 1 + drone", angka: o.loading ? null : o.hitungTier.drone },
+                { kunci: "2" as const, label: "Tier 2", angka: o.loading ? null : o.hitungTier["2"] },
+              ]}
+              aktif={o.tier}
+              onPilih={o.setTier}
+            />
+            <span className="h-5 w-px bg-line" aria-hidden />
+            <ChipSaring
+              item={[
                 { kunci: "SEMUA" as const, label: "Semua" },
                 ...STATUS_JTM.map((s) => ({ kunci: s, label: s, angka: o.loading ? null : o.hitung[s], nada: nadaStatus(s) })),
               ]}
