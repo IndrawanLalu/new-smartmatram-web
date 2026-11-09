@@ -157,7 +157,7 @@ BEGIN
   IF v_role <> 'UP3' AND upper(COALESCE(v_unit, '')) <> upper(COALESCE(s.ulp, '')) THEN
     RAISE EXCEPTION 'Akun ini untuk ULP %, bukan %.', COALESCE(v_unit, '-'), s.ulp;
   END IF;
-  IF v_role NOT IN ('UP3', 'admin') AND s.petugas_uid IS DISTINCT FROM auth.uid() THEN
+  IF v_role NOT IN ('UP3', 'admin') AND s.petugas_uid IS DISTINCT FROM auth.uid()::text THEN  -- petugas_uid TEXT (pemerataan-tindakan-uid.sql)
     RAISE EXCEPTION 'Pemerataan gardu % dikerjakan akun lain.', s.no_gardu;
   END IF;
   PERFORM public._simpan_tindakan('penyeimbangan', p_id::text, p_tindakan);
