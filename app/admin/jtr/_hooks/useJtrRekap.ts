@@ -42,29 +42,18 @@ export interface Cakupan {
   persen_12_bulan: number | null;
 }
 
-interface TiangRingkas {
-  kode: string;
+/**
+ * Satu baris `jtr_rekap_kondisi`: jumlah tiang per (ULP, label). Aturan temuan
+ * ada di view itu (scripts/jtr-rekap-ringkas.sql) — di sini cuma dijumlahkan
+ * lintas ULP, tidak ada lagi tiang yang ditarik ke browser.
+ */
+interface BarisKondisi {
   ulp: string;
-  gardu_kode: string;
-  jurusan: string | null;
-  kondisi: string | null;
-  arde_kondisi: string | null;
-  rawan_row: string[] | null;
-  andongan: string | null;
-  stay_kondisi: string | null;
-  underbuild_tm: boolean;
-  catatan_perbaikan: string | null;
-  // Kondisi kabel dan aksesoris melekat pada KABEL, bukan tiang: tiang
-  // ber-underbuild memikul dua kabel dengan dua set klem, dan kerusakan di
-  // kabel bawah tidak boleh tertulis seolah milik kabel atas.
-  tiang_konduktor:
-    | {
-        kondisi: string | null;
-        aks_suspension: string | null;
-        aks_large_angle: string | null;
-        aks_dead_end: string | null;
-      }[]
-    | null;
+  jenis: "temuan" | "penghalang";
+  urutan: number | null;
+  label: string;
+  urgensi: "Tinggi" | "Sedang" | null;
+  jumlah: number;
 }
 
 export interface Temuan {
@@ -79,9 +68,8 @@ export interface Temuan {
  */
 export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
   const [perUlp, setPerUlp] = useState<RekapUlp[]>([]);
-  const [perGardu, setPerGardu] = useState<RekapGardu[]>([]);
   const [cakupan, setCakupan] = useState<Cakupan[]>([]);
-  const [tiang, setTiang] = useState<TiangRingkas[]>([]);
+  const [kondisi, setKondisi] = useState<BarisKondisi[]>([]);
   const [belumBertitik, setBelumBertitik] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -92,9 +80,8 @@ export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
     setLoading(true);
     setError(null);
     try {
-      // Semua dipaginasi (teknisaplikasi.md butir 13): `gardu_jtr_panjang`
-      // berisi satu baris per gardu × jurusan dan sudah melewati 1.000 baris —
-      // tanpa paginasi, gardu di urutan belakang hilang dari hitungan tanpa tanda.
+      // Semua dipaginasi (teknisaplikasi.md butir 13) walau barisnya sedikit:
+      // jumlah baris rekap ikut tumbuh dengan jumlah ULP.
       const semuaDari = <T,>(nama: string, urut: string[]) =>
         fetchAllRows<T>(() => {
           let b = supabaseBrowser.from(nama).select("*");
@@ -106,33 +93,17 @@ export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
       let qTitik = supabaseBrowser.from("gardu_tanpa_titik").select("kode", { count: "exact", head: true });
       if (unit) qTitik = qTitik.eq("ulp", unit);
 
-      const [ulpRes, garduRes, cakupanRes, titikRes] = await Promise.all([
+      const [ulpRes, cakupanRes, kondisiRes, titikRes] = await Promise.all([
         semuaDari<RekapUlp>("ulp_jtr_panjang", ["ulp"]),
-        semuaDari<RekapGardu>("gardu_jtr_panjang", ["gardu_kode", "ulp", "jurusan"]),
         semuaDari<Cakupan>("jtr_cakupan", ["ulp"]),
+        semuaDari<BarisKondisi>("jtr_rekap_kondisi", ["ulp", "jenis", "label"]),
         qTitik,
       ]);
 
       setPerUlp(ulpRes);
-      setPerGardu(garduRes);
       setCakupan(cakupanRes);
+      setKondisi(kondisiRes);
       setBelumBertitik(titikRes.count ?? 0);
-
-      const barisTiang = await fetchAllRows<TiangRingkas>(() => {
-        let b = supabaseBrowser
-          // Milik + batang pinjaman, kabel milik gardu itu saja.
-          .from("jtr_tiang_lengkap")
-          // Satu literal, bukan sambungan `+`: supabase-js membaca string ini
-          // di tingkat tipe dan menyerah begitu disambung.
-          .select(
-            "kode,ulp,gardu_kode,jurusan,kondisi,arde_kondisi,rawan_row,andongan,stay_kondisi,underbuild_tm,catatan_perbaikan,tiang_konduktor",
-          )
-          .eq("status_hidup", "aktif");
-        if (unit) b = b.eq("ulp", unit);
-        // Urut kolom unik supaya paginasi tidak lompat atau menggandakan baris.
-        return b.order("id").order("gardu_kode");
-      });
-      setTiang(barisTiang);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat data JTR");
     } finally {
@@ -146,65 +117,40 @@ export function useJtrRekap(user: CurrentUser, ulpPilihan = "SEMUA") {
 
   /**
    * Temuan DITURUNKAN dari kondisi yang tercatat, bukan dari kolom kesimpulan
-   * yang diisi manusia. Menambah jenis temuan cukup menambah satu baris di sini,
-   * dan seluruh data yang sudah masuk ikut terhitung.
+   * yang diisi manusia. Menambah jenis temuan cukup menambah satu baris di
+   * `jtr_rekap_kondisi`, dan seluruh data yang sudah masuk ikut terhitung.
    */
   const temuan = useMemo<Temuan[]>(() => {
-    const hitung = (f: (t: TiangRingkas) => boolean) => tiang.filter(f).length;
-    // Satu tiang terhitung sekali walau dua kabelnya sama-sama bermasalah:
-    // yang dijawab tabel ini adalah "berapa TIANG yang punya temuan ini".
-    const adaKabel = (t: TiangRingkas, f: (k: NonNullable<TiangRingkas["tiang_konduktor"]>[number]) => boolean) =>
-      (t.tiang_konduktor ?? []).some(f);
-    const rusakAks = (v: string | null) => v === "Rusak";
-
-    const daftar: Temuan[] = [
-      // "Arde tidak ada" sengaja TIDAK dihitung sebagai temuan — sebagian besar
-      // tiang JTR memang tidak berarde, dan itu keadaan biasa. Yang temuan adalah
-      // arde yang PUTUS: pernah ada, lalu rusak.
-      { label: "Arde putus", jumlah: hitung((t) => t.arde_kondisi === "Putus"), urgensi: "Tinggi" },
-      { label: "Tiang tidak baik", jumlah: hitung((t) => !!t.kondisi && t.kondisi !== "Baik"), urgensi: "Tinggi" },
-      { label: "Andongan tidak baik", jumlah: hitung((t) => !!t.andongan && t.andongan !== "Baik"), urgensi: "Sedang" },
-      {
-        label: "Konduktor tidak baik",
-        jumlah: hitung((t) => adaKabel(t, (k) => !!k.kondisi && k.kondisi !== "Baik")),
-        urgensi: "Tinggi",
-      },
-      {
-        label: "Aksesoris rusak",
-        jumlah: hitung((t) =>
-          adaKabel(
-            t,
-            (k) =>
-              rusakAks(k.aks_suspension) || rusakAks(k.aks_large_angle) || rusakAks(k.aks_dead_end),
-          ),
-        ),
-        urgensi: "Sedang",
-      },
-      { label: "Stay rusak", jumlah: hitung((t) => t.stay_kondisi === "Rusak"), urgensi: "Sedang" },
-      { label: "Rawan ROW", jumlah: hitung((t) => (t.rawan_row?.length ?? 0) > 0), urgensi: "Sedang" },
-      { label: "Ada catatan perbaikan", jumlah: hitung((t) => !!t.catatan_perbaikan?.trim()), urgensi: "Sedang" },
-    ];
-    return daftar.filter((d) => d.jumlah > 0);
-  }, [tiang]);
+    const m = new Map<string, Temuan & { urutan: number }>();
+    for (const k of kondisi) {
+      if (k.jenis !== "temuan") continue;
+      const t = m.get(k.label) ?? { label: k.label, jumlah: 0, urgensi: k.urgensi ?? "Sedang", urutan: k.urutan ?? 0 };
+      t.jumlah += Number(k.jumlah);
+      m.set(k.label, t);
+    }
+    return [...m.values()]
+      .filter((t) => t.jumlah > 0)
+      .sort((a, b) => a.urutan - b.urutan)
+      .map(({ label, jumlah, urgensi }) => ({ label, jumlah, urgensi }));
+  }, [kondisi]);
 
   /** Penghalang ROW dihitung terpisah — pohon dan bangunan butuh penanganan berbeda. */
   const penghalang = useMemo(() => {
     const m = new Map<string, number>();
-    for (const t of tiang) for (const r of t.rawan_row ?? []) m.set(r, (m.get(r) ?? 0) + 1);
+    for (const k of kondisi) if (k.jenis === "penghalang") m.set(k.label, (m.get(k.label) ?? 0) + Number(k.jumlah));
     return [...m.entries()].sort((a, b) => b[1] - a[1]);
-  }, [tiang]);
+  }, [kondisi]);
 
   const total = useMemo(() => {
     const jumlahTiang = perUlp.reduce((s, u) => s + Number(u.jumlah_tiang ?? 0), 0);
     const rute = perUlp.reduce((s, u) => s + Number(u.panjang_rute_km ?? 0), 0);
     const penghantar = perUlp.reduce((s, u) => s + Number(u.panjang_penghantar_km ?? 0), 0);
     const garduMaster = cakupan.reduce((s, c) => s + Number(c.gardu_master ?? 0), 0);
-    const garduPunyaJaringan = new Set(perGardu.map((g) => `${g.gardu_kode}|${g.ulp}`)).size;
-    return { jumlahTiang, rute, penghantar, garduMaster, garduPunyaJaringan };
-  }, [perUlp, cakupan, perGardu]);
+    return { jumlahTiang, rute, penghantar, garduMaster };
+  }, [perUlp, cakupan]);
 
   return {
-    perUlp, perGardu, cakupan, temuan, penghalang, total,
-    belumBertitik, tiang, loading, error, muat,
+    perUlp, cakupan, temuan, penghalang, total,
+    belumBertitik, loading, error, muat,
   };
 }

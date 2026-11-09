@@ -125,6 +125,9 @@ const STATUS_DB: Record<string, StatusJtr> = {
 export const statusTampil = (s: string): StatusJtr => STATUS_DB[s] ?? "Sedang diinspeksi";
 
 const AKTIF = ["Dijadwalkan", "Dalam Proses", "Selesai", "Ditolak"];
+/** Kolom tabel daftar saja — rincian tiang/kabel dimuat saat baris dibuka. */
+const KOLOM_DAFTAR =
+  "id,gardu_kode,ulp,penyulang,gardu_nama,gardu_alamat,tgl_mulai,tgl_selesai,status,inspektor_nama,petugas_2,catatan,verified_note,tiang_aktif,sudah_diperiksa,tiang_baru,jumlah_temuan,panjang_km,wo_nama,tgl_wo";
 const UNIT = ["AMPENAN", "CAKRANEGARA", "GERUNG", "TANJUNG"];
 
 export const BULAN = [
@@ -140,10 +143,19 @@ export type SaringStatus = "SEMUA" | StatusJtr;
 /** Tanggal WITA dari cap waktu — batas hari mengikuti lapangan, bukan UTC. */
 const tanggalWita = (ts: string) => new Date(ts).toLocaleDateString("sv-SE", { timeZone: "Asia/Makassar" });
 
-const potong = <T,>(a: T[], n = 150) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, (i + 1) * n));
-
-interface TiangRingkas { id: string; gardu_kode: string; ulp: string; created_at: string; dikonfirmasi_at: string | null }
-interface InspeksiRingkas { id: string; gardu_kode: string; ulp: string; status: string; tgl_mulai: string; tgl_selesai: string | null }
+/** Baris `jtr_inspeksi_berjalan` — hanya kolom yang berbeda dari inspeksi asli. */
+interface BarisBerjalan {
+  id: string;
+  gardu_kode: string;
+  ulp: string;
+  penyulang: string | null;
+  gardu_nama: string | null;
+  gardu_alamat: string | null;
+  tgl_mulai: string;
+  tiang_aktif: number;
+  tiang_baru: number;
+  panjang_km: number;
+}
 
 /**
  * Gardu yang sedang ditelusuri tapi belum ditutup petugas.
@@ -152,102 +164,30 @@ interface InspeksiRingkas { id: string; gardu_kode: string; ulp: string; status:
  * fungsi membuat, mendaftar tiang, lalu menutupnya. Tanpa turunan ini, gardu
  * yang sudah dititik berhari-hari tidak terlihat di mana pun di daftar.
  *
- * Aturannya: gardu punya tiang aktif yang dicatat SESUDAH hari inspeksi
- * terakhirnya (atau belum pernah diinspeksi), dan tidak sedang punya inspeksi
- * terbuka (yang terbuka sudah tampil sebagai baris aslinya).
- *
- * ⚠ Menarik semua tiang ber-gardu (kolom ringan, dipaginasi). Kalau jumlah
- * tiang sudah puluhan ribu, pindahkan agregasinya ke view di database.
+ * Aturannya (gardu punya tiang aktif yang dicatat SESUDAH hari inspeksi
+ * terakhirnya, dan tidak sedang punya inspeksi terbuka) dihitung di view
+ * `jtr_inspeksi_berjalan` (scripts/jtr-rekap-ringkas.sql) — dulu di sini,
+ * dengan menarik semua tiang JTR ke browser.
  */
 async function ambilBerjalan(ulp: string): Promise<InspeksiMenunggu[]> {
-  const [tiang, inspeksi] = await Promise.all([
-    fetchAllRows<TiangRingkas>(() => {
-      let x = supabaseBrowser
-        .from("jtr_tiang_lengkap")
-        .select("id,gardu_kode,ulp,created_at,dikonfirmasi_at")
-        .eq("status_hidup", "aktif")
-        .order("id")
-        .order("gardu_kode");
-      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
-      return x;
-    }),
-    fetchAllRows<InspeksiRingkas>(() => {
-      let x = supabaseBrowser.from("jtr_inspeksi").select("id,gardu_kode,ulp,status,tgl_mulai,tgl_selesai").order("id");
-      if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
-      return x;
-    }),
-  ]);
-
-  const kunci = (g: string, u: string) => `${g.toUpperCase()}|${u}`;
-  const terbuka = new Set<string>();
-  const terakhir = new Map<string, string>();
-  for (const i of inspeksi) {
-    const k = kunci(i.gardu_kode, i.ulp);
-    if (AKTIF.includes(i.status)) terbuka.add(k);
-    const tgl = i.tgl_selesai ?? i.tgl_mulai;
-    if (tgl > (terakhir.get(k) ?? "")) terakhir.set(k, tgl);
-  }
-
-  const perGardu = new Map<string, { kode: string; ulp: string; aktif: number; baru: number; mulai: string; akhir: string }>();
-  for (const t of tiang) {
-    const k = kunci(t.gardu_kode, t.ulp);
-    if (terbuka.has(k)) continue;
-    const g = perGardu.get(k) ?? { kode: t.gardu_kode, ulp: t.ulp, aktif: 0, baru: 0, mulai: "", akhir: "" };
-    g.aktif += 1;
-    const batas = terakhir.get(k) ?? "";
-    const dibuat = tanggalWita(t.created_at);
-    const kegiatan = tanggalWita(t.dikonfirmasi_at && t.dikonfirmasi_at > t.created_at ? t.dikonfirmasi_at : t.created_at);
-    if (dibuat > batas) g.baru += 1;
-    if (kegiatan > batas) {
-      if (!g.mulai || kegiatan < g.mulai) g.mulai = kegiatan;
-      if (kegiatan > g.akhir) g.akhir = kegiatan;
-    }
-    perGardu.set(k, g);
-  }
-  const berjalan = [...perGardu.values()].filter((g) => g.mulai);
-  if (berjalan.length === 0) return [];
-
-  // Nama gardu & panjang rute — hanya untuk gardu yang berjalan (sedikit).
-  const kode = [...new Set(berjalan.map((g) => g.kode))];
-  const [garduRes, panjangRes] = await Promise.all([
-    Promise.all(potong(kode).map((p) => supabaseBrowser.from("gardu").select("kode,ulp,nama,alamat,feeder").in("kode", p))),
-    Promise.all(potong(kode).map((p) => supabaseBrowser.from("gardu_jtr_panjang").select("gardu_kode,ulp,panjang_rute_km").in("gardu_kode", p))),
-  ]);
-  const galat = [...garduRes, ...panjangRes].find((r) => r.error)?.error;
-  if (galat) throw new Error(galat.message);
-
-  const info = new Map(garduRes.flatMap((r) => r.data ?? []).map((g) => [kunci(g.kode, g.ulp), g]));
-  const panjang = new Map<string, number>();
-  for (const p of panjangRes.flatMap((r) => r.data ?? [])) {
-    const k = kunci(p.gardu_kode, p.ulp);
-    panjang.set(k, (panjang.get(k) ?? 0) + Number(p.panjang_rute_km ?? 0));
-  }
-
-  return berjalan.map((g) => {
-    const k = kunci(g.kode, g.ulp);
-    const gi = info.get(k);
-    return {
-      id: `berjalan:${k}`,
-      gardu_kode: g.kode,
-      ulp: g.ulp,
-      penyulang: gi?.feeder ?? null,
-      gardu_nama: gi?.nama ?? null,
-      gardu_alamat: gi?.alamat ?? null,
-      tgl_mulai: g.mulai,
-      tgl_selesai: null,
-      status: "Dalam Proses",
-      inspektor_nama: null,
-      petugas_2: null,
-      catatan: null,
-      verified_note: null,
-      tiang_aktif: g.aktif,
-      sudah_diperiksa: g.aktif,
-      tiang_baru: g.baru,
-      jumlah_temuan: 0,
-      panjang_km: Math.round((panjang.get(k) ?? 0) * 1000) / 1000,
-      sementara: true,
-    };
+  const rows = await fetchAllRows<BarisBerjalan>(() => {
+    let x = supabaseBrowser.from("jtr_inspeksi_berjalan").select("*").order("id");
+    if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
+    return x;
   });
+  return rows.map((g) => ({
+    ...g,
+    tgl_selesai: null,
+    status: "Dalam Proses",
+    inspektor_nama: null,
+    petugas_2: null,
+    catatan: null,
+    verified_note: null,
+    sudah_diperiksa: g.tiang_aktif,
+    jumlah_temuan: 0,
+    panjang_km: Number(g.panjang_km),
+    sementara: true,
+  }));
 }
 
 /**
@@ -285,7 +225,7 @@ export function useDaftarJtr(user: CurrentUser) {
     const awal = bulan === 0 ? `${tahun}-01-01` : `${tahun}-${dua(bulan)}-01`;
     const akhir = bulan === 0 ? `${tahun}-12-31` : `${tahun}-${dua(bulan)}-${dua(akhirBulan(tahun, bulan))}`;
     const aktif = () => {
-      let x = supabaseBrowser.from("jtr_inspeksi").select("*").in("status", AKTIF).order("id");
+      let x = supabaseBrowser.from("jtr_inspeksi").select(KOLOM_DAFTAR).in("status", AKTIF).order("id");
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     };
@@ -294,7 +234,7 @@ export function useDaftarJtr(user: CurrentUser) {
     const tertutup = () => {
       let x = supabaseBrowser
         .from("jtr_inspeksi")
-        .select("*")
+        .select(KOLOM_DAFTAR)
         .or(
           `and(status.eq.Diverifikasi,tgl_selesai.gte.${awal},tgl_selesai.lte.${akhir}T23:59:59),` +
             `and(status.eq.Dibatalkan,tgl_mulai.gte.${awal},tgl_mulai.lte.${akhir}T23:59:59)`,
@@ -303,26 +243,12 @@ export function useDaftarJtr(user: CurrentUser) {
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);
       return x;
     };
-    // WO tidak ada di view `jtr_inspeksi` — dipasang dari sambungannya. Gagal
-    // (SQL WO belum dijalankan) tidak menggagalkan daftar.
-    const sambung = () =>
-      supabaseBrowser.from("inspeksi_jtr").select("id,wo_item_id").not("wo_item_id", "is", null).order("id");
-    const itemWo = () => supabaseBrowser.from("wo_inspeksi_item_status_jtr").select("id,wo_nama,tgl_wo").order("id");
-    const [a, t, b, s, w] = await Promise.all([
+    const [a, t, b] = await Promise.all([
       fetchAllRows<InspeksiMenunggu>(aktif),
       fetchAllRows<InspeksiMenunggu>(tertutup),
       ambilBerjalan(ulp),
-      fetchAllRows<{ id: string; wo_item_id: string }>(sambung).catch(() => []),
-      fetchAllRows<{ id: string; wo_nama: string; tgl_wo: string }>(itemWo).catch(() => []),
     ]);
-    const item = new Map(w.map((x) => [x.id, x]));
-    const wo = new Map(s.map((x) => [x.id, item.get(x.wo_item_id)]));
-    const pasang = (d: InspeksiMenunggu): InspeksiMenunggu => ({
-      ...d,
-      wo_nama: wo.get(d.id)?.wo_nama ?? null,
-      tgl_wo: wo.get(d.id)?.tgl_wo ?? null,
-    });
-    return [...b, ...a.map(pasang), ...t.map(pasang)];
+    return [...b, ...a, ...t];
   }, [ulp, bulan, tahun]);
 
   useEffect(() => {
