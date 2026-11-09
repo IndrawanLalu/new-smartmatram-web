@@ -137,17 +137,18 @@ export default function WoInspeksi({ user, jenis }: { user: CurrentUser; jenis: 
     });
   }, [jtm]);
   useEffect(() => {
-    if (tierSusun !== "2" || dititik) return;
+    if ((tierSusun !== "2" && !droneSusun) || dititik) return;
     // Galat (SQL belum dijalankan) = tanpa kunci di layar; server tetap menjaga.
     void supabaseBrowser.rpc("jtm_segmen_dititik", { p_ulp: null }).then(({ data, error }) => {
       if (!error) setDititik(new Set((data ?? []).map((x: { segmen_id: string }) => x.segmen_id)));
     });
-  }, [tierSusun, dititik]);
+  }, [tierSusun, droneSusun, dititik]);
   const terkunci = useMemo(
-    () => (tierSusun === "2" && !titikSusun && dititik
+    // Tier 2 biasa DAN Tier 1 + drone: keduanya tidak menitik tiang (jtm-drone-dititik-warisan.sql).
+    () => (((tierSusun === "2" && !titikSusun) || droneSusun) && dititik
       ? { segmen: new Set(w.objek.map((s) => s.segmen_id).filter((id) => !dititik.has(id))), label: "belum dititik Tier 1" }
       : undefined),
-    [tierSusun, titikSusun, dititik, w.objek],
+    [tierSusun, titikSusun, droneSusun, dititik, w.objek],
   );
   // Item WO yang di-WO-kan dalam masa garansi pekerjaan sebelumnya.
   const garansi1 = useGaransiItem(jtm ? "jtm" : "jtr", ulpLihat, w.nonce);

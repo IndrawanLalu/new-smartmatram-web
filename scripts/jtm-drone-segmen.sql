@@ -34,8 +34,10 @@ COMMENT ON COLUMN public.jtm_settings.target_drone_persen IS
 -- server tidak pernah berbeda pendapat.
 CREATE OR REPLACE FUNCTION public.jtm_segmen_sudah_dititik(p_segmen UUID)
 RETURNS BOOLEAN LANGUAGE sql STABLE SET search_path = public AS $fn$
-  SELECT EXISTS (SELECT 1 FROM public.inspeksi_jtm d
-                 WHERE d.segmen_id = p_segmen AND d.status = 'Diverifikasi' AND COALESCE(d.tier, '1') = '1');
+  -- ★ inspeksi_jtm_milik = ikut warisan Pecah/Gabung, sama dengan jtm_segmen_dititik
+  --   (Tier 2) — jtm-drone-dititik-warisan.sql.
+  SELECT EXISTS (SELECT 1 FROM public.inspeksi_jtm_milik m
+                 WHERE m.segmen_id = p_segmen AND m.status = 'Diverifikasi' AND COALESCE(m.tier, '1') = '1');
 $fn$;
 GRANT EXECUTE ON FUNCTION public.jtm_segmen_sudah_dititik(UUID) TO authenticated;
 

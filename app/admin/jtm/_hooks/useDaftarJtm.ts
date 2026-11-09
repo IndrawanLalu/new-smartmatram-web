@@ -97,10 +97,11 @@ const akhirBulan = (t: number, b: number) => new Date(t, b, 0).getDate();
 const potong = <T,>(a: T[], n = 100) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, (i + 1) * n));
 
 export type SaringStatus = "SEMUA" | StatusJtm;
-/** "1" = Tier 1 tanpa drone · "drone" = Tier 1 + drone · "2" = Tier 2. */
+/** "1" = SEMUA Tier 1 (biasa + drone — PRO NTB, WO & realisasi tidak memisahkan
+ *  drone; keputusan user 9 Nov) · "drone" = Tier 1 + drone saja · "2" = Tier 2. */
 export type SaringTier = "SEMUA" | "1" | "drone" | "2";
-const tierDari = (d: { tier: string; drone?: boolean }): Exclude<SaringTier, "SEMUA"> =>
-  d.tier === "2" ? "2" : d.drone ? "drone" : "1";
+const cocokTier = (d: { tier: string; drone?: boolean }, t: SaringTier) =>
+  t === "SEMUA" || (t === "drone" ? d.tier !== "2" && !!d.drone : t === "2" ? d.tier === "2" : d.tier !== "2");
 
 export function useDaftarJtm(user: CurrentUser) {
   const bolehSemua = canSeeAllUnits(user.role);
@@ -237,13 +238,13 @@ export function useDaftarJtm(user: CurrentUser) {
 
   const hitungTier = useMemo(() => {
     const h: Record<Exclude<SaringTier, "SEMUA">, number> = { "1": 0, drone: 0, "2": 0 };
-    for (const d of dicari) h[tierDari(d)] += 1;
+    for (const d of dicari) for (const t of ["1", "drone", "2"] as const) if (cocokTier(d, t)) h[t] += 1;
     return h;
   }, [dicari]);
 
   // Chip status menghitung baris yang lolos saringan tier.
   const dasarChip = useMemo(
-    () => (tier === "SEMUA" ? dicari : dicari.filter((d) => tierDari(d) === tier)),
+    () => dicari.filter((d) => cocokTier(d, tier)),
     [dicari, tier],
   );
 
