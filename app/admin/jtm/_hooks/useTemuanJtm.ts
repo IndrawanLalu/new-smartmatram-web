@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { Penugasan } from "@/app/admin/_components/TugaskanTemuanModal";
 
 /**
@@ -17,6 +16,7 @@ import type { Penugasan } from "@/app/admin/_components/TugaskanTemuanModal";
 export type StatusTugas = "Belum ditugaskan" | "Ditugaskan" | "Selesai";
 export const STATUS_TUGAS: StatusTugas[] = ["Belum ditugaskan", "Ditugaskan", "Selesai"];
 export type Jenis = "SEMUA" | "Jaringan" | "ROW";
+export type UrutTemuan = "lokasi" | "terbaru";
 
 export interface TemuanJtm {
   tiang_id: string;
@@ -77,52 +77,59 @@ export function useTemuanJtm(ulp: string, oleh: string) {
   const [status, setStatus] = useState<"SEMUA" | StatusTugas>("Belum ditugaskan");
   const [cari, setCari] = useState("");
   const [kategori, setKategori] = useState<"SEMUA" | KategoriTemuan>("SEMUA");
+  const [item, setItem] = useState("");
+  const [urut, setUrut] = useState<UrutTemuan>("lokasi");
 
   const muat = () => { setLoading(true); setGalat(null); setNonce((n) => n + 1); };
 
   useEffect(() => {
     let hidup = true;
-    Promise.all([
-      fetchAllRows<TemuanJtm>(() => {
-        let q = supabaseBrowser.from("jtm_temuan").select("*");
-        if (ulp !== "SEMUA") q = q.eq("ulp", ulp);
-        return q.order("tiang_id").order("item_kode").order("bagian").order("sirkit_segmen_id");
-      }),
-      // Kategori dari view kecilnya sendiri — view `jtm_temuan` sengaja tidak
-      // diubah. Gagal dibaca (SQL belum dijalankan) = tanpa kategori, bukan galat.
-      fetchAllRows<{ inspeksi_id: string; tiang_id: string; item_kode: string; bagian: string; sirkit_segmen_id: string | null; kategori_temuan: KategoriTemuan }>(() =>
-        supabaseBrowser.from("jtm_kategori_temuan").select("inspeksi_id,tiang_id,item_kode,bagian,sirkit_segmen_id,kategori_temuan")
-          .order("inspeksi_id").order("tiang_id").order("item_kode").order("bagian"),
-      ).catch(() => []),
-    ]).then(
-      ([rows, kat]) => {
+    // Satu panggilan (jtm-temuan-cepat.sql): view dihitung sekali, kategori
+    // regu sudah ikut — dulu 3 halaman jtm_temuan + 3 halaman kategori, tiap
+    // halaman menghitung ulang view dan kadang habis waktu.
+    supabaseBrowser.rpc("jtm_temuan_daftar", { p_ulp: ulp === "SEMUA" ? null : ulp }).then(
+      ({ data: rows, error }) => {
         if (!hidup) return;
-        const peta = new Map(kat.map((k) => [`${k.inspeksi_id}|${kunciTemuan(k)}`, k.kategori_temuan]));
-        setData(rows.map((t) => ({ ...t, kategori: peta.get(`${t.inspeksi_jtm_id}|${kunciTemuan(t)}`) ?? null })));
-        setLoading(false);
-      },
-      (e: Error) => {
-        if (!hidup) return;
-        setData([]);
-        setGalat(e.message);
+        if (error) {
+          setData([]);
+          setGalat(error.message);
+        } else {
+          setData(((rows ?? []) as (TemuanJtm & { kategori_temuan: KategoriTemuan | null })[])
+            .map((t) => ({ ...t, kategori: t.kategori_temuan ?? null })));
+        }
         setLoading(false);
       },
     );
     return () => { hidup = false; };
   }, [ulp, nonce]);
 
-  // Diurutkan per penyulang → segmen → tiang, supaya temuan yang berdekatan
-  // di lapangan juga berdekatan di layar (enak dipilih sekaligus).
+  // "lokasi": penyulang → segmen → tiang, supaya temuan yang berdekatan di
+  // lapangan juga berdekatan di layar (enak dipilih sekaligus).
+  // "terbaru": tanggal ditemukan, yang terbaru di atas.
   const semua = useMemo(
     () =>
       [...data].sort((a, b) =>
-        (a.penyulang ?? "").localeCompare(b.penyulang ?? "") ||
-        (a.segmen_nama ?? "").localeCompare(b.segmen_nama ?? "") ||
-        a.tiang_kode.localeCompare(b.tiang_kode, "id", { numeric: true }) ||
-        a.item_nama.localeCompare(b.item_nama),
+        urut === "terbaru"
+          ? b.ditemukan_pada.localeCompare(a.ditemukan_pada) || a.tiang_kode.localeCompare(b.tiang_kode, "id", { numeric: true })
+          : (a.penyulang ?? "").localeCompare(b.penyulang ?? "") ||
+            (a.segmen_nama ?? "").localeCompare(b.segmen_nama ?? "") ||
+            a.tiang_kode.localeCompare(b.tiang_kode, "id", { numeric: true }) ||
+            a.item_nama.localeCompare(b.item_nama),
       ),
-    [data],
+    [data, urut],
   );
+
+  /** Isi dropdown item — hanya item yang punya temuan (sesudah saringan jenis). */
+  const pilihanItem = useMemo(() => {
+    const m = new Map<string, { kode: string; nama: string; jumlah: number }>();
+    for (const t of data) {
+      if (jenis !== "SEMUA" && t.jenis !== jenis) continue;
+      const x = m.get(t.item_kode) ?? { kode: t.item_kode, nama: t.item_nama, jumlah: 0 };
+      x.jumlah += 1;
+      m.set(t.item_kode, x);
+    }
+    return [...m.values()].sort((a, b) => a.nama.localeCompare(b.nama));
+  }, [data, jenis]);
 
   const dasarChip = useMemo(() => {
     const k = cari.trim().toUpperCase();
@@ -130,9 +137,10 @@ export function useTemuanJtm(ulp: string, oleh: string) {
       (t) =>
         (jenis === "SEMUA" || t.jenis === jenis) &&
         (kategori === "SEMUA" || t.kategori === kategori) &&
+        (!item || t.item_kode === item) &&
         (!k || [t.tiang_kode, t.segmen_nama ?? "", t.penyulang ?? "", t.item_nama].some((v) => v.toUpperCase().includes(k))),
     );
-  }, [semua, jenis, kategori, cari]);
+  }, [semua, jenis, kategori, item, cari]);
 
   const baris = useMemo(
     () => dasarChip.filter((t) => status === "SEMUA" || t.status_tugas === status),
@@ -147,9 +155,9 @@ export function useTemuanJtm(ulp: string, oleh: string) {
 
   const hitungKategori = useMemo(() => {
     const h = { Urgent: 0, Rawan: 0, Biasa: 0 } as Record<KategoriTemuan, number>;
-    for (const t of semua) if (t.kategori && (jenis === "SEMUA" || t.jenis === jenis)) h[t.kategori] += 1;
+    for (const t of semua) if (t.kategori && (jenis === "SEMUA" || t.jenis === jenis) && (!item || t.item_kode === item)) h[t.kategori] += 1;
     return h;
-  }, [semua, jenis]);
+  }, [semua, jenis, item]);
 
   const hitungJenis = useMemo(() => {
     const k = cari.trim().toUpperCase();
@@ -204,5 +212,6 @@ export function useTemuanJtm(ulp: string, oleh: string) {
   return {
     semua, baris, hitung, hitungJenis, hitungKategori, loading, galat, muat,
     jenis, setJenis, status, setStatus, kategori, setKategori, cari, setCari, tugaskan,
+    item, setItem, pilihanItem, urut, setUrut,
   };
 }

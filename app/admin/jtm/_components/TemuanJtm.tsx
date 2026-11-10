@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronLeft, ChevronRight, Loader2, Search, Send, TreePine, TriangleAlert } from "lucide-react";
 import { CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD, NADA_TUGAS } from "@/app/admin/_ui";
-import { KATEGORI_TEMUAN, PRIORITAS_DARI_KATEGORI, STATUS_TUGAS, kunciTemuan, useTemuanJtm, type KategoriTemuan, type TemuanJtm as Temuan } from "../_hooks/useTemuanJtm";
+import { KATEGORI_TEMUAN, PRIORITAS_DARI_KATEGORI, STATUS_TUGAS, kunciTemuan, useTemuanJtm, type KategoriTemuan, type TemuanJtm as Temuan, type UrutTemuan } from "../_hooks/useTemuanJtm";
 import { tgl } from "../_lib/tampilan";
 import DetailTemuanModal from "./DetailTemuanModal";
 import TugaskanTemuanModal from "@/app/admin/_components/TugaskanTemuanModal";
@@ -88,6 +88,16 @@ export default function TemuanJtm({ ulp, oleh }: { ulp: string; oleh: string }) 
           </button>
         ))}
         <button onClick={() => saring(() => o.setStatus("SEMUA"))} className={`${CHIP} ${o.status === "SEMUA" ? CHIP_ON : CHIP_OFF}`}>Semua</button>
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <select value={o.item} onChange={(e) => saring(() => o.setItem(e.target.value))} className={`${FIELD} w-[240px]`} aria-label="Saring item temuan">
+          <option value="">Semua item temuan</option>
+          {o.pilihanItem.map((i) => <option key={i.kode} value={i.kode}>{i.nama} ({i.jumlah})</option>)}
+        </select>
+        <select value={o.urut} onChange={(e) => saring(() => o.setUrut(e.target.value as UrutTemuan))} className={`${FIELD} w-[220px]`} aria-label="Urutan temuan">
+          <option value="lokasi">Urut penyulang · segmen · tiang</option>
+          <option value="terbaru">Urut tanggal terbaru</option>
+        </select>
         <div className="relative ml-auto">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted" />
           <input
