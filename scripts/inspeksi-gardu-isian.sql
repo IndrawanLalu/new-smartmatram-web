@@ -17,7 +17,7 @@
 --   • Katalog di database (igardu_isian_ref + igardu_isian_opsi), diatur di
 --     web — item & pilihan baru tanpa rilis aplikasi (pola JTM).
 --   • Jawaban: inspeksi_gardu_isian (satu baris per item × rincian; rincian
---     = '-' / 'R-0' / 'A:R' untuk per jurusan).
+--     = '-' / 'R-0' / '1:R' untuk per jurusan).
 --   • Temuan DITURUNKAN server dari jawaban tidak normal → baris
 --     inspeksi_gardu_temuan berkategori 'isian' + isian_item. Jadi Perlu
 --     Perbaikan, Jadikan WO, WO Perbaikan, foto riwayat — semua yang membaca
@@ -142,8 +142,15 @@ INSERT INTO public.igardu_isian_opsi (item_kode, kode, label, normal, urutan) VA
   ('trafo_fisik', 'sirip_minor', 'Cacat sirip minor', false, 4),
   ('fco', 'baik',      'Fisik & konstruksi baik', true, 1),
   ('fco', 'perbaikan', 'Diperlukan perbaikan',    false, 2),
-  ('fco', 'ganti',     'Diperlukan penggantian',  false, 3)
+  ('fco', 'ganti',     'Diperlukan penggantian',  false, 3),
+  -- 11 Nov: NH fuse yang dibending / dijumper dicatat sebagai pilihan di sel
+  -- rating (bukan angka) → jadi temuan.
+  ('nh_fuse', 'bending', 'Dibending / dijumper',  false, 1)
 ON CONFLICT (item_kode, kode) DO NOTHING;
+
+-- Temuan NH fuse diarahkan ke Dudukan Fuse (PHB TR); bisa diubah di Pengaturan.
+UPDATE public.igardu_isian_ref SET item_tl = 'dudukan_fuse'
+WHERE kode = 'nh_fuse' AND item_tl IS NULL;
 
 
 -- ── 2. Jawaban + temuan turunan ──────────────────────────────────────────────
@@ -199,6 +206,7 @@ DECLARE
   j       TEXT;
   kunci   TEXT[];
   n_tem   INT;
+  n_rinci INT;
 BEGIN
   IF COALESCE(p_isi->>'tier', '') <> '1' OR jsonb_typeof(v_isian) IS DISTINCT FROM 'array' THEN
     RETURN public.kirim_inspeksi_gardu(p_isi);
@@ -208,7 +216,7 @@ BEGIN
   FOR x IN SELECT * FROM jsonb_array_elements(v_isian) LOOP
     SELECT * INTO it FROM public.igardu_isian_ref WHERE kode = x->>'item';
     IF NOT FOUND THEN RAISE EXCEPTION 'Isian "%" tidak dikenal — perbarui daftar isian (tarik daftar ke bawah).', x->>'item'; END IF;
-    IF it.tipe IN ('pilihan', 'tahanan') AND NULLIF(x->>'nilai', '') IS NOT NULL
+    IF NULLIF(x->>'nilai', '') IS NOT NULL
        AND NOT EXISTS (SELECT 1 FROM public.igardu_isian_opsi o WHERE o.item_kode = it.kode AND o.kode = x->>'nilai') THEN
       RAISE EXCEPTION 'Pilihan "%" untuk % tidak dikenal — perbarui daftar isian.', x->>'nilai', it.nama;
     END IF;
@@ -231,7 +239,8 @@ BEGIN
     ELSE
       FOREACH r IN ARRAY it.rincian LOOP
         IF it.per_jurusan THEN
-          FOREACH j IN ARRAY (ARRAY['A', 'B', 'C', 'D'])[1:v_jur] LOOP
+          -- Jurusan 1–4 (11 Nov: bukan A–D, supaya tidak dikira arah mata angin).
+          FOREACH j IN ARRAY (ARRAY['1', '2', '3', '4'])[1:v_jur] LOOP
             IF NOT (it.kode || '|' || j || ':' || r) = ANY (kunci) THEN
               RAISE EXCEPTION '% jurusan % fasa % belum diisi.', it.nama, j, r;
             END IF;
@@ -244,6 +253,17 @@ BEGIN
     IF it.foto AND NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_isian) e
                                WHERE e->>'item' = it.kode AND e->>'foto' LIKE 'http%') THEN
       RAISE EXCEPTION 'Foto % wajib.', it.nama;
+    END IF;
+  END LOOP;
+
+  -- Isian berincian (NH fuse) yang memilih pilihan tidak normal di salah satu
+  -- sel: foto temuannya wajib (disimpan di rincian '-').
+  FOR it IN SELECT DISTINCT i.* FROM public.igardu_isian_ref i
+            JOIN jsonb_array_elements(v_isian) e ON e->>'item' = i.kode AND COALESCE(e->>'rincian', '-') <> '-'
+            JOIN public.igardu_isian_opsi o ON o.item_kode = i.kode AND o.kode = e->>'nilai' AND NOT o.normal LOOP
+    IF NOT EXISTS (SELECT 1 FROM jsonb_array_elements(v_isian) e
+                   WHERE e->>'item' = it.kode AND COALESCE(e->>'rincian', '-') = '-' AND e->>'foto' LIKE 'http%') THEN
+      RAISE EXCEPTION 'Foto temuan % wajib.', it.nama;
     END IF;
   END LOOP;
 
@@ -269,6 +289,26 @@ BEGIN
   JOIN public.igardu_isian_opsi o ON o.item_kode = a.item_kode AND o.kode = a.nilai AND NOT o.normal
   WHERE a.inspeksi_id = v_id AND a.rincian = '-';
   GET DIAGNOSTICS n_tem = ROW_COUNT;
+
+  -- Isian berincian: SATU temuan per isian (indeks unik per isian_item),
+  -- uraian menyebut sel-selnya, foto + keterangan dari rincian '-'.
+  INSERT INTO public.inspeksi_gardu_temuan (inspeksi_id, urutan, kategori, isian_item, uraian, prioritas, foto_url)
+  SELECT v_id, 100 + n_tem + row_number() OVER (ORDER BY i.urutan), 'isian', i.kode,
+         string_agg(DISTINCT o.label, ', ') || ' · '
+           || string_agg(CASE WHEN a.rincian LIKE '%:%'
+                              THEN 'jurusan ' || split_part(a.rincian, ':', 1) || ' ' || split_part(a.rincian, ':', 2)
+                              ELSE a.rincian END, ', ' ORDER BY a.rincian)
+           || COALESCE(' · ' || max(f.catatan), ''),
+         (ARRAY['Urgent', 'Rawan', 'Biasa'])[min(array_position(ARRAY['Urgent', 'Rawan', 'Biasa'], o.prioritas))],
+         CASE WHEN max(f.foto_url) IS NULL THEN '{}'::text[] ELSE ARRAY[max(f.foto_url)] END
+  FROM public.inspeksi_gardu_isian a
+  JOIN public.igardu_isian_ref i ON i.kode = a.item_kode
+  JOIN public.igardu_isian_opsi o ON o.item_kode = a.item_kode AND o.kode = a.nilai AND NOT o.normal
+  LEFT JOIN public.inspeksi_gardu_isian f ON f.inspeksi_id = v_id AND f.item_kode = a.item_kode AND f.rincian = '-'
+  WHERE a.inspeksi_id = v_id AND a.rincian <> '-'
+  GROUP BY i.kode, i.urutan;
+  GET DIAGNOSTICS n_rinci = ROW_COUNT;
+  n_tem := n_tem + n_rinci;
 
   UPDATE public.inspeksi_gardu
   SET isian = true, jumlah_jurusan = v_jur,
@@ -298,8 +338,9 @@ DECLARE
   o      JSONB;
 BEGIN
   SELECT role INTO v_role FROM public.user_roles WHERE user_id = auth.uid();
-  IF COALESCE(v_role, '') NOT IN ('UP3', 'admin') THEN
-    RAISE EXCEPTION 'Hanya UP3 atau admin ULP yang boleh mengubah isian Inspeksi Gardu.';
+  -- 11 Nov: Pengaturan Inspeksi Gardu UP3 saja — seragam untuk semua ULP.
+  IF COALESCE(v_role, '') <> 'UP3' THEN
+    RAISE EXCEPTION 'Hanya UP3 yang boleh mengubah isian Inspeksi Gardu (berlaku untuk semua ULP).';
   END IF;
   IF v_kode !~ '^[a-z0-9_]{2,30}$' THEN
     RAISE EXCEPTION 'Kode isian hanya huruf kecil, angka, dan garis bawah (2–30 huruf).';
@@ -494,7 +535,8 @@ LEFT JOIN tl ON tl.k = upper(t.gardu_kode) AND tl.u = upper(t.ulp) AND tl.item_k
 -- Dikerjakan lewat WO Perbaikan SESUDAH pemeliharaan terakhir -> keluar. Lewat
 -- WO Pemeliharaan, pemeliharaan itu sendiri jadi "terakhir": kalau masih
 -- mencatat tidak normal, itu temuan baru dan memang harus tampil lagi.
-WHERE NOT COALESCE(tl.status = 'Dikerjakan' AND tl.jalur = 'perbaikan' AND tl.dikerjakan_at >= t.tgl_selesai, false)
+-- 11 Nov: juga yang ditandai normal admin (hargardu-tandai-normal.sql) sesudah pemeliharaan itu.
+WHERE NOT COALESCE(tl.status = 'Dikerjakan' AND tl.jalur IN ('perbaikan', 'normal') AND tl.dikerjakan_at >= t.tgl_selesai, false)
 UNION ALL
 SELECT
   x.gardu_kode,
@@ -552,6 +594,61 @@ WHERE t.status_tl = 'Terbuka'
                       WHERE p.pemeliharaan_id = pg.id AND p.item_kode = COALESCE(ii.item_tl, r.item_kode)
                         AND NOT COALESCE(o.normal, true)));
 GRANT SELECT ON public.gardu_perlu_perbaikan TO authenticated;
+
+-- ── 8. Kategori temuan: UP3 saja + perbaikan ulp audit (11 Nov) ─────────────
+-- Menggantikan definisi di inspeksi-gardu-pengaturan.sql (JANGAN jalankan
+-- ulang file itu — view-nya sudah diganti jam-tier2.sql). master_audit.ulp
+-- NOT NULL → '-' untuk katalog yang berlaku semua ULP.
+CREATE OR REPLACE FUNCTION public.simpan_igardu_ref(
+  p_kode      TEXT,
+  p_label     TEXT,
+  p_item_kode TEXT,
+  p_urutan    INT,
+  p_aktif     BOOLEAN,
+  p_oleh      TEXT DEFAULT NULL
+) RETURNS VOID
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $fn$
+DECLARE
+  v_role TEXT;
+  v_kode TEXT := lower(btrim(COALESCE(p_kode, '')));
+  lama   public.igardu_ref;
+  lain   TEXT;
+BEGIN
+  SELECT role INTO v_role FROM public.user_roles WHERE user_id = auth.uid();
+  IF COALESCE(v_role, '') <> 'UP3' THEN
+    RAISE EXCEPTION 'Hanya UP3 yang boleh mengubah kategori temuan (berlaku untuk semua ULP).';
+  END IF;
+  IF v_kode !~ '^[a-z0-9_]{2,30}$' THEN
+    RAISE EXCEPTION 'Kode kategori hanya huruf kecil, angka, dan garis bawah (2–30 huruf).';
+  END IF;
+  IF btrim(COALESCE(p_label, '')) = '' THEN RAISE EXCEPTION 'Nama kategori wajib diisi.'; END IF;
+  IF NOT EXISTS (SELECT 1 FROM public.hargardu_item_ref WHERE kode = p_item_kode) THEN
+    RAISE EXCEPTION 'Item Pemeliharaan Gardu "%" tidak ada.', p_item_kode;
+  END IF;
+  SELECT label INTO lain FROM public.igardu_ref WHERE item_kode = p_item_kode AND kode <> v_kode;
+  IF lain IS NOT NULL THEN
+    RAISE EXCEPTION 'Item itu sudah dipakai kategori "%". Satu item pemeliharaan satu kategori.', lain;
+  END IF;
+
+  SELECT * INTO lama FROM public.igardu_ref WHERE kode = v_kode FOR UPDATE;
+  IF FOUND THEN
+    UPDATE public.igardu_ref
+    SET label = btrim(p_label), item_kode = p_item_kode, urutan = COALESCE(p_urutan, urutan),
+        aktif = COALESCE(p_aktif, aktif), updated_at = now()
+    WHERE kode = v_kode;
+  ELSE
+    INSERT INTO public.igardu_ref (kode, label, item_kode, urutan, aktif)
+    VALUES (v_kode, btrim(p_label), p_item_kode, COALESCE(p_urutan, 100), COALESCE(p_aktif, true));
+  END IF;
+
+  INSERT INTO public.master_audit (entitas, entitas_kode, ulp, field, nilai_lama, nilai_baru, aksi, oleh_uid, oleh_nama)
+  VALUES ('igardu_ref', v_kode, '-', CASE WHEN lama.kode IS NULL THEN 'tambah' ELSE 'ubah' END,
+          CASE WHEN lama.kode IS NULL THEN NULL ELSE to_jsonb(lama) END,
+          jsonb_build_object('label', btrim(p_label), 'item_kode', p_item_kode, 'urutan', p_urutan, 'aktif', p_aktif),
+          'sunting_admin', auth.uid(), p_oleh);
+END $fn$;
+REVOKE ALL ON FUNCTION public.simpan_igardu_ref(TEXT, TEXT, TEXT, INT, BOOLEAN, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.simpan_igardu_ref(TEXT, TEXT, TEXT, INT, BOOLEAN, TEXT) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 

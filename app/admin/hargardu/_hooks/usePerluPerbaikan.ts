@@ -42,7 +42,8 @@ export interface BarisPerbaikan {
   dikerjakan?: { pada: string | null; oleh: string | null; fotoSesudah: string | null; jalur: string | null; id: string };
 }
 
-export type StatusTemuan = "belum" | "sudah" | "dikerjakan" | "semua";
+/** normal = ditandai normal admin (hargardu-tandai-normal.sql), bukan temuan. */
+export type StatusTemuan = "belum" | "sudah" | "dikerjakan" | "normal" | "semua";
 
 export interface SaringPerbaikan {
   ulp: string;
@@ -84,7 +85,7 @@ export const kunciBaris = (b: BarisPerbaikan) =>
 
 /** Keadaan satu temuan untuk chip & kolom Work Order. */
 export const statusTemuan = (b: BarisPerbaikan): Exclude<StatusTemuan, "semua"> =>
-  b.dikerjakan ? "dikerjakan" : b.sudah_di_wo ? "sudah" : "belum";
+  b.dikerjakan ? (b.dikerjakan.jalur === "normal" ? "normal" : "dikerjakan") : b.sudah_di_wo ? "sudah" : "belum";
 
 export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
   const [semua, setSemua] = useState<BarisPerbaikan[]>([]);
@@ -178,7 +179,7 @@ export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
 
   /** Jumlah per status (sesudah saringan selain status) — angka di chip. */
   const hitungStatus = useMemo(() => {
-    const h = { belum: 0, sudah: 0, dikerjakan: 0 };
+    const h = { belum: 0, sudah: 0, dikerjakan: 0, normal: 0 };
     for (const b of semua) {
       if (saring.sumber && b.sumber !== saring.sumber) continue;
       if (saring.item && b.item_kode !== saring.item) continue;
@@ -202,5 +203,18 @@ export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
     );
   }, []);
 
-  return { daftar, semua, pilihanItem, pilihanKondisi, hitungStatus, belumWo, loading, error, muat, tandaiSudahWo };
+  /** Ditandai normal: baris pindah ke "Dinyatakan normal" tanpa memuat ulang. */
+  const tandaiNormal = useCallback((kunci: string, h: { id: string; oleh: string; alasan: string; foto: string | null }) => {
+    const pada = new Date().toISOString();
+    setSemua((prev) =>
+      prev.map((b) =>
+        kunciBaris(b) === kunci
+          ? { ...b, sudah_di_wo: true, tl_status: "Dikerjakan", jalur: "normal", hasil_catatan: h.alasan,
+              dikerjakan: { pada, oleh: h.oleh, fotoSesudah: h.foto, jalur: "normal", id: h.id } }
+          : b,
+      ),
+    );
+  }, []);
+
+  return { daftar, semua, pilihanItem, pilihanKondisi, hitungStatus, belumWo, loading, error, muat, tandaiSudahWo, tandaiNormal };
 }

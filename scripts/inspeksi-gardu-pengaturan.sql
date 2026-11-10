@@ -10,6 +10,7 @@
 -- ★ Juga: inspeksi_gardu_daftar tanpa fungsi per baris (lihat di bawah).
 -- =============================================================================
 
+-- ⚠ Digantikan inspeksi-gardu-isian.sql bagian 8 (UP3 saja, 11 Nov).
 CREATE OR REPLACE FUNCTION public.simpan_igardu_ref(
   p_kode      TEXT,
   p_label     TEXT,

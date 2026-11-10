@@ -18,7 +18,7 @@ interface Props {
   jawabanDari: (id: string) => Promise<JawabanIsian[]>;
 }
 
-const JURUSAN = ["A", "B", "C", "D"];
+const JURUSAN = ["1", "2", "3", "4"];
 
 export default function IsianInspeksiGardu({ id, katalog, jawabanDari }: Props) {
   const [jawaban, setJawaban] = useState<JawabanIsian[] | null>(null);
@@ -41,13 +41,13 @@ export default function IsianInspeksiGardu({ id, katalog, jawabanDari }: Props) 
   const dipakai = katalog.filter((k) => jawaban.some((j) => j.item === k.kode));
   const bagian = [...new Set(dipakai.map((k) => k.bagian))];
 
-  const nilai = (k: ItemIsian, j: JawabanIsian | undefined) => {
+  const nilai = (k: ItemIsian, j: JawabanIsian | undefined, satuan = true) => {
     if (!j) return { teks: "—", buruk: false };
     if (j.nilai) {
       const o = k.opsi.find((x) => x.kode === j.nilai);
       return { teks: o?.label ?? j.nilai, buruk: o ? !o.normal : false };
     }
-    return { teks: j.angka === null ? "—" : `${j.angka.toLocaleString("id-ID")}${k.satuan ? ` ${k.satuan}` : ""}`, buruk: false };
+    return { teks: j.angka === null ? "—" : `${j.angka.toLocaleString("id-ID")}${satuan && k.satuan ? ` ${k.satuan}` : ""}`, buruk: false };
   };
 
   return (
@@ -92,11 +92,10 @@ export default function IsianInspeksiGardu({ id, katalog, jawabanDari }: Props) 
                       {baris.map((jr) => (
                         <tr key={jr ?? "-"}>
                           {k.perJurusan && <td className="pr-3 font-semibold">{jr}</td>}
-                          {k.rincian.map((r) => (
-                            <td key={r} className="pr-3 text-right font-semibold text-ink">
-                              {peta.get(`${k.kode}|${jr ? `${jr}:` : ""}${r}`)?.angka?.toLocaleString("id-ID") ?? "—"}
-                            </td>
-                          ))}
+                          {k.rincian.map((r) => {
+                            const v = nilai(k, peta.get(`${k.kode}|${jr ? `${jr}:` : ""}${r}`), false);
+                            return <td key={r} className={`pr-3 text-right font-semibold ${v.buruk ? "text-attention" : "text-ink"}`}>{v.teks}</td>;
+                          })}
                         </tr>
                       ))}
                     </tbody>

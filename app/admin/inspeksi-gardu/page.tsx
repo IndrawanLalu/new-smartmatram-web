@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, ListChecks, Settings2, TriangleAlert } from "lucide-react";
+import { ClipboardList, Download, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
+import { useToast } from "@/app/admin/_components/Toast";
 import IsiKepala from "@/app/admin/_kit/IsiKepala";
 import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import TabPil from "@/app/admin/_kit/TabPil";
@@ -10,7 +11,6 @@ import ChipSaring from "@/app/admin/_kit/ChipSaring";
 import { KotakCari } from "@/app/admin/_kit/Field";
 import { PilihPeriode, PilihUlp } from "@/app/admin/_kit/Saringan";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
-import { canSeeAllUnits } from "@/lib/roles";
 import { nadaStatus } from "@/lib/statusUi";
 import { useInspeksiGardu, STATUS_TAMPIL, type TierGardu } from "./_hooks/useInspeksiGardu";
 import TabelInspeksiGardu from "./_components/TabelInspeksiGardu";
@@ -44,10 +44,26 @@ export default function InspeksiGarduPage() {
   const [idDetail, setIdDetail] = useState<string | null>(null);
   const o = useInspeksiGardu(user);
   const isian = useIsianIgardu();
-  const bolehUbah = canSeeAllUnits(user.role) || user.role === "admin";
+  // 11 Nov: Pengaturan Inspeksi Gardu UP3 saja — seragam semua ULP.
+  const bolehUbah = user.role === "UP3";
+  const [mengunduh, setMengunduh] = useState(false);
+  const toast = useToast();
   const oleh = user.name ?? user.email ?? "";
   // Modal membaca dari daftar hidup: status berubah langsung sesudah aksi.
   const detail = idDetail ? (o.semua.find((b) => b.id === idDetail) ?? null) : null;
+
+  const unduh = async () => {
+    setMengunduh(true);
+    try {
+      const { unduhExcelIgardu } = await import("./_lib/unduhExcel");
+      const periode = o.bulan === 0 ? `${o.tahun}` : `${o.tahun}-${String(o.bulan).padStart(2, "0")}`;
+      await unduhExcelIgardu(o.baris, isian.item, o.kategori, `Inspeksi_Gardu_${o.ulp === "SEMUA" ? "SemuaULP" : o.ulp}_${periode}.xlsx`);
+    } catch (e) {
+      toast.error(`Gagal mengunduh: ${(e as Error).message}`);
+    } finally {
+      setMengunduh(false);
+    }
+  };
 
   return (
     <div className="text-ink flex flex-col gap-4">
@@ -61,7 +77,7 @@ export default function InspeksiGarduPage() {
       {tab === "pengaturan" && (
         <>
           <JamTier2 />
-          <PengaturanIsianIgardu o={isian} oleh={oleh} bolehUbah={bolehUbah} bolehSakelar={user.role === "UP3"} />
+          <PengaturanIsianIgardu o={isian} oleh={oleh} bolehUbah={bolehUbah} bolehSakelar={bolehUbah} />
           {/* Kategori penampung temuan isian ('isian') tidak untuk disunting. */}
           <PengaturanKategoriIgardu kategori={o.kategori.filter((k) => k.kode !== "isian")} oleh={oleh} onSimpan={o.simpanKategori}
             bolehUbah={bolehUbah} />
@@ -81,6 +97,15 @@ export default function InspeksiGarduPage() {
                 {t === "SEMUA" ? "Tier 1 & 2" : `Tier ${t}`}
               </button>
             ))}
+            <button
+              onClick={() => void unduh()}
+              disabled={o.loading || !!o.galat || o.baris.length === 0 || mengunduh}
+              title="Mengunduh baris yang sedang tampil di tabel"
+              className="ml-auto inline-flex items-center gap-2 h-9 px-4 rounded-xl bg-brand-600 text-white text-[13px] font-semibold shadow-sm hover:bg-brand-700 transition-colors disabled:opacity-40"
+            >
+              {mengunduh ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
+              Download XLSX
+            </button>
           </div>
           <ChipSaring
             item={[

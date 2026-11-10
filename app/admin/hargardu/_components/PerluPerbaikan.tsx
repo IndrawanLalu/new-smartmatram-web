@@ -12,6 +12,7 @@ import {
 } from "../_hooks/usePerluPerbaikan";
 import JadikanWoModal from "./JadikanWoModal";
 import RincianTemuanModal from "./RincianTemuanModal";
+import TandaiNormalModal from "./TandaiNormalModal";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PER_HALAMAN = 20;
@@ -21,6 +22,8 @@ const PILIHAN_WO = [
   { nilai: "sudah", label: "Sudah di-WO" },
   // Tetap terlihat sesudah dikerjakan, lewat WO Pemeliharaan maupun WO Perbaikan (hargardu-temuan-wo.sql).
   { nilai: "dikerjakan", label: "Sudah dikerjakan" },
+  // Ditandai normal admin — bukan temuan (hargardu-tandai-normal.sql).
+  { nilai: "normal", label: "Dinyatakan normal" },
   { nilai: "semua", label: "Semua" },
 ] as const;
 
@@ -35,6 +38,7 @@ export const NAMA_JALUR: Record<string, string> = {
   perbaikan: "WO Perbaikan",
   wo_har: "WO Pemeliharaan",
   wo_tugas: "WO Tindak Lanjut",
+  normal: "Ditandai normal",
 };
 
 const tgl = (iso: string | null) =>
@@ -52,8 +56,11 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
   const [halaman, setHalaman] = useState(1);
   const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState(false);
+  /** Ditugaskan satu per satu dari rincian temuan, tanpa mencentang daftar. */
+  const [tugasSatu, setTugasSatu] = useState<BarisPerbaikan | null>(null);
+  const [normalSatu, setNormalSatu] = useState<BarisPerbaikan | null>(null);
 
-  const { daftar, semua, pilihanItem, pilihanKondisi, hitungStatus, belumWo, loading, error, muat, tandaiSudahWo } =
+  const { daftar, semua, pilihanItem, pilihanKondisi, hitungStatus, belumWo, loading, error, muat, tandaiSudahWo, tandaiNormal } =
     usePerluPerbaikan(user, saring);
   const { canManage } = useWoPermissions(null);
 
@@ -325,18 +332,34 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
         </div>
       )}
 
-      {rincian && <RincianTemuanModal b={rincian} onTutup={() => setRincian(null)} />}
+      {rincian && (
+        <RincianTemuanModal
+          b={rincian}
+          onTutup={() => setRincian(null)}
+          onTugaskan={canManage && bisaPilih(rincian) ? () => { setTugasSatu(rincian); setRincian(null); } : undefined}
+          onTandaiNormal={canManage && bisaPilih(rincian) ? () => { setNormalSatu(rincian); setRincian(null); } : undefined}
+        />
+      )}
 
-      {modal && (
+      {normalSatu && (
+        <TandaiNormalModal
+          b={normalSatu}
+          oleh={user.name ?? user.email ?? ""}
+          onTutup={() => setNormalSatu(null)}
+          onSelesai={(h) => tandaiNormal(kunciBaris(normalSatu), h)}
+        />
+      )}
+
+      {(modal || tugasSatu) && (
         <JadikanWoModal
-          baris={barisTerpilih}
-          onTutup={() => setModal(false)}
+          baris={tugasSatu ? [tugasSatu] : barisTerpilih}
+          onTutup={() => { setModal(false); setTugasSatu(null); }}
           onSelesai={(kunci, pada) => {
             tandaiSudahWo(kunci, pada);
-            setTerpilih(new Set());
+            if (!tugasSatu) setTerpilih(new Set());
           }}
           onGagal={() => {
-            setTerpilih(new Set());
+            if (!tugasSatu) setTerpilih(new Set());
             void muat();
           }}
         />
@@ -371,7 +394,7 @@ function Baris({ b, pilihAktif, bisaPilih, terpilih, onPilih, onRincian, tampilU
             onChange={onPilih}
             disabled={!bisaPilih}
             aria-label={`Pilih ${b.gardu_kode} ${b.item_nama}`}
-            title={!bisaPilih ? (st === "dikerjakan" ? "Sudah dikerjakan" : "Sudah masuk Work Order") : ""}
+            title={!bisaPilih ? (st === "dikerjakan" ? "Sudah dikerjakan" : st === "normal" ? "Dinyatakan normal" : "Sudah masuk Work Order") : ""}
             className="accent-navy-600 disabled:opacity-30"
           />
         </td>
@@ -408,7 +431,12 @@ function Baris({ b, pilihAktif, bisaPilih, terpilih, onPilih, onRincian, tampilU
       </td>
 
       <td className="px-4 py-2.5 align-top">
-        {st === "dikerjakan" ? (
+        {st === "normal" ? (
+          <span className="inline-flex flex-col text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-slate-600 text-white w-fit">Dinyatakan normal {tgl(b.dikerjakan?.pada ?? null)}</span>
+            <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-2">{b.dikerjakan?.oleh ?? ""}{b.hasil_catatan ? ` · ${b.hasil_catatan}` : ""}</span>
+          </span>
+        ) : st === "dikerjakan" ? (
           <span className="inline-flex flex-col text-xs">
             <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white w-fit">Sudah dikerjakan {tgl(b.dikerjakan?.pada ?? null)}</span>
             <span className="text-[11px] text-ink-muted mt-0.5">{NAMA_JALUR[b.jalur ?? ""] ?? "—"}{b.dikerjakan?.oleh ? ` · ${b.dikerjakan.oleh}` : ""}</span>
