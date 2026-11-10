@@ -17,13 +17,16 @@ import TabelInspeksiGardu from "./_components/TabelInspeksiGardu";
 import DetailInspeksiGardu from "./_components/DetailInspeksiGardu";
 import WoIgardu from "./_components/WoIgardu";
 import PengaturanKategoriIgardu from "./_components/PengaturanKategoriIgardu";
+import PengaturanIsianIgardu from "./_components/PengaturanIsianIgardu";
+import { useIsianIgardu } from "./_hooks/useIsianIgardu";
 import JamTier2 from "@/app/admin/_components/JamTier2";
 
 /**
  * Inspeksi Gardu Tier 1 / Tier 2 (rencana-wo-gardu-dan-inspeksi-gardu.md, G2).
  *
- * Regu mencatat dari HP, di radius gardu: "tidak ada temuan" + foto gardu,
- * atau temuan (kategori, uraian, Urgent/Rawan/Biasa, foto; Tier 2 + suhu).
+ * Regu mencatat dari HP, di radius gardu. Tier 1: isian lengkap per bagian
+ * (inspeksi-gardu-isian.sql) — pilihan tidak normal jadi temuan — + temuan
+ * lain. Tier 2: temuan (kategori, uraian, Urgent/Rawan/Biasa, foto, suhu).
  * Temuan masuk Perlu Perbaikan Pemeliharaan Gardu. Web: periksa, WO, kategori.
  */
 
@@ -40,6 +43,8 @@ export default function InspeksiGarduPage() {
   const [tab, setTab] = useState<TabKey>("daftar");
   const [idDetail, setIdDetail] = useState<string | null>(null);
   const o = useInspeksiGardu(user);
+  const isian = useIsianIgardu();
+  const bolehUbah = canSeeAllUnits(user.role) || user.role === "admin";
   const oleh = user.name ?? user.email ?? "";
   // Modal membaca dari daftar hidup: status berubah langsung sesudah aksi.
   const detail = idDetail ? (o.semua.find((b) => b.id === idDetail) ?? null) : null;
@@ -56,8 +61,10 @@ export default function InspeksiGarduPage() {
       {tab === "pengaturan" && (
         <>
           <JamTier2 />
-          <PengaturanKategoriIgardu kategori={o.kategori} oleh={oleh} onSimpan={o.simpanKategori}
-            bolehUbah={canSeeAllUnits(user.role) || user.role === "admin"} />
+          <PengaturanIsianIgardu o={isian} oleh={oleh} bolehUbah={bolehUbah} bolehSakelar={user.role === "UP3"} />
+          {/* Kategori penampung temuan isian ('isian') tidak untuk disunting. */}
+          <PengaturanKategoriIgardu kategori={o.kategori.filter((k) => k.kode !== "isian")} oleh={oleh} onSimpan={o.simpanKategori}
+            bolehUbah={bolehUbah} />
         </>
       )}
 
@@ -103,6 +110,8 @@ export default function InspeksiGarduPage() {
           b={detail}
           oleh={oleh}
           temuanDari={o.temuanDari}
+          katalog={isian.item}
+          jawabanDari={isian.jawabanDari}
           onTutup={() => setIdDetail(null)}
           onVerifikasi={o.verifikasi}
           onKembalikan={o.kembalikan}

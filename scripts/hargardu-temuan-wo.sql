@@ -378,6 +378,8 @@ CREATE TRIGGER trg_hargardu_tandai_temuan AFTER UPDATE OF status ON public.pemel
 
 
 -- ── 7. Perlu Perbaikan (lebih cepat + jalur & status) ───────────────────────
+-- ⚠ DIGANTIKAN inspeksi-gardu-isian.sql bagian 7 (temuan isian). Kalau berkas
+--   ini dijalankan ulang, jalankan inspeksi-gardu-isian.sql SESUDAHNYA.
 -- Kolom lama TIDAK berubah urutan/tipenya; kolom baru di AKHIR.
 -- Temuan yang sudah DIKERJAKAN lewat WO Perbaikan (sesudah ditemukan) keluar
 -- dari daftar ini — tetap terlihat di gardu_temuan_dikerjakan.

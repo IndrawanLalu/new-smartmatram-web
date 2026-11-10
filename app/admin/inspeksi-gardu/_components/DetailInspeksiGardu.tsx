@@ -9,6 +9,8 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW } from "@/app/admin/_ui";
 import { fotoKecil } from "@/lib/fotoKecil";
 import type { BarisInspeksiGardu, TemuanGardu } from "../_hooks/useInspeksiGardu";
+import type { ItemIsian, JawabanIsian } from "../_hooks/useIsianIgardu";
+import IsianInspeksiGardu from "./IsianInspeksiGardu";
 import { NADA_PRIORITAS, tanggal } from "./TabelInspeksiGardu";
 
 /**
@@ -21,6 +23,8 @@ interface Props {
   b: BarisInspeksiGardu;
   oleh: string;
   temuanDari: (id: string) => Promise<TemuanGardu[]>;
+  katalog: ItemIsian[];
+  jawabanDari: (id: string) => Promise<JawabanIsian[]>;
   onTutup: () => void;
   onVerifikasi: (id: string, oleh: string) => Promise<void>;
   onKembalikan: (id: string, alasan: string, oleh: string) => Promise<void>;
@@ -37,7 +41,7 @@ function Foto({ url, label }: { url: string; label: string }) {
   );
 }
 
-export default function DetailInspeksiGardu({ b, oleh, temuanDari, onTutup, onVerifikasi, onKembalikan, onBatalkan, onSelesaikanTemuan }: Props) {
+export default function DetailInspeksiGardu({ b, oleh, temuanDari, katalog, jawabanDari, onTutup, onVerifikasi, onKembalikan, onBatalkan, onSelesaikanTemuan }: Props) {
   const toast = useToast();
   const [temuan, setTemuan] = useState<TemuanGardu[] | null>(null);
   const [sibuk, setSibuk] = useState(false);
@@ -47,11 +51,12 @@ export default function DetailInspeksiGardu({ b, oleh, temuanDari, onTutup, onVe
   useEffect(() => {
     let hidup = true;
     temuanDari(b.id).then(
-      (t) => { if (hidup) setTemuan(t); },
+      // Temuan isian dinamai dengan nama isiannya, bukan kategori penampung "isian".
+      (t) => { if (hidup) setTemuan(t.map((x) => (x.isianItem ? { ...x, kategoriLabel: katalog.find((k) => k.kode === x.isianItem)?.nama ?? x.isianItem } : x))); },
       (e: Error) => { if (hidup) { setTemuan([]); toast.error(e.message); } },
     );
     return () => { hidup = false; };
-  }, [b.id, temuanDari, toast, nonce]);
+  }, [b.id, temuanDari, katalog, toast, nonce]);
 
   const jalankan = async (f: () => Promise<void>, pesan: string) => {
     setSibuk(true);
@@ -132,6 +137,8 @@ export default function DetailInspeksiGardu({ b, oleh, temuanDari, onTutup, onVe
         {b.fotoGardu && (
           <div className="max-w-sm"><p className={`${EYEBROW} mb-1.5`}>Foto gardu</p><Foto url={b.fotoGardu} label="Foto gardu" /></div>
         )}
+
+        <IsianInspeksiGardu id={b.id} katalog={katalog} jawabanDari={jawabanDari} />
 
         <div>
           <p className={`${EYEBROW} mb-2`}>Temuan</p>

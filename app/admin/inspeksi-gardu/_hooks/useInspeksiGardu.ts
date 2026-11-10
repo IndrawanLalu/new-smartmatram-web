@@ -56,6 +56,8 @@ export interface TemuanGardu {
   id: string;
   kategori: string;
   kategoriLabel: string;
+  /** Temuan turunan isian Tier 1 (inspeksi-gardu-isian.sql) — kode isiannya. */
+  isianItem: string | null;
   uraian: string;
   prioritas: "Urgent" | "Rawan" | "Biasa";
   foto: string[];
@@ -206,7 +208,7 @@ export function useInspeksiGardu(user: CurrentUser) {
   const temuanDari = useCallback(async (id: string): Promise<TemuanGardu[]> => {
     const { data, error } = await supabaseBrowser
       .from("inspeksi_gardu_temuan")
-      .select("id,kategori,uraian,prioritas,foto_url,suhu,suhu_pembanding,status_tl,selesai_oleh,selesai_catatan")
+      .select("*")
       .eq("inspeksi_id", id)
       .order("urutan");
     if (error) throw new Error(error.message);
@@ -215,6 +217,7 @@ export function useInspeksiGardu(user: CurrentUser) {
       id: r.id as string,
       kategori: r.kategori as string,
       kategoriLabel: label.get(r.kategori as string) ?? (r.kategori as string),
+      isianItem: teks(r.isian_item),
       uraian: r.uraian as string,
       prioritas: r.prioritas as TemuanGardu["prioritas"],
       foto: (r.foto_url as string[] | null) ?? [],
