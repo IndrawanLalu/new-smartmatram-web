@@ -48,14 +48,16 @@ export default function DashboardHargardu({ user, ulp, tahun }: Props) {
   const ulpRekap = ulp === "SEMUA" ? "" : ulp;
   const d = useDashboardHargardu(ulp, tahun);
   const { batang, cakupanTotal, loading: memuatRekap, error: galatRekap } = useHargarduRekap(user, ulpRekap);
-  const saringPerbaikan = useMemo(() => ({ ulp: ulpRekap, item: "", wo: "semua" as const, cari: "" }), [ulpRekap]);
+  const saringPerbaikan = useMemo(() => ({ ulp: ulpRekap, item: "", kondisi: "", sumber: "" as const, wo: "semua" as const, cari: "" }), [ulpRekap]);
   const { semua: perbaikan, loading: memuatPerbaikan } = usePerluPerbaikan(user, saringPerbaikan);
 
   // Temuan paling sering — satu daftar dengan tab Perlu Perbaikan, di sini
   // cuma ringkasannya. Bagian amber = yang belum dijadikan WO.
   const perbaikanTeratas = useMemo<ItemBatang[]>(() => {
     const m = new Map<string, ItemBatang>();
+    // Yang sudah dikerjakan (riwayat, hargardu-temuan-wo.sql) bukan temuan menggantung.
     for (const p of perbaikan) {
+      if (p.dikerjakan) continue;
       const label = `${p.item_nama}: ${p.nilai_label ?? "—"}`;
       const a = m.get(label) ?? { label, jumlah: 0, menunggu: 0 };
       a.jumlah += 1;

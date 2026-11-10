@@ -7,7 +7,7 @@ import { useToast } from "@/app/admin/_components/Toast";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useRoles } from "@/app/admin/_hooks/useRoles";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
-import { useJadikanWo, JUDUL_WO } from "../_hooks/useJadikanWo";
+import { useJadikanWo } from "../_hooks/useJadikanWo";
 import { kunciBaris, type BarisPerbaikan } from "../_hooks/usePerluPerbaikan";
 
 interface Props {
@@ -48,15 +48,20 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
     if (!regu) return;
     const [tahun, bulan] = periode.split("-").map(Number);
     try {
-      const { jumlah } = await kirim(baris, {
+      const h = await kirim(baris, {
         bulan,
         tahun,
         regu,
         catatan: catatan.trim(),
         oleh: user.name ?? user.email ?? "",
-        olehId: user.id,
       });
-      toast.success(`${jumlah} temuan masuk WO "${JUDUL_WO}" untuk regu ${regu}.`);
+      toast.success(
+        [
+          h.perbaikan > 0 && `${h.perbaikan} gardu jadi WO Perbaikan (dalam garansi, tidak dihitung realisasi)`,
+          h.woPemeliharaan > 0 && `${h.woPemeliharaan} gardu masuk WO Pemeliharaan Gardu`,
+        ].filter(Boolean).join(" · ") + ` — regu ${regu}.`,
+      );
+      if (h.ditolak.length > 0) toast.error(`${h.ditolak.length} dilewati — ${h.ditolak.map((d) => `${d.objek}: ${d.sebab}`).join(" · ")}`);
       onSelesai(baris.map(kunciBaris), new Date().toISOString());
       onTutup();
     } catch (e) {
@@ -95,9 +100,10 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
       }
     >
       <p className="text-xs text-ink-soft">
-        Temuannya <b>tidak disalin</b> jadi catatan baru — yang disimpan cuma penugasannya.
-        Baris ini tetap hilang sendiri dari daftar begitu pemeliharaan berikutnya mencatat
-        itemnya normal, entah WO-nya sudah ditutup atau belum.
+        Jalurnya dipilih <b>otomatis per gardu</b> menurut masa garansi Pemeliharaan Gardu (Atur SLA):
+        gardu yang <b>masih dalam garansi</b> jadi <b>WO Perbaikan</b> — regu hanya memperbaiki temuan ini,
+        tidak dihitung realisasi. Yang <b>di luar garansi</b> masuk <b>WO Pemeliharaan Gardu</b> bulan itu
+        (formulir lengkap, dihitung realisasi). Keduanya muncul di HP regu, tab <b>WO temuan</b>.
       </p>
 
       <div className="grid sm:grid-cols-2 gap-3">
@@ -140,9 +146,8 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
 
       <div className="rounded-xl border border-line overflow-hidden">
         <div className="bg-surface px-4 py-2 text-xs text-ink-soft">
-          Masuk ke WO <b className="text-ink">{JUDUL_WO}</b> —{" "}
-          {perUlp.map(([u, n]) => `${u} (${n})`).join(" · ")}. WO bulan itu dipakai lagi bila
-          sudah ada, tidak dibuat baru tiap kali.
+          {perUlp.map(([u, n]) => `${u} (${n})`).join(" · ")} — WO bulan itu dipakai lagi bila sudah ada,
+          tidak dibuat baru tiap kali.
         </div>
         <ul className="max-h-52 overflow-y-auto divide-y divide-line">
           {baris.map((b) => (

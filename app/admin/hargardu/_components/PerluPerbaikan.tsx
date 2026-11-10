@@ -8,9 +8,10 @@ import { type CurrentUser, canSeeAllUnits, UNITS } from "@/lib/roles";
 import { useWoPermissions } from "@/app/admin/work-order/_hooks/useWoPermissions";
 import { BTN_GHOST, CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW, FIELD } from "@/app/admin/_ui";
 import {
-  usePerluPerbaikan, kunciBaris, type BarisPerbaikan, type SaringPerbaikan,
+  usePerluPerbaikan, kunciBaris, statusTemuan, type BarisPerbaikan, type SaringPerbaikan,
 } from "../_hooks/usePerluPerbaikan";
 import JadikanWoModal from "./JadikanWoModal";
+import RincianTemuanModal from "./RincianTemuanModal";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 const PER_HALAMAN = 20;
@@ -18,8 +19,23 @@ const PER_HALAMAN = 20;
 const PILIHAN_WO = [
   { nilai: "belum", label: "Belum di-WO" },
   { nilai: "sudah", label: "Sudah di-WO" },
+  // Tetap terlihat sesudah dikerjakan, lewat WO Pemeliharaan maupun WO Perbaikan (hargardu-temuan-wo.sql).
+  { nilai: "dikerjakan", label: "Sudah dikerjakan" },
   { nilai: "semua", label: "Semua" },
 ] as const;
+
+const PILIHAN_SUMBER = [
+  { nilai: "", label: "Semua asal" },
+  { nilai: "pemeliharaan", label: "Pemeliharaan Gardu" },
+  { nilai: "inspeksi_gardu", label: "Inspeksi Gardu" },
+] as const;
+
+/** Nama jalur WO di layar. */
+export const NAMA_JALUR: Record<string, string> = {
+  perbaikan: "WO Perbaikan",
+  wo_har: "WO Pemeliharaan",
+  wo_tugas: "WO Tindak Lanjut",
+};
 
 const tgl = (iso: string | null) =>
   iso
@@ -30,13 +46,14 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
   // Terbuka pada "Belum di-WO": daftar ini dibuka untuk menugaskan pekerjaan,
   // bukan untuk membaca ulang yang sudah ditugaskan.
   const [saring, setSaring] = useState<SaringPerbaikan>({
-    ulp: "", item: "", wo: "belum", cari: "",
+    ulp: "", item: "", kondisi: "", sumber: "", wo: "belum", cari: "",
   });
+  const [rincian, setRincian] = useState<BarisPerbaikan | null>(null);
   const [halaman, setHalaman] = useState(1);
   const [terpilih, setTerpilih] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState(false);
 
-  const { daftar, semua, pilihanItem, belumWo, loading, error, muat, tandaiSudahWo } =
+  const { daftar, semua, pilihanItem, pilihanKondisi, hitungStatus, belumWo, loading, error, muat, tandaiSudahWo } =
     usePerluPerbaikan(user, saring);
   const { canManage } = useWoPermissions(null);
 
@@ -59,7 +76,9 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
     [semua, terpilih],
   );
 
-  const bisaDipilih = tampil.filter((b) => !b.sudah_di_wo);
+  // Belum di-WO, atau regu menyatakan "belum bisa" (boleh ditugaskan ulang).
+  const bisaPilih = (b: BarisPerbaikan) => !b.dikerjakan && (!b.sudah_di_wo || b.tl_status === "Belum bisa");
+  const bisaDipilih = tampil.filter(bisaPilih);
   const semuaHalamanTerpilih =
     bisaDipilih.length > 0 && bisaDipilih.every((b) => terpilih.has(kunciBaris(b)));
 
@@ -120,7 +139,7 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
             <label className={EYEBROW}>Temuan</label>
             <select
               value={saring.item}
-              onChange={(e) => ubah({ item: e.target.value })}
+              onChange={(e) => ubah({ item: e.target.value, kondisi: "" })}
               className={`${FIELD} mt-1 block max-w-[220px]`}
             >
               <option value="">Semua item</option>
@@ -128,6 +147,20 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
                 <option key={i.kode} value={i.kode}>
                   {i.nama}
                 </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={EYEBROW}>Kondisi</label>
+            <select
+              value={saring.kondisi}
+              onChange={(e) => ubah({ kondisi: e.target.value })}
+              className={`${FIELD} mt-1 block max-w-[220px]`}
+            >
+              <option value="">Semua kondisi</option>
+              {pilihanKondisi.map((k) => (
+                <option key={k} value={k}>{k}</option>
               ))}
             </select>
           </div>
@@ -161,6 +194,17 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
               key={p.nilai}
               onClick={() => ubah({ wo: p.nilai })}
               className={`${CHIP} ${saring.wo === p.nilai ? CHIP_ON : CHIP_OFF}`}
+            >
+              {p.label}
+              {p.nilai !== "semua" && <span className="ml-1 tabular-nums opacity-70">{hitungStatus[p.nilai]}</span>}
+            </button>
+          ))}
+          <span className="h-5 w-px bg-line mx-1" aria-hidden />
+          {PILIHAN_SUMBER.map((p) => (
+            <button
+              key={p.nilai || "semua"}
+              onClick={() => ubah({ sumber: p.nilai })}
+              className={`${CHIP} ${saring.sumber === p.nilai ? CHIP_ON : CHIP_OFF}`}
             >
               {p.label}
             </button>
@@ -215,8 +259,10 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
                       key={kunciBaris(b)}
                       b={b}
                       pilihAktif={canManage}
+                      bisaPilih={bisaPilih(b)}
                       terpilih={terpilih.has(kunciBaris(b))}
                       onPilih={() => alihkan(kunciBaris(b))}
+                      onRincian={() => setRincian(b)}
                       tampilUlp={canSeeAllUnits(user.role) && !saring.ulp}
                     />
                   ))}
@@ -279,6 +325,8 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
         </div>
       )}
 
+      {rincian && <RincianTemuanModal b={rincian} onTutup={() => setRincian(null)} />}
+
       {modal && (
         <JadikanWoModal
           baris={barisTerpilih}
@@ -297,34 +345,33 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
   );
 }
 
-function Baris({
-  b,
-  pilihAktif,
-  terpilih,
-  onPilih,
-  tampilUlp,
-}: {
+interface BarisProps {
   b: BarisPerbaikan;
   pilihAktif: boolean;
+  bisaPilih: boolean;
   terpilih: boolean;
   onPilih: () => void;
+  onRincian: () => void;
   tampilUlp: boolean;
-}) {
+}
+
+function Baris({ b, pilihAktif, bisaPilih, terpilih, onPilih, onRincian, tampilUlp }: BarisProps) {
+  const st = statusTemuan(b);
   const catatan = [b.catatan, b.pr_keterangan, b.catatan_perbaikan]
     .filter((t) => t && t.trim())
     .join(" · ");
 
   return (
-    <tr className={`border-t border-line ${terpilih ? "bg-navy-50" : ""}`}>
+    <tr onClick={onRincian} className={`border-t border-line cursor-pointer hover:bg-navy-50/40 ${terpilih ? "bg-navy-50" : ""}`}>
       {pilihAktif && (
-        <td className="px-3 py-2.5 align-top">
+        <td className="px-3 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
           <input
             type="checkbox"
             checked={terpilih}
             onChange={onPilih}
-            disabled={b.sudah_di_wo}
+            disabled={!bisaPilih}
             aria-label={`Pilih ${b.gardu_kode} ${b.item_nama}`}
-            title={b.sudah_di_wo ? "Sudah masuk Work Order" : ""}
+            title={!bisaPilih ? (st === "dikerjakan" ? "Sudah dikerjakan" : "Sudah masuk Work Order") : ""}
             className="accent-navy-600 disabled:opacity-30"
           />
         </td>
@@ -347,6 +394,9 @@ function Baris({
           )}
         </p>
         <p className="text-xs text-attention font-medium">{b.nilai_label ?? b.nilai ?? "—"}</p>
+        {b.sumber === "inspeksi_gardu" && (
+          <span className="mt-0.5 inline-block text-[10px] px-1.5 rounded bg-sky-50 text-sky-700">Inspeksi Gardu</span>
+        )}
       </td>
 
       <td className="px-4 py-2.5 align-top max-w-[280px]">
@@ -358,9 +408,20 @@ function Baris({
       </td>
 
       <td className="px-4 py-2.5 align-top">
-        {b.sudah_di_wo ? (
-          <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
-            Sudah di-WO {tgl(b.ditugaskan_pada)}
+        {st === "dikerjakan" ? (
+          <span className="inline-flex flex-col text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white w-fit">Sudah dikerjakan {tgl(b.dikerjakan?.pada ?? null)}</span>
+            <span className="text-[11px] text-ink-muted mt-0.5">{NAMA_JALUR[b.jalur ?? ""] ?? "—"}{b.dikerjakan?.oleh ? ` · ${b.dikerjakan.oleh}` : ""}</span>
+          </span>
+        ) : b.tl_status === "Belum bisa" ? (
+          <span className="inline-flex flex-col text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 w-fit">Belum bisa dikerjakan</span>
+            {b.hasil_catatan && <span className="text-[11px] text-ink-muted mt-0.5 line-clamp-2">{b.hasil_catatan}</span>}
+          </span>
+        ) : b.sudah_di_wo ? (
+          <span className="inline-flex flex-col text-xs">
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 w-fit">Sudah di-WO {tgl(b.ditugaskan_pada)}</span>
+            <span className="text-[11px] text-ink-muted mt-0.5">{NAMA_JALUR[b.jalur ?? ""] ?? "WO Tindak Lanjut"}</span>
           </span>
         ) : (
           <span className="text-xs text-ink-muted">Belum ditugaskan</span>
