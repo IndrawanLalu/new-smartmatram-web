@@ -11,6 +11,8 @@ import type { Realisasi } from "./useWoPerabasan";
  *   perabasan         `perabasan_realisasi` — yang dirabas regu
  *   hasil pengecekan  `perabasan_cek_pohon_status` — dititik pengecek, wajib
  *                     dirabas regu (scripts/perabasan-cek.sql)
+ *   tidak dirabas     `perabasan_tidak_dirabas` — pohon inspeksi yang didatangi
+ *                     regu tapi tidak perlu dirabas (scripts/perabasan-temuan-row.sql)
  *
  * Dimuat saat modalnya dibuka, bukan seluruh tabel tiap kunjungan.
  */
@@ -22,6 +24,20 @@ export interface PohonInspeksi {
   jenis_pohon: string | null;
   foto_url: string | null;
   terverifikasi: boolean;
+  /** Segmen sudah dirabas & disetujui sesudah pohon ini tercatat — tidak wajib lagi. */
+  tertangani: boolean;
+}
+
+export interface PohonTidakDirabas {
+  id: string;
+  tiang_id: string;
+  jenis_pohon: string | null;
+  alasan: string;
+  foto_temuan_url: string | null;
+  foto_url: string;
+  lat: number | null;
+  lng: number | null;
+  petugas_nama: string | null;
 }
 
 export interface PohonCek {
@@ -45,6 +61,7 @@ export interface PohonSegmen {
   realisasi: (Realisasi & { cek_pohon_id: string | null })[];
   cek: PohonCek[];
   inspeksi: PohonInspeksi[];
+  tidakDirabas: PohonTidakDirabas[];
 }
 
 export function usePohonSegmenRabas(itemId: string, segmenId: string) {
@@ -62,11 +79,16 @@ export function usePohonSegmenRabas(itemId: string, segmenId: string) {
         .order("dicek_at"),
       supabaseBrowser
         .from("perabasan_pohon")
-        .select("tiang_id,tiang_kode,vegetasi,jenis_pohon,foto_url,terverifikasi")
+        .select("tiang_id,tiang_kode,vegetasi,jenis_pohon,foto_url,terverifikasi,tertangani")
         .eq("segmen_id", segmenId),
-    ]).then(([r, c, p]) => {
+      supabaseBrowser
+        .from("perabasan_tidak_dirabas")
+        .select("id,tiang_id,jenis_pohon,alasan,foto_temuan_url,foto_url,lat,lng,petugas_nama")
+        .eq("item_id", itemId)
+        .order("dikerjakan_at"),
+    ]).then(([r, c, p, t]) => {
       if (!hidup) return;
-      const e = r.error ?? c.error ?? p.error;
+      const e = r.error ?? c.error ?? p.error ?? t.error;
       if (e) {
         setGalat(e.message);
         return;
@@ -75,6 +97,7 @@ export function usePohonSegmenRabas(itemId: string, segmenId: string) {
         realisasi: (r.data ?? []) as PohonSegmen["realisasi"],
         cek: (c.data ?? []) as PohonCek[],
         inspeksi: (p.data ?? []) as PohonInspeksi[],
+        tidakDirabas: (t.data ?? []) as PohonTidakDirabas[],
       });
     });
     return () => { hidup = false; };

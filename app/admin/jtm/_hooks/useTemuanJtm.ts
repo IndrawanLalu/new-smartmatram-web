@@ -13,8 +13,10 @@ import type { Penugasan } from "@/app/admin/_components/TugaskanTemuanModal";
  * muncul di Monitoring Inspeksi dan tugas HP eksekutornya.
  */
 
-export type StatusTugas = "Belum ditugaskan" | "Ditugaskan" | "Selesai";
-export const STATUS_TUGAS: StatusTugas[] = ["Belum ditugaskan", "Ditugaskan", "Selesai"];
+// "Di-WO perabasan" = temuan pohon yang segmennya sedang di WO Perabasan
+// (scripts/perabasan-temuan-row.sql, 11 Nov 2026).
+export type StatusTugas = "Belum ditugaskan" | "Ditugaskan" | "Di-WO perabasan" | "Selesai";
+export const STATUS_TUGAS: StatusTugas[] = ["Belum ditugaskan", "Ditugaskan", "Di-WO perabasan", "Selesai"];
 export type Jenis = "SEMUA" | "Jaringan" | "ROW";
 export type UrutTemuan = "lokasi" | "terbaru";
 
@@ -148,7 +150,7 @@ export function useTemuanJtm(ulp: string, oleh: string) {
   );
 
   const hitung = useMemo(() => {
-    const h = { "Belum ditugaskan": 0, Ditugaskan: 0, Selesai: 0 } as Record<StatusTugas, number>;
+    const h = { "Belum ditugaskan": 0, Ditugaskan: 0, "Di-WO perabasan": 0, Selesai: 0 } as Record<StatusTugas, number>;
     for (const t of dasarChip) h[t.status_tugas] += 1;
     return h;
   }, [dasarChip]);

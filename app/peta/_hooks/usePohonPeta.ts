@@ -51,7 +51,7 @@ export interface KunciTugas {
 }
 
 /** Status penugasan temuan pohon; null = inspeksinya belum disetujui (belum bisa ditugaskan). */
-export type StatusTugasPohon = "Belum ditugaskan" | "Ditugaskan" | "Selesai" | null;
+export type StatusTugasPohon = "Belum ditugaskan" | "Ditugaskan" | "Di-WO perabasan" | "Selesai" | null;
 
 export interface TemuanPohon {
   tiangId: string;
@@ -384,7 +384,7 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
               saring.vegetasi.has(t.vegetasi) &&
               !(saring.sembunyikanTertangani && t.tertangani) &&
               // Belum disetujui (statusTugas null) ikut "belum ditugaskan".
-              saring.tugas.has(t.statusTugas === "Ditugaskan" || t.statusTugas === "Selesai" ? "sudah" : "belum"),
+              saring.tugas.has(t.statusTugas && t.statusTugas !== "Belum ditugaskan" ? "sudah" : "belum"),
           )
         : [],
     [temuanPilih, saring],

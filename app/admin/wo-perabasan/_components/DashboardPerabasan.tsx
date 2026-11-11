@@ -5,6 +5,8 @@ import StatTile from "@/app/admin/_components/StatTile";
 import TrenBulananArsir from "@/app/admin/_components/TrenBulananArsir";
 import DaftarBatang from "@/app/admin/_components/DaftarBatang";
 import { useDashboardPerabasan } from "../_hooks/useDashboardPerabasan";
+import WoPerRegu from "./WoPerRegu";
+import KalenderPerabasan from "./KalenderPerabasan";
 
 /**
  * Dashboard ringkas Perabasan Pohon — pola sama dengan modul Kinerja
@@ -81,6 +83,9 @@ export default function DashboardPerabasan({ ulp, tahun }: { ulp: string; tahun:
         <DaftarBatang judul={`Per ULP · ${tahun}`} ikon={Layers} item={d.perUlp} satuan="km" />
         <DaftarBatang judul={`Per regu · ${tahun}`} ikon={Users} item={d.perRegu} satuan="km" kosong="Belum ada segmen diverifikasi" />
       </div>
+
+      <WoPerRegu ulp={ulp} tahun={tahun} />
+      <KalenderPerabasan ulp={ulp} tahun={tahun} />
     </div>
   );
 }

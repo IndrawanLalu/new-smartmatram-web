@@ -50,8 +50,9 @@ export default function PohonSegmenRabas({ isi, galat, catatanRegu }: Props) {
   }
 
   const dirabasTiang = new Set(isi.realisasi.map((r) => r.tiang_id).filter(Boolean));
+  const lewatTiang = new Set(isi.tidakDirabas.map((r) => r.tiang_id));
   const cekSisa = isi.cek.filter((c) => !c.dirabas).length;
-  const inspeksiBelum = isi.inspeksi.filter((p) => !dirabasTiang.has(p.tiang_id));
+  const inspeksiBelum = isi.inspeksi.filter((p) => !dirabasTiang.has(p.tiang_id) && !lewatTiang.has(p.tiang_id) && !p.tertangani);
 
   return (
     <div className="space-y-5">
@@ -116,6 +117,28 @@ export default function PohonSegmenRabas({ isi, galat, catatanRegu }: Props) {
         )}
       </div>
 
+      {isi.tidakDirabas.length > 0 && (
+        <div>
+          <p className={`${EYEBROW} mb-2`}>Tidak perlu dirabas · {isi.tidakDirabas.length}</p>
+          <div className="flex flex-col gap-3">
+            {isi.tidakDirabas.map((p) => (
+              <div key={p.id} className="flex flex-wrap items-start gap-3 pb-3 border-b border-line last:border-0">
+                <div className="flex gap-2">
+                  {p.foto_temuan_url && <Foto url={p.foto_temuan_url} label="Temuan" />}
+                  <Foto url={p.foto_url} label="Sekarang" />
+                </div>
+                <div className="flex-1 min-w-[160px] text-xs">
+                  <p className="font-medium text-ink">{p.jenis_pohon || "Jenis tidak dicatat"}</p>
+                  <p className="text-ink-muted mt-0.5">dari inspeksi JTM{p.petugas_nama && ` · ${p.petugas_nama}`}</p>
+                  <p className="text-ink-soft mt-0.5">Alasan: <i>“{p.alasan}”</i></p>
+                  {titik(p.lat, p.lng)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {isi.inspeksi.length > 0 && (
         <div>
           <p className={`${EYEBROW} mb-2`}>
@@ -125,6 +148,7 @@ export default function PohonSegmenRabas({ isi, galat, catatanRegu }: Props) {
           <ul className="text-xs divide-y divide-line rounded-lg border border-line">
             {isi.inspeksi.map((p) => {
               const sudah = dirabasTiang.has(p.tiang_id);
+              const ket = sudah ? "dirabas" : lewatTiang.has(p.tiang_id) ? "tidak perlu dirabas" : p.tertangani ? "sudah dirabas sebelumnya" : "tanpa laporan";
               return (
                 <li key={p.tiang_id} className="px-3 py-1.5 flex items-center gap-2">
                   <span className="font-medium text-ink w-36 truncate">{p.tiang_kode ?? "tiang tanpa nama"}</span>
@@ -132,7 +156,7 @@ export default function PohonSegmenRabas({ isi, galat, catatanRegu }: Props) {
                     {p.jenis_pohon || "jenis tidak dicatat"} · {LABEL_VEGETASI[p.vegetasi] ?? p.vegetasi}
                     {!p.terverifikasi && " · inspeksi belum disetujui"}
                   </span>
-                  <span className={`font-semibold ${sudah ? "text-emerald-700" : "text-amber-700"}`}>{sudah ? "dirabas" : "tanpa laporan"}</span>
+                  <span className={`font-semibold ${ket === "tanpa laporan" ? "text-amber-700" : "text-emerald-700"}`}>{ket}</span>
                 </li>
               );
             })}

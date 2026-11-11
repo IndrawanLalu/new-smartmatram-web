@@ -91,7 +91,9 @@ function IsiTemuan({ t, onTugaskan }: { t: TemuanPohon; onTugaskan?: (t: TemuanP
           ? <span className="text-gray-500">Belum bisa ditugaskan — inspeksinya belum disetujui</span>
           : t.statusTugas === "Belum ditugaskan"
             ? <b className="text-amber-700">Belum ditugaskan</b>
-            : <b className="text-emerald-700">{t.statusTugas} · {t.regu ?? "—"}</b>}
+            : t.statusTugas === "Di-WO perabasan"
+              ? <b className="text-violet-700">Di-WO perabasan</b>
+              : <b className="text-emerald-700">{t.statusTugas} · {t.regu ?? "—"}</b>}
       </p>
       {t.tertangani && <p className="mt-0.5 text-emerald-700 font-semibold">Segmennya sudah dirabas sesudah inspeksi ini</p>}
       {t.catatan && <p className="mt-1 italic text-gray-600">“{t.catatan}”</p>}

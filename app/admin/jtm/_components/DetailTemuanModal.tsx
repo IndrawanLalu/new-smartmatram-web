@@ -140,7 +140,8 @@ export default function DetailTemuanModal({ t, onTutup, onTugaskan }: Props) {
           {t.status_tugas === "Selesai" && (
             <p className="text-xs text-ink-muted mt-2">
               Temuan ini hilang sendiri dari daftar begitu inspeksi berikutnya mencatat itemnya normal. Kalau inspeksi
-              berikutnya masih menemukannya rusak, ia kembali jadi <b>Belum ditugaskan</b>.
+              berikutnya masih menemukannya rusak, ia kembali jadi <b>Belum ditugaskan</b>. Temuan pohon juga Selesai
+              begitu segmennya dirabas dan hasilnya disetujui sesudah temuan ini dicatat.
             </p>
           )}
         </div>
