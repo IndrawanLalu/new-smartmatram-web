@@ -115,12 +115,20 @@ export default function DetailPemeliharaanModal({
           {sibuk ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Verifikasi
         </button>
       </>
-    ) : b.sumber === "web" && b.statusDb !== "Dibatalkan" ? (
+    ) : b.statusDb === "Diverifikasi" ? (
+      // Sudah disetujui: isian masih bisa dikoreksi (server: UP3 / admin ULP itu).
       // Catatan admin langsung Diverifikasi; salah input tetap bisa dibatalkan.
       <>
-        <button onClick={() => setBatal(true)} className={BTN_GHOST} disabled={sibuk}>
-          <Ban size={14} /> Salah input
-        </button>
+        <div className="flex gap-2">
+          {b.sumber === "web" && (
+            <button onClick={() => setBatal(true)} className={BTN_GHOST} disabled={sibuk}>
+              <Ban size={14} /> Salah input
+            </button>
+          )}
+          <button onClick={() => setMode("koreksi")} className={BTN_GHOST} disabled={sibuk}>
+            <Pencil size={14} /> Koreksi
+          </button>
+        </div>
         <button onClick={onTutup} className={BTN_GHOST}>Tutup</button>
       </>
     ) : (

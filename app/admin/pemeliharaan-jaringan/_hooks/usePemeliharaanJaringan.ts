@@ -313,7 +313,7 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
-  /** Koreksi admin — hanya selama menunggu verifikasi (dijaga server juga). */
+  /** Koreksi admin — menunggu verifikasi, atau sudah disetujui oleh UP3 / admin ULP itu (dijaga server). */
   const koreksi = async (id: string, v: KoreksiPemeliharaan) => {
     const { error } = await supabaseBrowser.rpc("ubah_pemeliharaan_jaringan", {
       p_id: id,

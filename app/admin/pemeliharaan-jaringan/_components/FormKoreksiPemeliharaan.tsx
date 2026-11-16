@@ -6,7 +6,8 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { BarisPemeliharaan, JenisJaringan, KategoriRef, KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
 
 /**
- * Koreksi admin atas salah input dari HP — hanya selama menunggu verifikasi.
+ * Koreksi admin atas salah input — selama menunggu verifikasi, atau sesudah
+ * disetujui (server: UP3 / admin ULP itu).
  * Foto dan titik tidak bisa diubah di sini: keduanya bukti dari lapangan.
  */
 
