@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { BadgeCheck, Camera, FileText, Hourglass, Loader2 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import StatTile from "@/app/admin/_components/StatTile";
-import { CARD, EYEBROW } from "@/app/admin/_ui";
+import { CARD, CHIP, CHIP_OFF, CHIP_ON, EYEBROW } from "@/app/admin/_ui";
 import Ps4Laporan from "./Ps4Laporan";
 
 /**
@@ -87,7 +87,8 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
   if (galat) return <div className={`${CARD} p-4 text-sm text-red-700`}>Realisasi PS4 gagal dibaca: {galat}</div>;
   if (!baris) return <div className={`${CARD} p-4 text-sm text-ink-soft`}>Memuat Realisasi PS4…</div>;
 
-  const petugasPilih = pilih === BELUM ? null : pilih;
+  // Chip "Belum diambil fotonya" = halaman khusus mencicil pengambilan foto.
+  const khususBelum = pilih === BELUM;
 
   return (
     <div className="space-y-4">
@@ -101,6 +102,15 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
           tone={total.belum > 0 ? "attention" : "green"} hint="otomatis 00.00–06.00 WITA" />
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setPilih(null)} className={`${CHIP} ${!khususBelum ? CHIP_ON : CHIP_OFF}`}>
+          Rekap per petugas
+        </button>
+        <button onClick={() => setPilih(BELUM)} className={`${CHIP} ${khususBelum ? CHIP_ON : CHIP_OFF}`}>
+          Belum diambil fotonya <span className="tabular-nums opacity-70">{total.belum}</span>
+        </button>
+      </div>
+
       {adaAntre && (
         <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-2.5 text-sm text-navy-700 flex items-center gap-2">
           <Loader2 size={15} className="animate-spin shrink-0" />
@@ -111,6 +121,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
         </div>
       )}
 
+      {!khususBelum && (
       <div className={`${CARD} overflow-x-auto`}>
         <p className={`${EYEBROW} px-4 pt-3`}>Per petugas — klik untuk melihat laporannya</p>
         <table className="w-full text-sm mt-2">
@@ -121,13 +132,14 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
               <th className={`${TH} text-right`}>Berfoto</th>
               <th className={`${TH} text-right`}>%</th>
               <th className={`${TH} text-right`}>Diverifikasi</th>
+              <th className={`${TH} text-right`}>Belum diverifikasi</th>
               <th className={`${TH} text-right`}>Masuk PS4</th>
               <th className={`${TH} text-right`}>% PS4</th>
             </tr>
           </thead>
           <tbody>
             {baris.length === 0 && (
-              <tr><td colSpan={7} className="py-6 text-center text-ink-soft">Tidak ada laporan Selesai pada rentang ini.</td></tr>
+              <tr><td colSpan={8} className="py-6 text-center text-ink-soft">Tidak ada laporan Selesai pada rentang ini.</td></tr>
             )}
             {baris.map((b) => {
               const kunci = b.petugas ?? BELUM;
@@ -141,6 +153,9 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
                   <td className={`${TD} text-right`}>{b.petugas ? b.berfoto : "—"}</td>
                   <td className={`${TD} text-right font-semibold`}>{b.petugas ? persen(b.berfoto, b.laporan) : "—"}</td>
                   <td className={`${TD} text-right`}>{b.petugas ? b.diverifikasi : "—"}</td>
+                  <td className={`${TD} text-right ${b.petugas && b.berfoto > b.diverifikasi ? "text-amber-700 font-semibold" : ""}`}>
+                    {b.petugas ? b.berfoto - b.diverifikasi : "—"}
+                  </td>
                   <td className={`${TD} text-right`}>{b.petugas ? b.masuk_ps4 : "—"}</td>
                   <td className={`${TD} text-right font-semibold`}>{b.petugas ? persen(b.masuk_ps4, b.laporan) : "—"}</td>
                 </tr>
@@ -155,6 +170,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
                 <td className={`${TD} text-right`}>{total.berfoto}</td>
                 <td className={`${TD} text-right`}>{persen(total.berfoto, total.laporan)}</td>
                 <td className={`${TD} text-right`}>{total.diverifikasi}</td>
+                <td className={`${TD} text-right`}>{total.berfoto - total.diverifikasi}</td>
                 <td className={`${TD} text-right`}>{total.masuk_ps4}</td>
                 <td className={`${TD} text-right`}>{persen(total.masuk_ps4, total.laporan)}</td>
               </tr>
@@ -162,9 +178,10 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
           )}
         </table>
       </div>
+      )}
 
       {pilih !== null && (
-        <Ps4Laporan key={pilih} dari={dari} sampai={sampai} ulp={ulp} petugas={petugasPilih}
+        <Ps4Laporan key={pilih} dari={dari} sampai={sampai} ulp={ulp} petugas={khususBelum ? null : pilih}
           antre={antre} versi={versi} onBerubah={() => setVersi((v) => v + 1)} />
       )}
     </div>
