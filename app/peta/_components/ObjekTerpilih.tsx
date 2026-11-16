@@ -191,6 +191,10 @@ export default function ObjekTerpilih({
             if (terpilih.jenis !== "tiang") return false;
             return tutupLaluMuat(await sunting.lepasTumpangJtm(terpilih.id, penyulang, alasan));
           }}
+          onTetapkanPemilik={async (penyulang, alasan) => {
+            if (terpilih.jenis !== "tiang") return false;
+            return tutupLaluMuat(await sunting.tetapkanPemilik(terpilih.id, penyulang, alasan));
+          }}
           onTutup={p.tutup}
           simulasi={simulasi.hasil}
           simulasiSibuk={simulasi.sibuk}

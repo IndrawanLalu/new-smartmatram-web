@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowDownUp, Columns2, GitBranch, Layers, Link2, Loader2, Move, Pencil, Plus, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
+import { ArrowDownUp, ArrowUpFromLine, Columns2, GitBranch, Layers, Link2, Loader2, Move, Pencil, Plus, Trash2, Unlink, Waypoints, Zap } from "lucide-react";
 import { PENANDA_ALAT } from "../_hooks/useSimulasiBuka";
 import type { PilihanAtribut, RincianTiang } from "../_hooks/useObjekPeta";
 import type { Penanda } from "../_hooks/usePenandaJtm";
@@ -52,6 +52,8 @@ interface Props {
   onBatalkan: () => void;
   /** Penyulang yang salah menumpang di tiang ini: lepas & hapus datanya. */
   onLepasTumpang: (penyulang: string) => void;
+  /** Tiang bersama: pindah pemilik batang ke penyulang yang kabelnya paling atas. */
+  onTetapkanPemilik: (penyulang: string) => void;
   /** Simulasi "kalau alat ini dibuka" — hanya membaca, untuk semua pengguna. */
   onSimulasi: () => void;
   simulasiSibuk: boolean;
@@ -68,13 +70,15 @@ interface Props {
 }
 
 export default function InfoTiang({
-  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onTambahTiang, onSambungHilir, onTambahTumpang, onBalikArah, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onSimulasi, simulasiSibuk,
+  t, pilihan, penanda, boleh, onUbahAtribut, onGeser, onGantiInduk, onTambahTiang, onSambungHilir, onTambahTumpang, onBalikArah, onIndukPenyulang, onPercabangan, onBatalkan, onLepasTumpang, onTetapkanPemilik, onSimulasi, simulasiSibuk,
   tanpaGantiInduk = false, onBuatPasangan, oleh, onNamaBerubah, milik, onPemilikPeralatan,
 }: Props) {
   const jtr = !!t.gardu_kode;
   const [sunting, setSunting] = useState(false);
   const [isi, setIsi] = useState<Record<string, string>>({});
   const [sibuk, setSibuk] = useState(false);
+  const [pilihPemilik, setPilihPemilik] = useState(false);
+  const menumpang = jtr ? [] : t.nama.filter((n) => !n.utama);
 
   const mulai = () => {
     setIsi(
@@ -115,7 +119,7 @@ export default function InfoTiang({
         {!jtr && t.nama.length > 1 && (
           <Baris
             label="Nama per penyulang"
-            nilai={t.nama.map((n) => `${n.kode} (${n.penyulang}${n.utama ? "" : ", menumpang"})`).join(" · ")}
+            nilai={t.nama.map((n) => `${n.kode} (${n.penyulang}, ${n.utama ? "di atas" : "di bawah"})`).join(" · ")}
           />
         )}
         {/* Tiang yang ditumpangi: induk ini milik batang pemiliknya, bukan
@@ -265,7 +269,29 @@ export default function InfoTiang({
                   <Unlink size={13} /> Lepas {n.penyulang}
                 </button>
               ))}
+          {!tanpaGantiInduk && menumpang.length > 0 && (
+            <button
+              onClick={() => (menumpang.length === 1 ? onTetapkanPemilik(menumpang[0].penyulang) : setPilihPemilik((x) => !x))}
+              className={TOMBOL_PANEL}
+            >
+              <ArrowUpFromLine size={13} /> Tetapkan pemilik tiang
+            </button>
+          )}
           <button onClick={onBatalkan} className={`${TOMBOL_PANEL} text-red-300`}><Trash2 size={13} /> Batalkan (salah input)</button>
+        </div>
+      )}
+
+      {/* Lebih dari dua penyulang: pilih yang kabelnya paling atas. */}
+      {boleh && !sunting && pilihPemilik && menumpang.length > 1 && (
+        <div className="rounded-lg border border-[#1e3552] p-2.5 space-y-2">
+          <p className="text-[11px] text-gray-400">Kabel penyulang mana yang paling atas di tiang ini?</p>
+          <div className="flex flex-wrap gap-2">
+            {menumpang.map((n) => (
+              <button key={n.penyulang} onClick={() => { setPilihPemilik(false); onTetapkanPemilik(n.penyulang); }} className={TOMBOL_PANEL}>
+                {n.penyulang} di atas
+              </button>
+            ))}
+          </div>
         </div>
       )}
     </div>

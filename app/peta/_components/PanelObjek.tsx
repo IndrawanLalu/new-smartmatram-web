@@ -13,6 +13,7 @@ import RingkasSimulasi from "./RingkasSimulasi";
 import RincianKesehatan from "./RincianKesehatan";
 import KoreksiJtr from "./KoreksiJtr";
 import LepasTumpangJtm from "./LepasTumpangJtm";
+import TetapkanPemilikTiang from "./TetapkanPemilikTiang";
 import { LangkahBalikArah } from "./BalikArahJtm";
 import TambahTiangJtm, { type IsiTambah } from "./TambahTiangJtm";
 import PersetujuanJtrPeta from "./PersetujuanJtrPeta";
@@ -97,6 +98,7 @@ interface Props {
   onBatalGabung: () => void;
   onLepasTumpang: (alasan: string) => Promise<boolean>;
   onLepasTumpangJtm: (penyulang: string, alasan: string) => Promise<boolean>;
+  onTetapkanPemilik: (penyulang: string, alasan: string) => Promise<boolean>;
 }
 
 export default function PanelObjek(p: Props) {
@@ -106,6 +108,7 @@ export default function PanelObjek(p: Props) {
   const [tanyaBatal, setTanyaBatal] = useState(false);
   const [tanyaLepas, setTanyaLepas] = useState(false);
   const [lepasJtm, setLepasJtm] = useState<string | null>(null);
+  const [pemilikJtm, setPemilikJtm] = useState<string | null>(null);
 
   const jarak = geser ? jarakMeter(terpilih.lat, terpilih.lng, geser.lat, geser.lng) : 0;
   const memuat = !galat && !tiang && !gardu;
@@ -300,6 +303,7 @@ export default function PanelObjek(p: Props) {
             onPemilikPeralatan={p.onPemilikPeralatan}
             onBatalkan={() => setTanyaBatal(true)}
             onLepasTumpang={setLepasJtm}
+            onTetapkanPemilik={setPemilikJtm}
             onSimulasi={p.onSimulasi}
             simulasiSibuk={p.simulasiSibuk}
             tanpaGantiInduk={!!tiang.jtr}
@@ -369,6 +373,16 @@ export default function PanelObjek(p: Props) {
           penyulang={lepasJtm}
           onTutup={() => setLepasJtm(null)}
           onLepas={(a) => p.onLepasTumpangJtm(lepasJtm, a)}
+        />
+      )}
+
+      {pemilikJtm && tiang && (
+        <TetapkanPemilikTiang
+          tiangId={tiang.id}
+          batang={tiang.kode}
+          penyulang={pemilikJtm}
+          onTutup={() => setPemilikJtm(null)}
+          onTetapkan={(a) => p.onTetapkanPemilik(pemilikJtm, a)}
         />
       )}
 

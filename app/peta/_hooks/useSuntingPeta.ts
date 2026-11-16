@@ -101,6 +101,29 @@ export function useSuntingPeta(oleh: string) {
       (d) => `${d.penyulang} dilepas dari tiang ini — ${d.kode} dihapus${d.penilaian ? `, ${d.penilaian} penilaian ikut terhapus` : ""}.`,
     );
 
+  /** Pemilik batang pindah ke `penyulang` (kabel paling atas) — `jtm-posisi-kabel.sql`.
+   *  Nama & induk tiang di tiap penyulang tetap; penolakan server dibaca apa adanya. */
+  const tetapkanPemilik = async (id: string, penyulang: string, alasan: string) => {
+    const { data, error } = await supabaseBrowser.rpc("tetapkan_pemilik_tiang_jtm", {
+      p_tiang: id, p_penyulang: penyulang, p_alasan: alasan, p_oleh: oleh,
+    });
+    if (error) {
+      toast.error(
+        error.message.includes("Could not find the function")
+          ? "Fungsi Tetapkan pemilik tiang belum ada — jalankan scripts/jtm-posisi-kabel.sql di Supabase."
+          : error.message,
+      );
+      return false;
+    }
+    const d = data as { berubah: boolean; tiang: string; pemilik_lama?: string; pemilik_baru?: string; pemilik?: string };
+    toast.success(
+      d.berubah
+        ? `${d.pemilik_baru} kini pemilik tiang ${d.tiang}; ${d.pemilik_lama} menumpang di bawah.`
+        : `${d.pemilik} memang sudah pemilik tiang ${d.tiang}.`,
+    );
+    return true;
+  };
+
   /** Penyulang `penyulang` menumpang di tiang ini, menyambung dari `dariId` (`jtm-tumpang-dari-peta.sql`). */
   const tumpangDari = (id: string, dariId: string, penyulang: string) =>
     jalankan<{ kode: string; penyulang: string; dari: string; tiang: string }>(
@@ -188,7 +211,7 @@ export function useSuntingPeta(oleh: string) {
     );
 
   return {
-    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, tumpangDari, buatPasanganPortal,
+    geserTiang, geserGardu, ubahAtribut, tandaiPercabangan, indukPenyulang, pemilikPeralatan, ubahInduk, balikArah, batalkan, lepasTumpangJtm, tetapkanPemilik, tumpangDari, buatPasanganPortal,
     tambahTiang,
     indukJtr, namaJtr, kabelJtr, jurusanJtr, gabungJtr, lepasTumpangJtr, asalKabelJtr, jurusanKabelJtr,
   };
