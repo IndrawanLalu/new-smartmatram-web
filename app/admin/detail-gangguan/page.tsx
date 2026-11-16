@@ -18,6 +18,7 @@ import {
   Check,
   Clock,
   Settings,
+  BadgeCheck,
   LayoutDashboard,
   ListChecks,
   Table2,
@@ -26,6 +27,7 @@ import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
 import KoreksiModal from "./_components/KoreksiModal";
+import RealisasiPs4Tab from "./_components/RealisasiPs4Tab";
 import PasangBookmarkApkt from "./_components/PasangBookmarkApkt";
 import RekapTab from "./_components/RekapTab";
 import DashboardTab from "./_components/DashboardTab";
@@ -80,12 +82,13 @@ const PER_HALAMAN = 50;
 const TH =
   "py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line";
 
-type Tab = "data" | "dashboard" | "rekap";
+type Tab = "data" | "dashboard" | "rekap" | "ps4";
 
 const TABS: { key: Tab; label: string; icon: typeof Table2 }[] = [
   { key: "data", label: "Data & Koreksi", icon: Table2 },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { key: "rekap", label: "Rekap Koreksi", icon: ListChecks },
+  { key: "ps4", label: "Realisasi PS4", icon: BadgeCheck },
 ];
 
 // Query GraphQL (1 baris) untuk dipakai di perintah console.
@@ -466,6 +469,8 @@ export default function DetailGangguanPage() {
       )}
 
       {tab === "rekap" && <RekapTab rows={nonRows} koreksiMap={koreksiMap} />}
+
+      {tab === "ps4" && <RealisasiPs4Tab dari={range.from} sampai={range.to} ulp={ulpPilih} />}
 
       {tab === "data" && (
       <>
