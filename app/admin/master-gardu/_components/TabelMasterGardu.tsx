@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import {
   Search, ChevronLeft, ChevronRight,
   Gauge, AlertTriangle, Wrench, Zap, RefreshCw, FileSpreadsheet, Download, Loader2, Plus,
@@ -27,6 +27,7 @@ import {
 } from "../_lib/kondisiGardu";
 import type { StatusHar, SaringanUrl } from "../_lib/saringanUrl";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
+import { kunciGk, muatKunciGk } from "@/lib/garduKhusus";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -293,6 +294,14 @@ export default function DataGarduTab({ user, ulp, settings, awal }: Props) {
   } = useGarduStatus(user, ulp, settings, showTable, saringTambahan);
 
   const [selectedGardu, setSelectedGardu] = useState<GarduMasterState | null>(null);
+  /** Gardu khusus (scripts/gardu-khusus.sql) — lencana di kolom No. Gardu. */
+  const [khusus, setKhusus] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    if (!showTable) return;
+    let hidup = true;
+    void muatKunciGk(ulp ? [ulp] : null).then((s) => { if (hidup) setKhusus(s); });
+    return () => { hidup = false; };
+  }, [ulp, showTable]);
   const [imporTerbuka, setImporTerbuka] = useState(false);
   const [tambahTerbuka, setTambahTerbuka] = useState(false);
   const [mengunduh, setMengunduh] = useState(false);
@@ -602,7 +611,17 @@ export default function DataGarduTab({ user, ulp, settings, awal }: Props) {
                           row.belum_diukur ? "text-ink-soft" : ""
                         }`}
                       >
-                        <td className="px-4 py-2.5 font-semibold text-ink">{row.kode}</td>
+                        <td className="px-4 py-2.5 font-semibold text-ink">
+                          {row.kode}
+                          {khusus.has(kunciGk(row.kode, row.ulp)) && (
+                            <span
+                              title="Tidak masuk WO Inspeksi Gardu, Inspeksi JTR, dan Pemeliharaan Gardu"
+                              className="ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full border bg-violet-50 text-violet-700 border-violet-200 font-semibold"
+                            >
+                              Gardu khusus
+                            </span>
+                          )}
+                        </td>
                         <td className="px-4 py-2.5 text-ink-soft">{row.penyulang ?? KOSONG}</td>
                         <td className="px-4 py-2.5 text-ink-soft max-w-40 truncate">{row.alamat ?? KOSONG}</td>
                         <td className="px-4 py-2.5 text-center text-ink">

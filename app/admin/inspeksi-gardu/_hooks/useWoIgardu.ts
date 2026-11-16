@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { kunciGk, muatKunciGk } from "@/lib/garduKhusus";
 import type { GarduPilihan } from "@/app/admin/_components/SusunWoGardu";
 import type { TierGardu } from "./useInspeksiGardu";
 
@@ -105,12 +106,13 @@ export function useWoIgardu(ulp: string | null) {
 
   /** Master gardu ULP + kunjungan terakhir (tier itu) — bahan Susun WO. */
   const muatGardu = useCallback(async (u: string, tier: TierGardu): Promise<GarduPilihan[]> => {
-    const [gardu, kunjungan] = await Promise.all([
+    const [gardu, kunjungan, khusus] = await Promise.all([
       fetchAllRows<{ kode: string; nama: string | null; feeder: string | null; ulp: string; status: string | null }>(() =>
         supabaseBrowser.from("gardu").select("kode,nama,feeder,ulp,status").eq("ulp", u).order("kode").order("id")),
       fetchAllRows<{ gardu_kode: string; tgl: string }>(() =>
         supabaseBrowser.from("inspeksi_gardu").select("gardu_kode,tgl")
           .eq("ulp", u).eq("tier", tier).in("status", ["Selesai", "Diverifikasi"]).order("id")),
+      muatKunciGk([u]),
     ]);
     const akhir = new Map<string, string>();
     for (const k of kunjungan) {
@@ -120,6 +122,8 @@ export function useWoIgardu(ulp: string | null) {
     return gardu
       // Status kosong = aktif (812 baris master tanpa status).
       .filter((g) => !g.status || g.status.toLowerCase() !== "nonaktif")
+      // Gardu khusus tidak diinspeksi (scripts/gardu-khusus.sql).
+      .filter((g) => !khusus.has(kunciGk(g.kode, g.ulp)))
       .map((g) => ({
         kode: g.kode,
         nama: g.nama,

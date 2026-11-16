@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useToast } from "@/app/admin/_components/Toast";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { kunciGk, muatKunciGk } from "@/lib/garduKhusus";
 import type { ReguPilihan, SegmenPilihan } from "@/app/admin/_components/SusunWoSegmen";
 
 /**
@@ -120,14 +121,18 @@ async function ambilObjek(jenis: JenisWoInspeksi, ulp: string | null): Promise<S
       return (ulp ? q.eq("ulp", ulp) : q).order("penyulang").order("nama").order("segmen_id");
     });
   }
-  const gardu = await fetchAllRows<{
-    gardu_kode: string; ulp: string; nama: string | null; penyulang: string | null;
-    panjang_km: number | string | null; umur_inspeksi_bulan: number | null;
-  }>(() => {
-    const q = supabaseBrowser.from("master_gardu_jtr").select("gardu_kode,ulp,nama,penyulang,panjang_km,umur_inspeksi_bulan");
-    return (ulp ? q.eq("ulp", ulp) : q).order("ulp").order("gardu_kode");
-  });
-  return gardu.map((g) => {
+  const [gardu, khusus] = await Promise.all([
+    fetchAllRows<{
+      gardu_kode: string; ulp: string; nama: string | null; penyulang: string | null;
+      panjang_km: number | string | null; umur_inspeksi_bulan: number | null;
+    }>(() => {
+      const q = supabaseBrowser.from("master_gardu_jtr").select("gardu_kode,ulp,nama,penyulang,panjang_km,umur_inspeksi_bulan");
+      return (ulp ? q.eq("ulp", ulp) : q).order("ulp").order("gardu_kode");
+    }),
+    muatKunciGk(ulp ? [ulp] : null),
+  ]);
+  // Gardu khusus tidak punya JTR yang diinspeksi PLN (scripts/gardu-khusus.sql).
+  return gardu.filter((g) => !khusus.has(kunciGk(g.gardu_kode, g.ulp))).map((g) => {
     const km = Number(g.panjang_km ?? 0);
     return {
       segmen_id: kunciGardu(g.ulp, g.gardu_kode),

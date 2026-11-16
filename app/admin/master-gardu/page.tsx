@@ -7,15 +7,17 @@ import { canSeeAllUnits, UNITS } from "@/lib/roles";
 import { FIELD, EYEBROW, CARD } from "@/app/admin/_ui";
 import { useAnomalySettings } from "@/app/admin/_hooks/useAnomalySettings";
 import TabPil, { type ItemTab } from "@/app/admin/_kit/TabPil";
-import { Database, ListFilter } from "lucide-react";
+import { Building2, Database, ListFilter } from "lucide-react";
 import TabelMasterGardu from "./_components/TabelMasterGardu";
 import FilterGarduTab from "./_components/FilterGarduTab";
+import GarduKhususTab from "./_components/GarduKhususTab";
 import { bacaSaringanUrl } from "./_lib/saringanUrl";
 
-type Tab = "master" | "filter";
+type Tab = "master" | "filter" | "khusus";
 const TAB: ItemTab<Tab>[] = [
   { kunci: "master", label: "Master gardu", ikon: Database },
   { kunci: "filter", label: "Filter gardu", ikon: ListFilter },
+  { kunci: "khusus", label: "Gardu khusus", ikon: Building2 },
 ];
 
 /**
@@ -45,12 +47,17 @@ function IsiHalaman() {
   // lalu menyusuri belasan langkah yang tak seorang pun anggap sebagai langkah.
   const [awal] = useState(() => bacaSaringanUrl(sp));
   const [ulp, setUlp] = useState(awal.ulp);
-  const [tab, setTab] = useState<Tab>(() => (sp?.get("tab") === "filter" ? "filter" : "master"));
-  // Tab Filter baru dimuat saat pertama dibuka, lalu dipertahankan.
+  const [tab, setTab] = useState<Tab>(() => {
+    const t = sp?.get("tab");
+    return t === "filter" || t === "khusus" ? t : "master";
+  });
+  // Tab Filter & Gardu khusus baru dimuat saat pertama dibuka, lalu dipertahankan.
   const [filterDibuka, setFilterDibuka] = useState(tab === "filter");
+  const [khususDibuka, setKhususDibuka] = useState(tab === "khusus");
   const pilihTab = (t: Tab) => {
     setTab(t);
     if (t === "filter") setFilterDibuka(true);
+    if (t === "khusus") setKhususDibuka(true);
   };
 
   const unit = canSeeAllUnits(user.role) ? ulp : (user.unit ?? "");
@@ -88,6 +95,11 @@ function IsiHalaman() {
       {filterDibuka && (
         <div className={tab === "filter" ? "" : "hidden"}>
           <FilterGarduTab ulp={unit} />
+        </div>
+      )}
+      {khususDibuka && (
+        <div className={tab === "khusus" ? "" : "hidden"}>
+          <GarduKhususTab user={user} ulp={unit} />
         </div>
       )}
     </div>

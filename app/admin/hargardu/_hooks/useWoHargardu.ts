@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
+import { kunciGk, muatKunciGk } from "@/lib/garduKhusus";
 import { ketSusulan, ketTunggakan } from "@/lib/woTunggakan";
 import {
   DEFAULT_WO_HAR, garduAktif, kunciGardu, susunKandidat, tanggalWo,
@@ -147,7 +148,7 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
   const tarik = useCallback(async (): Promise<Muatan> => {
     const ulp = kunciDaftar.split(",").filter(Boolean);
     const lalu = bulan === 1 ? { t: tahun - 1, b: 12 } : { t: tahun, b: bulan - 1 };
-    const [set, head, rows, master, kerja, rencana, lewat] = await Promise.all([
+    const [set, head, rows, semuaMaster, kerja, rencana, lewat, khusus] = await Promise.all([
       supabaseBrowser.from("wo_hargardu_settings").select("ulp,frekuensi_per_tahun,kuota_per_bulan,hanya_gardu_aktif,terbit_otomatis"),
       supabaseBrowser
         .from("wo_hargardu")
@@ -204,7 +205,10 @@ export function useWoHargardu(daftar: string[], tahun: number, bulan: number) {
           .in("ulp", ulp)
           .order("id"),
       ),
+      muatKunciGk(ulp),
     ]);
+    // Gardu khusus dipelihara pelanggan — bukan kandidat WO (scripts/gardu-khusus.sql).
+    const master = semuaMaster.filter((g) => !khusus.has(kunciGk(g.kode, g.ulp)));
     if (set.error) throw new Error(set.error.message);
     if (head.error) throw new Error(head.error.message);
     const tunggak = await tarikTunggakan(ulp, tahun, bulan).catch(() => ({ lalu: [], susulan: new Map<string, string>() }));
