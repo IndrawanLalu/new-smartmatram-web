@@ -212,6 +212,12 @@ export default function DetailPemeliharaanModal({
               {b.jumlahItem !== null && <span className="ml-2 text-xs text-ink-soft">· {b.jumlahItem} item</span>}
             </Nilai>
             {b.alamat && <Nilai label="Alamat"><span className="font-normal">{b.alamat}</span></Nilai>}
+            {b.terdekatLabel && (
+              <Nilai label="Tiang / gardu terdekat">
+                {b.terdekatLabel}
+                {b.terdekatJarakM !== null && <span className="font-normal text-ink-soft"> · {Math.round(b.terdekatJarakM)} m</span>}
+              </Nilai>
+            )}
             {b.catatan && <p className="text-xs text-ink-soft italic">{b.catatan}</p>}
 
             <div className="flex flex-wrap items-center gap-3 text-xs">

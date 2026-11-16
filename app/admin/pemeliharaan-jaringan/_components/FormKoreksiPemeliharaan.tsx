@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { EYEBROW, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { BarisPemeliharaan, JenisJaringan, KategoriRef, KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
+import PilihTerdekat from "./PilihTerdekat";
 
 /**
  * Koreksi admin atas salah input — selama menunggu verifikasi, atau sesudah
@@ -36,6 +37,8 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
     pekerjaan: b.pekerjaan,
     alamat: b.alamat,
     catatan: b.catatan,
+    terdekatTiangId: b.terdekatTiangId,
+    terdekatGarduKode: b.terdekatGarduKode,
   });
   const [penyulang, setPenyulang] = useState<string[]>([b.penyulang]);
   const ubah = (p: Partial<KoreksiPemeliharaan>) => setV((x) => ({ ...x, ...p }));
@@ -93,7 +96,12 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
           </select>
         </Kolom>
         <Kolom label="Penyulang">
-          <select value={v.penyulang} onChange={(e) => ubah({ penyulang: e.target.value })} className={FIELD}>
+          {/* Ganti penyulang manual = lepas tiang/gardu terdekat (penyulangnya ikut pilihan itu). */}
+          <select
+            value={v.penyulang}
+            onChange={(e) => ubah({ penyulang: e.target.value, terdekatTiangId: null, terdekatGarduKode: null })}
+            className={FIELD}
+          >
             {penyulang.map((p) => <option key={p} value={p}>{p}</option>)}
           </select>
         </Kolom>
@@ -104,6 +112,17 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
           </select>
         </Kolom>
       </section>
+      <PilihTerdekat
+        b={b}
+        tiangId={v.terdekatTiangId}
+        garduKode={v.terdekatGarduKode}
+        penyulang={v.penyulang}
+        onPilih={(p) => {
+          const peny = p.penyulang?.trim().toUpperCase();
+          if (peny) setPenyulang((x) => (x.includes(peny) ? x : [...x, peny].sort()));
+          ubah({ terdekatTiangId: p.tiangId, terdekatGarduKode: p.garduKode, ...(peny ? { penyulang: peny } : {}) });
+        }}
+      />
       <Kolom label="Pekerjaannya apa">
         <textarea
           required

@@ -74,6 +74,11 @@ export interface BarisPemeliharaan {
   jumlahItem: number | null;
   /** Kode gardu bila jenis = GARDU. */
   garduKode: string | null;
+  /** Tiang JTM / gardu terdekat yang dipilih admin saat koreksi (tidak wajib). */
+  terdekatTiangId: string | null;
+  terdekatGarduKode: string | null;
+  terdekatLabel: string | null;
+  terdekatJarakM: number | null;
 }
 
 export interface KategoriRef {
@@ -92,6 +97,9 @@ export interface KoreksiPemeliharaan {
   pekerjaan: string;
   alamat: string | null;
   catatan: string | null;
+  /** Tiang JTM ATAU gardu terdekat (≤ 100 m); keduanya null = tidak dipilih. */
+  terdekatTiangId: string | null;
+  terdekatGarduKode: string | null;
 }
 
 export type SaringStatus = "SEMUA" | StatusTabel;
@@ -170,6 +178,10 @@ export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     dikembalikanOleh: teks(r.dikembalikan_oleh),
     jumlahItem: r.jumlah_item === null || r.jumlah_item === undefined ? null : Number(r.jumlah_item),
     garduKode: (r.gardu_kode as string | null) ?? null,
+    terdekatTiangId: teks(r.terdekat_tiang_id),
+    terdekatGarduKode: teks(r.terdekat_gardu_kode),
+    terdekatLabel: teks(r.terdekat_label),
+    terdekatJarakM: angka(r.terdekat_jarak_m),
   };
 };
 
@@ -315,7 +327,7 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
 
   /** Koreksi admin — menunggu verifikasi, atau sudah disetujui oleh UP3 / admin ULP itu (dijaga server). */
   const koreksi = async (id: string, v: KoreksiPemeliharaan) => {
-    const { error } = await supabaseBrowser.rpc("ubah_pemeliharaan_jaringan", {
+    const { error } = await supabaseBrowser.rpc("koreksi_pemeliharaan_jaringan", {
       p_id: id,
       p_jenis: v.jenis,
       p_penyulang: v.penyulang,
@@ -323,6 +335,8 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
       p_pekerjaan: v.pekerjaan,
       p_alamat: v.alamat,
       p_catatan: v.catatan,
+      p_tiang_id: v.terdekatTiangId,
+      p_gardu_kode: v.terdekatGarduKode,
     });
     if (error) throw new Error(error.message);
     await segarkanSatu(id);
