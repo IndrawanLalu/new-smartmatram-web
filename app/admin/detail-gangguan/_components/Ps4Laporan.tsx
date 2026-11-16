@@ -10,6 +10,11 @@ import Paginasi from "./Paginasi";
  * Laporan satu petugas di Realisasi PS4 + verifikasi Masuk PS4 / Tidak masuk
  * (apkt_ps4_tetapkan: UP3 semua ULP, admin ULP sendiri). Klik pilihan yang
  * sedang aktif = batalkan verifikasinya.
+ *
+ * Daftar "belum diambil fotonya": tombol mengantrekan laporan di halaman yang
+ * tampil (apkt_foto_minta, sama dengan tombol Ambil foto di form koreksi) —
+ * dicicil per halaman, pekerja homelab mengambilnya satu per satu berjeda
+ * 10 detik (20 laporan ± 4–5 menit).
  */
 
 interface Laporan {
@@ -53,6 +58,9 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
   const [belumSaja, setBelumSaja] = useState(false);
   const [halaman, setHalaman] = useState(1);
   const [simpan, setSimpan] = useState<string | null>(null);
+  const [diminta, setDiminta] = useState<Set<string>>(new Set());
+  const [mengantre, setMengantre] = useState(false);
+  const [muatUlang, setMuatUlang] = useState(0);
 
   useEffect(() => {
     let hidup = true;
@@ -66,7 +74,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
         setIsi((data ?? []) as Laporan[]);
       });
     return () => { hidup = false; };
-  }, [dari, sampai, ulp, petugas, belumSaja]);
+  }, [dari, sampai, ulp, petugas, belumSaja, muatUlang]);
 
   const tetapkan = async (no: string, nilai: "ya" | "tidak" | null) => {
     setSimpan(no);
@@ -78,6 +86,20 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
     onBerubah();
   };
 
+  const antrekan = async (daftar: string[]) => {
+    setMengantre(true);
+    const gagal: string[] = [];
+    for (const no of daftar) {
+      const { error } = await supabaseBrowser.rpc("apkt_foto_minta", { p_no_laporan: no });
+      if (error) gagal.push(`${no}: ${error.message}`);
+      else setDiminta((v) => new Set(v).add(no));
+    }
+    setMengantre(false);
+    setGalat(gagal.length ? `Gagal masuk antrean — ${gagal.join("; ")}` : null);
+  };
+
+  const segarkan = () => { setMuatUlang((v) => v + 1); onBerubah(); };
+
   const semua = isi ?? [];
   const jumlahHalaman = Math.max(1, Math.ceil(semua.length / PER_HALAMAN));
   const hal = Math.min(halaman, jumlahHalaman);
@@ -87,6 +109,18 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
     <div className={`${CARD} p-4 space-y-3`}>
       <div className="flex items-center gap-3 flex-wrap">
         <p className={`${EYEBROW} flex-1`}>{petugas ? `Laporan ${petugas}` : "Laporan yang belum diambil fotonya"}</p>
+        {!petugas && tampil.length > 0 && (
+          <>
+            <button onClick={segarkan} className="px-2.5 py-1 rounded-lg border border-line bg-white text-xs font-semibold text-ink-soft hover:bg-surface">
+              Muat ulang
+            </button>
+            <button onClick={() => void antrekan(tampil.map((l) => l.no_laporan).filter((no) => !diminta.has(no)))}
+              disabled={mengantre || tampil.every((l) => diminta.has(l.no_laporan))}
+              className="px-2.5 py-1 rounded-lg border border-navy-300 bg-white text-xs font-semibold text-navy-700 hover:bg-navy-50 disabled:opacity-60">
+              {mengantre ? "Memasukkan antrean…" : `Ambil foto ${tampil.length} laporan di halaman ini`}
+            </button>
+          </>
+        )}
         {petugas && (
           <label className="flex items-center gap-1.5 text-xs text-ink-soft">
             <input type="checkbox" checked={belumSaja} onChange={(e) => { setBelumSaja(e.target.checked); setHalaman(1); }} />
@@ -127,6 +161,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
                 <p className="text-ink-soft truncate">{l.alamat_pelapor || ""}</p>
                 {l.status_foto === "tidak_ada_foto" && <p className="text-amber-700">Tidak ada foto di APKT.</p>}
                 {l.ps4_oleh && <p className="text-ink-muted">Diverifikasi {l.ps4_oleh}</p>}
+                {diminta.has(l.no_laporan) && <p className="text-navy-700">Masuk antrean pekerja (± 15 detik per laporan) — tekan Muat ulang beberapa saat lagi.</p>}
               </div>
               {berfoto && (
                 <div className="flex md:flex-col gap-1.5 shrink-0">

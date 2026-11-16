@@ -3,7 +3,7 @@
  *
  * Satu antrean, satu laporan sekali jalan — tombol "Ambil foto" di web dan
  * jalan otomatis malam tidak pernah memproses laporan yang sama bersamaan.
- *   • permintaan manual: kapan saja, dicek tiap 10 detik;
+ *   • permintaan manual: kapan saja, dicek tiap 10 detik, berjeda 10 detik antarlaporan;
  *   • otomatis: hanya pukul JAM_FOTO_APKT (bawaan 0-6 WITA), satu laporan
  *     tiap ±20 detik supaya server PLN tidak terbebani;
  *   • APKT memutus koneksi → otomatis berhenti sampai malam berikutnya;
@@ -15,6 +15,9 @@ const APKT_GQL = "https://new-apktservice.pln.co.id:32269/graphql";
 const BUCKET = "apkt-foto";
 const [JAM_MULAI, JAM_SELESAI] = (process.env.JAM_FOTO_APKT || "0-6").split("-").map(Number);
 const JEDA_LAPORAN = 20_000;
+// Antara laporan manual (tombol per halaman Realisasi PS4 bisa mengantrekan 20
+// sekaligus): 10 detik, seperti orang yang membuka laporan satu per satu.
+const JEDA_MANUAL = 10_000;
 const JEDA_PERMINTAAN = 2_000;
 const JEDA_KOSONG = 10_000;   // antrean kosong: cek lagi (hanya ke Supabase, bukan PLN)
 
@@ -165,7 +168,7 @@ export function jalankanFotoApkt(supabase, log) {
           berhentiSampai = tglWita();
           log("foto APKT: APKT tidak terjangkau — jalan otomatis berhenti sampai malam berikutnya");
         }
-        await tidur(hasil.macet ? 60_000 : lap.manual ? JEDA_PERMINTAAN : JEDA_LAPORAN);
+        await tidur(hasil.macet ? 60_000 : lap.manual ? JEDA_MANUAL : JEDA_LAPORAN);
       } catch (e) {
         log(`foto APKT: ${e.message}`);
         await tidur(60_000);
