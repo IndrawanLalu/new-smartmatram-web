@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, Camera, FileText, Hourglass } from "lucide-react";
+import { BadgeCheck, Camera, FileText, Hourglass, Loader2 } from "lucide-react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import StatTile from "@/app/admin/_components/StatTile";
 import { CARD, EYEBROW } from "@/app/admin/_ui";
@@ -32,6 +32,8 @@ const TH = "py-2.5 px-3 text-left bg-navy-50 text-navy-600 font-semibold border-
 const TD = "py-2 px-3 border-b border-line tabular-nums";
 const persen = (a: number, b: number) =>
   b > 0 ? `${((a / b) * 100).toLocaleString("id-ID", { maximumFractionDigits: 1 })}%` : "—";
+/** Selama ada antrean: baca ulang tiap 10 detik (pekerja ± 1 laporan / 12–15 detik). */
+const SEGAR_ANTRE = 10_000;
 /** Penanda pilihan "belum diambil" (petugas NULL) — beda dari tidak memilih. */
 const BELUM = "\u0000belum";
 
@@ -40,6 +42,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
   const [galat, setGalat] = useState<string | null>(null);
   const [pilih, setPilih] = useState<string | null>(null);
   const [versi, setVersi] = useState(0);
+  const [antre, setAntre] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     let hidup = true;
@@ -52,6 +55,25 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
       });
     return () => { hidup = false; };
   }, [dari, sampai, ulp, versi]);
+
+  // Antrean pekerja (permintaan manual yang belum diproses) — dari server, jadi
+  // tetap ada sesudah reload. Selama ada isinya, tab ini memperbarui diri.
+  useEffect(() => {
+    let hidup = true;
+    void supabaseBrowser
+      .from("apkt_foto_laporan")
+      .select("no_laporan")
+      .not("minta_manual_at", "is", null)
+      .then(({ data }) => { if (hidup) setAntre(new Set((data ?? []).map((r) => r.no_laporan as string))); });
+    return () => { hidup = false; };
+  }, [versi]);
+
+  const adaAntre = antre.size > 0;
+  useEffect(() => {
+    if (!adaAntre) return;
+    const t = setInterval(() => setVersi((v) => v + 1), SEGAR_ANTRE);
+    return () => clearInterval(t);
+  }, [adaAntre]);
 
   const total = useMemo(() => {
     const t = { laporan: 0, berfoto: 0, diverifikasi: 0, masuk_ps4: 0, belum: 0 };
@@ -78,6 +100,16 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
         <StatTile label="Belum diambil fotonya" value={total.belum} icon={Hourglass}
           tone={total.belum > 0 ? "attention" : "green"} hint="otomatis 00.00–06.00 WITA" />
       </div>
+
+      {adaAntre && (
+        <div className="rounded-xl border border-navy-200 bg-navy-50 px-4 py-2.5 text-sm text-navy-700 flex items-center gap-2">
+          <Loader2 size={15} className="animate-spin shrink-0" />
+          <span>
+            Pekerja sedang mengambil foto: <b className="tabular-nums">{antre.size}</b> laporan lagi di antrean
+            (± {Math.max(1, Math.ceil((antre.size * 13) / 60))} menit). Angka di halaman ini diperbarui sendiri.
+          </span>
+        </div>
+      )}
 
       <div className={`${CARD} overflow-x-auto`}>
         <p className={`${EYEBROW} px-4 pt-3`}>Per petugas — klik untuk melihat laporannya</p>
@@ -133,7 +165,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
 
       {pilih !== null && (
         <Ps4Laporan key={pilih} dari={dari} sampai={sampai} ulp={ulp} petugas={petugasPilih}
-          onBerubah={() => setVersi((v) => v + 1)} />
+          antre={antre} versi={versi} onBerubah={() => setVersi((v) => v + 1)} />
       )}
     </div>
   );

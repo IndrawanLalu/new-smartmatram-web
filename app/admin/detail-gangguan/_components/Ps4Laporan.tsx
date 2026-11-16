@@ -14,7 +14,8 @@ import Paginasi from "./Paginasi";
  * Daftar "belum diambil fotonya": tombol mengantrekan laporan di halaman yang
  * tampil (apkt_foto_minta, sama dengan tombol Ambil foto di form koreksi) —
  * dicicil per halaman, pekerja homelab mengambilnya satu per satu berjeda
- * 10 detik (20 laporan ± 4–5 menit).
+ * 10 detik (20 laporan ± 4–5 menit). Status antrean & kemajuannya dibaca dari
+ * server oleh RealisasiPs4Tab, jadi tetap terlihat sesudah halaman dimuat ulang.
  */
 
 interface Laporan {
@@ -35,6 +36,10 @@ interface Props {
   ulp: string;
   /** null = laporan yang belum diambil pekerja. */
   petugas: string | null;
+  /** Laporan yang sedang di antrean pekerja (dibaca dari server, tahan reload). */
+  antre: Set<string>;
+  /** Naik tiap kali daftar perlu dibaca ulang (diperbarui otomatis selama ada antrean). */
+  versi: number;
   onBerubah: () => void;
 }
 
@@ -50,7 +55,7 @@ const PILIHAN = [
 
 const urlFoto = (path: string) => supabaseBrowser.storage.from("apkt-foto").getPublicUrl(path).data.publicUrl;
 
-export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Props) {
+export default function Ps4Laporan({ dari, sampai, ulp, petugas, antre, versi, onBerubah }: Props) {
   const user = useCurrentUser();
   const boleh = user.role === "UP3" || user.role === "admin";
   const [isi, setIsi] = useState<Laporan[] | null>(null);
@@ -58,9 +63,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
   const [belumSaja, setBelumSaja] = useState(false);
   const [halaman, setHalaman] = useState(1);
   const [simpan, setSimpan] = useState<string | null>(null);
-  const [diminta, setDiminta] = useState<Set<string>>(new Set());
   const [mengantre, setMengantre] = useState(false);
-  const [muatUlang, setMuatUlang] = useState(0);
 
   useEffect(() => {
     let hidup = true;
@@ -74,7 +77,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
         setIsi((data ?? []) as Laporan[]);
       });
     return () => { hidup = false; };
-  }, [dari, sampai, ulp, petugas, belumSaja, muatUlang]);
+  }, [dari, sampai, ulp, petugas, belumSaja, versi]);
 
   const tetapkan = async (no: string, nilai: "ya" | "tidak" | null) => {
     setSimpan(no);
@@ -92,34 +95,31 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
     for (const no of daftar) {
       const { error } = await supabaseBrowser.rpc("apkt_foto_minta", { p_no_laporan: no });
       if (error) gagal.push(`${no}: ${error.message}`);
-      else setDiminta((v) => new Set(v).add(no));
     }
     setMengantre(false);
     setGalat(gagal.length ? `Gagal masuk antrean — ${gagal.join("; ")}` : null);
+    onBerubah();
   };
-
-  const segarkan = () => { setMuatUlang((v) => v + 1); onBerubah(); };
 
   const semua = isi ?? [];
   const jumlahHalaman = Math.max(1, Math.ceil(semua.length / PER_HALAMAN));
   const hal = Math.min(halaman, jumlahHalaman);
   const tampil = semua.slice((hal - 1) * PER_HALAMAN, hal * PER_HALAMAN);
+  const belumAntre = tampil.map((l) => l.no_laporan).filter((no) => !antre.has(no));
 
   return (
     <div className={`${CARD} p-4 space-y-3`}>
       <div className="flex items-center gap-3 flex-wrap">
         <p className={`${EYEBROW} flex-1`}>{petugas ? `Laporan ${petugas}` : "Laporan yang belum diambil fotonya"}</p>
         {!petugas && tampil.length > 0 && (
-          <>
-            <button onClick={segarkan} className="px-2.5 py-1 rounded-lg border border-line bg-white text-xs font-semibold text-ink-soft hover:bg-surface">
-              Muat ulang
-            </button>
-            <button onClick={() => void antrekan(tampil.map((l) => l.no_laporan).filter((no) => !diminta.has(no)))}
-              disabled={mengantre || tampil.every((l) => diminta.has(l.no_laporan))}
-              className="px-2.5 py-1 rounded-lg border border-navy-300 bg-white text-xs font-semibold text-navy-700 hover:bg-navy-50 disabled:opacity-60">
-              {mengantre ? "Memasukkan antrean…" : `Ambil foto ${tampil.length} laporan di halaman ini`}
-            </button>
-          </>
+          <button onClick={() => void antrekan(belumAntre)} disabled={mengantre || belumAntre.length === 0}
+            className="px-2.5 py-1 rounded-lg border border-navy-300 bg-white text-xs font-semibold text-navy-700 hover:bg-navy-50 disabled:opacity-60">
+            {mengantre
+              ? "Memasukkan antrean…"
+              : belumAntre.length === 0
+                ? "Semua di halaman ini sudah di antrean"
+                : `Ambil foto ${belumAntre.length} laporan di halaman ini`}
+          </button>
         )}
         {petugas && (
           <label className="flex items-center gap-1.5 text-xs text-ink-soft">
@@ -161,7 +161,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, onBerubah }: Pr
                 <p className="text-ink-soft truncate">{l.alamat_pelapor || ""}</p>
                 {l.status_foto === "tidak_ada_foto" && <p className="text-amber-700">Tidak ada foto di APKT.</p>}
                 {l.ps4_oleh && <p className="text-ink-muted">Diverifikasi {l.ps4_oleh}</p>}
-                {diminta.has(l.no_laporan) && <p className="text-navy-700">Masuk antrean pekerja (± 15 detik per laporan) — tekan Muat ulang beberapa saat lagi.</p>}
+                {antre.has(l.no_laporan) && <p className="text-navy-700 font-semibold">Di antrean pekerja — pindah ke petugasnya begitu fotonya diambil.</p>}
               </div>
               {berfoto && (
                 <div className="flex md:flex-col gap-1.5 shrink-0">
