@@ -238,7 +238,15 @@ export function useKinerjaYantek(user: CurrentUser): Hasil {
               `Tegangan ujung (gardu WO) ${n(rUkur.tu_terkirim)} terkirim · ${n(rUkur.tu_disetujui)} disetujui`,
             ]
           : rDrone
-            ? [`Drone: WO ${kmTeks(Number(rDrone.wo_km))} KMS`, `Drone: realisasi ${kmTeks(Number(rDrone.realisasi_km))} KMS`]
+            ? [
+                `Drone: WO ${kmTeks(Number(rDrone.wo_km))} KMS`,
+                // Persen terhadap WO baris ini (Tier 1 seluruhnya), dibulatkan seperti kolom capaian.
+                `Drone: realisasi ${kmTeks(Number(rDrone.realisasi_km))} KMS${
+                  Number(r.wo_terbit ?? 0) > 0
+                    ? ` (${Math.round((Number(rDrone.realisasi_km) / Number(r.wo_terbit)) * 100)}% dari WO)`
+                    : ""
+                }`,
+              ]
             : undefined,
         // WO terbit = WO bulan ini + tunggakan bulan lalu (semua pekerjaan, wo-tunggakan-semua.sql).
         rincianWo: (tunggakan.get(m.kunci) ?? 0) > 0
