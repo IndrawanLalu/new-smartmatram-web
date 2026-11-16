@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useJtrItem, type ItemJtr } from "../_hooks/useJtrItem";
 
 /**
@@ -15,6 +16,9 @@ import { useJtrItem, type ItemJtr } from "../_hooks/useJtrItem";
  * kekurangan — itu justru cara menetapkan field yang WAJIB dilihat sendiri:
  * papan kendali di HP menyatakannya "belum diisi", dan tiang tidak bisa
  * tersimpan sebelum petugas membukanya.
+ *
+ * Satu isian untuk SEMUA ULP, jadi hanya UP3 yang mengubahnya (16 Nov 2026,
+ * dijaga juga di database: scripts/jtr-baik-up3.sql). Akun lain hanya melihat.
  */
 
 const BOOLEAN_OPSI = [
@@ -24,6 +28,7 @@ const BOOLEAN_OPSI = [
 
 export default function TiangBaik() {
   const { item, kelompok, opsiPer, loading, setBawaan } = useJtrItem();
+  const boleh = useCurrentUser().role === "UP3";
 
   if (loading) {
     return (
@@ -60,7 +65,8 @@ export default function TiangBaik() {
           saja.
         </p>
         <p className="text-[11px] text-ink-muted mt-2">
-          Terisi <b className="tabular-nums">{terisi}</b> dari {total} isian.
+          Terisi <b className="tabular-nums">{terisi}</b> dari {total} isian. Berlaku untuk semua ULP
+          {boleh ? "." : " — hanya UP3 yang bisa mengubahnya."}
         </p>
       </div>
 
@@ -84,6 +90,7 @@ export default function TiangBaik() {
                 }
                 syaratNegasi={i.syaratNegasi}
                 syaratLabel={i.syaratNilai.join(" / ")}
+                boleh={boleh}
                 onSimpan={setBawaan}
               />
             ))}
@@ -100,6 +107,7 @@ function Baris({
   syaratNama,
   syaratNegasi,
   syaratLabel,
+  boleh,
   onSimpan,
 }: {
   i: ItemJtr;
@@ -107,6 +115,7 @@ function Baris({
   syaratNama: string | null;
   syaratNegasi: boolean;
   syaratLabel: string;
+  boleh: boolean;
   onSimpan: (field: string, nilai: string | null) => Promise<boolean>;
 }) {
   return (
@@ -124,14 +133,16 @@ function Baris({
             if (v !== (i.nilaiBawaan ?? "")) void onSimpan(i.field, v || null);
           }}
           placeholder="angka, misal 0"
-          className={`${FIELD} w-[260px]`}
+          disabled={!boleh}
+          className={`${FIELD} w-[260px] disabled:bg-surface disabled:text-ink-soft`}
           aria-label={`Jawaban bawaan ${i.nama}`}
         />
       ) : (
         <select
           value={i.nilaiBawaan ?? ""}
           onChange={(e) => void onSimpan(i.field, e.target.value || null)}
-          className={`${FIELD} w-[260px]`}
+          disabled={!boleh}
+          className={`${FIELD} w-[260px] disabled:bg-surface disabled:text-ink-soft`}
           aria-label={`Jawaban bawaan ${i.nama}`}
         >
           <option value="">— wajib dipilih petugas —</option>

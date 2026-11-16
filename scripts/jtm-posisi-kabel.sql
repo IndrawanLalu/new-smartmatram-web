@@ -455,5 +455,5 @@ NOTIFY pgrst, 'reload schema';
 --   b. Satu pemilik per tiang (harus 0 baris):
 --      SELECT tiang_id FROM tiang_kode_penyulang GROUP BY tiang_id HAVING count(*) FILTER (WHERE utama) > 1;
 --   c. Riwayat penukaran:
---      SELECT entitas_kode, nilai_lama, nilai_baru, oleh_nama, created_at FROM master_audit
---      WHERE field = 'pemilik_tiang' ORDER BY created_at DESC LIMIT 10;
+--      SELECT entitas_kode, nilai_lama, nilai_baru, oleh_nama, pada FROM master_audit
+--      WHERE field = 'pemilik_tiang' ORDER BY pada DESC LIMIT 10;

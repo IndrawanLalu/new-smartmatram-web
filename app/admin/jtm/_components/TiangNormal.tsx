@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { CARD, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useJtmItem, type ItemRef } from "../_hooks/useJtmItem";
 
 /**
@@ -15,6 +16,9 @@ import { useJtmItem, type ItemRef } from "../_hooks/useJtmItem";
  * kekurangan: nomor peralatan atau nilai pentanahan memang tidak punya jawaban
  * yang "biasanya benar", dan mengisinya otomatis berarti menuliskan angka yang
  * tidak pernah diukur siapa pun.
+ *
+ * Satu isian untuk SEMUA ULP, jadi hanya UP3 yang mengubahnya (16 Nov 2026,
+ * dijaga juga di database: scripts/jtm-normal-up3.sql). Akun lain hanya melihat.
  */
 
 const TIER_LABEL: Record<string, string> = {
@@ -25,6 +29,7 @@ const TIER_LABEL: Record<string, string> = {
 
 export default function TiangNormal() {
   const { item, kelompok, opsiPer, loading, setBawaan } = useJtmItem();
+  const boleh = useCurrentUser().role === "UP3";
 
   if (loading) {
     return (
@@ -55,7 +60,8 @@ export default function TiangNormal() {
           mana yang <i>paling sering benar</i> di wilayah Anda, dan itu cuma satu.
         </p>
         <p className="text-[11px] text-ink-muted mt-2">
-          Terisi <b className="tabular-nums">{terisi}</b> dari {total} item.
+          Terisi <b className="tabular-nums">{terisi}</b> dari {total} item. Berlaku untuk semua ULP
+          {boleh ? "." : " — hanya UP3 yang bisa mengubahnya."}
         </p>
       </div>
 
@@ -79,6 +85,7 @@ export default function TiangNormal() {
                         .join(" / ")
                     : null
                 }
+                boleh={boleh}
                 onSimpan={setBawaan}
               />
             ))}
@@ -95,6 +102,7 @@ function Baris({
   syaratNama,
   syaratNegasi,
   syaratLabel,
+  boleh,
   onSimpan,
 }: {
   i: ItemRef;
@@ -102,6 +110,7 @@ function Baris({
   syaratNama: string | null;
   syaratNegasi: boolean;
   syaratLabel: string | null;
+  boleh: boolean;
   onSimpan: (kode: string, nilai: string | null) => Promise<boolean>;
 }) {
   return (
@@ -116,7 +125,8 @@ function Baris({
         <select
           value={i.nilaiBawaan ?? ""}
           onChange={(e) => void onSimpan(i.kode, e.target.value || null)}
-          className={`${FIELD} w-[260px]`}
+          disabled={!boleh}
+          className={`${FIELD} w-[260px] disabled:bg-surface disabled:text-ink-soft`}
           aria-label={`Jawaban bawaan ${i.nama}`}
         >
           <option value="">— tidak diisi otomatis —</option>
@@ -135,7 +145,8 @@ function Baris({
             if (v !== (i.nilaiBawaan ?? "")) void onSimpan(i.kode, v || null);
           }}
           placeholder={i.tipe === "angka" ? "angka, misal 0" : "biarkan kosong"}
-          className={`${FIELD} w-[260px]`}
+          disabled={!boleh}
+          className={`${FIELD} w-[260px] disabled:bg-surface disabled:text-ink-soft`}
           aria-label={`Jawaban bawaan ${i.nama}`}
         />
       )}
