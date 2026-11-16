@@ -24,7 +24,7 @@
  * Isi pesan tetap di web (satu tempat). Pekerja hanya memicu.
  */
 import { createClient } from "@supabase/supabase-js";
-import { jalankanFotoApkt } from "./apktFoto.mjs";
+import { fetchUlang, jalankanFotoApkt } from "./apktFoto.mjs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -166,7 +166,8 @@ function pantau(nama, langganan) {
 }
 pantau("temuan", [["inspeksi", tanganiPerubahan], ["inspeksi_pohon", tanganiPerubahan]]);
 pantau("temuan-jtm", [["inspeksi_jtm_periksa", tanganiJtm]]);
-jalankanFotoApkt(supabase, log);
+// Klien sendiri ber-fetch coba ulang: tidak mengubah perilaku realtime di atas.
+jalankanFotoApkt(createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false }, global: { fetch: fetchUlang } }), log);
 
 // ── 2. Jadwal (WITA = UTC+8) ─────────────────────────────────────────────────
 let terakhirJadwal = "";

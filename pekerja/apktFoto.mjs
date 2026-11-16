@@ -3,7 +3,7 @@
  *
  * Satu antrean, satu laporan sekali jalan — tombol "Ambil foto" di web dan
  * jalan otomatis malam tidak pernah memproses laporan yang sama bersamaan.
- *   • permintaan manual: kapan saja, dicek tiap 30 detik;
+ *   • permintaan manual: kapan saja, dicek tiap 10 detik;
  *   • otomatis: hanya pukul JAM_FOTO_APKT (bawaan 0-6 WITA), satu laporan
  *     tiap ±20 detik supaya server PLN tidak terbebani;
  *   • APKT memutus koneksi → otomatis berhenti sampai malam berikutnya;
@@ -16,13 +16,29 @@ const BUCKET = "apkt-foto";
 const [JAM_MULAI, JAM_SELESAI] = (process.env.JAM_FOTO_APKT || "0-6").split("-").map(Number);
 const JEDA_LAPORAN = 20_000;
 const JEDA_PERMINTAAN = 2_000;
-const JEDA_KOSONG = 30_000;
+const JEDA_KOSONG = 10_000;   // antrean kosong: cek lagi (hanya ke Supabase, bukan PLN)
 
 const Q_FOTO = "query($n:String){getGangguanFotoByNoLaporan(noLaporan:$n){status message data{id foto status}}}";
 const Q_PETUGAS = "query($n:String!){getGangguanByNoLaporan(noLaporan:$n){status message data{no_laporan status_akhir gangguan_transaksi{id jenis appuser{username}}}}}";
 const TAHAP = { "Dalam Pengerjaan": "pengerjaan", Selesai: "selesai" };
 
 const tidur = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * fetch untuk klien Supabase pekerja ini: sambungan homelab → Supabase sesekali
+ * putus sesaat ("fetch failed", 16 Nov 2026 ±14× dalam 25 menit). Coba ulang
+ * 3× berjeda 1–3 detik, bukan menunggu satu putaran penuh.
+ */
+export async function fetchUlang(input, init) {
+  for (let ke = 1; ; ke++) {
+    try {
+      return await fetch(input, init);
+    } catch (e) {
+      if (ke > 3 || init?.signal?.aborted) throw e;
+      await tidur(ke * 1000);
+    }
+  }
+}
 const wita = () => new Date(Date.now() + 8 * 3600 * 1000);
 const tglWita = () => wita().toISOString().slice(0, 10);
 
@@ -141,7 +157,7 @@ export function jalankanFotoApkt(supabase, log) {
         }
         const otomatis = jamOtomatis();
         const { data, error } = await supabase.rpc("apkt_foto_antrean", { p_jumlah: 1, p_otomatis: otomatis });
-        if (error) { log(`antrean foto APKT: ${error.message}`); await tidur(60_000); continue; }
+        if (error) { log(`antrean foto APKT: ${error.message}`); await tidur(15_000); continue; }
         const lap = data?.[0];
         if (!lap) { await tidur(JEDA_KOSONG); continue; }
         const hasil = await prosesLaporan(supabase, log, lap);
@@ -157,5 +173,5 @@ export function jalankanFotoApkt(supabase, log) {
     }
   })();
 
-  log(`foto APKT: otomatis ${JAM_MULAI}.00–${JAM_SELESAI}.00 WITA, manual kapan saja`);
+  log(`foto APKT: otomatis ${JAM_MULAI}.00–${JAM_SELESAI}.00 WITA, manual kapan saja (cek tiap ${JEDA_KOSONG / 1000} detik)`);
 }
