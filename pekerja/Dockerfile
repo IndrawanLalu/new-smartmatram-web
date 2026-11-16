@@ -4,5 +4,5 @@ FROM node:22-alpine
 WORKDIR /app
 COPY pekerja/package.json ./
 RUN npm install --omit=dev --no-audit --no-fund
-COPY pekerja/index.mjs ./
+COPY pekerja/index.mjs pekerja/apktFoto.mjs ./
 CMD ["node", "index.mjs"]

@@ -6,6 +6,7 @@ import { BTN_PRIMARY, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { STEPS, loadSettings, saveSettings } from "./koreksiSettings";
 import { APKT_PENANDA, type DataApkt } from "./apktBookmarklet";
 import type { KoreksiRow } from "../_lib/gangguan";
+import FotoApkt from "./FotoApkt";
 
 interface GangguanLite {
   no_laporan?: string;
@@ -200,6 +201,8 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
               <ReadOnly label="Nyala" value={row.waktu_recovery} />
             </div>
           </div>
+
+          {row.no_laporan && <FotoApkt noLaporan={row.no_laporan} statusAkhir={row.status_akhir} />}
 
           {/* RPT/RCT before vs after */}
           <div className="grid grid-cols-2 gap-3">

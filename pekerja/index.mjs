@@ -12,6 +12,8 @@
  *                `/api/rekap-kinerja-wa` (grup UP3 di Pengaturan WA);
  *                pemeriksa tabel ringkas kondisi tiang JTM 02.00 WITA →
  *                `/api/kondisi-tiang-periksa` (perbaiki selisih, WA admin).
+ *   3. FOTO APKT  foto + petugas laporan gangguan APKT → Supabase Storage
+ *                (apktFoto.mjs; otomatis 00.00–06.00 WITA + tombol manual web).
  *
  * Kenapa container sendiri: di homelab notif realtime mati diam-diam karena
  * pemicunya (wa-bot lama) tidak ikut dinyalakan, dan sebelumnya karena secret
@@ -22,6 +24,7 @@
  * Isi pesan tetap di web (satu tempat). Pekerja hanya memicu.
  */
 import { createClient } from "@supabase/supabase-js";
+import { jalankanFotoApkt } from "./apktFoto.mjs";
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -163,6 +166,7 @@ function pantau(nama, langganan) {
 }
 pantau("temuan", [["inspeksi", tanganiPerubahan], ["inspeksi_pohon", tanganiPerubahan]]);
 pantau("temuan-jtm", [["inspeksi_jtm_periksa", tanganiJtm]]);
+jalankanFotoApkt(supabase, log);
 
 // ── 2. Jadwal (WITA = UTC+8) ─────────────────────────────────────────────────
 let terakhirJadwal = "";
