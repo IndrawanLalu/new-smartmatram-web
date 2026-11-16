@@ -50,15 +50,18 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   ORDER BY petugas NULLS LAST
 $$;
 
--- Daftar laporan satu petugas (p_petugas NULL = belum diambil pekerja).
-CREATE OR REPLACE FUNCTION public.realisasi_ps4_laporan(
+-- Daftar laporan satu petugas (p_petugas NULL = belum diambil pekerja,
+-- '*' = semua petugas — dipakai daftar "Belum diverifikasi" lintas petugas).
+-- 16 Nov: kolom petugas ditambah → tipe hasil berubah, jadi DROP dulu.
+DROP FUNCTION IF EXISTS public.realisasi_ps4_laporan(DATE, DATE, TEXT, TEXT, BOOLEAN);
+CREATE FUNCTION public.realisasi_ps4_laporan(
   p_dari DATE, p_sampai DATE, p_ulp TEXT, p_petugas TEXT, p_belum_verifikasi BOOLEAN)
 RETURNS TABLE (no_laporan TEXT, waktu_lapor TEXT, alamat_pelapor TEXT, keterangan_pelapor TEXT,
-               penyebab TEXT, status_foto TEXT, ps4 TEXT, ps4_oleh TEXT, foto JSONB)
+               penyebab TEXT, status_foto TEXT, ps4 TEXT, ps4_oleh TEXT, petugas TEXT, foto JSONB)
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WITH u AS (SELECT public._ps4_ulp(p_ulp) AS ulp)
   SELECT g.no_laporan, g.waktu_lapor, g.alamat_pelapor, g.keterangan_pelapor, g.penyebab,
-         f.status, f.ps4, f.ps4_oleh,
+         f.status, f.ps4, f.ps4_oleh, f.petugas,
          COALESCE((SELECT jsonb_agg(jsonb_build_object('tahap', a.tahap, 'path', a.path) ORDER BY a.tahap)
                    FROM public.apkt_foto a WHERE a.no_laporan = g.no_laporan), '[]'::jsonb)
   FROM public.apkt_gangguan g
@@ -67,7 +70,8 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
   WHERE g.status_akhir = 'Selesai'
     AND g.tgl_lapor BETWEEN p_dari AND p_sampai
     AND (u.ulp IS NULL OR upper(g.ulp) = u.ulp)
-    AND f.petugas IS NOT DISTINCT FROM p_petugas
+    AND (CASE WHEN p_petugas = '*' THEN f.petugas IS NOT NULL
+              ELSE f.petugas IS NOT DISTINCT FROM p_petugas END)
     AND (NOT p_belum_verifikasi
          OR (f.ps4 IS NULL AND EXISTS (SELECT 1 FROM public.apkt_foto a WHERE a.no_laporan = g.no_laporan)))
   ORDER BY g.tgl_lapor, g.no_laporan

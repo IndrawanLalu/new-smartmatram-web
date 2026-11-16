@@ -36,6 +36,8 @@ const persen = (a: number, b: number) =>
 const SEGAR_ANTRE = 10_000;
 /** Penanda pilihan "belum diambil" (petugas NULL) — beda dari tidak memilih. */
 const BELUM = "\u0000belum";
+/** Semua petugas, hanya yang belum diverifikasi (server: p_petugas '*'). */
+const BELUM_VERIFIKASI = "*";
 
 export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
   const [baris, setBaris] = useState<Baris[] | null>(null);
@@ -87,8 +89,11 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
   if (galat) return <div className={`${CARD} p-4 text-sm text-red-700`}>Realisasi PS4 gagal dibaca: {galat}</div>;
   if (!baris) return <div className={`${CARD} p-4 text-sm text-ink-soft`}>Memuat Realisasi PS4…</div>;
 
-  // Chip "Belum diambil fotonya" = halaman khusus mencicil pengambilan foto.
+  // Chip "Belum diambil fotonya" = halaman khusus mencicil pengambilan foto;
+  // chip "Belum diverifikasi" = foto semua petugas yang menunggu verifikasi.
   const khususBelum = pilih === BELUM;
+  const khususVerifikasi = pilih === BELUM_VERIFIKASI;
+  const rekap = !khususBelum && !khususVerifikasi;
 
   return (
     <div className="space-y-4">
@@ -103,8 +108,11 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <button onClick={() => setPilih(null)} className={`${CHIP} ${!khususBelum ? CHIP_ON : CHIP_OFF}`}>
+        <button onClick={() => setPilih(null)} className={`${CHIP} ${rekap ? CHIP_ON : CHIP_OFF}`}>
           Rekap per petugas
+        </button>
+        <button onClick={() => setPilih(BELUM_VERIFIKASI)} className={`${CHIP} ${khususVerifikasi ? CHIP_ON : CHIP_OFF}`}>
+          Belum diverifikasi <span className="tabular-nums opacity-70">{total.berfoto - total.diverifikasi}</span>
         </button>
         <button onClick={() => setPilih(BELUM)} className={`${CHIP} ${khususBelum ? CHIP_ON : CHIP_OFF}`}>
           Belum diambil fotonya <span className="tabular-nums opacity-70">{total.belum}</span>
@@ -121,7 +129,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
         </div>
       )}
 
-      {!khususBelum && (
+      {rekap && (
       <div className={`${CARD} overflow-x-auto`}>
         <p className={`${EYEBROW} px-4 pt-3`}>Per petugas — klik untuk melihat laporannya</p>
         <table className="w-full text-sm mt-2">
@@ -182,6 +190,7 @@ export default function RealisasiPs4Tab({ dari, sampai, ulp }: Props) {
 
       {pilih !== null && (
         <Ps4Laporan key={pilih} dari={dari} sampai={sampai} ulp={ulp} petugas={khususBelum ? null : pilih}
+          semuaBelumVerifikasi={khususVerifikasi}
           antre={antre} versi={versi} onBerubah={() => setVersi((v) => v + 1)} />
       )}
     </div>

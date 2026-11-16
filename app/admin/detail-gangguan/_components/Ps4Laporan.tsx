@@ -27,6 +27,7 @@ interface Laporan {
   status_foto: string | null;
   ps4: "ya" | "tidak" | null;
   ps4_oleh: string | null;
+  petugas: string | null;
   foto: { tahap: "pengerjaan" | "selesai"; path: string | null }[];
 }
 
@@ -34,8 +35,10 @@ interface Props {
   dari: string;
   sampai: string;
   ulp: string;
-  /** null = laporan yang belum diambil pekerja. */
+  /** null = laporan yang belum diambil pekerja, "*" = semua petugas. */
   petugas: string | null;
+  /** Daftar "Belum diverifikasi" semua petugas: saringan belum-verifikasi selalu aktif. */
+  semuaBelumVerifikasi?: boolean;
   /** Laporan yang sedang di antrean pekerja (dibaca dari server, tahan reload). */
   antre: Set<string>;
   /** Naik tiap kali daftar perlu dibaca ulang (diperbarui otomatis selama ada antrean). */
@@ -55,12 +58,12 @@ const PILIHAN = [
 
 const urlFoto = (path: string) => supabaseBrowser.storage.from("apkt-foto").getPublicUrl(path).data.publicUrl;
 
-export default function Ps4Laporan({ dari, sampai, ulp, petugas, antre, versi, onBerubah }: Props) {
+export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerifikasi = false, antre, versi, onBerubah }: Props) {
   const user = useCurrentUser();
   const boleh = user.role === "UP3" || user.role === "admin";
   const [isi, setIsi] = useState<Laporan[] | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
-  const [belumSaja, setBelumSaja] = useState(false);
+  const [belumSaja, setBelumSaja] = useState(semuaBelumVerifikasi);
   const [halaman, setHalaman] = useState(1);
   const [simpan, setSimpan] = useState<string | null>(null);
   const [mengantre, setMengantre] = useState(false);
@@ -110,7 +113,10 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, antre, versi, o
   return (
     <div className={`${CARD} p-4 space-y-3`}>
       <div className="flex items-center gap-3 flex-wrap">
-        <p className={`${EYEBROW} flex-1`}>{petugas ? `Laporan ${petugas}` : "Laporan yang belum diambil fotonya"}</p>
+        <p className={`${EYEBROW} flex-1`}>
+          {semuaBelumVerifikasi ? "Foto semua petugas yang belum diverifikasi"
+            : petugas ? `Laporan ${petugas}` : "Laporan yang belum diambil fotonya"}
+        </p>
         {!petugas && tampil.length > 0 && (
           <button onClick={() => void antrekan(belumAntre)} disabled={mengantre || belumAntre.length === 0}
             className="px-2.5 py-1 rounded-lg border border-navy-300 bg-white text-xs font-semibold text-navy-700 hover:bg-navy-50 disabled:opacity-60">
@@ -121,7 +127,7 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, antre, versi, o
                 : `Ambil foto ${belumAntre.length} laporan di halaman ini`}
           </button>
         )}
-        {petugas && (
+        {petugas && !semuaBelumVerifikasi && (
           <label className="flex items-center gap-1.5 text-xs text-ink-soft">
             <input type="checkbox" checked={belumSaja} onChange={(e) => { setBelumSaja(e.target.checked); setHalaman(1); }} />
             Hanya yang belum diverifikasi
@@ -155,7 +161,10 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, antre, versi, o
                 })}
               </div>
               <div className="flex-1 min-w-0 text-xs space-y-0.5">
-                <p className="font-semibold text-ink text-sm">{l.no_laporan}</p>
+                <p className="font-semibold text-ink text-sm">
+                  {l.no_laporan}
+                  {semuaBelumVerifikasi && <span className="font-normal text-ink-soft"> · {l.petugas}</span>}
+                </p>
                 <p className="text-ink-soft">{l.waktu_lapor} · {l.penyebab || "—"}</p>
                 <p className="text-ink truncate">{l.keterangan_pelapor || "—"}</p>
                 <p className="text-ink-soft truncate">{l.alamat_pelapor || ""}</p>
