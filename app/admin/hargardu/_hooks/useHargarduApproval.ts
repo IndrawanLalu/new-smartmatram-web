@@ -160,6 +160,8 @@ export interface Rincian {
   titik: UsulanTitik[];
   spek: Record<string, string>;
   retingFuse: Record<string, Record<string, string>>;
+  /** true = regu memilih "Tidak ada pekerjaan perbaikan"; null = HP belum mengirimnya. */
+  tanpaTindakan: boolean | null;
 }
 
 /** Status tampil — label lama modul ini dipertahankan (bahasa persetujuan:
@@ -419,7 +421,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
         .order("field"),
       supabaseBrowser
         .from("pemeliharaan_gardu")
-        .select("spek,reting_fuse")
+        .select("spek,reting_fuse,tanpa_tindakan")
         .eq("id", id)
         .maybeSingle(),
     ]);
@@ -507,6 +509,7 @@ export async function ambilRincian(id: string): Promise<Rincian> {
     titik,
     spek: (indukRes.data as any)?.spek ?? {},
     retingFuse: (indukRes.data as any)?.reting_fuse ?? {},
+    tanpaTindakan: (indukRes.data as any)?.tanpa_tindakan ?? null,
   };
 }
 

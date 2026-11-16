@@ -420,7 +420,7 @@ export default function DetailPemeliharaan({ aktif, memproses, putuskanUsulan }:
         </Bagian>
       </section>
 
-      <DaftarTindakan modul="hargardu" sumberId={aktif.id} />
+      <DaftarTindakan modul="hargardu" sumberId={aktif.id} tanpa={rincian.tanpaTindakan} />
 
       {(aktif.catatan_perbaikan || aktif.pr_keterangan) && (
             <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">

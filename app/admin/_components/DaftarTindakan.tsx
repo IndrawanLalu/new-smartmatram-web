@@ -8,6 +8,10 @@ import { fotoKecil } from "@/lib/fotoKecil";
  * "Pekerjaan yang dikerjakan" satu catatan (scripts/pekerjaan-tindakan.sql):
  * nama, jumlah + satuan, foto. Dipakai detail Pemeliharaan Gardu dan
  * Pemerataan Beban. Kosong = tidak tampil (catatan lama / tidak ada tindakan).
+ *
+ * `tanpa` (Pemeliharaan Gardu, hargardu-tanpa-tindakan.sql): bila kosong,
+ * tetap tampil apa yang dijawab regu — true "Tidak ada pekerjaan perbaikan",
+ * false/null langkahnya tidak diisi di HP.
  */
 
 interface Baris {
@@ -17,7 +21,13 @@ interface Baris {
   tindakan_ref: { nama: string; satuan: string } | null;
 }
 
-export default function DaftarTindakan({ modul, sumberId }: { modul: "hargardu" | "penyeimbangan"; sumberId: string }) {
+interface Props {
+  modul: "hargardu" | "penyeimbangan";
+  sumberId: string;
+  tanpa?: boolean | null;
+}
+
+export default function DaftarTindakan({ modul, sumberId, tanpa }: Props) {
   const [isi, setIsi] = useState<Baris[] | null>(null);
   const [galat, setGalat] = useState<string | null>(null);
 
@@ -38,11 +48,27 @@ export default function DaftarTindakan({ modul, sumberId }: { modul: "hargardu" 
   }, [modul, sumberId]);
 
   if (galat) return <p className="text-xs text-amber-700">Pekerjaan yang dikerjakan gagal dibaca: {galat}</p>;
-  if (!isi || isi.length === 0) return null;
+  if (!isi) return null;
+  const judul = <p className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Pekerjaan yang dikerjakan</p>;
+  if (isi.length === 0) {
+    if (tanpa === undefined) return null;
+    return (
+      <div className="flex flex-col gap-2">
+        {judul}
+        <p className={`text-sm rounded-xl border px-3 py-2 ${tanpa ? "border-line text-ink" : "border-amber-200 bg-amber-50 text-amber-800"}`}>
+          {tanpa === true
+            ? "Petugas memilih: Tidak ada pekerjaan perbaikan."
+            : tanpa === false
+              ? "Tidak diisi — langkah ini tidak muncul di HP petugas."
+              : "Tidak tercatat — dikirim dari HP sebelum pembaruan 16 Nov."}
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs font-semibold text-ink-soft uppercase tracking-wide">Pekerjaan yang dikerjakan</p>
+      {judul}
       <div className="flex flex-col divide-y divide-line rounded-xl border border-line">
         {isi.map((t) => (
           <div key={t.tindakan_kode} className="flex items-center gap-3 px-3 py-2">
