@@ -20,6 +20,8 @@ export async function login(formData: FormData) {
 
 export async function logout() {
   const supabase = await createSupabaseServer();
-  await supabase.auth.signOut();
+  // Hanya perangkat ini: bawaan 'global' mencabut sesi akun itu di SEMUA
+  // perangkat, termasuk HP regu yang memakai akun yang sama (17 Nov 2026).
+  await supabase.auth.signOut({ scope: "local" });
   redirect("/login");
 }

@@ -44,7 +44,8 @@ export default function LoginPage() {
       const errKey = new URLSearchParams(window.location.search).get("error");
       if (errKey && ACCESS_ERRORS[errKey]) {
         setError(ACCESS_ERRORS[errKey]);
-        void supabaseBrowser.auth.signOut();
+        // Lokal saja — akun HP yang mencoba membuka web tidak boleh memutus HP-nya.
+        void supabaseBrowser.auth.signOut({ scope: "local" });
       }
     });
     return () => cancelAnimationFrame(id);
