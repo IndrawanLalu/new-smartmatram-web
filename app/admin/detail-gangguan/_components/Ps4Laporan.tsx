@@ -1,10 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CARD, EYEBROW } from "@/app/admin/_ui";
 import Paginasi from "./Paginasi";
+import Ps4Penampil, {
+  PILIHAN_PS4 as PILIHAN, TAHAP_PS4 as TAHAP, urlFotoPs4 as urlFoto, type LaporanPs4 as Laporan, type NilaiPs4,
+} from "./Ps4Penampil";
 
 /**
  * Laporan satu petugas di Realisasi PS4 + verifikasi Masuk PS4 / Tidak masuk
@@ -16,20 +19,11 @@ import Paginasi from "./Paginasi";
  * dicicil per halaman, pekerja homelab mengambilnya satu per satu berjeda
  * 10 detik (20 laporan ± 4–5 menit). Status antrean & kemajuannya dibaca dari
  * server oleh RealisasiPs4Tab, jadi tetap terlihat sesudah halaman dimuat ulang.
+ *
+ * Daftar "Belum diverifikasi" langsung membuka penampil foto besar; klik foto
+ * di daftar mana pun membukanya di laporan itu.
  */
 
-interface Laporan {
-  no_laporan: string;
-  waktu_lapor: string | null;
-  alamat_pelapor: string | null;
-  keterangan_pelapor: string | null;
-  penyebab: string | null;
-  status_foto: string | null;
-  ps4: "ya" | "tidak" | null;
-  ps4_oleh: string | null;
-  petugas: string | null;
-  foto: { tahap: "pengerjaan" | "selesai"; path: string | null }[];
-}
 
 interface Props {
   dari: string;
@@ -47,16 +41,7 @@ interface Props {
 }
 
 const PER_HALAMAN = 20;
-const TAHAP = [
-  { kunci: "pengerjaan", label: "Dalam Pengerjaan" },
-  { kunci: "selesai", label: "Selesai" },
-] as const;
-const PILIHAN = [
-  { nilai: "ya", label: "Masuk PS4", aktif: "border-green-300 bg-green-50 text-green-700" },
-  { nilai: "tidak", label: "Tidak masuk", aktif: "border-red-300 bg-red-50 text-red-700" },
-] as const;
-
-const urlFoto = (path: string) => supabaseBrowser.storage.from("apkt-foto").getPublicUrl(path).data.publicUrl;
+const adaFoto = (l: Laporan) => l.foto.some((f) => f.path);
 
 export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerifikasi = false, antre, versi, onBerubah }: Props) {
   const user = useCurrentUser();
@@ -67,6 +52,8 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerif
   const [halaman, setHalaman] = useState(1);
   const [simpan, setSimpan] = useState<string | null>(null);
   const [mengantre, setMengantre] = useState(false);
+  const [penampil, setPenampil] = useState<{ daftar: Laporan[]; mulai: number } | null>(null);
+  const sudahBuka = useRef(false);
 
   useEffect(() => {
     let hidup = true;
@@ -77,19 +64,34 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerif
       .then(({ data, error }) => {
         if (!hidup) return;
         setGalat(error ? error.message : null);
-        setIsi((data ?? []) as Laporan[]);
+        const d = (data ?? []) as Laporan[];
+        setIsi(d);
+        if (semuaBelumVerifikasi && !error && !sudahBuka.current) {
+          sudahBuka.current = true;
+          const berfoto = d.filter(adaFoto);
+          if (berfoto.length) setPenampil({ daftar: berfoto, mulai: 0 });
+        }
       });
     return () => { hidup = false; };
-  }, [dari, sampai, ulp, petugas, belumSaja, versi]);
+  }, [dari, sampai, ulp, petugas, belumSaja, versi, semuaBelumVerifikasi]);
 
-  const tetapkan = async (no: string, nilai: "ya" | "tidak" | null) => {
+  const tetapkan = async (no: string, nilai: NilaiPs4 | null): Promise<string | null> => {
     setSimpan(no);
     const { error } = await supabaseBrowser.rpc("apkt_ps4_tetapkan", { p_no_laporan: no, p_ps4: nilai });
     setSimpan(null);
-    if (error) return setGalat(error.message);
+    if (error) {
+      setGalat(error.message);
+      return error.message;
+    }
     setGalat(null);
     setIsi((v) => v?.map((l) => (l.no_laporan === no ? { ...l, ps4: nilai, ps4_oleh: nilai ? user.name || user.email : null } : l)) ?? v);
     onBerubah();
+    return null;
+  };
+
+  const buka = (no: string) => {
+    const daftar = semua.filter(adaFoto);
+    setPenampil({ daftar, mulai: Math.max(0, daftar.findIndex((x) => x.no_laporan === no)) });
   };
 
   const antrekan = async (daftar: string[]) => {
@@ -127,6 +129,12 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerif
                 : `Ambil foto ${belumAntre.length} laporan di halaman ini`}
           </button>
         )}
+        {semuaBelumVerifikasi && semua.some(adaFoto) && (
+          <button onClick={() => setPenampil({ daftar: semua.filter(adaFoto), mulai: 0 })}
+            className="px-2.5 py-1 rounded-lg border border-navy-300 bg-white text-xs font-semibold text-navy-700 hover:bg-navy-50">
+            Tampilkan foto besar
+          </button>
+        )}
         {petugas && !semuaBelumVerifikasi && (
           <label className="flex items-center gap-1.5 text-xs text-ink-soft">
             <input type="checkbox" checked={belumSaja} onChange={(e) => { setBelumSaja(e.target.checked); setHalaman(1); }} />
@@ -140,18 +148,18 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerif
 
       <div className="divide-y divide-line">
         {tampil.map((l) => {
-          const berfoto = l.foto.some((f) => f.path);
+          const berfoto = adaFoto(l);
           return (
             <div key={l.no_laporan} className="py-3 flex gap-3 flex-wrap md:flex-nowrap">
               <div className="flex gap-2 shrink-0">
                 {TAHAP.map((t) => {
                   const f = l.foto.find((x) => x.tahap === t.kunci);
                   return f?.path ? (
-                    <a key={t.kunci} href={urlFoto(f.path)} target="_blank" rel="noreferrer" title={t.label}>
-                      {/* eslint-disable-next-line @next/next/no-img-element -- berkas Storage kecil, klik = ukuran asli */}
+                    <button key={t.kunci} onClick={() => buka(l.no_laporan)} title={`${t.label} — klik untuk foto besar`}>
+                      {/* eslint-disable-next-line @next/next/no-img-element -- berkas Storage kecil, klik = foto besar */}
                       <img src={urlFoto(f.path)} alt={t.label} loading="lazy"
                         className="w-20 h-28 object-cover rounded-lg border border-line" />
-                    </a>
+                    </button>
                   ) : (
                     <div key={t.kunci} title={t.label}
                       className="w-20 h-28 rounded-lg border border-dashed border-line flex items-center justify-center text-[10px] text-ink-muted text-center px-1">
@@ -196,6 +204,11 @@ export default function Ps4Laporan({ dari, sampai, ulp, petugas, semuaBelumVerif
 
       {semua.length > PER_HALAMAN && (
         <Paginasi total={semua.length} halaman={hal} perHalaman={PER_HALAMAN} onGanti={setHalaman} satuan="laporan" />
+      )}
+
+      {penampil && (
+        <Ps4Penampil daftar={penampil.daftar} mulai={penampil.mulai} boleh={boleh}
+          onTetapkan={tetapkan} onTutup={() => setPenampil(null)} />
       )}
     </div>
   );
