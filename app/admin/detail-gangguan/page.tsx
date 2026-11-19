@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Zap,
   Search,
@@ -22,6 +22,8 @@ import {
   LayoutDashboard,
   ListChecks,
   Table2,
+  ClipboardList,
+  Wand2,
 } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -33,6 +35,16 @@ import RekapTab from "./_components/RekapTab";
 import DashboardTab from "./_components/DashboardTab";
 import ImportPanel from "./_components/ImportPanel";
 import Paginasi from "./_components/Paginasi";
+import { antreanApkt, type ItemApkt } from "./_components/apktBookmarklet";
+import {
+  alasanTolak,
+  alasanTolakTersimpan,
+  bandingRptRct,
+  bangunKoreksi,
+  perluKoreksi,
+  statusKoreksi,
+  type AturanKoreksi,
+} from "./_lib/koreksiHitung";
 import {
   STEPS,
   loadSettings,
@@ -114,6 +126,20 @@ function buildSnippet(from: string, to: string): string {
   return `fetch("https://new-apktservice.pln.co.id:32183/graphql",{method:"POST",headers:{accept:"application/json","content-type":"application/json"},body:JSON.stringify({query:${JSON.stringify(GQL)},variables:${JSON.stringify(vars)}})}).then(r=>r.json()).then(d=>{const a=d.data.ssdetailGangguan.data;window.apktData=JSON.stringify(a);console.log("✅ "+a.length+" baris siap. Sekarang ketik:  copy(apktData)  lalu Enter, lalu paste di Smart.");}).catch(e=>console.error(e));`;
 }
 
+/** Ringkasan laporan yang dilewati, dipecah per alasan (dulu satu kalimat campur). */
+/** Ringkasan laporan yang tidak dikoreksi, dipecah per alasan (dulu satu kalimat
+ *  campur). Tanpa waktu, sudah lebih cepat, dan di bawah batas = "Tidak perlu
+ *  koreksi" (keputusan user 19 Nov); waktu lapor tak terbaca = dilewati. */
+function ringkasLewat(nBatas: number, nCepat: number, nLapor: number, minRpt: number, nTanpa: number): string {
+  const tidak = [
+    nTanpa ? `${nTanpa} tanpa waktu response/recovery` : "",
+    nCepat ? `${nCepat} waktu aslinya sudah lebih cepat dari koreksi` : "",
+    nBatas ? `${nBatas} RPT asli tidak di atas batas ${minRpt} menit` : "",
+  ].filter(Boolean);
+  return (tidak.length ? ` Tidak perlu koreksi: ${tidak.join(" · ")}.` : "") +
+    (nLapor ? ` Dilewati: ${nLapor} waktu lapor tidak terbaca.` : "");
+}
+
 function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -137,19 +163,24 @@ export default function DetailGangguanPage() {
   const [showSettings, setShowSettings] = useState(false);
   const [setDurs, setSetDurs] = useState<number[]>(STEPS.map((s) => s.def));
   const [setKorektor, setSetKorektor] = useState("");
+  const [setMinRpt, setSetMinRpt] = useState(0);
+  /** Pengaturan yang SUDAH disimpan — dasar status "Tidak perlu koreksi". */
+  const [aturan, setAturan] = useState<AturanKoreksi>({ durs: STEPS.map((s) => s.def), minRpt: 0 });
   const [settingsSaved, setSettingsSaved] = useState(false);
 
   useEffect(() => {
     const s = loadSettings();
     setSetDurs(s.durs);
     setSetKorektor(s.korektor);
+    setSetMinRpt(s.minRpt);
+    setAturan({ durs: s.durs, minRpt: s.minRpt });
   }, []);
 
   function handleSaveSettings() {
-    saveSettings({
-      durs: setDurs.map((n) => Number(n) || 0),
-      korektor: setKorektor.trim(),
-    });
+    const durs = setDurs.map((n) => Number(n) || 0);
+    const minRpt = Math.max(0, Number(setMinRpt) || 0);
+    saveSettings({ durs, korektor: setKorektor.trim(), minRpt });
+    setAturan({ durs, minRpt });
     setSettingsSaved(true);
     setTimeout(() => setSettingsSaved(false), 2000);
   }
@@ -163,6 +194,10 @@ export default function DetailGangguanPage() {
     new Map(),
   );
   const [selectedRow, setSelectedRow] = useState<GangguanRow | null>(null);
+  /** Token antrean APKT dari GET /api/apkt/koreksi. */
+  const [tokenApkt, setTokenApkt] = useState<string | null>(null);
+  const [infoKoreksi, setInfoKoreksi] = useState<{ teks: string; rinci?: string } | null>(null);
+  const [massal, setMassal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [filterMode, setFilterMode] = useState<FilterMode>("non");
@@ -214,6 +249,7 @@ export default function DetailGangguanPage() {
         const m = new Map<string, KoreksiRow>();
         data.rows.forEach((r: KoreksiRow) => m.set(r.no_laporan, r));
         setKoreksiMap(m);
+        setTokenApkt(typeof data.token === "string" ? data.token : null);
       }
     } catch {
       /* tabel koreksi mungkin belum dibuat */
@@ -225,6 +261,47 @@ export default function DetailGangguanPage() {
     loadSaved();
     loadKoreksi();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tanda "Sudah dikoreksi" (apkt_masuk_at) diisi bookmark dari tab APKT — muat ulang status koreksi
+  // saat user kembali ke tab ini, supaya tanda itu tampil tanpa F5.
+  // Smart dan APKT sering dibuka berdampingan (tanpa pindah tab), jadi selain
+  // saat tab kembali terlihat, tanya tiap 10 detik — hanya baris yang baru
+  // masuk APKT, lalu ditambal ke peta koreksi (bukan muat ulang semua).
+  const koreksiTerkini = useRef(koreksiMap);
+  useEffect(() => {
+    koreksiTerkini.current = koreksiMap;
+  }, [koreksiMap]);
+  useEffect(() => {
+    const tambal = async () => {
+      if (document.visibilityState !== "visible") return;
+      let sejak = "1970-01-01T00:00:00Z";
+      for (const k of koreksiTerkini.current.values()) {
+        if (k.apkt_masuk_at && k.apkt_masuk_at > sejak) sejak = k.apkt_masuk_at;
+      }
+      try {
+        const res = await fetch(`/api/apkt/koreksi?sejak=${encodeURIComponent(sejak)}`);
+        const data = await res.json();
+        const baru = (Array.isArray(data.rows) ? data.rows : []) as { no_laporan: string; apkt_masuk_at: string }[];
+        if (baru.length === 0) return;
+        setKoreksiMap((m) => {
+          const n = new Map(m);
+          for (const b of baru) {
+            const k = n.get(b.no_laporan);
+            if (k) n.set(b.no_laporan, { ...k, apkt_masuk_at: b.apkt_masuk_at });
+          }
+          return n;
+        });
+      } catch {
+        /* sinyal putus — coba lagi 10 detik berikutnya */
+      }
+    };
+    const t = setInterval(tambal, 10000);
+    document.addEventListener("visibilitychange", tambal);
+    return () => {
+      clearInterval(t);
+      document.removeEventListener("visibilitychange", tambal);
+    };
   }, []);
 
   async function handleCopy() {
@@ -314,6 +391,110 @@ export default function DetailGangguanPage() {
     () => filtered.slice((halamanAman - 1) * PER_HALAMAN, halamanAman * PER_HALAMAN),
     [filtered, halamanAman],
   );
+
+  /** Non CT pada hasil saringan sekarang (semua halaman, bukan hanya yang tampil). */
+  const nonTersaring = () => filtered.filter((f) => !f.ct.isCT).map((f) => f.row);
+
+  /** Koreksi massal: laporan Non CT yang belum dikoreksi diberi durasi default.
+   *  Laporan yang RPT/RCT aslinya sudah lebih cepat dilewati (aturan user 19 Nov). */
+  async function koreksiMassal() {
+    const { durs, korektor, minRpt } = loadSettings();
+    const nonCt = nonTersaring();
+    const belum = nonCt.filter((r) => !koreksiMap.has(String(r.no_laporan ?? "")));
+    const siap: NonNullable<ReturnType<typeof bangunKoreksi>>[] = [];
+    const rinciLewat: string[] = [];
+    let nBatas = 0, nCepat = 0, nLapor = 0, tidakPerlu = 0;
+    for (const r of belum) {
+      if (!perluKoreksi(r)) { tidakPerlu++; continue; }
+      const k = bangunKoreksi(r, durs, korektor);
+      if (!k) { nLapor++; rinciLewat.push(`${r.no_laporan} — waktu lapor tidak terbaca`); continue; }
+      const b = bandingRptRct(r, durs);
+      const alasan = alasanTolak(b, minRpt);
+      if (!alasan) { siap.push(k); continue; }
+      if (minRpt > 0 && b.rptBefore <= minRpt) nBatas++; else nCepat++;
+      rinciLewat.push(`${r.no_laporan} — ${alasan}`);
+    }
+    const lewat = ringkasLewat(nBatas, nCepat, nLapor, minRpt, tidakPerlu);
+    const rinci = rinciLewat.join("\n") || undefined;
+    if (siap.length === 0) {
+      setInfoKoreksi({ teks: `Tidak ada laporan yang bisa dikoreksi dengan durasi default.${lewat}`, rinci });
+      return;
+    }
+    // Durasi default tersimpan per browser — tampilkan, supaya PC dengan setelan
+    // berbeda tidak diam-diam mengoreksi dengan angka lain.
+    const rincianDurasi = STEPS.map((st, i) => `${st.label}: ${durs[i]} mnt`).join("\n");
+    if (!window.confirm(
+      `Koreksi ${siap.length} laporan dengan durasi default berikut?\n\n${rincianDurasi}\n\nHanya RPT asli di atas: ${minRpt > 0 ? minRpt + " menit" : "(semua)"}\nKorektor: ${korektor || "(kosong)"}` +
+      (lewat ? "\n\n" + lewat.trim() : ""),
+    )) return;
+    setMassal(true);
+    try {
+      const res = await fetch("/api/apkt/koreksi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: siap }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setInfoKoreksi({ teks: `Gagal menyimpan: ${data.error}` });
+        return;
+      }
+      setInfoKoreksi({ teks: `${siap.length} laporan dikoreksi dengan durasi default.${lewat}`, rinci });
+      await loadKoreksi();
+    } catch (e) {
+      setInfoKoreksi({ teks: `Gagal menyimpan: ${(e as Error).message}` });
+    } finally {
+      setMassal(false);
+    }
+  }
+
+  /** Antrean APKT: koreksi tersimpan yang belum masuk APKT, urut seperti tabel. */
+  async function salinAntrean() {
+    const { minRpt } = loadSettings();
+    const daftar: ItemApkt[] = [];
+    const rinciLewat: string[] = [];
+    let nBatas = 0, nCepat = 0;
+    for (const r of nonTersaring()) {
+      const k = koreksiMap.get(String(r.no_laporan ?? ""));
+      if (!k || k.apkt_masuk_at) continue;
+      const alasan = alasanTolakTersimpan(k, minRpt);
+      if (alasan) {
+        if (minRpt > 0 && (Number(k.rpt_asli) || 0) <= minRpt) nBatas++; else nCepat++;
+        rinciLewat.push(`${k.no_laporan} — ${alasan}`);
+        continue;
+      }
+      daftar.push({
+        no: k.no_laporan,
+        penugasan: String(k.tgl_penugasan ?? ""),
+        perjalanan: String(k.tgl_perjalanan ?? ""),
+        pengerjaan: String(k.tgl_pengerjaan ?? ""),
+        nyala_sementara: String(k.tgl_nyala_sementara ?? ""),
+        nyala: String(k.tgl_nyala ?? ""),
+        selesai: String(k.tgl_selesai ?? ""),
+        waktu_lapor: r.waktu_lapor ?? null,
+        nama_pelapor: r.nama_pelapor ?? null,
+        rpt_asli: k.rpt_asli ?? null,
+        rpt_koreksi: k.rpt_koreksi ?? null,
+        rct_asli: k.rct_asli ?? null,
+        rct_koreksi: k.rct_koreksi ?? null,
+      });
+    }
+    const lewat = ringkasLewat(nBatas, nCepat, 0, minRpt, 0);
+    const rinci = rinciLewat.join("\n") || undefined;
+    if (daftar.length === 0) {
+      setInfoKoreksi({ teks: `Tidak ada koreksi yang menunggu dimasukkan ke APKT.${lewat}`, rinci });
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(antreanApkt(tokenApkt, daftar, minRpt));
+      setInfoKoreksi({
+        teks: `${daftar.length} laporan tersalin. Buka halaman koreksi APKT, lalu klik bookmark "Isi APKT dari Smart".${lewat}`,
+        rinci,
+      });
+    } catch {
+      setInfoKoreksi({ teks: "Gagal menyalin ke papan klip." });
+    }
+  }
 
   function handleDownloadCsv() {
     if (filtered.length === 0) return;
@@ -460,6 +641,7 @@ export default function DetailGangguanPage() {
         <DashboardTab
           items={classified}
           koreksiMap={koreksiMap}
+          aturan={aturan}
           dateFrom={range.from}
           dateTo={range.to}
           mode={filterMode}
@@ -468,7 +650,7 @@ export default function DetailGangguanPage() {
         />
       )}
 
-      {tab === "rekap" && <RekapTab rows={nonRows} koreksiMap={koreksiMap} />}
+      {tab === "rekap" && <RekapTab rows={nonRows} koreksiMap={koreksiMap} aturan={aturan} />}
 
       {tab === "ps4" && <RealisasiPs4Tab dari={range.from} sampai={range.to} ulp={ulpPilih} />}
 
@@ -516,6 +698,17 @@ export default function DetailGangguanPage() {
                   <span className="text-[10px] text-ink-muted w-7">mnt</span>
                 </div>
               ))}
+            </div>
+            <div className="flex items-center gap-2 pt-3 border-t border-line flex-wrap">
+              <label className="text-xs text-ink">Koreksi hanya bila RPT asli di atas</label>
+              <input
+                type="number"
+                min={0}
+                value={setMinRpt}
+                onChange={(e) => setSetMinRpt(e.target.value === "" ? 0 : Number(e.target.value))}
+                className={`${FIELD} w-20 text-right`}
+              />
+              <span className="text-xs text-ink-muted">menit (0 = semua). RCT cukup tidak lebih lama sesudah koreksi.</span>
             </div>
             <div className="flex items-center gap-3 pt-3 border-t border-line">
               <label className="text-xs text-ink-soft">Korektor default:</label>
@@ -585,10 +778,39 @@ export default function DetailGangguanPage() {
                 <X className="w-3 h-3" />
               </button>
             )}
+            {filterMode !== "ct" && (
+              <>
+                <button onClick={koreksiMassal} disabled={massal} className={BTN_GHOST}
+                  title="Laporan Non CT hasil saringan yang belum dikoreksi diberi durasi default">
+                  {massal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Wand2 className="w-3.5 h-3.5" />} Koreksi semua (default)
+                </button>
+                <button onClick={salinAntrean} className={BTN_GHOST}
+                  title="Salin semua koreksi yang belum masuk APKT, lalu klik bookmark di halaman APKT">
+                  <ClipboardList className="w-3.5 h-3.5" /> Salin antrean APKT
+                </button>
+              </>
+            )}
             <button onClick={handleDownloadCsv} className={BTN_GHOST}>
               <Download className="w-3.5 h-3.5" /> CSV
             </button>
           </div>
+
+          {infoKoreksi && (
+            <div className="flex items-start gap-2 px-4 py-2 border-b border-line bg-navy-50 text-xs text-ink">
+              <div className="flex-1">
+                <p>{infoKoreksi.teks}</p>
+                {infoKoreksi.rinci && (
+                  <details className="mt-1">
+                    <summary className="cursor-pointer text-ink-soft">Lihat laporan yang dilewati</summary>
+                    <pre className="mt-1 whitespace-pre-wrap font-mono text-[11px] text-ink-soft">{infoKoreksi.rinci}</pre>
+                  </details>
+                )}
+              </div>
+              <button onClick={() => setInfoKoreksi(null)} className="p-0.5 text-ink-muted hover:text-ink">
+                <X className="w-3 h-3" />
+              </button>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[60vh]">
             <table className="w-full text-xs border-collapse">
@@ -668,19 +890,40 @@ export default function DetailGangguanPage() {
                     })}
                     <td className="py-2 px-3 whitespace-nowrap text-right">
                       {(() => {
-                        const done = koreksiMap.has(String(row.no_laporan ?? ""));
+                        // Istilah user 19 Nov: dikoreksi di Smart = "Masuk antrian";
+                        // sudah tersimpan di APKT = "Sudah dikoreksi".
+                        const kor = koreksiMap.get(String(row.no_laporan ?? ""));
+                        const diApkt = Boolean(kor?.apkt_masuk_at);
+                        const st = ct.isCT ? null : statusKoreksi(row, kor, aturan);
+                        if (st?.status === "tidak") {
+                          return (
+                            <button
+                              onClick={() => setSelectedRow(row)}
+                              className="inline-flex items-center h-7 px-2 rounded-lg text-[11px] font-semibold bg-surface text-ink-muted hover:text-ink transition-colors"
+                              title={st.alasan ?? ""}
+                            >
+                              Tidak perlu koreksi
+                            </button>
+                          );
+                        }
                         return (
                           <button
                             onClick={() => setSelectedRow(row)}
                             className={`inline-flex items-center gap-1 h-7 px-2 rounded-lg text-[11px] font-semibold transition-colors ${
-                              done
+                              diApkt
                                 ? "bg-green-50 text-green-700 border border-green-200 hover:bg-green-100"
-                                : "bg-navy-600 text-white hover:bg-navy-500"
+                                : kor
+                                  ? "bg-attention-tint text-attention border border-attention/25 hover:brightness-95"
+                                  : "bg-navy-600 text-white hover:bg-navy-500"
                             }`}
                           >
-                            {done ? (
+                            {diApkt ? (
                               <>
-                                <Check size={11} /> Dikoreksi
+                                <BadgeCheck size={11} /> Sudah dikoreksi
+                              </>
+                            ) : kor ? (
+                              <>
+                                <ClipboardList size={11} /> Masuk antrian
                               </>
                             ) : (
                               <>
@@ -727,6 +970,7 @@ export default function DetailGangguanPage() {
           existing={
             koreksiMap.get(String(selectedRow.no_laporan ?? "")) ?? null
           }
+          token={tokenApkt}
           onClose={() => setSelectedRow(null)}
           onSaved={loadKoreksi}
         />

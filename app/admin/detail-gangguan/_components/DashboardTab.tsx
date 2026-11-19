@@ -10,6 +10,7 @@ import {
   bangunBanding, bangunEmber, bangunSebaran, cakupan, fmtMenit, KATEGORI_LABEL, ringkas, saringMode,
   type FilterMode, type GangguanTerklasifikasi, type Kerapatan, type KoreksiRow, type Metrik,
 } from "../_lib/gangguan";
+import { statusKoreksi, type AturanKoreksi } from "../_lib/koreksiHitung";
 
 const BandingChart = dynamic(() => import("./BandingChart"), {
   ssr: false,
@@ -19,6 +20,7 @@ const BandingChart = dynamic(() => import("./BandingChart"), {
 interface DashboardTabProps {
   items: GangguanTerklasifikasi[];
   koreksiMap: Map<string, KoreksiRow>;
+  aturan: AturanKoreksi;
   dateFrom: string;
   dateTo: string;
   /** Sama dengan filter di tab Data — satu lensa untuk seluruh halaman. */
@@ -57,7 +59,7 @@ const PILIHAN_KERAPATAN: { key: Kerapatan | null; label: string }[] = [
 ];
 
 export default function DashboardTab({
-  items, koreksiMap, dateFrom, dateTo, mode, counts, onMode,
+  items, koreksiMap, aturan, dateFrom, dateTo, mode, counts, onMode,
 }: DashboardTabProps) {
   const [metrikSebaran, setMetrikSebaran] = useState<Metrik>("rpt");
   const [kerapatanPilih, setKerapatanPilih] = useState<Kerapatan | null>(null);
@@ -79,8 +81,18 @@ export default function DashboardTab({
 
   const sebaran = useMemo(() => bangunSebaran(banding, metrikSebaran), [banding, metrikSebaran]);
 
+  // Status dari fungsi yang sama dengan tabel & Rekap; CT tidak dikoreksi.
+  const st = useMemo(() => {
+    const n = { sudah: 0, antrian: 0, tidak: 0, belum: 0 };
+    for (const { row, ct } of items) {
+      if (ct.isCT || mode === "ct") continue;
+      n[statusKoreksi(row, koreksiMap.get(String(row.no_laporan ?? "")), aturan).status]++;
+    }
+    return n;
+  }, [items, mode, koreksiMap, aturan]);
   const dikoreksi = useMemo(() => banding.filter((b) => b.dikoreksi).length, [banding]);
-  const pctKoreksi = banding.length ? Math.round((dikoreksi / banding.length) * 100) : 0;
+  const perlu = st.sudah + st.antrian + st.belum;
+  const pctKoreksi = perlu ? Math.round((st.sudah / perlu) * 100) : 0;
 
   const dataRpt = useMemo(
     () => ember.map((e) => ({ label: e.label, asli: e.rptAsli, koreksi: e.rptKoreksi })),
@@ -184,11 +196,11 @@ export default function DashboardTab({
           hint={`sebelum koreksi ${fmtMenit(rct.asli)}`}
         />
         <StatTile
-          label="Sudah Dikoreksi"
+          label="Sudah dikoreksi"
           value={`${pctKoreksi}%`}
           tone={pctKoreksi >= 100 ? "green" : "attention"}
           icon={PencilLine}
-          hint={`${dikoreksi} dari ${banding.length} laporan`}
+          hint={`${st.sudah} dari ${perlu} yang perlu koreksi · ${st.antrian} masuk antrian · ${st.tidak} tidak perlu koreksi`}
         />
       </div>
 
@@ -258,7 +270,7 @@ export default function DashboardTab({
             <table className="w-full text-xs border-collapse">
               <thead className="kepala-kit">
                 <tr>
-                  {["Periode", "Laporan", "Dikoreksi", "RPT Asli", "RPT Koreksi", "Δ RPT",
+                  {["Periode", "Laporan", "Sudah dikoreksi", "RPT Asli", "RPT Koreksi", "Δ RPT",
                     "RCT Asli", "RCT Koreksi", "Δ RCT"].map((h, i) => (
                     <th
                       key={h}
@@ -332,9 +344,9 @@ export default function DashboardTab({
         <div className="flex items-start gap-2 px-4 py-2.5 border-t border-line text-[11px] text-ink-muted">
           <Info size={13} className="shrink-0 mt-px" />
           <p>
-            Kolom <b>Koreksi</b> memakai waktu hasil koreksi bila laporan sudah digarap, dan waktu
-            asli bila belum — jadi angkanya adalah nilai yang berlaku sekarang, bukan hanya nilai
-            laporan yang sudah dikoreksi.
+            Kolom <b>Koreksi</b> memakai waktu hasil koreksi bila laporan sudah tersimpan di APKT,
+            dan waktu asli bila belum (termasuk yang masih masuk antrian) — jadi angkanya adalah
+            nilai yang berlaku sekarang di APKT.
           </p>
         </div>
       </div>

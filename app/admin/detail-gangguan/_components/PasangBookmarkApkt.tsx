@@ -32,10 +32,11 @@ export default function PasangBookmarkApkt() {
         </button>
       </div>
       <ol className="text-xs text-ink-soft list-decimal pl-4 space-y-0.5">
-        <li>Di modal Koreksi, klik <b>Salin untuk APKT</b>.</li>
-        <li>Di APKT halaman koreksi, klik bookmark → No Laporan terisi di kotak cari &amp; dicari.</li>
-        <li>Setelah data laporan tampil, klik bookmark lagi → kolom waktu terisi (Nyala Sementara dilewati bila di APKT kosong).</li>
-        <li>Periksa, lalu tekan Simpan di APKT.</li>
+        <li>Di tabel, klik <b>Salin antrean APKT</b> (semua koreksi yang belum masuk APKT), atau <b>Salin untuk APKT</b> di modal Koreksi (satu laporan).</li>
+        <li>Di APKT halaman koreksi, klik bookmark <b>sekali</b> → laporan dicari, Grup Koreksi, Alasan Pelapor, Jml Pelanggan Padam &amp; waktu terisi.</li>
+        <li>Periksa, lalu tekan Simpan di APKT → laporan berikutnya dibuka sendiri.</li>
+        <li>Laporan yang RPT/RCT aslinya sudah lebih cepat dari koreksi tidak ikut antrean.</li>
+        <li>Bookmark lama harus dihapus dan dipasang ulang dari sini.</li>
       </ol>
     </div>
   );

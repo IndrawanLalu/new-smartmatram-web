@@ -51,6 +51,8 @@ export interface KoreksiRow {
   d_pengerjaan_nyalasmt?: number | null;
   d_nyalasmt_nyala?: number | null;
   d_nyala_selesai?: number | null;
+  /** Diisi bookmark saat APKT selesai menyimpan (scripts/apkt-koreksi-antrean.sql). */
+  apkt_masuk_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -142,7 +144,10 @@ export interface Banding {
   rptKoreksi: number | null;
   rctAsli: number | null;
   rctKoreksi: number | null;
+  /** Sudah tersimpan di APKT (apkt_masuk_at) — istilah user 19 Nov "Sudah dikoreksi". */
   dikoreksi: boolean;
+  /** Dikoreksi di Smart, belum tersimpan di APKT — "Masuk antrian". */
+  antrian: boolean;
 }
 
 const NILAI_KEY = ["rptAsli", "rptKoreksi", "rctAsli", "rctKoreksi"] as const;
@@ -181,15 +186,24 @@ function tglDari(r: GangguanRow): string {
  * aslinya. Kolom sesudah dibaca sebagai *angka yang berlaku sekarang*, bukan
  * hanya angka hasil koreksi; kalau baris yang belum digarap dibuang, rata-rata
  * sesudah akan terlihat jauh lebih baik daripada kenyataan yang dilaporkan.
+ *
+ * Sejak 19 Nov 2026 nilai koreksi baru dipakai setelah TERSIMPAN DI APKT
+ * (apkt_masuk_at). Koreksi yang masih "Masuk antrian" belum berlaku di APKT,
+ * jadi sesudahnya tetap waktu asli.
  */
 export function bangunBanding(
   rows: GangguanRow[],
   koreksiMap: Map<string, KoreksiRow>,
 ): Banding[] {
   return rows.map((r) => {
-    const kor = koreksiMap.get(String(r.no_laporan ?? ""));
-    const rptAsli = detikKeMenit(r.durasi_response_time);
-    const rctAsli = detikKeMenit(r.durasi_recovery_time);
+    const k = koreksiMap.get(String(r.no_laporan ?? ""));
+    const kor = k?.apkt_masuk_at ? k : undefined;
+    // Waktu ASLI dibekukan saat koreksi dibuat (apkt_koreksi.rpt/rct_asli).
+    // Setelah koreksi disetujui di APKT, unduhan berikutnya sudah berisi waktu
+    // terkoreksi — kalau dibaca dari baris laporan, "sebelum" ikut berubah dan
+    // perbandingan sebelum/sesudah hilang.
+    const rptAsli = (k ? menitKoreksi(k.rpt_asli) : null) ?? detikKeMenit(r.durasi_response_time);
+    const rctAsli = (k ? menitKoreksi(k.rct_asli) : null) ?? detikKeMenit(r.durasi_recovery_time);
     return {
       tgl: tglDari(r),
       rptAsli,
@@ -197,6 +211,7 @@ export function bangunBanding(
       rptKoreksi: (kor ? menitKoreksi(kor.rpt_koreksi) : null) ?? rptAsli,
       rctKoreksi: (kor ? menitKoreksi(kor.rct_koreksi) : null) ?? rctAsli,
       dikoreksi: Boolean(kor),
+      antrian: Boolean(k && !kor),
     };
   });
 }

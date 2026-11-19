@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, Copy, Check, Save, Loader2, Clock, ClipboardCheck } from "lucide-react";
-import { BTN_PRIMARY, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
+import { X, Copy, Check, Save, Loader2, Clock, ClipboardCheck, BadgeCheck } from "lucide-react";
+import { BTN_GHOST, BTN_PRIMARY, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { STEPS, loadSettings, saveSettings } from "./koreksiSettings";
-import { APKT_PENANDA, type DataApkt } from "./apktBookmarklet";
+import { antreanApkt } from "./apktBookmarklet";
 import type { KoreksiRow } from "../_lib/gangguan";
+import { alasanTolak, bandingRptRct, bangunKoreksi, fmtDt, hitungLangkah, parseDt } from "../_lib/koreksiHitung";
 import FotoApkt from "./FotoApkt";
 
 interface GangguanLite {
   no_laporan?: string;
+  ulp?: string | null;
   waktu_lapor?: string;
   waktu_response?: string | null;
   waktu_recovery?: string | null;
@@ -25,26 +27,13 @@ interface GangguanLite {
 interface Props {
   row: GangguanLite;
   existing: KoreksiRow | null;
+  /** Token dari GET /api/apkt/koreksi — bookmark memakainya untuk menandai "masuk APKT". */
+  token: string | null;
   onClose: () => void;
   onSaved: () => void;
 }
 
-// "04/06/2026 9:12:46" → Date
-function parseDt(s: string | undefined): Date | null {
-  if (!s) return null;
-  const [datePart, timePart = "0:0:0"] = s.trim().split(" ");
-  const [d, m, y] = datePart.split("/").map(Number);
-  const [hh = 0, mm = 0, ss = 0] = timePart.split(":").map(Number);
-  if (!y || !m || !d) return null;
-  return new Date(y, m - 1, d, hh, mm, ss);
-}
-function fmtDt(d: Date): string {
-  const p = (n: number) => String(n).padStart(2, "0");
-  return `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
-}
-const addMin = (d: Date, m: number) => new Date(d.getTime() + m * 60000);
-
-export default function KoreksiModal({ row, existing, onClose, onSaved }: Props) {
+export default function KoreksiModal({ row, existing, token, onClose, onSaved }: Props) {
   const lapor = useMemo(() => parseDt(row.waktu_lapor), [row.waktu_lapor]);
 
   const settings = useMemo(() => loadSettings(), []);
@@ -62,23 +51,26 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
   const [copiedApkt, setCopiedApkt] = useState(false);
 
   // Hitung timestamp terkoreksi kumulatif.
-  const steps = useMemo(() => {
-    if (!lapor) return null;
-    const out: { label: string; date: Date }[] = [];
-    let cur = lapor;
-    const labels = ["Penugasan", "Perjalanan", "Pengerjaan", "Nyala Sementara", "Nyala", "Selesai"];
-    durs.forEach((m, i) => {
-      cur = addMin(cur, Number(m) || 0);
-      out.push({ label: labels[i], date: cur });
-    });
-    return out;
-  }, [lapor, durs]);
+  const steps = useMemo(() => (lapor ? hitungLangkah(lapor, durs) : null), [lapor, durs]);
 
-  // durasi APKT dalam DETIK → konversi ke menit agar sebanding dengan "sesudah".
-  const rptBefore = (Number(row.durasi_response_time) || 0) / 60;
-  const rctBefore = (Number(row.durasi_recovery_time) || 0) / 60;
-  const rptAfter = (Number(durs[0]) || 0) + (Number(durs[1]) || 0) + (Number(durs[2]) || 0);
-  const rctAfter = rptAfter + (Number(durs[3]) || 0) + (Number(durs[4]) || 0);
+  // Waktu asli yang dibekukan saat koreksi dibuat menang atas baris laporan —
+  // unduhan APKT sesudah koreksi disetujui sudah berisi waktu terkoreksi.
+  const bandingBaris = bandingRptRct(row, durs);
+  const banding = {
+    ...bandingBaris,
+    rptBefore: Number(existing?.rpt_asli) > 0 ? Number(existing?.rpt_asli) : bandingBaris.rptBefore,
+    rctBefore: Number(existing?.rct_asli) > 0 ? Number(existing?.rct_asli) : bandingBaris.rctBefore,
+  };
+  const { rptBefore, rctBefore, rptAfter, rctAfter } = banding;
+  const tolak = existing?.apkt_masuk_at ? null : alasanTolak(banding, settings.minRpt);
+
+  // Sudah tersimpan di APKT → hanya baca: isi Smart harus tetap sama dengan APKT.
+  const diApkt = Boolean(existing?.apkt_masuk_at);
+  // Yang dikirim ke APKT / ditandai harus koreksi yang TERSIMPAN, bukan isian
+  // yang baru diubah di layar dan belum disimpan.
+  const samaTersimpan = Boolean(existing) && STEPS.every((st, i) => Number(existing?.[st.key]) === Number(durs[i]));
+  const bolehKeApkt = samaTersimpan && !diApkt && !tolak;
+  const [menandai, setMenandai] = useState(false);
 
   function setDur(i: number, val: string) {
     setDurs((prev) => prev.map((v, idx) => (idx === i ? (val === "" ? 0 : Number(val)) : v)));
@@ -102,44 +94,52 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
 
   // Semua waktu sekaligus → dibaca bookmarklet "Isi APKT dari Smart" di halaman APKT.
   async function copyApkt() {
-    if (!steps || !row.no_laporan) return;
+    if (!steps || !row.no_laporan || !bolehKeApkt) return;
     const [penugasan, perjalanan, pengerjaan, nyalaSmt, nyala, selesai] = steps.map((s) => fmtDt(s.date));
-    const data: DataApkt = {
-      smart: APKT_PENANDA, no: row.no_laporan,
-      penugasan, perjalanan, pengerjaan, nyala_sementara: nyalaSmt, nyala, selesai,
-    };
+    const teks = antreanApkt(token, [
+      {
+        no: row.no_laporan, penugasan, perjalanan, pengerjaan, nyala_sementara: nyalaSmt, nyala, selesai,
+        waktu_lapor: row.waktu_lapor ?? null, nama_pelapor: row.nama_pelapor ?? null,
+        rpt_asli: rptBefore, rpt_koreksi: rptAfter, rct_asli: rctBefore, rct_koreksi: rctAfter,
+      },
+    ], settings.minRpt);
     try {
-      await navigator.clipboard.writeText(JSON.stringify(data));
+      await navigator.clipboard.writeText(teks);
       setCopiedApkt(true);
     } catch { /* abaikan */ }
   }
 
+  /** Laporan yang dikoreksi MANUAL di APKT (tanpa bookmark) → tandai "Sudah dikoreksi". */
+  async function tandaiManual() {
+    if (!row.no_laporan || !bolehKeApkt) return;
+    if (!window.confirm(`Tandai ${row.no_laporan} sudah dikoreksi di APKT?\nPastikan waktu yang Anda masukkan di APKT sama dengan koreksi ini. Sesudahnya koreksi tidak bisa diubah dari Smart.`)) return;
+    setMenandai(true); setErr(null);
+    try {
+      const res = await fetch("/api/apkt/koreksi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tandaiMasuk: row.no_laporan }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error); return; }
+      onSaved();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setMenandai(false);
+    }
+  }
+
   async function handleSave() {
-    if (!steps || !row.no_laporan) return;
+    if (tolak || diApkt) return;
+    const dasar = bangunKoreksi(row, durs, korektor);
+    if (!dasar) return;
+    // Perbarui: waktu asli tetap yang dibekukan pertama kali, bukan baris laporan
+    // yang mungkin sudah berisi waktu terkoreksi dari unduhan APKT terbaru.
+    const payload = { ...dasar, rpt_asli: rptBefore, rct_asli: rctBefore };
     setSaving(true); setErr(null);
     try {
-      const payload = {
-        no_laporan: row.no_laporan,
-        ulp: "AMPENAN",
-        waktu_lapor: row.waktu_lapor ?? null,
-        tgl_penugasan: fmtDt(steps[0].date),
-        tgl_perjalanan: fmtDt(steps[1].date),
-        tgl_pengerjaan: fmtDt(steps[2].date),
-        tgl_nyala_sementara: fmtDt(steps[3].date),
-        tgl_nyala: fmtDt(steps[4].date),
-        tgl_selesai: fmtDt(steps[5].date),
-        d_lapor_penugasan: durs[0],
-        d_penugasan_perjalanan: durs[1],
-        d_perjalanan_pengerjaan: durs[2],
-        d_pengerjaan_nyalasmt: durs[3],
-        d_nyalasmt_nyala: durs[4],
-        d_nyala_selesai: durs[5],
-        rpt_asli: rptBefore,
-        rct_asli: rctBefore,
-        rpt_koreksi: rptAfter,
-        rct_koreksi: rctAfter,
-        korektor: korektor.trim() || null,
-      };
       const res = await fetch("/api/apkt/koreksi", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -147,7 +147,7 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
       });
       const data = await res.json();
       if (!res.ok) { setErr(`${data.error}${data.hint ? " — " + data.hint : ""}`); return; }
-      saveSettings({ durs: settings.durs, korektor: korektor.trim() });
+      saveSettings({ ...settings, korektor: korektor.trim() });
       onSaved();
       onClose();
     } catch (e) {
@@ -218,7 +218,7 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
                 <div key={s.key} className="flex items-center gap-2">
                   <label className="flex-1 text-xs text-ink">{s.label}</label>
                   <input type="number" min={0} value={durs[i]} onChange={(e) => setDur(i, e.target.value)}
-                    className={`${FIELD} w-20 text-right`} />
+                    disabled={diApkt} className={`${FIELD} w-20 text-right`} />
                 </div>
               ))}
             </div>
@@ -226,9 +226,11 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
             {/* Hasil timestamp */}
             <div className="space-y-2">
               <p className={EYEBROW}>Timestamp terkoreksi (klik salin)</p>
-              <button onClick={copyApkt} disabled={!steps}
-                title="Salin No Laporan + semua waktu, lalu klik bookmark 'Isi APKT dari Smart' di halaman APKT"
-                className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition-colors ${
+              <button onClick={copyApkt} disabled={!steps || !bolehKeApkt}
+                title={bolehKeApkt
+                  ? "Salin No Laporan + semua waktu, lalu klik bookmark 'Isi APKT dari Smart' di halaman APKT"
+                  : diApkt ? "Sudah dikoreksi di APKT" : "Simpan koreksi dulu — yang dikirim ke APKT harus koreksi yang tersimpan"}
+                className={`w-full flex items-center justify-center gap-2 px-2.5 py-2 rounded-xl border text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                   copiedApkt ? "border-green-300 bg-green-50 text-green-700" : "border-navy-300 bg-navy-50 text-navy-700 hover:bg-navy-100"
                 }`}>
                 {copiedApkt ? <Check size={14} /> : <ClipboardCheck size={14} />}
@@ -250,6 +252,26 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
             </div>
           </div>
 
+          {tolak && (
+            <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-2">
+              Koreksi tidak bisa dilakukan: {tolak}. Laporan ini juga dilewati dari antrean APKT.
+            </div>
+          )}
+
+          {diApkt && (
+            <div className="text-xs text-green-800 bg-green-50 border border-green-200 rounded-xl p-2">
+              Sudah dikoreksi di APKT
+              {existing?.apkt_masuk_at ? ` (${new Date(String(existing.apkt_masuk_at)).toLocaleString("id-ID", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })})` : ""}.
+              Koreksi tidak bisa diubah dari Smart supaya tetap sama dengan isi APKT.
+            </div>
+          )}
+
+          {!diApkt && existing && !samaTersimpan && (
+            <div className="text-xs text-attention bg-attention-tint border border-attention/25 rounded-xl p-2">
+              Durasi diubah tetapi belum disimpan. Simpan dulu sebelum disalin ke APKT atau ditandai.
+            </div>
+          )}
+
           {err && <div className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-xl p-2">{err}</div>}
 
           {/* Footer */}
@@ -257,12 +279,22 @@ export default function KoreksiModal({ row, existing, onClose, onSaved }: Props)
             <div className="flex items-center gap-2">
               <label className="text-xs text-ink-soft">Korektor:</label>
               <input value={korektor} onChange={(e) => setKorektor(e.target.value)} placeholder="Nama"
-                className={`${FIELD} w-36`} />
+                disabled={diApkt} className={`${FIELD} w-36`} />
             </div>
-            <button onClick={handleSave} disabled={saving || !lapor} className={`${BTN_PRIMARY} ml-auto`}>
-              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-              {saving ? "Menyimpan..." : existing ? "Perbarui Koreksi" : "Simpan Koreksi"}
-            </button>
+            {existing && !diApkt && (
+              <button onClick={tandaiManual} disabled={menandai || !bolehKeApkt}
+                title="Untuk laporan yang Anda koreksi sendiri di APKT tanpa bookmark"
+                className={`${BTN_GHOST} ml-auto`}>
+                {menandai ? <Loader2 className="w-4 h-4 animate-spin" /> : <BadgeCheck className="w-4 h-4" />}
+                Tandai sudah dikoreksi di APKT
+              </button>
+            )}
+            {!diApkt && (
+              <button onClick={handleSave} disabled={saving || !lapor || !!tolak} className={`${BTN_PRIMARY} ${existing ? "" : "ml-auto"}`}>
+                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                {saving ? "Menyimpan..." : existing ? "Perbarui Koreksi" : "Simpan Koreksi"}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -1,15 +1,17 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Clock, ListChecks, PencilLine, TrendingDown } from "lucide-react";
+import { Ban, CheckCircle2, ClipboardList, Clock, ListChecks, PencilLine, TrendingDown } from "lucide-react";
 import StatTile from "@/app/admin/_components/StatTile";
 import { CARD, DISPLAY, EYEBROW } from "@/app/admin/_ui";
 import { fmtMenit, type KoreksiRow } from "../_lib/gangguan";
+import { statusKoreksi, type AturanKoreksi } from "../_lib/koreksiHitung";
 import Paginasi from "./Paginasi";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
 
 interface GangguanLite {
   no_laporan?: string;
+  waktu_lapor?: string;
   durasi_response_time?: number | null; // detik (asli)
   durasi_recovery_time?: number | null; // detik (asli)
 }
@@ -17,6 +19,7 @@ interface GangguanLite {
 interface Props {
   rows: GangguanLite[]; // semua laporan Non CT
   koreksiMap: Map<string, KoreksiRow>;
+  aturan: AturanKoreksi;
 }
 
 /** Daftar koreksi ikut tumbuh seumur pemakaian — jangan dirender sekaligus. */
@@ -25,27 +28,35 @@ const PER_HALAMAN = 50;
 const TH =
   "py-2.5 px-2 text-left bg-navy-50 text-navy-600 font-semibold border-b border-line whitespace-nowrap";
 
-export default function RekapTab({ rows, koreksiMap }: Props) {
+export default function RekapTab({ rows, koreksiMap, aturan }: Props) {
   const total = rows.length;
-  const corrected = useMemo(
-    () => rows.filter((r) => koreksiMap.has(String(r.no_laporan ?? ""))).length,
-    [rows, koreksiMap],
-  );
-  const belum = Math.max(0, total - corrected);
-  const pct = total > 0 ? Math.round((corrected / total) * 100) : 0;
+  // Istilah user 19 Nov: "Sudah dikoreksi" = tersimpan di APKT (apkt_masuk_at);
+  // "Masuk antrian" = dikoreksi di Smart, belum di APKT.
+  // "Tidak perlu koreksi" = tanpa waktu response/recovery (Dibatalkan, Pemadaman
+  // meluas, …) — bukan pekerjaan koreksi, jadi bukan penyebut progres.
+  const { corrected, antrian, tidakPerlu, belum } = useMemo(() => {
+    const n = { sudah: 0, antrian: 0, tidak: 0, belum: 0 };
+    for (const r of rows) n[statusKoreksi(r, koreksiMap.get(String(r.no_laporan ?? "")), aturan).status]++;
+    return { corrected: n.sudah, antrian: n.antrian, tidakPerlu: n.tidak, belum: n.belum };
+  }, [rows, koreksiMap, aturan]);
+  const perlu = Math.max(0, total - tidakPerlu);
+  const pct = perlu > 0 ? Math.round((corrected / perlu) * 100) : 0;
 
-  // Rata-rata SEBELUM (asli) vs SESUDAH (koreksi bila ada, asli bila belum),
-  // atas seluruh laporan Non CT yang punya nilai waktu (asli > 0).
+  // Rata-rata SEBELUM (asli) vs SESUDAH (koreksi bila sudah di APKT, asli bila
+  // belum/masih antrian), atas seluruh laporan Non CT yang punya nilai waktu (asli > 0).
   const stat = useMemo(() => {
     function calc(detikKey: "durasi_response_time" | "durasi_recovery_time", korKey: "rpt_koreksi" | "rct_koreksi") {
       let n = 0, before = 0, after = 0;
       for (const r of rows) {
-        const asliMin = (Number(r[detikKey]) || 0) / 60; // detik → menit
+        const kor = koreksiMap.get(String(r.no_laporan ?? ""));
+        // Asli yang dibekukan saat koreksi dibuat menang atas baris laporan:
+        // unduhan sesudah APKT menyetujui koreksi sudah berisi waktu terkoreksi.
+        const beku = Number(kor?.[detikKey === "durasi_response_time" ? "rpt_asli" : "rct_asli"]);
+        const asliMin = beku > 0 ? beku : (Number(r[detikKey]) || 0) / 60; // detik → menit
         if (asliMin <= 0) continue;
         n++;
         before += asliMin;
-        const kor = koreksiMap.get(String(r.no_laporan ?? ""));
-        const korVal = kor ? Number(kor[korKey]) : NaN;
+        const korVal = kor?.apkt_masuk_at ? Number(kor[korKey]) : NaN;
         after += Number.isFinite(korVal) && korVal > 0 ? korVal : asliMin;
       }
       return { n, before: n ? before / n : 0, after: n ? after / n : 0 };
@@ -73,23 +84,36 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
   return (
     <div className="space-y-3">
       {/* Kartu jumlah */}
-      <div className="grid gap-3 grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
         <StatTile label="Total Non CT" value={total} icon={ListChecks} hint="laporan" />
         <StatTile
-          label="Sudah Dikoreksi"
+          label="Sudah dikoreksi"
           value={corrected}
           tone="green"
           icon={CheckCircle2}
-          hint={`${pct}% selesai`}
+          hint={`${pct}% · tersimpan di APKT`}
         />
         <StatTile
-          label="Belum Dikoreksi"
+          label="Masuk antrian"
+          value={antrian}
+          tone={antrian > 0 ? "attention" : "green"}
+          icon={ClipboardList}
+          hint="dikoreksi di Smart, belum di APKT"
+        />
+        <StatTile
+          label="Belum dikoreksi"
           value={belum}
           tone={belum > 0 ? "attention" : "green"}
           icon={PencilLine}
           hint="laporan"
         />
-        <StatTile label="Progres" value={`${pct}%`} hint="dari seluruh Non CT" />
+        <StatTile
+          label="Tidak perlu koreksi"
+          value={tidakPerlu}
+          icon={Ban}
+          hint="tanpa waktu, waktu asli sudah lebih cepat, atau RPT di bawah batas"
+        />
+        <StatTile label="Progres" value={`${pct}%`} hint={`sudah dikoreksi dari ${perlu} yang perlu koreksi`} />
       </div>
 
       {/* Rata-rata sebelum vs sesudah (seluruh Non CT) */}
@@ -113,7 +137,7 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
             <table className="w-full text-xs border-collapse">
               <thead className="kepala-kit sticky top-0 z-10">
                 <tr>
-                  {["#", "No Laporan", "RPT Asli", "RPT Koreksi", "RCT Asli", "RCT Koreksi", "Korektor", "Tgl Koreksi"].map((h) => (
+                  {["#", "No Laporan", "Status", "RPT Asli", "RPT Koreksi", "RCT Asli", "RCT Koreksi", "Korektor", "Tgl Koreksi"].map((h) => (
                     <th key={h} className={TH}><IkonKolom teks={h} />{h}</th>
                   ))}
                 </tr>
@@ -123,6 +147,11 @@ export default function RekapTab({ rows, koreksiMap }: Props) {
                   <tr key={k.no_laporan} className="border-t border-line hover:bg-surface transition-colors">
                     <td className="py-2 px-2 text-ink-muted text-right tabular-nums">{(halamanAman - 1) * PER_HALAMAN + i + 1}</td>
                     <td className="py-2 px-2 font-mono text-ink whitespace-nowrap">{k.no_laporan}</td>
+                    <td className="py-2 px-2 whitespace-nowrap">
+                      {k.apkt_masuk_at
+                        ? <span className="text-green-700 font-semibold">Sudah dikoreksi</span>
+                        : <span className="text-attention font-semibold">Masuk antrian</span>}
+                    </td>
                     <td className="py-2 px-2 text-ink-muted line-through whitespace-nowrap">{fmtMenit(Number(k.rpt_asli) || 0)}</td>
                     <td className="py-2 px-2 font-semibold text-green-700 whitespace-nowrap">{fmtMenit(Number(k.rpt_koreksi) || 0)}</td>
                     <td className="py-2 px-2 text-ink-muted line-through whitespace-nowrap">{fmtMenit(Number(k.rct_asli) || 0)}</td>
@@ -160,7 +189,7 @@ function CompareCard({ title, before, after, n, corrected }: {
       <p className="flex items-center gap-1.5 mb-2">
         <Clock className="w-3.5 h-3.5 text-navy-600 shrink-0" />
         <span className={EYEBROW}>{title}</span>
-        <span className="ml-auto text-[10px] text-ink-muted">{n} laporan · {corrected} dikoreksi</span>
+        <span className="ml-auto text-[10px] text-ink-muted">{n} laporan · {corrected} sudah dikoreksi</span>
       </p>
       <div className="flex items-baseline gap-2 flex-wrap">
         <span className="text-sm text-ink-muted line-through">{fmtMenit(before)}</span>
