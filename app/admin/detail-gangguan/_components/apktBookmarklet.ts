@@ -7,7 +7,9 @@
 //   1. tanya Smart (`/api/apkt/koreksi/cek`, bertoken): koreksinya masih ada,
 //      belum masuk APKT (PC lain), dan waktunya yang TERBARU dipakai;
 //   2. cari laporan → tunggu sampai "Data Saat Ini" menampilkan laporan INI
-//      (Tgl. Lapor + Nama Pelapor sama dengan Smart), bukan sekadar berubah;
+//      (Tgl. Lapor + Nama Pelapor sama dengan Smart), bukan sekadar berubah.
+//      Nama di unduhan APKT disamarkan ("Okky Mul***") sedangkan layar APKT
+//      lengkap → "*" = huruf apa saja, bagian yang terlihat harus cocok;
 //   3. aturan user: RPT/RCT ASLI (dihitung dari "Data Saat Ini" APKT, bukan
 //      dari impor) lebih kecil daripada koreksi → dilewati + diberi tahu;
 //   4. isi Grup JARINGAN → tunggu Alasan dimuat → AKSES JARINGAN LAN →
@@ -103,7 +105,8 @@ const tampak=e=>!!(e.offsetWidth||e.offsetHeight||e.getClientRects().length);
 const urai=s=>{const n=String(s||'').replace(/[^0-9]+/g,' ').trim().split(' ').filter(Boolean).map(Number);if(n.length<5)return null;let d,m,y;if(n[0]>31){y=n[0];m=n[1];d=n[2];}else{d=n[0];m=n[1];y=n[2];}return {t:new Date(y,m-1,d,n[3],n[4],n[5]||0).getTime(),detik:n.length>=6};};
 const samaWaktu=(a,b)=>{const x=urai(a),y=urai(b);if(!x||!y)return false;return x.detik&&y.detik?x.t===y.t:Math.floor(x.t/60000)===Math.floor(y.t/60000);};
 const nmNorm=s=>String(s||'').toUpperCase().replace(/[^A-Z0-9]+/g,' ').trim();
-const laporIni=d=>{const lp=lamaVal('Tgl. Lapor:');if(!lp||!d.waktu_lapor||!samaWaktu(lp,d.waktu_lapor))return false;const nm=lamaVal('Nama Pelapor:');return !d.nama_pelapor||!nm||nmNorm(nm)===nmNorm(d.nama_pelapor);};
+const cocokNama=(a,b)=>{a=String(a||'');b=String(b||'');if(!a||!b)return true;const m=a.includes('*')?a:b.includes('*')?b:null;if(!m)return nmNorm(a)===nmNorm(b);const t=nmNorm(m===a?b:a);const seg=m.split('*').map(nmNorm).filter(Boolean);let i=0;for(let x=0;x<seg.length;x++){const j=t.indexOf(seg[x],i);if(j<0||(x===0&&!m.trim().startsWith('*')&&j!==0))return false;i=j+seg[x].length;}return true;};
+const laporIni=d=>{const lp=lamaVal('Tgl. Lapor:');if(!lp||!d.waktu_lapor||!samaWaktu(lp,d.waktu_lapor))return false;return cocokNama(lamaVal('Nama Pelapor:'),d.nama_pelapor);};
 const tolakLive=d=>{const lp=urai(lamaVal('Tgl. Lapor:')),pg=urai(lamaVal('Tgl. Dalam Pengerjaan:')),ny=urai(lamaVal('Tgl. Nyala:'));if(!lp||!pg||!ny)return 'Data Saat Ini APKT tidak lengkap (Pengerjaan/Nyala kosong)';const rpt=(pg.t-lp.t)/60000,rct=(ny.t-lp.t)/60000;const mn=Number(q.minRpt)||0;if(mn>0&&rpt<=mn+0.001)return 'RPT asli di APKT '+fm(rpt)+', tidak di atas batas '+fm(mn);const s=[];if(rpt+0.001<Number(d.rpt_koreksi))s.push('RPT '+fm(rpt)+' → '+fm(d.rpt_koreksi));if(rct+0.001<Number(d.rct_koreksi))s.push('RCT '+fm(rct)+' → '+fm(d.rct_koreksi));return s.length?'Waktu asli di APKT sudah lebih cepat ('+s.join(', ')+')':null;};
 const M=[['tanggalPenugasanRegu','penugasan','Penugasan'],['tanggalDalamPerjalanan','perjalanan','Perjalanan'],['tanggalDalamPengerjaan','pengerjaan','Pengerjaan'],['tanggalNyalaSementara','nyala_sementara','Nyala Sementara'],['tanggalNyala','nyala','Nyala'],['tanggalSelesai','selesai','Selesai']];
 const teksPilihan=id=>{const lab=[...document.querySelectorAll('label[for="'+id+'"]')].map(l=>l.parentElement).find(w=>w&&w.querySelector('.dropdown > button'));const t=lab&&lab.querySelector('.dropdown > button');return t?t.textContent.trim():'';};
