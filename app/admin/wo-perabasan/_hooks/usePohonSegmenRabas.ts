@@ -58,7 +58,8 @@ export interface PohonCek {
 }
 
 export interface PohonSegmen {
-  realisasi: (Realisasi & { cek_pohon_id: string | null })[];
+  /** tiang_kerja = tiang segmen tempat pohon dirabas (24 Nov 2026; null = pohon lama). */
+  realisasi: (Realisasi & { cek_pohon_id: string | null; tiang_kerja: { kode: string | null } | null })[];
   cek: PohonCek[];
   inspeksi: PohonInspeksi[];
   tidakDirabas: PohonTidakDirabas[];
@@ -71,7 +72,7 @@ export function usePohonSegmenRabas(itemId: string, segmenId: string) {
   useEffect(() => {
     let hidup = true;
     void Promise.all([
-      supabaseBrowser.from("perabasan_realisasi").select("*").eq("item_id", itemId).order("dikerjakan_at"),
+      supabaseBrowser.from("perabasan_realisasi").select("*,tiang_kerja:tiang_kerja_id(kode)").eq("item_id", itemId).order("dikerjakan_at"),
       supabaseBrowser
         .from("perabasan_cek_pohon_status")
         .select("id,putaran,lat,lng,jenis_pohon,foto_url,foto_url_2,foto_url_3,catatan,dicek_oleh,dicek_at,dirabas,rabas_foto_sesudah_url,dirabas_oleh")

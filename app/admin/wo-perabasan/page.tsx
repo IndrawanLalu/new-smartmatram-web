@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Ban, Download, FileText, Users, LayoutDashboard, ListChecks, Loader2, Map, PlusCircle, TreeDeciduous, TriangleAlert } from "lucide-react";
+import { Ban, Download, FileText, Users, LayoutDashboard, ListChecks, Loader2, Map, PlusCircle, Settings, TreeDeciduous, TriangleAlert } from "lucide-react";
 import BatalkanModal from "@/app/admin/_components/BatalkanModal";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { canSeeAllUnits } from "@/lib/roles";
@@ -28,6 +28,7 @@ import DetailLuarWoModal from "./_components/DetailLuarWoModal";
 import { useLuarWoPerabasan } from "./_hooks/useLuarWoPerabasan";
 import DaftarWo from "./_components/DaftarWo";
 import DetailWoModal from "./_components/DetailWoModal";
+import PengaturanPerabasan from "./_components/PengaturanPerabasan";
 import { useSlaBulanan } from "@/app/admin/_hooks/useSlaBulanan";
 import { PilihPeriode, PilihTahun, PilihUlp } from "@/app/admin/_kit/Saringan";
 
@@ -56,7 +57,7 @@ const ISTILAH: IstilahWo = {
     `ULP ${ulp} belum punya regu rabas yang aktif di Manajemen Petugas (grup PERABASAN). WO tetap bisa terbit, tapi segmennya tidak akan muncul di HP siapa pun sampai regunya didaftarkan lalu ditugaskan dari daftar segmen.`,
 };
 
-type TabKey = "daftar" | "dashboard" | "wo";
+type TabKey = "daftar" | "dashboard" | "wo" | "atur";
 type Chip = SaringStatus | "LUAR";
 
 const kmTeks = (v: number) => v.toFixed(2).replace(".", ",");
@@ -144,6 +145,8 @@ export default function WoPerabasanPage() {
     { kunci: "dashboard", label: "Dashboard", ikon: LayoutDashboard },
     // Daftar WO (lihat & ubah, permintaan user 25 Sep 2026) + Susun WO.
     { kunci: "wo", label: "WO", ikon: FileText },
+    // Sakelar pohon temuan wajib dirabas per ULP (24 Nov 2026) — diubah UP3.
+    ...(canSeeAllUnits(user.role) || user.role === "admin" ? [{ kunci: "atur" as const, label: "Pengaturan", ikon: Settings }] : []),
   ];
   const CHIP: ItemChip<Chip>[] = [
     { kunci: "SEMUA", label: "Semua" },
@@ -198,7 +201,7 @@ export default function WoPerabasanPage() {
         />
       )}
 
-      {!(tab === "wo" && tampilanWo === "susun") && (
+      {tab !== "atur" && !(tab === "wo" && tampilanWo === "susun") && (
         <IsiTopbar>
           <PilihUlp nilai={d.ulp} onUbah={d.setUlp} daftar={d.daftarUlp} />
           {tab === "daftar" && (
@@ -214,7 +217,9 @@ export default function WoPerabasanPage() {
         </IsiTopbar>
       )}
 
-      {tab === "wo" && tampilanWo === "susun" ? (
+      {tab === "atur" ? (
+        <PengaturanPerabasan />
+      ) : tab === "wo" && tampilanWo === "susun" ? (
         <SusunWoSegmen
           key={woAwal?.id ?? "baru"}
           user={user}

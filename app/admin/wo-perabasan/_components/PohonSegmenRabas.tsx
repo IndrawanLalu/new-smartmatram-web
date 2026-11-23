@@ -106,6 +106,7 @@ export default function PohonSegmenRabas({ isi, galat, catatanRegu }: Props) {
                   <p className="font-medium text-ink">{p.jenis_pohon || "Jenis tidak dicatat"}</p>
                   <p className="text-ink-muted mt-0.5">
                     {p.cek_pohon_id ? "hasil pengecekan" : p.tiang_id ? "dari inspeksi JTM" : "temuan regu"}
+                    {p.tiang_kerja && ` · tiang ${p.tiang_kerja.kode ?? "tanpa nama"}`}
                     {p.petugas_nama && ` · ${p.petugas_nama}`}
                   </p>
                   {p.catatan && <p className="text-ink-soft mt-0.5">{p.catatan}</p>}
