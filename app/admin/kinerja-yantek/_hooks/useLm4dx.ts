@@ -20,7 +20,7 @@ import {
 const POTONG = 200;
 
 /** Id inspeksi JTM yang Tier 1 + drone (jtm-tier1-drone.sql). */
-async function ambilDrone(id: string[]) {
+export async function ambilDrone(id: string[]) {
   const ada = new Set<string>();
   for (let i = 0; i < id.length; i += POTONG) {
     const { data, error } = await supabaseBrowser
