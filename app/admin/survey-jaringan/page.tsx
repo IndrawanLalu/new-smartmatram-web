@@ -7,14 +7,15 @@ import IsiTopbar from "@/app/admin/_kit/IsiTopbar";
 import { PilihUlp } from "@/app/admin/_kit/Saringan";
 import { BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { canSeeAllUnits, UNITS } from "@/lib/roles";
-import { LABEL_ALASAN, NADA_STATUS_SURVEY, STATUS_SURVEY, type StatusSurvey } from "@/lib/surveyJaringan";
+import { LABEL_ALASAN, NADA_STATUS_SURVEY, rekonduktor, STATUS_SURVEY, type StatusSurvey } from "@/lib/surveyJaringan";
 import RincianSurvey from "./_components/RincianSurvey";
 import { useSurveyJaringan } from "./_hooks/useSurveyJaringan";
 
 /**
- * Survey Jaringan Baru (S1, 21 Okt 2026) — daftar rencana jaringan JTM yang
- * digambar di peta. Jaringan survey belum menjadi aset sampai dioperasikan
- * (S2). Rencana: rencana-jaringan-baru.md.
+ * Survey Jaringan (S1, 21 Okt 2026) — daftar rencana yang digambar di peta:
+ * Jaringan Baru (belum menjadi aset sampai dioperasikan, S2;
+ * rencana-jaringan-baru.md) dan Rekonduktor JTR (ganti kabel + aksesoris JTR
+ * yang ada, 23 Nov 2026; rencana-rekonduktor-jtr.md).
  */
 
 const PAGE = 20;
@@ -41,7 +42,7 @@ export default function SurveyJaringanPage() {
   const tampil = useMemo(() => {
     const q = cari.trim().toUpperCase();
     return st.survey.filter(
-      (s) => (status === "semua" || s.status === status) && (!q || [s.judul, s.penyulang ?? ""].some((v) => v.toUpperCase().includes(q))),
+      (s) => (status === "semua" || s.status === status) && (!q || [s.judul, s.penyulang ?? "", s.gardu_kode ?? ""].some((v) => v.toUpperCase().includes(q))),
     );
   }, [st.survey, status, cari]);
   const halaman = Math.max(1, Math.ceil(tampil.length / PAGE));
@@ -70,17 +71,22 @@ export default function SurveyJaringanPage() {
             </div>
             <div className="relative w-64 ml-auto">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft" />
-              <input value={cari} onChange={(e) => ganti(setCari)(e.target.value)} placeholder="Cari judul atau penyulang…" className={`${FIELD} w-full pl-8`} />
+              <input value={cari} onChange={(e) => ganti(setCari)(e.target.value)} placeholder="Cari judul, penyulang, gardu…" className={`${FIELD} w-full pl-8`} />
             </div>
             {boleh && (
-              <a href="/peta?survey=baru" target="_blank" rel="noopener" className={BTN_PRIMARY}>
-                <Plus size={14} /> Survey baru di peta
-              </a>
+              <>
+                <a href="/peta?survey=baru" target="_blank" rel="noopener" className={BTN_PRIMARY}>
+                  <Plus size={14} /> Jaringan Baru
+                </a>
+                <a href="/peta?rekonduktor=baru" target="_blank" rel="noopener" className={BTN_PRIMARY}>
+                  <Plus size={14} /> Rekonduktor JTR
+                </a>
+              </>
             )}
           </div>
           <p className="text-xs text-ink-muted">
-            Jaringan baru digambar di peta (sambung ke tiang JTM yang ada, lalu titik tiang baru). Belum menjadi aset — tidak ikut KMS,
-            rekap, maupun inspeksi sampai dioperasikan.
+            Jaringan Baru: digambar di peta (sambung ke tiang JTM yang ada, lalu titik tiang baru); belum menjadi aset — tidak ikut KMS,
+            rekap, maupun inspeksi sampai dioperasikan. Rekonduktor JTR: pilih gardu, lalu ruas tiang awal → akhir yang kabelnya diganti.
           </p>
         </div>
 
@@ -98,9 +104,9 @@ export default function SurveyJaringanPage() {
                   <tr className="bg-navy-50 text-left">
                     <th className={TH}>Survey</th>
                     <th className={TH}>Penyulang</th>
-                    <th className={`${TH} text-right`}>Tiang baru</th>
+                    <th className={`${TH} text-right`}>Tiang</th>
                     <th className={`${TH} text-right`}>Panjang (kms)</th>
-                    <th className={`${TH} text-right`}>Gardu baru</th>
+                    <th className={`${TH} text-right`}>Gardu</th>
                     <th className={TH}>Status</th>
                     <th className={TH}>Diubah</th>
                   </tr>
@@ -110,12 +116,16 @@ export default function SurveyJaringanPage() {
                     <tr key={s.id} onClick={() => setBuka(s.id)} className="border-t border-line align-top cursor-pointer hover:bg-navy-50/50">
                       <td className="px-3 py-2.5 min-w-64">
                         <span className="block font-semibold text-ink">{s.judul}</span>
-                        <span className="block text-[11px] text-ink-muted">{LABEL_ALASAN[s.alasan]} · ULP {s.ulp}</span>
+                        <span className="block text-[11px] text-ink-muted">
+                          {rekonduktor(s) ? `Rekonduktor JTR · ${s.rekon_ruas} ruas` : `Jaringan Baru · ${LABEL_ALASAN[s.alasan]}`} · ULP {s.ulp}
+                        </span>
                       </td>
                       <td className="px-3 py-2.5 text-ink-soft">{s.penyulang ?? "—"}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{s.jumlah_tiang}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{kms(s.panjang_m)}</td>
-                      <td className="px-3 py-2.5 text-right tabular-nums">{s.jumlah_gardu ? `${s.jumlah_gardu} (${s.gardu_kva} kVA)` : "—"}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{rekonduktor(s) ? s.rekon_tiang : s.jumlah_tiang}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">{kms(rekonduktor(s) ? s.rekon_panjang_m : s.panjang_m)}</td>
+                      <td className="px-3 py-2.5 text-right tabular-nums">
+                        {rekonduktor(s) ? (s.gardu_kode ?? "—") : s.jumlah_gardu ? `${s.jumlah_gardu} baru (${s.gardu_kva} kVA)` : "—"}
+                      </td>
                       <td className="px-3 py-2.5">
                         <span className={`inline-block px-2 py-0.5 rounded-full text-[11px] font-semibold border ${NADA_STATUS_SURVEY[s.status]}`}>{s.status}</span>
                       </td>

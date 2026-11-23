@@ -62,7 +62,8 @@ export default function MaterialBawaanJtr({ isi, boleh, onUbah }: Props) {
         </div>
       ))}
       <p className="text-xs text-ink-muted">
-        Jumlah = faktor × dasar, dibulatkan ke atas. &quot;{"{kabel}"}&quot; di nama diganti ukuran kabel jurusan. Sisip gardu dan naik daya
+        Jumlah = faktor × dasar, dibulatkan ke atas. &quot;{"{kabel}"}&quot; di nama diganti ukuran kabel jurusan (Rekonduktor: kabel
+        pengganti ruas). Faktor kabel 1,05 = panjang titik + 5% andongan. Sisip gardu dan naik daya
         tidak punya bawaan — materialnya diisi saat menyimpan usulan.
       </p>
     </section>

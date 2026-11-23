@@ -1,10 +1,20 @@
 /**
- * Survey Jaringan Baru (S1, 21 Okt 2026) — dipakai peta (menggambar) dan
+ * Survey Jaringan (S1, 21 Okt 2026) — dipakai peta (menggambar) dan
  * halaman daftar (rincian, material, gambar survey). SQL:
  * scripts/survey-jaringan.sql. Rencana: rencana-jaringan-baru.md.
+ * Jenis Rekonduktor JTR (23 Nov 2026): lib/rekonduktorJtr.ts.
  */
 
 import { jarakMeter } from "@/lib/geo";
+import type { RuasRekonduktor } from "@/lib/rekonduktorJtr";
+
+/** JTM/JTR = Jaringan Baru (titik survey); REKONDUKTOR = Rekonduktor JTR (ruas). */
+export type JenisSurvey = "JTM" | "JTR" | "REKONDUKTOR";
+export const rekonduktor = (s: { jenis: JenisSurvey }) => s.jenis === "REKONDUKTOR";
+export const LABEL_JENIS_SURVEY = (j: JenisSurvey) => (j === "REKONDUKTOR" ? "Rekonduktor JTR" : "Jaringan Baru");
+/** Alamat peta survey menurut jenisnya. */
+export const tautanPetaSurvey = (s: { id: string; jenis: JenisSurvey }) =>
+  rekonduktor(s) ? `/peta?rekonduktor=${s.id}` : `/peta?survey=${s.id}`;
 
 export type StatusSurvey = "Draf" | "Disetujui" | "Dioperasikan" | "Batal";
 export const STATUS_SURVEY: StatusSurvey[] = ["Draf", "Disetujui", "Dioperasikan", "Batal"];
@@ -114,7 +124,7 @@ export interface BarisMaterialSurvey {
 
 export interface SurveyJaringan {
   id: string;
-  jenis: "JTM" | "JTR";
+  jenis: JenisSurvey;
   ulp: string;
   penyulang: string | null;
   judul: string;
@@ -144,14 +154,23 @@ export interface SurveyJaringan {
   jumlah_tiang_jtr: number;
   panjang_jtm_m: number;
   panjang_jtr_m: number;
+  /** Rekonduktor JTR: gardu & ruas (salinan beku) + angka dari view. */
+  gardu_kode: string | null;
+  ruas: RuasRekonduktor[];
+  rekon_ruas: number;
+  rekon_tiang: number;
+  rekon_panjang_m: number;
+  rekon_sr: number;
 }
 
-export const PESAN_SQL_SURVEY = "Survey Jaringan Baru belum ada di database — jalankan scripts/survey-jaringan.sql di Supabase.";
-const PESAN_SQL_SURVEY_2 = "Tambahan Survey Jaringan Baru belum ada di database — jalankan scripts/survey-jaringan-2.sql di Supabase.";
+export const PESAN_SQL_SURVEY = "Survey Jaringan belum ada di database — jalankan scripts/survey-jaringan.sql di Supabase.";
+export const PESAN_SQL_REKONDUKTOR = "Rekonduktor JTR belum ada di database — jalankan scripts/survey-jaringan-7.sql di Supabase.";
+const PESAN_SQL_SURVEY_2 = "Tambahan Survey Jaringan belum ada di database — jalankan scripts/survey-jaringan-2.sql di Supabase.";
 
 /** Galat Supabase → pesan untuk orang. */
 export const pesanSurvey = (e: unknown) => {
   const x = e as { message?: string; code?: string };
+  if (/simpan_survey_rekonduktor|survey_jaringan_jenis|jenis_check|column .*ruas/.test(x.message ?? "")) return PESAN_SQL_REKONDUKTOR;
   if (/ubah_pengesah_survey|gardu_jenis|diperiksa_nama/.test(x.message ?? "")) return PESAN_SQL_SURVEY_2;
   if (/ubah_foto_survey/.test(x.message ?? "")) return "Foto survey belum ada di database — jalankan scripts/survey-jaringan-4.sql di Supabase.";  return x.code === "PGRST205" || x.code === "PGRST202" || /survey_jaringan|survey_titik/.test(x.message ?? "")
     ? PESAN_SQL_SURVEY
@@ -172,6 +191,12 @@ export const keSurvey = (x: Record<string, unknown>): SurveyJaringan => ({
   material: (x.material as BarisMaterialSurvey[] | null) ?? [],
   foto: ((x.foto as unknown[] | null | undefined) ?? []).map(keFoto),
   latar: (x.latar as LatarSurvey | undefined) ?? "jalan",
+  gardu_kode: (x.gardu_kode as string | null | undefined) ?? null,
+  ruas: (x.ruas as RuasRekonduktor[] | null | undefined) ?? [],
+  rekon_ruas: Number(x.rekon_ruas ?? 0),
+  rekon_tiang: Number(x.rekon_tiang ?? 0),
+  rekon_panjang_m: Number(x.rekon_panjang_m ?? 0),
+  rekon_sr: Number(x.rekon_sr ?? 0),
 });
 
 export const keTitik = (x: Record<string, unknown>): TitikSurvey => ({

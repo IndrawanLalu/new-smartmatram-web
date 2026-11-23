@@ -7,21 +7,29 @@
 import type { JurusanJtr } from "../_hooks/useAnalisisJtr";
 import { pindahSr, type OpsiPecah, type Rencana } from "./rencanaJtr";
 
-export type PekerjaanMaterial = "tambah-jurusan" | "pindah-sr" | "ganti-kabel" | "pemerataan";
+export type PekerjaanMaterial = "tambah-jurusan" | "pindah-sr" | "ganti-kabel" | "pemerataan" | "rekonduktor";
 
 export const LABEL_MATERIAL: Record<PekerjaanMaterial, string> = {
   "tambah-jurusan": "Tambah jurusan — potong & sambung cabang",
   "pindah-sr": "Tambah jurusan — pindah SR ke kabel baru",
   "ganti-kabel": "Ganti kabel",
   pemerataan: "Pemerataan beban",
+  rekonduktor: "Rekonduktor JTR (Survey Jaringan)",
 };
-export type DasarMaterial = "tetap" | "kabel_m" | "tiang" | "sr";
+/** Dasar per aksesoris (suspension … kontramast) hanya dipakai Rekonduktor JTR — dijumlah dari isian per tiang. */
+export type DasarMaterial = "tetap" | "kabel_m" | "tiang" | "sr" | "suspension" | "fixed" | "la" | "treckschoer" | "drugschoer" | "kontramast";
 
 export const LABEL_DASAR: Record<DasarMaterial, string> = {
   tetap: "jumlah tetap",
   kabel_m: "× panjang kabel (m)",
   tiang: "× tiang dilalui",
-  sr: "× SR dipindah fasa",
+  sr: "× SR (dipindah / diganti CCO)",
+  suspension: "× suspension",
+  fixed: "× fixed (dead end)",
+  la: "× LA (large angle)",
+  treckschoer: "× treckschoer",
+  drugschoer: "× drugschoer",
+  kontramast: "× kontramast",
 };
 
 export interface MaterialRef {
@@ -93,6 +101,6 @@ export function perkiraanMaterial(
     .map((x) => ({
       nama: x.nama.replace("{kabel}", kabel ?? "").trim(),
       satuan: x.satuan,
-      jumlah: Math.ceil(x.faktor * (x.dasar === "tetap" ? 1 : b[x.dasar])),
+      jumlah: Math.ceil(x.faktor * (x.dasar === "tetap" ? 1 : ((b as Partial<Record<DasarMaterial, number>>)[x.dasar] ?? 0))),
     }));
 }

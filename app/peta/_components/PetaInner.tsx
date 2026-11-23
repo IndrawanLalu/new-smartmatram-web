@@ -43,7 +43,9 @@ import LapisanPohon from "./LapisanPohon";
 import LapisanCariLokasi from "./LapisanCariLokasi";
 import LapisanRencana from "./LapisanRencana";
 import LapisanSurvey from "./LapisanSurvey";
+import LapisanRekonduktor from "./LapisanRekonduktor";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
+import type { RekonduktorPetaState } from "../_hooks/useRekonduktorPeta";
 import type { RencanaPetaState } from "../_hooks/useRencanaPeta";
 import type { HasilCari } from "../_hooks/useCariLokasi";
 import type { Titik } from "@/lib/koordinat";
@@ -132,6 +134,8 @@ interface Props {
   rencana: RencanaPetaState | null;
   /** Survey Jaringan Baru yang sedang dibuka (null = padam). */
   survey: SurveyPetaState | null;
+  /** Survey Rekonduktor JTR yang sedang dibuka (null = padam). */
+  rekonduktor: RekonduktorPetaState | null;
   labelPenanda: (kode: string) => string;
   /** Lapisan Section JTM (null = padam). */
   section: {
@@ -203,7 +207,7 @@ const IKON_GARDU = ikonGardu(WARNA_GARDU);
 export default function PetaInner({
   rute, tiang, gardu, fokus, onKotak, penanda, onPilihTiang, onPilihGardu,
   sorot, geser, onGeser, geserBanyak, onSeretBanyak, ujung, bolehSetujuiUjung, oleh, onUjungDisetujui, sorotUjung, pohonTemuan, pohonDirabas, pohonCek, onTugaskanPohon, simulasi,
-  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, labelPenanda, section, pecah, batal,
+  kesehatan, onPilihKesehatan, namaTiang, nomorKabel, antrean, onPilihAntrean, sorotPerubahan, sorotJtm, sorotKoreksi, isian, loncat, tandaMilik, latar, sld, cari, rencana, survey, rekonduktor, labelPenanda, section, pecah, batal,
 }: Props) {
   const [pilihan, setPilihan] = useState<PilihanTiang | null>(null);
   return (
@@ -245,6 +249,7 @@ export default function PetaInner({
       />
       <LapisanRencana s={rencana} />
       {survey && <LapisanSurvey s={survey} labelPenanda={labelPenanda} />}
+      {rekonduktor && <LapisanRekonduktor s={rekonduktor} />}
       <LapisanNama tiang={tiang} nama={namaTiang} nomor={nomorKabel} />
       {tandaMilik.map((t) => (
         <Marker key={`milik-${t.id}`} position={[t.lat, t.lng]} icon={IKON_MILIK} eventHandlers={{ click: () => onPilihTiang(t) }}>

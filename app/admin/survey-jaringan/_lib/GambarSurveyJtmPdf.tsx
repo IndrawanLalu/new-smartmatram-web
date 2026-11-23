@@ -1,4 +1,4 @@
-// Gambar survey Survey Jaringan Baru (JTM) — hanya dimuat lewat import().
+// Gambar survey Survey Jaringan — Jaringan Baru (JTM) — hanya dimuat lewat import().
 // Hitungan di gambarSurveyJtm.ts; lembar & potongan bersama di lib/gambarSurvey.
 /* eslint-disable jsx-a11y/alt-text -- <Image> di sini milik react-pdf (PDF), bukan <img> HTML */
 
@@ -144,7 +144,7 @@ export default function GambarSurveyJtmPdf({ s, g, titik, sambung, foto, logo, l
       kolom={
         <>
           <View style={S.blok}>
-            <Text style={S.eyebrow}>{`SURVEY JARINGAN BARU — ${LABEL_ALASAN[s.alasan].toUpperCase()}`}</Text>
+            <Text style={S.eyebrow}>{`SURVEY JARINGAN — JARINGAN BARU · ${LABEL_ALASAN[s.alasan].toUpperCase()}`}</Text>
             <Baris l="Judul" v={s.judul} />
             <Baris l="Penyulang" v={s.penyulang ?? "—"} />
             <Baris

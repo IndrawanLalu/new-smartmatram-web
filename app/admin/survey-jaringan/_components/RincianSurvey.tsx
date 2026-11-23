@@ -9,13 +9,17 @@ import PratinjauGambarSurvey from "./PratinjauGambarSurvey";
 import { useToast } from "@/app/admin/_components/Toast";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import {
-  LABEL_ALASAN, materialDariGambar, NADA_STATUS_SURVEY,
+  LABEL_ALASAN, materialDariGambar, NADA_STATUS_SURVEY, rekonduktor, tautanPetaSurvey,
   type BarisMaterialSurvey, type SurveyJaringan, type TiangSambung, type TitikSurvey,
 } from "@/lib/surveyJaringan";
+import { bacaMaterialRekonduktor } from "@/lib/bacaJtrGardu";
+import { materialRekonduktor, type MaterialRekonRef } from "@/lib/rekonduktorJtr";
+import RingkasRekonduktor from "./RingkasRekonduktor";
 import { bacaGambarSurvey, bacaLabelPenanda, type Pengesah, type SurveyJaringanState } from "../_hooks/useSurveyJaringan";
 import { buatGambarSurveyJtm } from "../_utils/buatGambarSurveyJtm";
+import { buatGambarRekonduktor } from "../_utils/buatGambarRekonduktor";
 
-/** Rincian satu survey: angka, material (dihitung dari gambar, disunting), status, gambar survey PDF. */
+/** Rincian satu survey (Jaringan Baru / Rekonduktor JTR): angka, material (dihitung dari gambar, disunting), status, gambar survey PDF. */
 
 interface Props {
   s: SurveyJaringan;
@@ -39,6 +43,8 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
   const toast = useToast();
   const [gambar, setGambar] = useState<{ titik: TitikSurvey[]; sambung: Map<string, TiangSambung> } | null>(null);
   const [penanda, setPenanda] = useState<Map<string, string>>(new Map());
+  const rekon = rekonduktor(s);
+  const [refRekon, setRefRekon] = useState<MaterialRekonRef[] | null>(null);
   const [material, setMaterial] = useState<BarisMaterialSurvey[]>(s.material);
   const [catatan, setCatatan] = useState(s.catatan ?? "");
   const namaAwal: Pengesah = { digambar: s.digambar_nama ?? "", diperiksa: s.diperiksa_nama ?? "", disetujui: s.disetujui_nama ?? "" };
@@ -55,6 +61,12 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
 
   useEffect(() => {
     let hidup = true;
+    if (rekon) {
+      bacaMaterialRekonduktor()
+        .then((r) => hidup && setRefRekon(r))
+        .catch((e: Error) => toast.error(e.message));
+      return () => { hidup = false; };
+    }
     Promise.all([bacaGambarSurvey(s.id), bacaLabelPenanda()])
       .then(([g, p]) => {
         if (!hidup) return;
@@ -63,7 +75,7 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
       })
       .catch((e: Error) => toast.error(e.message));
     return () => { hidup = false; };
-  }, [s.id, toast]);
+  }, [s.id, rekon, toast]);
 
   const jalankan = async (kunci: string, f: () => Promise<unknown>, pesan: string) => {
     setSibuk(kunci);
@@ -83,7 +95,7 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
     <>
       <ModalShell
         title={s.judul}
-        subtitle={`${s.penyulang ?? "-"} · ULP ${s.ulp} · ${LABEL_ALASAN[s.alasan]} · disurvey ${s.dibuat_oleh ?? "-"}, ${tgl(s.dibuat_at)}`}
+        subtitle={`${rekon ? `Rekonduktor JTR · Gardu ${s.gardu_kode ?? "-"}` : `Jaringan Baru · ${LABEL_ALASAN[s.alasan]}`} · ${s.penyulang ?? "-"} · ULP ${s.ulp} · disurvey ${s.dibuat_oleh ?? "-"}, ${tgl(s.dibuat_at)}`}
         maxWidth="max-w-2xl"
         onClose={onTutup}
         footer={
@@ -101,10 +113,10 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
               </>
             ) : (
               <>
-                <a href={`/peta?survey=${s.id}`} target="_blank" rel="noopener" className={BTN_GHOST}>
+                <a href={tautanPetaSurvey(s)} target="_blank" rel="noopener" className={BTN_GHOST}>
                   <IkonPeta size={14} /> {s.status === "Draf" && boleh ? "Ubah gambar di peta" : "Lihat di peta"}
                 </a>
-                <button disabled={!gambar || !!sibuk} onClick={() => setPratinjau(true)} className={`${BTN_GHOST} mr-auto`}>
+                <button disabled={(rekon ? !s.ruas.length : !gambar) || !!sibuk} onClick={() => setPratinjau(true)} className={`${BTN_GHOST} mr-auto`}>
                   <FileDown size={14} /> Gambar survey
                 </button>
                 {bisaUbah && <button onClick={() => setMode("batal")} className={`${BTN_GHOST} text-red-600`}><Ban size={14} /> Batalkan</button>}
@@ -145,11 +157,17 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border ${NADA_STATUS_SURVEY[s.status]}`}>{s.status}</span>
+            {rekon ? (
+              <span className="text-ink">
+                <b>{s.rekon_ruas}</b> ruas · <b>{s.rekon_tiang}</b> tiang · panjang titik <b>{kms(s.rekon_panjang_m)}</b> kms · SR <b>{s.rekon_sr}</b>
+              </span>
+            ) : (
             <span className="text-ink">
               JTM <b>{s.jumlah_tiang_jtm}</b> tiang · <b>{kms(s.panjang_jtm_m)}</b> kms
               {s.jumlah_gardu > 0 && <> · <b>{s.jumlah_gardu}</b> gardu baru ({s.gardu_kva} kVA)</>}
               {(s.jumlah_tiang_jtr > 0 || s.panjang_jtr_m > 0) && <> · JTR <b>{s.jumlah_tiang_jtr}</b> tiang · <b>{kms(s.panjang_jtr_m)}</b> kms</>}
             </span>
+            )}
           </div>
           {s.status === "Batal" && <p className="text-sm text-ink-soft">Dibatalkan: {s.batal_alasan ?? "-"}</p>}
           {s.disetujui_at && <p className="text-sm text-ink-soft">Disetujui {s.disetujui_oleh ?? "-"}, {tgl(s.disetujui_at)}</p>}
@@ -158,17 +176,21 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
             <TabelMaterial isi={material} onUbah={bisaUbah && mode === "lihat" ? setMaterial : undefined} />
             {bisaUbah && mode === "lihat" && (
               <button
-                disabled={!gambar}
-                onClick={() => setMaterial(materialDariGambar(gambar!.titik, gambar!.sambung, label))}
+                disabled={rekon ? !refRekon : !gambar}
+                onClick={() => setMaterial(rekon ? materialRekonduktor(s.ruas, refRekon!) : materialDariGambar(gambar!.titik, gambar!.sambung, label))}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-navy-600 hover:underline disabled:opacity-40"
               >
                 <Calculator size={13} /> Hitung dari gambar (mengganti daftar di atas)
               </button>
             )}
             <p className="text-xs text-ink-muted">
-              Dari gambar: konduktor JTM kawat ×3 fasa, kabel berinti tiga ×1; kabel JTR pilin (LVTC/Twisted) ×1, telanjang ×4; +3% andongan; tiang JTM/JTR, konstruksi, peralatan, dan trafo dihitung per titik.
+              {rekon
+                ? "Dari ruas: kabel = panjang titik + 5% andongan; suspension, fixed, LA, treckschoer, drugschoer, kontramast, dan CCO/joint SR dijumlah dari isian per tiang (faktor di Pengaturan Analisis JTR)."
+                : <>Dari gambar: konduktor JTM kawat ×3 fasa, kabel berinti tiga ×1; kabel JTR pilin (LVTC/Twisted) ×1, telanjang ×4; +3% andongan; tiang JTM/JTR, konstruksi, peralatan, dan trafo dihitung per titik.</>}
             </p>
           </div>
+
+          {rekon && <RingkasRekonduktor s={s} />}
 
           <FotoSurvey s={s} boleh={bisaNama} onUbah={(f) => st.ubahFoto(s.id, f, oleh)} />
 
@@ -223,14 +245,14 @@ export default function RincianSurvey({ s, boleh, oleh, st, onTutup }: Props) {
           )}
         </div>
       </ModalShell>
-      {pratinjau && gambar && (
+      {pratinjau && (rekon || gambar) && (
         <PratinjauGambarSurvey
           judul={s.judul}
           // Isian yang sedang disunting (material, catatan, nama) ikut ke gambar.
-          buat={() => buatGambarSurveyJtm(
-            { ...s, material, catatan: catatan || null, digambar_nama: nama.digambar || null, diperiksa_nama: nama.diperiksa || null, disetujui_nama: nama.disetujui || null },
-            gambar.titik, gambar.sambung, label,
-          )}
+          buat={() => {
+            const isi = { ...s, material, catatan: catatan || null, digambar_nama: nama.digambar || null, diperiksa_nama: nama.diperiksa || null, disetujui_nama: nama.disetujui || null };
+            return gambar ? buatGambarSurveyJtm(isi, gambar.titik, gambar.sambung, label) : buatGambarRekonduktor(isi);
+          }}
           onTutup={() => setPratinjau(false)}
         />
       )}

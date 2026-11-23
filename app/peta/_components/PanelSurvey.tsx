@@ -2,15 +2,16 @@
 
 import { Crosshair, ExternalLink, Loader2, MousePointerClick, PencilRuler, Save, X } from "lucide-react";
 import {
-  bawaJtm, bawaJtr, LABEL_ALASAN, LABEL_LATAR_SURVEY, portal, type AlasanSurvey, type JaringanTiang, type LatarSurvey,
+  bawaJtm, bawaJtr, LABEL_ALASAN, portal, type AlasanSurvey, type JaringanTiang,
 } from "@/lib/surveyJaringan";
 import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
+import PilihLatarSurvey from "./PilihLatarSurvey";
 import SuntingTitikSurvey from "./SuntingTitikSurvey";
 import { WARNA_JTR, WARNA_SURVEY } from "./LapisanSurvey";
 
-/** Kartu Survey Jaringan Baru di kanan peta: judul, mode gambar, isian tiang terpilih, simpan. */
+/** Kartu Survey Jaringan (jenis Jaringan Baru) di kanan peta: judul, mode gambar, isian tiang terpilih, simpan. */
 
 const TOMBOL = "flex-1 flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 font-semibold";
 const km = (m: number) => `${(m / 1000).toLocaleString("id-ID", { maximumFractionDigits: 2 })} kms`;
@@ -42,7 +43,7 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
       <header className="flex items-start gap-2">
         <PencilRuler size={15} className="mt-0.5 shrink-0" style={{ color: WARNA_SURVEY }} />
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Survey Jaringan Baru</p>
+          <p className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">Survey Jaringan · Jaringan Baru</p>
           <p className="text-sm font-semibold truncate">{s.kepala.judul || "Survey baru"}</p>
           <p className="text-gray-400">
             {s.kepala.status}
@@ -72,20 +73,7 @@ export default function PanelSurvey({ s, oleh, penanda }: { s: SurveyPetaState; 
             {(Object.keys(LABEL_ALASAN) as AlasanSurvey[]).map((a) => <option key={a} value={a}>{LABEL_ALASAN[a]}</option>)}
           </select>
 
-          {/* Latar gambar survey PDF — peta ikut berganti, jadi yang dicetak = yang dilihat saat menggambar. */}
-          <div className="flex items-center gap-1.5">
-            <span className="text-gray-400 shrink-0">Latar gambar</span>
-            {(Object.keys(LABEL_LATAR_SURVEY) as LatarSurvey[]).map((l) => (
-              <button
-                key={l} disabled={s.kepala.status === "Batal"} onClick={() => void s.ubahLatar(l, oleh)}
-                className={`flex-1 rounded-lg border px-2 py-1 font-semibold disabled:opacity-40 ${
-                  s.kepala.latar === l ? "bg-white/15 border-white/40 text-white" : "border-white/15 text-gray-300 hover:bg-white/5"
-                }`}
-              >
-                {LABEL_LATAR_SURVEY[l]}
-              </button>
-            ))}
-          </div>
+          <PilihLatarSurvey nilai={s.kepala.latar} mati={s.kepala.status === "Batal"} onUbah={(l) => void s.ubahLatar(l, oleh)} />
 
           <div className="rounded-lg px-2 py-1.5 bg-white/5 space-y-0.5">
             <p>

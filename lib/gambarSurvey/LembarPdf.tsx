@@ -1,5 +1,5 @@
 // Potongan PDF gambar survey yang dipakai bersama (usulan perbaikan JTR,
-// Survey Jaringan Baru). Hanya dimuat lewat import() — @react-pdf/renderer
+// Survey Jaringan: Jaringan Baru & Rekonduktor JTR). Hanya dimuat lewat import() — @react-pdf/renderer
 // besar & tanpa SSR.
 //
 // Tata letak A3 mendatar: bidang gambar (kiri atas) + kolom data & material
@@ -277,8 +277,12 @@ function BlokJudul({ skalaM, judul, logo, ulp, pengesah, keterangan, nomor, lemb
   );
 }
 
-/** Satu halaman A3 mendatar: bidang gambar + kolom kanan di atas, blok judul di bawah. */
-export function Lembar({ judul, gambar, kolom, blok }: { judul: string; gambar: ReactNode; kolom: ReactNode; blok: BlokJudulProps }) {
+/**
+ * Halaman A3 mendatar: bidang gambar + kolom kanan di atas, blok judul di bawah.
+ * `lampiran` (mis. rincian per tiang Rekonduktor JTR) = halaman berikutnya,
+ * mengalir ke halaman baru bila panjang.
+ */
+export function Lembar({ judul, gambar, kolom, blok, lampiran }: { judul: string; gambar: ReactNode; kolom: ReactNode; blok: BlokJudulProps; lampiran?: ReactNode }) {
   return (
     <Document title={judul}>
       <Page size="A3" orientation="landscape" style={S.hal}>
@@ -288,6 +292,11 @@ export function Lembar({ judul, gambar, kolom, blok }: { judul: string; gambar: 
         </View>
         <BlokJudul {...blok} />
       </Page>
+      {lampiran && (
+        <Page size="A3" orientation="landscape" style={S.hal} wrap>
+          {lampiran}
+        </Page>
+      )}
     </Document>
   );
 }

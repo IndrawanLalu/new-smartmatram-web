@@ -21,8 +21,10 @@ export interface AwalPeta {
   /** Dibuka dari Analisis JTR (/peta?rencana=GS219&jurusan=B): lapisan JTR
    *  gardu itu menyala, rencana perbaikannya digambar. */
   rencana?: { gardu: string; jurusan: string; opsi?: string };
-  /** Survey Jaringan Baru (/peta?survey=<id|baru>). */
+  /** Survey Jaringan — Jaringan Baru (/peta?survey=<id|baru>). */
   survey?: string;
+  /** Survey Jaringan — Rekonduktor JTR (/peta?rekonduktor=<id|baru>). */
+  rekonduktor?: string;
   /** Dibuka dari persetujuan Inspeksi JTM (/peta?jtm=<id>&segmen=<id>&penyulang=…):
    *  panel persetujuannya terbuka; kalau sudah tidak menunggu, segmen itu saja. */
   jtm?: { inspeksi: string; segmen: string; penyulang: string };

@@ -25,6 +25,7 @@ import { useAntreanPeta } from "../_hooks/useAntreanPeta";
 import { useCariLokasi } from "../_hooks/useCariLokasi";
 import { useRencanaPeta } from "../_hooks/useRencanaPeta";
 import { useSurveyPeta } from "../_hooks/useSurveyPeta";
+import { useRekonduktorPeta } from "../_hooks/useRekonduktorPeta";
 import { useLapisanKesehatan, useLapisanPohon, useLapisanUjung } from "../_hooks/useLapisanTambahan";
 import { useRincianPenyulang } from "../_hooks/useRincianPenyulang";
 import { useSegmenPeta } from "../_hooks/useSegmenPeta";
@@ -43,6 +44,7 @@ import PanelGeserBanyak from "./PanelGeserBanyak";
 import PanelKanan from "./PanelKanan";
 import PanelRencana from "./PanelRencana";
 import PanelSurvey from "./PanelSurvey";
+import PanelRekonduktor from "./PanelRekonduktor";
 import PanelKoreksiIsian from "./PanelKoreksiIsian";
 import PanelLapisan from "./PanelLapisan";
 import PanelSld from "./PanelSld";
@@ -301,7 +303,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     if (semuaRencana?.length) setFokus(bingkaiTitik(semuaRencana, 0.0004));
   }, [semuaRencana]);
 
-  // ── Survey Jaringan Baru (21 Okt 2026) ────────────────────────────────────
+  // ── Survey Jaringan — Jaringan Baru (21 Okt 2026) ─────────────────────────
   // Selama menggambar, klik tiang yang ada menjadi titik sambung (bukan panel
   // tiang), dan lapisan JTM penyulangnya dinyalakan begitu survey dimuat.
   const survey = useSurveyPeta(awal?.survey ?? null);
@@ -315,14 +317,27 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   }, [penyulangSurvey, nyalakan]);
   // Latar gambar survey (PDF) dipakai peta selama survey terbuka — yang
   // digambar dilihat di atas latar yang sama dengan yang nanti tercetak.
-  const latarSurvey = survey.aktifMode ? survey.kepala.latar : null;
+  // ── Survey Jaringan — Rekonduktor JTR (23 Nov 2026) ───────────────────────
+  // Selama memilih ruas, klik tiang JTR / gardu dipakai rekonduktor; lapisan
+  // JTR gardunya dinyalakan begitu gardu dipilih.
+  const rekon = useRekonduktorPeta(awal?.rekonduktor ?? null);
+  const bingkaiRekon = rekon.bingkai;
+  const garduRekon = rekon.gardu;
+  useEffect(() => {
+    if (bingkaiRekon?.length) setFokus(bingkaiTitik(bingkaiRekon, 0.0004));
+  }, [bingkaiRekon]);
+  useEffect(() => {
+    if (garduRekon) nyalakan(`jtr:${garduRekon}`);
+  }, [garduRekon, nyalakan]);
+  const latarSurvey = survey.aktifMode ? survey.kepala.latar : rekon.aktifMode ? rekon.kepala.latar : null;
   useEffect(() => {
     if (latarSurvey) setLatar(latarSurvey);
     // setLatar baru tiap render; yang ditunggu hanya pilihan survey.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [latarSurvey]);
   const gambarSurvey = survey.aktifMode && survey.mode !== "lihat";
-  const pilihTiang = gambarSurvey ? survey.klikTiang : pilih.pilihTiang;
+  const pilihTiang = gambarSurvey ? survey.klikTiang : rekon.menangkapKlik ? rekon.klikTiang : pilih.pilihTiang;
+  const pilihGardu = rekon.menangkapKlik && rekon.langkah === "gardu" ? (g: { kode: string }) => rekon.pilihGardu(g.kode) : pilih.pilihGardu;
   const labelPenanda = useCallback((k: string) => penanda.get(k)?.label ?? k, [penanda]);
 
   const bukaHasil = (kunci: string, t: NonNullable<typeof terpilih>) => {
@@ -399,7 +414,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
         <PetaInner
           rute={satuSegmen ? TANPA : rute} tiang={tiangPeta} gardu={satuSegmen ? TANPA : gardu}
           fokus={fokus} onKotak={setKotak} penanda={penanda}
-          onPilihTiang={pilihTiang} onPilihGardu={pilih.pilihGardu}
+          onPilihTiang={pilihTiang} onPilihGardu={pilihGardu}
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={pilih.geser} onGeser={pilih.aturGeser}
           geserBanyak={modeSld ? TANPA : geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
@@ -428,6 +443,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
           rencana={sembunyi ? null : rencana}
           survey={survey.aktifMode && !modeSld ? survey : null}
+          rekonduktor={rekon.aktifMode && !modeSld ? rekon : null}
           labelPenanda={labelPenanda}
           section={
             section.aktif && !sembunyi
@@ -549,6 +565,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
             onFokus={setFokus}
             atas={
               survey.aktifMode ? <PanelSurvey s={survey} oleh={oleh} penanda={penanda} />
+              : rekon.aktifMode ? <PanelRekonduktor s={rekon} oleh={oleh} />
               : rencana.aktif ? <PanelRencana s={rencana} /> : null
             }
           />

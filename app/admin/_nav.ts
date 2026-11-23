@@ -58,7 +58,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/master-gardu",     label: "Master Gardu",     icon: Database, keterangan: "Data induk gardu distribusi: kode, lokasi, daya, dan penyulangnya." },
       { href: "/admin/master-penyulang", label: "Master Penyulang", icon: Zap, keterangan: "Data induk penyulang beserta ULP dan gardu induknya." },
       { href: "/admin/master-segmen",    label: "Master Segmen",    icon: Spline, keterangan: "Data induk segmen jaringan JTM per penyulang." },
-      { href: "/admin/survey-jaringan",  label: "Survey Jaringan Baru", icon: PencilRuler, keterangan: "Rencana jaringan baru digambar di peta — jadi aset saat dioperasikan." },
+      { href: "/admin/survey-jaringan",  label: "Survey Jaringan", icon: PencilRuler, keterangan: "Rencana jaringan baru & rekonduktor JTR digambar di peta, lengkap dengan material." },
     ],
   },
   {
