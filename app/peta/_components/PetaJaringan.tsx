@@ -110,12 +110,25 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // garis putus-putus lapisan ujung berpangkal di gardunya. "Tampilkan JTR"
   // menambah lapisan JTR gardu itu, hanya yang memang punya tiang JTR.
   const ujung = useLapisanUjung(ulp);
+  // Periksa satu per satu = FOKUS (24 Nov 2026): peta hanya gardu yang sedang
+  // diperiksa + JTR-nya (selalu, tanpa saklar) + titik ujung gardu itu.
+  // Lapisan lain disembunyikan sementara, kembali saat periksa ditutup —
+  // dulu gardu & JTR semua titik ikut tampil dan tiangnya bertumpuk.
+  const garduPeriksa = ujung.periksa ? ujung.titik.find((t) => t.id === ujung.periksa)?.gardu_kode ?? null : null;
+  const ujungTampil = useMemo(
+    () => (garduPeriksa ? ujung.titik.filter((t) => t.gardu_kode === garduPeriksa) : ujung.titik),
+    [garduPeriksa, ujung.titik],
+  );
   const pilihanIsi = useMemo(() => {
     if (ujung.titik.length === 0) return pilihan;
-    const ada = new Set(pilihan.map((p) => `${p.jaringan}:${p.kode}`));
     const punyaJtr = new Map(
       daftar.filter((d) => d.jaringan === "gardu" && d.jumlahTiang > 0).map((d) => [d.kode.toUpperCase(), d.kode]),
     );
+    if (garduPeriksa) {
+      const jtr = punyaJtr.get(garduPeriksa.toUpperCase());
+      return [jtr ? { jaringan: "jtr" as const, kode: jtr } : { jaringan: "gardu" as const, kode: garduPeriksa }];
+    }
+    const ada = new Set(pilihan.map((p) => `${p.jaringan}:${p.kode}`));
     const tambahan: typeof pilihan = [];
     for (const kode of new Set(ujung.titik.map((t) => t.gardu_kode))) {
       const jtr = ujung.tampilJtr ? punyaJtr.get(kode.toUpperCase()) : undefined;
@@ -123,9 +136,9 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
       else if (!ada.has(`gardu:${kode}`)) tambahan.push({ jaringan: "gardu", kode });
     }
     return [...pilihan, ...tambahan];
-  }, [pilihan, daftar, ujung.titik, ujung.tampilJtr]);
+  }, [pilihan, daftar, ujung.titik, ujung.tampilJtr, garduPeriksa]);
   const { rute, tiang, gardu, sibuk, terpotong, galat: galatIsi, muatUlang: muatUlangPeta } =
-    usePetaIsi(kotak, modeSld ? TANPA : pilihanIsi, modeSld ? false : tampilGardu);
+    usePetaIsi(kotak, modeSld ? TANPA : pilihanIsi, modeSld || garduPeriksa ? false : tampilGardu);
   // Tanda induk loncat & pemilik penanda hanya berarti untuk tiang JTM — baru
   // dibaca setelah ada lapisan/segmen JTM dibuka (24 Nov 2026), lalu tetap.
   const [butuhJtm, setButuhJtm] = useState(!!awal?.jtm);
@@ -375,6 +388,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const bebas = !jtm.buka && !terpilih && !geserBanyak.aktif;
   /** Lapisan di atas jaringan yang disembunyikan: "Segmen ini saja" & Mode SLD. */
   const sembunyi = satuSegmen || modeSld;
+  /** + selama periksa tegangan ujung satu per satu (fokus satu gardu). */
+  const sepi = sembunyi || garduPeriksa !== null;
   const masukSld = () => {
     pilih.tutup();
     sld.alih(true);
@@ -441,40 +456,40 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           sorot={terpilih ? { lat: terpilih.lat, lng: terpilih.lng } : null}
           geser={pilih.geser} onGeser={pilih.aturGeser}
           geserBanyak={modeSld ? TANPA : geserBanyak.daftar} onSeretBanyak={geserBanyak.seret}
-          ujung={sembunyi ? TANPA : ujung.titik} bolehSetujuiUjung={boleh} oleh={oleh}
+          ujung={sembunyi ? TANPA : ujungTampil} bolehSetujuiUjung={boleh} oleh={oleh}
           onUjungDisetujui={ujung.tandaiDisetujui}
           sorotUjung={ujung.periksa}
-          pohonTemuan={sembunyi ? TANPA : pohon.temuan}
-          pohonDirabas={sembunyi ? TANPA : pohon.dirabas}
-          pohonCek={sembunyi ? TANPA : pohon.cek}
+          pohonTemuan={sepi ? TANPA : pohon.temuan}
+          pohonDirabas={sepi ? TANPA : pohon.dirabas}
+          pohonCek={sepi ? TANPA : pohon.cek}
           onTugaskanPohon={boleh ? (t) => pohon.setTugas([t]) : undefined}
           simulasi={modeSld ? null : simulasi.hasil}
-          kesehatan={sembunyi ? TANPA : kesehatan.gardu}
+          kesehatan={sepi ? TANPA : kesehatan.gardu}
           onPilihKesehatan={pilih.pilihKesehatan}
           namaTiang={namaTiang}
           nomorKabel={nomorKabel}
-          antrean={jtr.aktif && !sembunyi ? jtr.antrean : null}
+          antrean={jtr.aktif && !sepi ? jtr.antrean : null}
           onPilihAntrean={jtr.pilih}
-          sorotPerubahan={sembunyi ? null : (jtr.sorotBanding?.tiang ?? null)}
+          sorotPerubahan={sepi ? null : (jtr.sorotBanding?.tiang ?? null)}
           sorotJtm={modeSld ? null : jtm.sorot}
-          sorotKoreksi={sembunyi ? TANPA : garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
-          isian={isian.tampil && !sembunyi ? { nilaiDi: isian.peta.nilaiDi, warna: isian.peta.warna } : null}
+          sorotKoreksi={sepi ? TANPA : garduJanggal.aktif ? garduJanggal.sorot : koreksi.sorot}
+          isian={isian.tampil && !sepi ? { nilaiDi: isian.peta.nilaiDi, warna: isian.peta.warna } : null}
           loncat={indukLoncat.loncat}
           tandaMilik={tandaMilik}
           latar={latar}
           sld={modeSld ? { graf: sld.graf, warna: sld.warna, gardu: sld.gardu, label: sld.label } : null}
           cari={modeSld ? { titik: null, hasil: null } : { titik: titikCari, hasil: hasilCari }}
-          rencana={sembunyi ? null : rencana}
+          rencana={sepi ? null : rencana}
           survey={survey.aktifMode && !modeSld ? survey : null}
           rekonduktor={rekon.aktifMode && !modeSld ? rekon : null}
           labelPenanda={labelPenanda}
           section={
-            section.aktif && !sembunyi
+            section.aktif && !sepi
               ? { anggota: section.anggota, perId: section.perId, daftar: section.daftar, pilih: idSection, diam: pecah.aktif, onPilih: (id) => { pilih.tutup(); section.setPilih(id); } }
               : null
           }
-          pecah={pecah.aktif && !sembunyi ? pecah.hasil : null}
-          batal={tiangBatal.aktif && !sembunyi ? { daftar: tiangBatal.daftar, onPilih: (t) => { pilih.tutup(); tiangBatal.buka(t); } } : null}
+          pecah={pecah.aktif && !sepi ? pecah.hasil : null}
+          batal={tiangBatal.aktif && !sepi ? { daftar: tiangBatal.daftar, onPilih: (t) => { pilih.tutup(); tiangBatal.buka(t); } } : null}
         />
 
         <PilihLatar latar={latar} onLatar={setLatar} />
