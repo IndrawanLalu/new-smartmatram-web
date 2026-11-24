@@ -24,6 +24,7 @@ import {
   Table2,
   ClipboardList,
   Wand2,
+  Trash2,
 } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, CARD, CHIP, CHIP_OFF, CHIP_ON, FIELD } from "@/app/admin/_ui";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
@@ -448,6 +449,40 @@ export default function DetailGangguanPage() {
     }
   }
 
+  /** Kosongkan antrian: hapus koreksi "Masuk antrian" (belum di APKT) pada saringan
+   *  sekarang — mis. durasi default salah — lalu bisa "Koreksi semua" ulang. */
+  async function kosongkanAntrian() {
+    const nos = nonTersaring()
+      .map((r) => koreksiMap.get(String(r.no_laporan ?? "")))
+      .filter((k): k is KoreksiRow => Boolean(k) && !k?.apkt_masuk_at)
+      .map((k) => k.no_laporan);
+    if (nos.length === 0) {
+      setInfoKoreksi({ teks: "Tidak ada laporan berstatus Masuk antrian pada saringan ini." });
+      return;
+    }
+    if (!window.confirm(
+      `Hapus koreksi ${nos.length} laporan yang masih "Masuk antrian"?\n\n` +
+      `Laporan kembali ke status "Koreksi" dan bisa dikoreksi ulang (mis. "Koreksi semua (default)" dengan durasi baru).\n` +
+      `Yang sudah dikoreksi di APKT tidak ikut terhapus.`,
+    )) return;
+    setMassal(true);
+    try {
+      const res = await fetch("/api/apkt/koreksi", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nos }),
+      });
+      const data = await res.json();
+      if (!res.ok) setInfoKoreksi({ teks: `Gagal mengosongkan antrian: ${data.error}` });
+      else setInfoKoreksi({ teks: `${data.jumlah} laporan dihapus dari antrian. Salin ulang antrean APKT bila sebelumnya sudah disalin.` });
+      await loadKoreksi();
+    } catch (e) {
+      setInfoKoreksi({ teks: `Gagal mengosongkan antrian: ${(e as Error).message}` });
+    } finally {
+      setMassal(false);
+    }
+  }
+
   /** Antrean APKT: koreksi tersimpan yang belum masuk APKT, urut seperti tabel. */
   async function salinAntrean() {
     const { minRpt } = loadSettings();
@@ -787,6 +822,10 @@ export default function DetailGangguanPage() {
                 <button onClick={salinAntrean} className={BTN_GHOST}
                   title="Salin semua koreksi yang belum masuk APKT, lalu klik bookmark di halaman APKT">
                   <ClipboardList className="w-3.5 h-3.5" /> Salin antrean APKT
+                </button>
+                <button onClick={kosongkanAntrian} disabled={massal} className={`${BTN_GHOST} text-red-700`}
+                  title="Hapus koreksi yang masih Masuk antrian (belum di APKT) pada saringan ini, supaya bisa dikoreksi ulang">
+                  <Trash2 className="w-3.5 h-3.5" /> Kosongkan antrian
                 </button>
               </>
             )}

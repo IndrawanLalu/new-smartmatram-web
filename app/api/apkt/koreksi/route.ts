@@ -105,3 +105,31 @@ export async function POST(req: Request) {
   }
   return NextResponse.json({ ok: true, jumlah: rows.length });
 }
+
+// DELETE /api/apkt/koreksi  { nos: string[] }
+// Kosongkan antrian: hapus koreksi yang BELUM masuk APKT (salah durasi dll),
+// supaya bisa dikoreksi ulang. Yang sudah di APKT tidak tersentuh — dijaga di
+// sini, bukan hanya di layar. Bookmark yang sedang berjalan melewati laporan
+// yang koreksinya sudah tidak ada (cek → ada:false).
+export async function DELETE(req: Request) {
+  const { supabase, user } = await getAuth();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const body = await req.json().catch(() => ({}));
+  const nos = (Array.isArray(body.nos) ? body.nos : [])
+    .filter((n: unknown): n is string => typeof n === "string" && n.length > 0);
+  if (nos.length === 0) return NextResponse.json({ error: "nos wajib" }, { status: 400 });
+
+  let jumlah = 0;
+  for (let i = 0; i < nos.length; i += 200) {
+    const { data, error } = await supabase
+      .from("apkt_koreksi")
+      .delete()
+      .in("no_laporan", nos.slice(i, i + 200))
+      .is("apkt_masuk_at", null)
+      .select("no_laporan");
+    if (error) return NextResponse.json({ error: error.message, jumlah }, { status: 500 });
+    jumlah += data?.length ?? 0;
+  }
+  return NextResponse.json({ ok: true, jumlah });
+}

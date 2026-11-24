@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { X, Copy, Check, Save, Loader2, Clock, ClipboardCheck, BadgeCheck } from "lucide-react";
+import { X, Copy, Check, Save, Loader2, Clock, ClipboardCheck, BadgeCheck, Trash2 } from "lucide-react";
 import { BTN_GHOST, BTN_PRIMARY, DISPLAY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { STEPS, loadSettings, saveSettings } from "./koreksiSettings";
 import { antreanApkt } from "./apktBookmarklet";
@@ -71,6 +71,31 @@ export default function KoreksiModal({ row, existing, token, onClose, onSaved }:
   const samaTersimpan = Boolean(existing) && STEPS.every((st, i) => Number(existing?.[st.key]) === Number(durs[i]));
   const bolehKeApkt = samaTersimpan && !diApkt && !tolak;
   const [menandai, setMenandai] = useState(false);
+  const [menghapus, setMenghapus] = useState(false);
+
+  /** Hapus dari antrian: koreksi yang belum di APKT dibatalkan, laporan kembali "Koreksi". */
+  async function hapusAntrian() {
+    if (!row.no_laporan || !existing || diApkt) return;
+    if (!window.confirm(`Hapus koreksi ${row.no_laporan} dari antrian?
+Laporan kembali ke status "Koreksi" dan bisa dikoreksi ulang.`)) return;
+    setMenghapus(true); setErr(null);
+    try {
+      const res = await fetch("/api/apkt/koreksi", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nos: [row.no_laporan] }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setErr(data.error); return; }
+      if (!data.jumlah) { setErr("Tidak terhapus — koreksi ini mungkin sudah masuk APKT."); onSaved(); return; }
+      onSaved();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setMenghapus(false);
+    }
+  }
 
   function setDur(i: number, val: string) {
     setDurs((prev) => prev.map((v, idx) => (idx === i ? (val === "" ? 0 : Number(val)) : v)));
@@ -282,9 +307,17 @@ export default function KoreksiModal({ row, existing, token, onClose, onSaved }:
                 disabled={diApkt} className={`${FIELD} w-36`} />
             </div>
             {existing && !diApkt && (
+              <button onClick={hapusAntrian} disabled={menghapus}
+                title="Batalkan koreksi ini (belum di APKT) supaya bisa dikoreksi ulang"
+                className={`${BTN_GHOST} ml-auto text-red-700`}>
+                {menghapus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Hapus dari antrian
+              </button>
+            )}
+            {existing && !diApkt && (
               <button onClick={tandaiManual} disabled={menandai || !bolehKeApkt}
                 title="Untuk laporan yang Anda koreksi sendiri di APKT tanpa bookmark"
-                className={`${BTN_GHOST} ml-auto`}>
+                className={BTN_GHOST}>
                 {menandai ? <Loader2 className="w-4 h-4 animate-spin" /> : <BadgeCheck className="w-4 h-4" />}
                 Tandai sudah dikoreksi di APKT
               </button>
