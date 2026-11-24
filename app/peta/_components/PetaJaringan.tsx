@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { Loader2, PanelLeftOpen } from "lucide-react";
 import type { CurrentUser } from "@/lib/roles";
@@ -100,7 +100,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   const [fokus, setFokus] = useState<Bingkai | null>(null);
   const [panel, setPanel] = useState(true);
 
-  const { daftar, perFolder, semuaLapisan, loading, error, muat: muatDaftar } = usePetaDaftar(ulp || null);
+  const { daftar, perFolder, semuaLapisan, loading, error, muat: muatDaftar, versiRute } = usePetaDaftar(ulp || null);
   const sld = useModeSld({ ulp, nyala, awal: awal?.sld, daftarJtm: perFolder.jtm });
   const modeSld = sld.aktif;
   const [latar, setLatar] = useLatarPeta(modeSld ? "sld" : "biasa");
@@ -124,12 +124,26 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
     }
     return [...pilihan, ...tambahan];
   }, [pilihan, daftar, ujung.titik, ujung.tampilJtr]);
-  const { rute, tiang, gardu, sibuk, terpotong, muatUlang: muatUlangPeta } =
+  const { rute, tiang, gardu, sibuk, terpotong, galat: galatIsi, muatUlang: muatUlangPeta } =
     usePetaIsi(kotak, modeSld ? TANPA : pilihanIsi, modeSld ? false : tampilGardu);
-  const indukLoncat = useIndukLoncat();
+  // Tanda induk loncat & pemilik penanda hanya berarti untuk tiang JTM — baru
+  // dibaca setelah ada lapisan/segmen JTM dibuka (24 Nov 2026), lalu tetap.
+  const [butuhJtm, setButuhJtm] = useState(!!awal?.jtm);
+  // Rute dihitung ulang di belakang sesudah daftar tampil → cache peta dibuang
+  // supaya garisnya ikut yang baru. Hanya saat versiRute NAIK: muatUlangPeta
+  // berganti identitas tiap peta digeser, jadi menjadikannya dependensi akan
+  // mengosongkan cache tiap geseran.
+  const muatUlangPetaRef = useRef(muatUlangPeta);
+  useEffect(() => {
+    muatUlangPetaRef.current = muatUlangPeta;
+  });
+  useEffect(() => {
+    if (versiRute > 0) void muatUlangPetaRef.current();
+  }, [versiRute]);
+  const indukLoncat = useIndukLoncat(butuhJtm);
   // Gardu & peralatan di tiang yang dipakai beberapa penyulang hanya digambar di
   // lapisan pemiliknya; titik pertemuan & yang belum dipilih di semua (10 Okt 2026).
-  const milikPenanda = useMilikPenanda();
+  const milikPenanda = useMilikPenanda(butuhJtm);
 
   // ── Pilih & sunting ────────────────────────────────────────────────────────
   const oleh = user.name ?? user.email ?? "";
@@ -180,6 +194,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   // lapisan lain disembunyikan (pilihan user), bukan dipadamkan: kembali ke
   // semua jaringan memunculkan lagi pilihan lapisan yang tadi.
   const [segmenTampil, setSegmenTampil] = useState<string | null>(null);
+  if (!butuhJtm && (penyulangJtm.length > 0 || segmenTampil)) setButuhJtm(true);
   // Kartu penyulang (12 Okt 2026): klik nama penyulang JTM = gabungan semua
   // segmennya. Tertutup sendiri begitu penyulang itu tidak lagi menyala.
   const [kartuPenyulang, setKartuPenyulang] = useState<{ kode: string; ulp: string } | null>(null);
@@ -258,7 +273,12 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
   };
 
   const kesehatan = useLapisanKesehatan(ulp);
-  const pohon = useLapisanPohon(ulp, nyala);
+  // Pohon baru dibaca saat dibutuhkan: folder Pohon dibuka, ada lapisan pohon
+  // menyala, atau dibuka dari WO Perabasan. Sekali dibaca tetap (tidak dibuang
+  // saat folder ditutup lagi).
+  const [butuhPohon, setButuhPohon] = useState(!!awal?.pohon);
+  const pohonDibaca = butuhPohon || lapisan.pohonAktif;
+  const pohon = useLapisanPohon(ulp, nyala, pohonDibaca);
   // Dibuka dari WO Perabasan (/peta?pohon=1): semua penyulang pohon menyala
   // SEKALI begitu daftarnya terbaca — sesudah itu pilihan sepenuhnya milik pengguna.
   const [pohonAwalDipasang, setPohonAwalDipasang] = useState(!awal?.pohon);
@@ -370,6 +390,9 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           saringPohon={pohon.saring}
           onSaringPohon={pohon.setSaring}
           perSumberPohon={pohon.perSumber}
+          pohonSibuk={pohon.sibuk}
+          pohonDibaca={pohonDibaca}
+          onBukaPohon={() => setButuhPohon(true)}
           semuaLapisan={[...semuaLapisan, ...pohon.daftar]}
           loading={loading}
           error={error}
@@ -624,6 +647,8 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           onJtm={(x) => bukaHasil(`jtm:${x.penyulang}`, { jenis: "tiang", id: x.tiang_id, kelompok: x.penyulang, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: "jtm" })}
           onGardu={(x) => bukaHasil(`gardu:${x.kode}`, { jenis: "gardu", kode: x.kode, ulp: x.ulp, lat: x.lat, lng: x.lng })}
           onJtr={(x) => bukaHasil(`jtr:${x.gardu_kode}`, { jenis: "tiang", id: x.tiang_id, kelompok: x.gardu_kode, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: "jtr" })}
+          onTiang={(x) => bukaHasil(`${x.jaringan}:${x.kelompok}`, { jenis: "tiang", id: x.id, kelompok: x.kelompok, lat: x.lat, lng: x.lng, kode: x.kode, jaringan: x.jaringan === "jtr" ? "jtr" : "jtm" })}
+          ulp={ulp}
         />
 
         <BilahAtas
@@ -660,6 +685,7 @@ export default function PetaJaringan({ user, awal }: { user: CurrentUser; awal?:
           sebutZoomTiang={lapisan.adaJaringan && !sembunyi}
           sebutZoomGardu={!modeSld && !lapisan.adaGarduPilihan && tampilGardu}
           terpotong={terpotong && !sembunyi}
+          galat={galatIsi && !modeSld}
           adaLabel={!modeSld && (namaTiang || nomorKabel || isian.tampil)}
         />
 

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { Jaringan } from "./usePetaDaftar";
+import { Simpanan, batas, gabung, petakDi, petakTitik, rentangKotak } from "../_lib/petak";
 
 /**
  * Isi peta: rute, tiang, dan gardu — dan ini tempat seluruh urusan berat
@@ -14,7 +15,7 @@ import type { Jaringan } from "./usePetaDaftar";
  * membedakannya, jadi mengirimnya hanya membakar memori tanpa menambah satu pun
  * keterangan di layar.
  *
- * Tiga lapis penahan, dan yang PERTAMA paling menentukan:
+ * Empat lapis penahan, dan yang PERTAMA paling menentukan:
  *
  *   1. Zoom menentukan APA yang dikirim. Di bawah 13 cuma garis rute — satu
  *      baris per penyulang. Mulai 13 tiang satu per satu, dan rute kasarnya
@@ -22,6 +23,8 @@ import type { Jaringan } from "./usePetaDaftar";
  *   2. Kotak pandang menentukan BERAPA BANYAK. Yang di luar layar tidak diminta.
  *   3. Kueri ditunda sampai peta berhenti bergerak, supaya satu geseran tidak
  *      menembakkan sepuluh permintaan yang sembilan di antaranya sudah basi.
+ *   4. Cache memori per PETAK (24 Nov 2026, _lib/petak.ts): area yang sudah
+ *      dimuat tidak diunduh lagi selama halaman terbuka (umur 10 menit).
  */
 
 /** Tiang muncul mulai zoom 13, bukan 15. Di 15 orang harus memperbesar tiga
@@ -154,11 +157,22 @@ export function usePetaIsi(
   const [gardu, setGardu] = useState<GarduPeta[]>([]);
   const [sibuk, setSibuk] = useState(false);
   const [terpotong, setTerpotong] = useState(false);
+  /** Ada bagian layar yang gagal dimuat (sinyal) — yang tampil mungkin belum lengkap. */
+  const [galat, setGalat] = useState(false);
 
   // Nomor urut permintaan: jawaban yang datang terlambat untuk kotak pandang
   // yang sudah berlalu HARUS dibuang. Tanpa ini, menggeser cepat membuat peta
   // menampilkan isi tempat yang barusan ditinggalkan.
   const urutRef = useRef(0);
+
+  // ── Cache memori (lihat _lib/petak.ts) ─────────────────────────────────
+  // Generasi naik tiap cache dikosongkan: jawaban permintaan yang berangkat
+  // SEBELUM suntingan tidak boleh menulis data lama kembali ke cache.
+  const generasiRef = useRef(0);
+  const simpanTiang = useRef(new Simpanan<TiangPeta>());      // `${kelompok}|${i}|${j}`
+  const simpanGarduPetak = useRef(new Simpanan<GarduPeta>()); // `${i}|${j}`
+  const simpanGarduKode = useRef(new Simpanan<GarduPeta>());  // kode
+  const simpanRute = useRef(new Simpanan<RuteBaris>());       // penyulang
 
   const kunciPilihan = pilihan.map((p) => `${p.jaringan}:${p.kode}`).sort().join("|");
   const kunciKotak = kotak
@@ -168,6 +182,8 @@ export function usePetaIsi(
   const ambil = useCallback(async () => {
     if (!kotak) return;
     const urut = ++urutRef.current;
+    const gen = generasiRef.current;
+    const kini = Date.now();
     const jtm = pilihan.filter((p) => p.jaringan === "jtm").map((p) => p.kode);
     const jtr = pilihan.filter((p) => p.jaringan === "jtr").map((p) => p.kode);
     // Gardu yang lapisan JTR-nya dinyalakan ikut tampil — jaringan JTR tanpa
@@ -178,92 +194,193 @@ export function usePetaIsi(
     ])];
 
     if (jtm.length === 0 && jtr.length === 0 && gPilih.length === 0 && !tampilGardu) {
-      setRute([]); setTiang([]); setGardu([]); setTerpotong(false);
+      setRute([]); setTiang([]); setGardu([]); setTerpotong(false); setGalat(false);
       return;
     }
 
-    setSibuk(true);
-    try {
-      // ── Rute penyulang: HANYA selama tiangnya belum digambar ────────────
-      // Rute ini garis KASAR — `segarkan_rute_penyulang` membuang tujuh dari
-      // delapan tiang. Gunanya menahan tempat di zoom jauh, waktu tiang satu
-      // per satu belum dikirim. Begitu tiang aslinya muncul, rute harus
-      // minggir: dua garis untuk satu jaringan terbaca sebagai dua jaringan
-      // yang tidak sinkron, padahal yang kasar memang tidak dimaksudkan akurat.
-      let r: RuteBaris[] = [];
-      if (jtm.length > 0 && kotak.zoom < ZOOM_TIANG) {
-        const { data } = await supabaseBrowser
-          .from("penyulang_rute")
-          .select("penyulang,ulp,bentang")
-          .in("penyulang", jtm);
-        r = (data ?? []).map((x) => ({
-          penyulang: x.penyulang as string,
-          ulp: x.ulp as string,
-          bentang: (x.bentang ?? []) as [number, number, number, number][],
-        }));
+    const layar = rentangKotak(kotak);
+    const kelompok = [...jtm, ...jtr];
+    const pakaiRute = jtm.length > 0 && kotak.zoom < ZOOM_TIANG;
+    const pakaiTiang = kelompok.length > 0 && kotak.zoom >= ZOOM_TIANG;
+    // Ada gardu yang SENGAJA dinyalakan → persis yang itu, tanpa gerbang zoom
+    // (centang yang tak berbuah terasa rusak). Tidak ada → saklar "tampilkan
+    // semua" dengan gerbang zoom + layar: 2.092 gardu sekaligus terlalu berat.
+    const pakaiGarduLayar = gPilih.length === 0 && tampilGardu && kotak.zoom >= ZOOM_GARDU;
+
+    // ── Yang belum ada di cache ────────────────────────────────────────
+    const ruteKurang = pakaiRute ? jtm.filter((k) => !simpanRute.current.segar(k, kini)) : [];
+    const garduKurang = gPilih.filter((k) => !simpanGarduKode.current.segar(k, kini));
+    const petakGarduKurang: [number, number][] = [];
+    if (pakaiGarduLayar) {
+      for (const [i, j] of petakDi(layar)) {
+        if (!simpanGarduPetak.current.segar(`${i}|${j}`, kini)) petakGarduKurang.push([i, j]);
       }
-
-      // ── Gardu ──────────────────────────────────────────────────────────
-      // Dua jalan, dan yang dipilih bergantung pada apakah ada gardu yang
-      // SENGAJA dinyalakan:
-      //
-      //   • Ada pilihan → ambil persis yang itu, tanpa gerbang zoom dan tanpa
-      //     saringan layar. Orang yang mencentang satu penyulang di panel
-      //     meminta gardu itu; menyembunyikannya karena zoom masih jauh
-      //     membuat centangnya terasa rusak.
-      //   • Tidak ada → saklar "tampilkan semua" yang berlaku, dan di situ
-      //     gerbang zoom + kotak pandang wajib, karena 2.092 gardu sekaligus
-      //     adalah persis beban yang halaman ini dibuat untuk menghindarinya.
-      let g: GarduPeta[] = [];
-      const bacaGardu = (siap: (q: ReturnType<typeof kueriGardu>) => typeof q) =>
-        fetchAllRows<Record<string, unknown>>(() => siap(kueriGardu()));
-
-      if (gPilih.length > 0) {
-        const kumpul: Record<string, unknown>[] = [];
-        // Dipecah: `in` masuk ke URL, dan ratusan kode sekaligus menabrak
-        // batas panjang URL — gagalnya senyap, tidak melempar galat.
-        for (let i = 0; i < gPilih.length; i += POTONG_KODE) {
-          kumpul.push(...(await bacaGardu((q) => q.in("kode", gPilih.slice(i, i + POTONG_KODE)))));
-        }
-        g = kumpul.map(keGardu);
-      } else if (tampilGardu && kotak.zoom >= ZOOM_GARDU) {
-        const data = await bacaGardu((q) =>
-          q.gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
-            .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
-        );
-        g = data.map(keGardu);
-      }
-
-      // ── Tiang: hanya pada zoom dekat, hanya yang di layar ───────────────
-      let t: TiangPeta[] = [];
-      let potong = false;
-      const kelompok = [...jtm, ...jtr];
-      if (kelompok.length > 0 && kotak.zoom >= ZOOM_TIANG) {
-        const data = await fetchAllRows<Record<string, unknown>>(() =>
-          supabaseBrowser
-            .from("peta_tiang")
-            .select(KOLOM_TIANG)
-            .in("induk_kelompok", kelompok)
-            .gte("lat", kotak.latMin).lte("lat", kotak.latMaks)
-            .gte("lng", kotak.lngMin).lte("lng", kotak.lngMaks),
-        );
-        potong = data.length > BATAS_TIANG;
-        t = data.slice(0, BATAS_TIANG).map(keTiang);
-      }
-
-      if (urut !== urutRef.current) return;   // kotak pandang sudah berpindah
-      setRute(r); setGardu(g); setTiang(t); setTerpotong(potong);
-    } catch {
-      // Peta yang gagal memuat sebagian lebih baik diam daripada melempar
-      // pemberitahuan tiap kali digeser di sinyal yang buruk.
-      if (urut === urutRef.current) { setTiang([]); setTerpotong(false); }
-    } finally {
-      if (urut === urutRef.current) setSibuk(false);
     }
+    const tiangKurang = new Set<string>();
+    const petakTiangKurang: [number, number][] = [];
+    if (pakaiTiang) {
+      for (const [i, j] of petakDi(layar)) {
+        let kurang = false;
+        for (const k of kelompok) {
+          if (!simpanTiang.current.segar(`${k}|${i}|${j}`, kini)) { tiangKurang.add(k); kurang = true; }
+        }
+        if (kurang) petakTiangKurang.push([i, j]);
+      }
+    }
+
+    let gagal = false;
+    if (ruteKurang.length || garduKurang.length || petakGarduKurang.length || tiangKurang.size) {
+      setSibuk(true);
+      // Bersamaan — dulu berurutan, satu menunggu yang lain.
+      const hasil = await Promise.allSettled([
+        // Rute penyulang: HANYA selama tiangnya belum digambar. Garis KASAR
+        // (`segarkan_rute_penyulang` membuang tujuh dari delapan tiang);
+        // begitu tiang aslinya muncul, rute minggir.
+        (async () => {
+          if (ruteKurang.length === 0) return;
+          const { data, error } = await supabaseBrowser
+            .from("penyulang_rute")
+            .select("penyulang,ulp,bentang")
+            .in("penyulang", ruteKurang);
+          if (error) throw new Error(error.message);
+          if (gen !== generasiRef.current) return;
+          const per = new Map<string, RuteBaris[]>(ruteKurang.map((k) => [k, []]));
+          for (const x of data ?? []) {
+            per.get(x.penyulang as string)?.push({
+              penyulang: x.penyulang as string,
+              ulp: x.ulp as string,
+              bentang: (x.bentang ?? []) as [number, number, number, number][],
+            });
+          }
+          for (const [k, v] of per) simpanRute.current.taruh(k, v, kini);
+        })(),
+
+        // Gardu terpilih. Dipecah: `in` masuk ke URL, ratusan kode sekaligus
+        // menabrak batas panjang URL — gagalnya senyap.
+        (async () => {
+          if (garduKurang.length === 0) return;
+          const kumpul: Record<string, unknown>[] = [];
+          for (let i = 0; i < garduKurang.length; i += POTONG_KODE) {
+            kumpul.push(...(await fetchAllRows<Record<string, unknown>>(() =>
+              kueriGardu().in("kode", garduKurang.slice(i, i + POTONG_KODE)).order("kode").order("ulp"))));
+          }
+          if (gen !== generasiRef.current) return;
+          const per = new Map<string, GarduPeta[]>(garduKurang.map((k) => [k, []]));
+          for (const x of kumpul) per.get(x.kode as string)?.push(keGardu(x));
+          for (const [k, v] of per) simpanGarduKode.current.taruh(k, v, kini);
+        })(),
+
+        // Semua gardu di layar: satu kotak gabungan petak yang kurang.
+        (async () => {
+          const r = gabung(petakGarduKurang);
+          if (!r) return;
+          const b = batas(r);
+          const data = await fetchAllRows<Record<string, unknown>>(() =>
+            kueriGardu()
+              .gte("lat", b.latMin).lt("lat", b.latLebih)
+              .gte("lng", b.lngMin).lt("lng", b.lngLebih)
+              .order("kode").order("ulp"));
+          if (gen !== generasiRef.current) return;
+          const per = new Map<string, GarduPeta[]>();
+          for (const [i, j] of petakDi(r)) per.set(`${i}|${j}`, []);
+          const lihat = new Set<string>();
+          for (const x of data) {
+            const g = keGardu(x);
+            const id = `${g.kode}|${g.ulp}`;
+            if (lihat.has(id)) continue;
+            lihat.add(id);
+            const [i, j] = petakTitik(g.lat, g.lng, r);
+            per.get(`${i}|${j}`)?.push(g);
+          }
+          for (const [k, v] of per) simpanGarduPetak.current.taruh(k, v, kini);
+        })(),
+
+        // Tiang: kotak gabungan petak yang kurang, kelompok yang kurang saja.
+        // Diurutkan — paginasi per 1000 tanpa urutan bisa dobel/terlewat.
+        (async () => {
+          const r = gabung(petakTiangKurang);
+          if (!r || tiangKurang.size === 0) return;
+          const b = batas(r);
+          const minta = [...tiangKurang];
+          const data = await fetchAllRows<Record<string, unknown>>(() =>
+            supabaseBrowser
+              .from("peta_tiang")
+              .select(KOLOM_TIANG)
+              .in("induk_kelompok", minta)
+              .gte("lat", b.latMin).lt("lat", b.latLebih)
+              .gte("lng", b.lngMin).lt("lng", b.lngLebih)
+              .order("id").order("jaringan").order("induk_kelompok"));
+          if (gen !== generasiRef.current) return;
+          const per = new Map<string, TiangPeta[]>();
+          for (const k of minta) for (const [i, j] of petakDi(r)) per.set(`${k}|${i}|${j}`, []);
+          const lihat = new Set<string>();
+          for (const x of data) {
+            const t = keTiang(x);
+            const id = `${t.jaringan}|${t.kelompok}|${t.id}`;
+            if (lihat.has(id)) continue;
+            lihat.add(id);
+            const [i, j] = petakTitik(t.lat, t.lng, r);
+            per.get(`${t.kelompok}|${i}|${j}`)?.push(t);
+          }
+          for (const [k, v] of per) simpanTiang.current.taruh(k, v, kini);
+        })(),
+      ]);
+      gagal = hasil.some((h) => h.status === "rejected");
+    }
+
+    if (urut !== urutRef.current) return;   // kotak pandang sudah berpindah
+
+    // ── Susun dari cache ───────────────────────────────────────────────
+    // Petak yang gagal dimuat kosong; sisanya tetap tampil (dulu satu galat
+    // mengosongkan semua tiang di layar).
+    const r = pakaiRute ? jtm.flatMap((k) => simpanRute.current.ambil(k) ?? []) : [];
+
+    let g: GarduPeta[] = [];
+    if (gPilih.length > 0) {
+      g = gPilih.flatMap((k) => simpanGarduKode.current.ambil(k) ?? []);
+    } else if (pakaiGarduLayar) {
+      for (const [i, j] of petakDi(layar)) {
+        for (const x of simpanGarduPetak.current.ambil(`${i}|${j}`) ?? []) {
+          if (diLayar(x, kotak)) g.push(x);
+        }
+      }
+    }
+
+    const t: TiangPeta[] = [];
+    let potong = false;
+    if (pakaiTiang) {
+      const lihat = new Set<string>();
+      kumpul: for (const k of kelompok) {
+        for (const [i, j] of petakDi(layar)) {
+          for (const x of simpanTiang.current.ambil(`${k}|${i}|${j}`) ?? []) {
+            if (!diLayar(x, kotak)) continue;
+            const id = `${x.jaringan}|${x.kelompok}|${x.id}`;
+            if (lihat.has(id)) continue;
+            lihat.add(id);
+            if (t.length >= BATAS_TIANG) { potong = true; break kumpul; }
+            t.push(x);
+          }
+        }
+      }
+    }
+
+    setRute(r); setGardu(g); setTiang(t); setTerpotong(potong); setGalat(gagal);
+    setSibuk(false);
     // `kotak` dan `pilihan` sengaja tidak jadi dependensi: keduanya objek baru
     // tiap render. Yang dipakai kuncinya, di bawah.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [kunciKotak, kunciPilihan, tampilGardu]);
+
+  /** Sesudah suntingan / tombol Muat ulang: buang cache, muat ulang layar —
+   *  titik yang digeser langsung terlihat, data HP/orang lain ikut masuk. */
+  const muatUlang = useCallback(async () => {
+    generasiRef.current++;
+    simpanTiang.current.kosongkan();
+    simpanGarduPetak.current.kosongkan();
+    simpanGarduKode.current.kosongkan();
+    simpanRute.current.kosongkan();
+    await ambil();
+  }, [ambil]);
 
   useEffect(() => {
     // Ditunda: menggeser peta memicu puluhan kejadian, dan sembilan puluh
@@ -272,6 +389,8 @@ export function usePetaIsi(
     return () => clearTimeout(jeda);
   }, [ambil]);
 
-  /** Dipanggil sesudah suntingan dari peta — titik yang digeser langsung terlihat. */
-  return { rute, tiang, gardu, sibuk, terpotong, muatUlang: ambil };
+  return { rute, tiang, gardu, sibuk, terpotong, galat, muatUlang };
 }
+
+const diLayar = (x: { lat: number; lng: number }, k: Kotak) =>
+  x.lat >= k.latMin && x.lat <= k.latMaks && x.lng >= k.lngMin && x.lng <= k.lngMaks;

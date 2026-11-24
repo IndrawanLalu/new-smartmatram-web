@@ -42,3 +42,16 @@ export const INPUT =
 
 export const JUDUL_BAGIAN =
   "text-[10px] text-gray-500 uppercase tracking-wider font-semibold";
+
+/** Batas label tiang (elemen DOM) — lihat LapisanNama. Di sini, bukan di
+ *  LapisanNama, supaya BilahKeadaan tidak ikut memuat Leaflet saat render
+ *  server ("window is not defined"). */
+export const BATAS_NAMA = 400;
+
+// Warna lapisan yang juga dipakai panel (render server). Tinggal di sini, bukan
+// di file Lapisan*, karena file itu memuat Leaflet — mengimpor satu warna dari
+// sana menyeret Leaflet ke server ("window is not defined").
+export const WARNA_PINDAH = "#E879F9";  // LapisanRencana
+export const WARNA_SURVEY = "#F97316";  // LapisanSurvey
+export const WARNA_JTR = "#2563EB";     // LapisanSurvey
+export const WARNA_REKON = "#DC2626";   // LapisanRekonduktor

@@ -2,8 +2,7 @@
 
 import { Loader2, TriangleAlert } from "lucide-react";
 import { ZOOM_GARDU, ZOOM_TIANG } from "../_hooks/usePetaIsi";
-import { GARIS } from "../_ui";
-import { BATAS_NAMA } from "./LapisanNama";
+import { BATAS_NAMA, GARIS } from "../_ui";
 import { GAYA_PADAM } from "./TombolAtas";
 
 /**
@@ -26,6 +25,8 @@ interface Props {
   sebutZoomTiang: boolean;
   sebutZoomGardu: boolean;
   terpotong: boolean;
+  /** Sebagian layar gagal dimuat (sinyal) — peta mungkin belum lengkap. */
+  galat: boolean;
   /** Label tiang (nama/nomor kabel/isian) sedang diminta. */
   adaLabel: boolean;
 }
@@ -61,6 +62,12 @@ export default function BilahKeadaan(p: Props) {
         <div className="rounded-lg bg-amber-500/90 text-white px-2.5 py-1.5 flex items-center gap-1.5">
           <TriangleAlert size={12} />
           Terlalu banyak tiang di layar — sebagian tidak digambar
+        </div>
+      )}
+      {p.galat && (
+        <div className="rounded-lg bg-red-600/90 text-white px-2.5 py-1.5 flex items-center gap-1.5">
+          <TriangleAlert size={12} />
+          Sebagian peta belum termuat (sinyal?) — geser sedikit atau tekan Muat ulang
         </div>
       )}
       {p.adaLabel && p.tiangDiLayar > BATAS_NAMA && (

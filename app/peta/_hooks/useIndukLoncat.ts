@@ -135,15 +135,17 @@ async function batangDiHulu(calon: BarisKp[], indukBatang: Map<string, string | 
   return ketemu;
 }
 
-export function useIndukLoncat() {
+/** `aktif` false = belum dibaca — tanda ini hanya berarti saat tiang JTM digambar. */
+export function useIndukLoncat(aktif: boolean) {
   const [loncat, setLoncat] = useState<Map<string, IndukLoncat>>(new Map());
   const [ke, setKe] = useState(0);
 
   useEffect(() => {
+    if (!aktif) return;
     let hidup = true;
     void baca().then((m) => hidup && setLoncat(m));
     return () => { hidup = false; };
-  }, [ke]);
+  }, [ke, aktif]);
 
   const muatUlang = useCallback(() => setKe((n) => n + 1), []);
   return { loncat, muatUlang };

@@ -2,7 +2,8 @@
 
 import { useState, type ReactNode } from "react";
 import { Crosshair, Loader2, MapPin, Search, X } from "lucide-react";
-import { tulisKoordinat } from "@/lib/koordinat";
+import { bacaKoordinat, tulisKoordinat } from "@/lib/koordinat";
+import { useCariTiang, type TiangCari } from "../_hooks/useCariTiang";
 import { RADIUS_CARI_M, type CariLokasi as Cari, type GarduDekat, type JtmDekat, type JtrDekat } from "../_hooks/useCariLokasi";
 import { GARIS, JUDUL_BAGIAN, PANEL, WARNA } from "../_ui";
 import { meter } from "./JarakGardu";
@@ -10,6 +11,10 @@ import { meter } from "./JarakGardu";
 /**
  * Kotak "Cari lokasi/koordinat" di kiri atas peta + daftar hasilnya:
  * penyulang (JTM), gardu, dan JTR terdekat. Klik baris = buka objeknya.
+ *
+ * Nomor tiang (24 Nov 2026): teks yang BUKAN koordinat di wilayah UP3 dicari
+ * sebagai nomor tiang JTM/JTR sambil mengetik (useCariTiang). Enter dengan
+ * satu hasil langsung membuka tiangnya.
  */
 
 interface Props {
@@ -17,13 +22,18 @@ interface Props {
   onJtm: (x: JtmDekat) => void;
   onGardu: (x: GarduDekat) => void;
   onJtr: (x: JtrDekat) => void;
+  onTiang: (x: TiangCari) => void;
+  /** ULP yang dipilih di peta ("" = semua) — pencarian tiang ikut ini. */
+  ulp: string;
 }
 
 const KOSONG = `Tidak ada dalam ${RADIUS_CARI_M / 1000} km`;
 
-export default function CariLokasi({ c, onJtm, onGardu, onJtr }: Props) {
+export default function CariLokasi({ c, onJtm, onGardu, onJtr, onTiang, ulp }: Props) {
   const [teks, setTeks] = useState("");
   const { titik, hasil, sibuk, galat } = c;
+  const koordinat = "titik" in bacaKoordinat(teks);
+  const tiang = useCariTiang(teks, ulp, !koordinat && !titik);
 
   return (
     <div
@@ -34,6 +44,11 @@ export default function CariLokasi({ c, onJtm, onGardu, onJtr }: Props) {
         className="flex items-center gap-1.5 p-2"
         onSubmit={(e) => {
           e.preventDefault();
+          if (tiang.tampil) {
+            // Hanya hasil untuk teks SEKARANG — bukan sisa teks sebelumnya.
+            if (!tiang.sibuk && tiang.baris.length === 1) onTiang(tiang.baris[0]);
+            return;
+          }
           c.cari(teks);
         }}
       >
@@ -41,11 +56,11 @@ export default function CariLokasi({ c, onJtm, onGardu, onJtr }: Props) {
         <input
           value={teks}
           onChange={(e) => setTeks(e.target.value)}
-          placeholder="Cari lokasi/koordinat…"
-          title="Contoh: -8.5833, 116.1167 · tautan Google Maps · 8°35'00&quot;S 116°07'00&quot;E"
+          placeholder="Cari lokasi/koordinat/nomor tiang…"
+          title="Contoh: -8.5833, 116.1167 · tautan Google Maps · 8°35'00&quot;S 116°07'00&quot;E · nomor tiang (min. 3 huruf)"
           className="flex-1 min-w-0 bg-transparent text-sm placeholder:text-gray-500 focus:outline-none"
         />
-        {sibuk && <Loader2 size={15} className="shrink-0 animate-spin text-gray-400" />}
+        {(sibuk || tiang.sibuk) && <Loader2 size={15} className="shrink-0 animate-spin text-gray-400" />}
         <button
           type="button"
           onClick={c.titikSaya}
@@ -72,6 +87,34 @@ export default function CariLokasi({ c, onJtm, onGardu, onJtr }: Props) {
       </form>
 
       {galat && <p className="px-3 pb-2.5 text-xs text-[#FCA5A5]">{galat}</p>}
+
+      {tiang.tampil && (tiang.baris.length > 0 || !tiang.sibuk) && (
+        <div className={`overflow-y-auto border-t px-3 py-2.5 space-y-1 transition-opacity ${tiang.sibuk ? "opacity-60" : ""}`}
+          style={{ borderColor: GARIS }}>
+          <h3 className={JUDUL_BAGIAN}>
+            Nomor tiang{tiang.baris.length ? ` · ${tiang.baris.length}${tiang.penuh ? "+" : ""}` : ""}
+          </h3>
+          {tiang.galat ? (
+            <p className="text-xs text-[#FCA5A5]">Gagal mencari: {tiang.galat}</p>
+          ) : tiang.baris.length === 0 && !tiang.sibuk ? (
+            <p className="text-xs text-gray-500">Tidak ada tiang bernomor itu{ulp ? ` di ULP ${ulp}` : ""}.</p>
+          ) : (
+            tiang.baris.map((x) => (
+              <button key={`${x.jaringan}|${x.kelompok}|${x.id}`} onClick={() => onTiang(x)}
+                className="w-full text-left flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-white/5">
+                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: x.jaringan === "jtr" ? WARNA.jtr : WARNA.jtm }} />
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[13px] font-semibold truncate">Tiang {x.kode}</span>
+                  <span className="block text-[11px] text-gray-400 truncate">
+                    {x.jaringan === "jtr" ? `JTR · gardu ${x.kelompok}` : `JTM · ${x.kelompok}`}{ulp ? "" : ` · ${x.ulp}`}
+                  </span>
+                </span>
+              </button>
+            ))
+          )}
+          {tiang.penuh && <p className="text-[11px] text-gray-500">Ketik lebih lengkap untuk mempersempit.</p>}
+        </div>
+      )}
 
       {titik && hasil && (
         <div className="overflow-y-auto border-t px-3 py-2.5 space-y-3" style={{ borderColor: GARIS }}>

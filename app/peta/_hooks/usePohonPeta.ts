@@ -134,7 +134,12 @@ type Seg = { nama?: string; ulp?: string; penyulang?: string } | null;
 /** Nama penyulang sebagai kunci lapisan `pohon:<PENYULANG>`. */
 const kunciPenyulang = (s: unknown) => String(s ?? "").trim().toUpperCase() || "(TANPA PENYULANG)";
 
-export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: SaringPohon, nyala: Set<string>) {
+/**
+ * `aktif` (24 Nov 2026): data pohon HANYA dibaca setelah dibutuhkan — folder
+ * Pohon dibuka, ada lapisan pohon menyala, atau dibuka dari WO Perabasan.
+ * Dulu enam kueri penuh ini jalan tiap /peta dibuka walau pohon tidak dilihat.
+ */
+export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: SaringPohon, nyala: Set<string>, aktif: boolean) {
   const [temuan, setTemuan] = useState<TemuanPohon[]>([]);
   const [dirabas, setDirabas] = useState<PohonDirabas[]>([]);
   const [cek, setCek] = useState<PohonCek[]>([]);
@@ -142,29 +147,33 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
   const [nonce, setNonce] = useState(0);
   const kunci = `${ulp}|${tahun}|${bulan}|${nonce}`;
   const [kunciSelesai, setKunciSelesai] = useState<string | null>(null);
-  const sibuk = kunciSelesai !== kunci;
+  const sibuk = aktif && kunciSelesai !== kunci;
 
   useEffect(() => {
+    if (!aktif) return;
     let hidup = true;
     const awal = `${tahun}-${dua(bulan)}-01`;
     const akhir = bulan === 12 ? `${tahun + 1}-01-01` : `${tahun}-${dua(bulan + 1)}-01`;
     const kerja = async () => {
       try {
         const [pohon, selesai, rabas, luar, tugas, cekBaris] = await Promise.all([
-          fetchAllRows<Baris>(() =>
-            supabaseBrowser
+          // ULP disaring di server (dulu semua ULP diunduh lalu dibuang di
+          // browser); saringan `seg?.ulp` di bawah tetap ada sebagai penjaga.
+          fetchAllRows<Baris>(() => {
+            const q = supabaseBrowser
               .from("perabasan_pohon")
-              .select("segmen_id,tiang_id,tiang_kode,lat,lng,vegetasi,jenis_pohon,tgl_inspeksi,terverifikasi,foto_url,catatan,segmen(nama,ulp,penyulang)")
-              .order("segmen_id").order("tiang_id"),
-          ),
-          fetchAllRows<Baris>(() =>
-            supabaseBrowser
+              .select(`segmen_id,tiang_id,tiang_kode,lat,lng,vegetasi,jenis_pohon,tgl_inspeksi,terverifikasi,foto_url,catatan,segmen${ulp ? "!inner" : ""}(nama,ulp,penyulang)`);
+            return (ulp ? q.eq("segmen.ulp", ulp) : q).order("segmen_id").order("tiang_id");
+          }),
+          fetchAllRows<Baris>(() => {
+            let q = supabaseBrowser
               .from("wo_perabasan_item")
               .select("id,segmen_id,tgl_selesai")
               .in("status", ["Selesai", "Diverifikasi"])
-              .not("tgl_selesai", "is", null)
-              .order("id"),
-          ),
+              .not("tgl_selesai", "is", null);
+            if (ulp) q = q.eq("ulp", ulp);
+            return q.order("id");
+          }),
           fetchAllRows<Baris>(() =>
             supabaseBrowser
               .from("perabasan_realisasi")
@@ -343,7 +352,7 @@ export function usePohonPeta(ulp: string, tahun: number, bulan: number, saring: 
     };
     void kerja();
     return () => { hidup = false; };
-  }, [ulp, tahun, bulan, nonce, kunci]);
+  }, [ulp, tahun, bulan, nonce, kunci, aktif]);
 
   /** Satu baris folder per penyulang — bentuknya `Lapisan` supaya panel kiri,
    *  pencarian, dan "lompat ke sini" memperlakukannya sama dengan JTM. */

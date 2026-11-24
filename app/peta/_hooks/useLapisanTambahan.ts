@@ -56,10 +56,11 @@ export function useLapisanKesehatan(ulp: string) {
 }
 
 /** Pohon menyala lewat kunci `pohon:<PENYULANG>` di `nyala` (panel kiri). */
-export function useLapisanPohon(ulp: string, nyala: Set<string>) {
+/** `aktif`: baru dibaca setelah dibutuhkan (lihat usePohonPeta). */
+export function useLapisanPohon(ulp: string, nyala: Set<string>, aktif: boolean) {
   const [bulan, setBulan] = useState(bulanIni);
   const [saring, setSaring] = useState<SaringPohon>(SARING_POHON_AWAL);
-  const data = usePohonPeta(ulp, bulan.tahun, bulan.bulan, saring, nyala);
+  const data = usePohonPeta(ulp, bulan.tahun, bulan.bulan, saring, nyala, aktif);
   // Menugaskan dari peta: satu pohon (popup) atau semua yang tampil & belum.
   const [tugas, setTugas] = useState<TemuanPohon[] | null>(null);
   const bisaDitugaskan = data.temuan.filter((t) => t.kunciTugas);

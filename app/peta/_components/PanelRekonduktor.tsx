@@ -7,7 +7,7 @@ import type { RekonduktorPetaState } from "../_hooks/useRekonduktorPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
 import KartuRuasRekon from "./KartuRuasRekon";
 import PilihLatarSurvey from "./PilihLatarSurvey";
-import { WARNA_REKON } from "./LapisanRekonduktor";
+import { WARNA_REKON } from "../_ui";
 
 /** Kartu Survey Jaringan jenis Rekonduktor JTR di kanan peta: gardu, ruas, isian per tiang, material, simpan. */
 

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect } from "react";
 import { CircleMarker, Polyline, useMap } from "react-leaflet";
+import { WARNA_REKON } from "../_ui";
 import type { RekonduktorPetaState } from "../_hooks/useRekonduktorPeta";
 
 /**
@@ -10,7 +11,7 @@ import type { RekonduktorPetaState } from "../_hooks/useRekonduktorPeta";
  * sedang dipilih bercincin hijau. Dirender HANYA saat survey rekonduktor terbuka.
  */
 
-export const WARNA_REKON = "#DC2626";
+export { WARNA_REKON };
 const HIJAU = "#16A34A";
 
 export default function LapisanRekonduktor({ s }: { s: RekonduktorPetaState }) {

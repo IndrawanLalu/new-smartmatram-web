@@ -4,7 +4,7 @@ import { Crosshair, Loader2, Wrench, X } from "lucide-react";
 import { LABEL_RENCANA, namaOpsi, pindahSr, type NadaOpsi } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
 import type { OpsiPeta, RencanaPetaState } from "../_hooks/useRencanaPeta";
 import { GARIS, PANEL } from "../_ui";
-import { WARNA_PINDAH } from "./LapisanRencana";
+import { WARNA_PINDAH } from "../_ui";
 
 /** Kartu rencana perbaikan JTR di kanan peta (dari Analisis JTR). */
 

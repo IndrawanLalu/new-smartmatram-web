@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleMarker, Marker, Pane, Polyline, Tooltip } from "react-leaflet";
+import { WARNA_PINDAH } from "../_ui";
 import L from "leaflet";
 import type { PeranTitik } from "@/app/admin/pengukuran-gardu/_lib/rencanaJtr";
 import type { OpsiPeta, RencanaPetaState } from "../_hooks/useRencanaPeta";
@@ -14,7 +15,7 @@ import type { OpsiPeta, RencanaPetaState } from "../_hooks/useRencanaPeta";
  * tiang.
  */
 
-export const WARNA_PINDAH = "#E879F9";
+export { WARNA_PINDAH };
 
 const GAYA: Record<PeranTitik, { label: string; latar: string; cincin: string }> = {
   pecah: { label: "PECAH", latar: "#7C3AED", cincin: "#C4B5FD" },

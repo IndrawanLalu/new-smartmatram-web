@@ -3,6 +3,7 @@
 import type { TiangPeta } from "../_hooks/usePetaIsi";
 import { titikTengahPortal } from "@/lib/penandaJtm";
 import LabelTetap, { type NadaLabel } from "./LabelTetap";
+import { BATAS_NAMA } from "../_ui";
 
 /**
  * Label tetap di sebelah tiang: NAMA tiang dan/atau NOMOR KABEL JTR-nya.
@@ -24,7 +25,7 @@ import LabelTetap, { type NadaLabel } from "./LabelTetap";
  * atas BATAS_NAMA label peta mulai tersendat, dan label yang bertumpuk juga
  * tak terbaca. Lebih dari itu → minta perbesar dulu (lihat bilah keadaan).
  */
-export const BATAS_NAMA = 400;
+export { BATAS_NAMA };
 
 /** "3" sendirian = curiga; "1,2" = underbuild JTR; "1" = biasa. */
 const nadaNomor = (n: string): NadaLabel => (n.includes(",") ? "ub" : n === "1" ? "biasa" : "curiga");

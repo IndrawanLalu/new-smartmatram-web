@@ -55,6 +55,11 @@ interface Props {
   saringPohon: SaringPohon;
   onSaringPohon: (s: SaringPohon) => void;
   perSumberPohon: Record<SumberPohon, number>;
+  /** Data pohon sedang dibaca (baru dibaca saat folder dibuka). */
+  pohonSibuk: boolean;
+  pohonDibaca: boolean;
+  /** Folder Pohon dibuka — data pohon baru dibaca sekarang. */
+  onBukaPohon: () => void;
   semuaLapisan: Lapisan[];
   loading: boolean;
   error: string | null;
@@ -88,7 +93,7 @@ interface Props {
 const BATAS_HASIL = 40;
 
 export default function PanelLapisan({
-  user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, semuaLapisan, loading, error, ulp, onUlp,
+  user, perFolder, pohon, saringPohon, onSaringPohon, perSumberPohon, pohonSibuk, pohonDibaca, onBukaPohon, semuaLapisan, loading, error, ulp, onUlp,
   nyala, onAlih, onAlihBanyak, onHanya, tampilGardu, onTampilGardu, onLompat, onTutup, segmenAktif, onSegmen, sectionAktif, onSection, onPecah, versiSegmen, onPenyulang, sld,
 }: Props) {
   const [cari, setCari] = useState("");
@@ -349,7 +354,12 @@ export default function PanelLapisan({
               onSaring={onSaringPohon}
               perSumber={perSumberPohon}
               terbuka={folderBuka.has("pohon")}
-              onAlihBuka={() => alihFolder("pohon")}
+              onAlihBuka={() => {
+                if (!folderBuka.has("pohon")) onBukaPohon();
+                alihFolder("pohon");
+              }}
+              sibuk={pohonSibuk}
+              dibaca={pohonDibaca}
               nyala={nyala}
               onAlih={onAlih}
               onAlihBanyak={onAlihBanyak}
@@ -377,7 +387,7 @@ export default function PanelLapisan({
 const SUMBER: SumberPohon[] = ["inspeksi", "perabasan", "pengecekan"];
 
 function FolderPohon({
-  pohon, saring, onSaring, perSumber, terbuka, onAlihBuka, nyala, onAlih, onAlihBanyak, onHanya, onLompat,
+  pohon, saring, onSaring, perSumber, terbuka, onAlihBuka, sibuk, dibaca, nyala, onAlih, onAlihBanyak, onHanya, onLompat,
 }: {
   pohon: Lapisan[];
   saring: SaringPohon;
@@ -385,6 +395,9 @@ function FolderPohon({
   perSumber: Record<SumberPohon, number>;
   terbuka: boolean;
   onAlihBuka: () => void;
+  sibuk: boolean;
+  /** Data pohon sudah diminta (folder pernah dibuka / lapisan pohon menyala). */
+  dibaca: boolean;
   nyala: Set<string>;
   onAlih: (j: Jaringan, k: string) => void;
   onAlihBanyak: (j: Jaringan, k: string[], nyalakan: boolean) => void;
@@ -396,7 +409,7 @@ function FolderPohon({
   const jumlah = pohon.reduce((n, l) => n + l.jumlahTiang, 0);
 
   return (
-    <Folder judul="Pohon — per penyulang" ikon={TreePine} warna={WARNA.pohon} jumlah={jumlah} terbuka={terbuka} onAlih={onAlihBuka}>
+    <Folder judul="Pohon — per penyulang" ikon={TreePine} warna={WARNA.pohon} jumlah={dibaca ? jumlah : undefined} terbuka={terbuka} onAlih={onAlihBuka}>
       {/* Sumber dulu, baru penyulang: jumlah tiap penyulang di bawah ikut
           sumber yang dipilih di sini. */}
       <div className="mx-2 mb-1.5 rounded-lg px-1 py-1" style={{ background: "#0d1b2a" }}>
@@ -420,7 +433,9 @@ function FolderPohon({
       </div>
       {pohon.length === 0 ? (
         <Kosong>
-          {saring.sumber.size === 0
+          {sibuk
+            ? "Memuat pohon…"
+            : saring.sumber.size === 0
             ? "Pilih sumbernya dulu: dari inspeksi JTM, dari perabasan, dari hasil pengecekan — boleh lebih dari satu."
             : "Belum ada pohon dari sumber yang dipilih (perabasan: bulan yang dipilih di panel Pohon)."}
         </Kosong>
@@ -461,7 +476,8 @@ function Folder({
   judul: string;
   ikon: typeof Zap;
   warna: string;
-  jumlah: number;
+  /** undefined = belum dibaca (folder Pohon sebelum dibuka) — jangan tampil "0". */
+  jumlah?: number;
   terbuka: boolean;
   onAlih: () => void;
   children: React.ReactNode;
@@ -478,7 +494,7 @@ function Folder({
         <Ikon size={13} style={{ color: warna }} className="shrink-0" />
         <span className="text-[12px] font-medium flex-1 truncate text-gray-200">{judul}</span>
         <span className="text-[10px] font-mono text-gray-500 tabular-nums">
-          {jumlah.toLocaleString("id-ID")}
+          {jumlah?.toLocaleString("id-ID")}
         </span>
       </button>
       {terbuka && <div className="pb-1.5">{children}</div>}

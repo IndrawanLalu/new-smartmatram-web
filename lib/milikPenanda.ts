@@ -37,15 +37,17 @@ export async function bacaMilikPenanda(): Promise<Map<string, MilikPenanda>> {
   );
 }
 
-export function useMilikPenanda() {
+/** `aktif` false = belum dibaca (mis. /peta sebelum ada lapisan JTM menyala). */
+export function useMilikPenanda(aktif = true) {
   const [milik, setMilik] = useState<Map<string, MilikPenanda>>(new Map());
   const [ke, setKe] = useState(0);
 
   useEffect(() => {
+    if (!aktif) return;
     let hidup = true;
     void bacaMilikPenanda().then((m) => hidup && setMilik(m));
     return () => { hidup = false; };
-  }, [ke]);
+  }, [ke, aktif]);
 
   const muatUlang = useCallback(() => setKe((n) => n + 1), []);
   return { milik, muatUlang };

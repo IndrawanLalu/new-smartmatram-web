@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 
@@ -72,39 +72,50 @@ export function usePetaDaftar(ulp: string | null) {
   const [daftar, setDaftar] = useState<Lapisan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  /** Naik bila `segarkan_rute_kotor` menghitung ulang rute — rute di cache
+   *  usePetaIsi sudah basi dan harus dibaca ulang. */
+  const [versiRute, setVersiRute] = useState(0);
+  // Jawaban untuk ULP yang sudah diganti tidak boleh menimpa daftar sekarang.
+  const urutRef = useRef(0);
+
+  const bacaDaftar = useCallback(async () => {
+    const baris = await fetchAllRows<Record<string, unknown>>(() => {
+      const q = supabaseBrowser
+        .from("peta_daftar")
+        .select("jaringan,kode,nama,ulp,feeder,jumlah_tiang,lat_min,lat_maks,lng_min,lng_maks")
+        .order("jaringan")
+        .order("kode");
+      return ulp ? q.eq("ulp", ulp) : q;
+    });
+    return baris.map((r): Lapisan => ({
+      jaringan: r.jaringan as Jaringan,
+      kode: r.kode as string,
+      nama: (r.nama as string) ?? (r.kode as string),
+      ulp: (r.ulp as string) ?? "",
+      feeder: (r.feeder as string) ?? "(tanpa penyulang)",
+      jumlahTiang: Number(r.jumlah_tiang ?? 0),
+      latMin: r.lat_min !== null ? Number(r.lat_min) : null,
+      latMaks: r.lat_maks !== null ? Number(r.lat_maks) : null,
+      lngMin: r.lng_min !== null ? Number(r.lng_min) : null,
+      lngMaks: r.lng_maks !== null ? Number(r.lng_maks) : null,
+    }));
+  }, [ulp]);
 
   const muat = useCallback(async () => {
+    const urut = ++urutRef.current;
     setLoading(true);
     setError(null);
+    // Rute penyulang yang tiangnya berubah dihitung ulang (`scripts/peta-jaringan-hidup.sql`)
+    // BERSAMAAN dengan membaca daftar — dulu daftar menunggu ini selesai. Kalau
+    // ada yang dihitung ulang, daftar dibaca sekali lagi diam-diam (jumlah tiang &
+    // batas penyulang ikut rute). Gagal = daftar lama tetap dipakai.
+    const segar = Promise.resolve(supabaseBrowser.rpc("segarkan_rute_kotor"))
+      .then(({ data }) => Number(data) || 0, () => 0);
     try {
-      // Rute & daftar penyulang dihitung ulang dulu untuk penyulang yang tiangnya
-      // berubah sejak terakhir (`scripts/peta-jaringan-hidup.sql`). Gagal = daftar
-      // lama tetap dibaca; peta tidak boleh gagal dibuka karena ini.
-      await supabaseBrowser.rpc("segarkan_rute_kotor");
-      const baris = await fetchAllRows<Record<string, unknown>>(() => {
-        const q = supabaseBrowser
-          .from("peta_daftar")
-          .select("jaringan,kode,nama,ulp,feeder,jumlah_tiang,lat_min,lat_maks,lng_min,lng_maks")
-          .order("jaringan")
-          .order("kode");
-        return ulp ? q.eq("ulp", ulp) : q;
-      });
-
-      setDaftar(
-        baris.map((r) => ({
-          jaringan: r.jaringan as Jaringan,
-          kode: r.kode as string,
-          nama: (r.nama as string) ?? (r.kode as string),
-          ulp: (r.ulp as string) ?? "",
-          feeder: (r.feeder as string) ?? "(tanpa penyulang)",
-          jumlahTiang: Number(r.jumlah_tiang ?? 0),
-          latMin: r.lat_min !== null ? Number(r.lat_min) : null,
-          latMaks: r.lat_maks !== null ? Number(r.lat_maks) : null,
-          lngMin: r.lng_min !== null ? Number(r.lng_min) : null,
-          lngMaks: r.lng_maks !== null ? Number(r.lng_maks) : null,
-        })),
-      );
+      const d = await bacaDaftar();
+      if (urut === urutRef.current) setDaftar(d);
     } catch (e) {
+      if (urut !== urutRef.current) return;
       const pesan = e instanceof Error ? e.message : String(e);
       setError(
         pesan.includes("feeder")
@@ -115,9 +126,17 @@ export function usePetaDaftar(ulp: string | null) {
       );
       setDaftar([]);
     } finally {
-      setLoading(false);
+      if (urut === urutRef.current) setLoading(false);
     }
-  }, [ulp]);
+    void segar.then(async (n) => {
+      if (n <= 0 || urut !== urutRef.current) return;
+      try {
+        const d = await bacaDaftar();
+        if (urut === urutRef.current) setDaftar(d);
+      } catch { /* daftar pertama tetap dipakai */ }
+      setVersiRute((v) => v + 1);
+    });
+  }, [bacaDaftar]);
 
   useEffect(() => {
     void muat();
@@ -154,5 +173,5 @@ export function usePetaDaftar(ulp: string | null) {
     [daftar],
   );
 
-  return { daftar, perFolder, semuaLapisan, loading, error, muat };
+  return { daftar, perFolder, semuaLapisan, loading, error, muat, versiRute };
 }

@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect } from "react";
 import { CircleMarker, Marker, Polyline, Tooltip, useMapEvents } from "react-leaflet";
+import { WARNA_JTR, WARNA_SURVEY } from "../_ui";
 import L from "leaflet";
 import { bentukGardu, jangkauGardu } from "@/lib/gambarSurvey/simbolGardu";
 import { bawaJtm, bawaJtr, posisiInduk, type TitikSurvey } from "@/lib/surveyJaringan";
@@ -17,8 +18,7 @@ import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
  * = tiang baru. Dirender HANYA saat survey terbuka (useMapEvents tanpa syarat).
  */
 
-export const WARNA_SURVEY = "#F97316";
-export const WARNA_JTR = "#2563EB";
+export { WARNA_JTR, WARNA_SURVEY };
 const UNGU = "#7C3AED";
 const HIJAU = "#16A34A";
 

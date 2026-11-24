@@ -6,7 +6,7 @@ import type { Penanda } from "../_hooks/usePenandaJtm";
 import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS } from "../_ui";
 import IsianGarduSurvey from "./IsianGarduSurvey";
-import { WARNA_JTR, WARNA_SURVEY } from "./LapisanSurvey";
+import { WARNA_JTR, WARNA_SURVEY } from "../_ui";
 
 /** Isian satu tiang survey (dark panel): Tiang JTM / JTR, kabel dari induk
  *  (JTM, JTR, JTM + JTR), konduktor & jurusan. Isian tiang/kabel jadi bawaan

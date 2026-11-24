@@ -9,7 +9,7 @@ import type { SurveyPetaState } from "../_hooks/useSurveyPeta";
 import { BIDANG, GARIS, PANEL } from "../_ui";
 import PilihLatarSurvey from "./PilihLatarSurvey";
 import SuntingTitikSurvey from "./SuntingTitikSurvey";
-import { WARNA_JTR, WARNA_SURVEY } from "./LapisanSurvey";
+import { WARNA_JTR, WARNA_SURVEY } from "../_ui";
 
 /** Kartu Survey Jaringan (jenis Jaringan Baru) di kanan peta: judul, mode gambar, isian tiang terpilih, simpan. */
 
