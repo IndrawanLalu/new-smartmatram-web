@@ -33,6 +33,30 @@ export interface HasilJadikanWo {
   ditolak: { objek: string; sebab: string }[];
 }
 
+export interface HasilTeruskan {
+  tugas: number;
+  temuan: number;
+  /** Ejaan regu tersimpan, mis. "PERABASAN · RABAS 1". */
+  regu: string;
+  ditolak: { objek: string; sebab: string }[];
+}
+
+const keTemuan = (baris: BarisPerbaikan[]) =>
+  baris.map((b) => ({
+    gardu_kode: b.gardu_kode,
+    ulp: b.ulp,
+    item_kode: b.item_kode,
+    bagian: b.bagian,
+    sumber: b.sumber,
+    temuan_id: b.temuan_id,
+    item_nama: b.item_nama,
+    nilai_label: b.nilai_label ?? b.nilai,
+    catatan: [b.catatan, b.pr_keterangan].filter((t) => t && t.trim()).join(" · ") || null,
+    ditemukan_pada: b.ditemukan_pada,
+    foto_url: b.foto_url,
+    prioritas: b.prioritas,
+  }));
+
 export function useJadikanWo() {
   const [memproses, setMemproses] = useState(false);
 
@@ -40,20 +64,7 @@ export function useJadikanWo() {
     setMemproses(true);
     try {
       const { data, error } = await supabaseBrowser.rpc("jadikan_wo_temuan_gardu", {
-        p_temuan: baris.map((b) => ({
-          gardu_kode: b.gardu_kode,
-          ulp: b.ulp,
-          item_kode: b.item_kode,
-          bagian: b.bagian,
-          sumber: b.sumber,
-          temuan_id: b.temuan_id,
-          item_nama: b.item_nama,
-          nilai_label: b.nilai_label ?? b.nilai,
-          catatan: [b.catatan, b.pr_keterangan].filter((t) => t && t.trim()).join(" · ") || null,
-          ditemukan_pada: b.ditemukan_pada,
-          foto_url: b.foto_url,
-          prioritas: b.prioritas,
-        })),
+        p_temuan: keTemuan(baris),
         p_tahun: o.tahun,
         p_bulan: o.bulan,
         p_regu: o.regu,
@@ -70,5 +81,26 @@ export function useJadikanWo() {
     }
   }, []);
 
-  return { kirim, memproses };
+  /**
+   * Regu selain HARGAR (24 Nov 2026, scripts/hargardu-temuan-ke-regu.sql):
+   * PERABASAN → tugas pohon (inspeksi_pohon), lainnya → tugas regu (inspeksi).
+   * Satu tugas per gardu; tidak masuk WO bulanan Pemeliharaan Gardu.
+   */
+  const teruskan = useCallback(async (baris: BarisPerbaikan[], peran: string, regu: string, catatan: string, oleh: string): Promise<HasilTeruskan> => {
+    setMemproses(true);
+    try {
+      const { data, error } = await supabaseBrowser.rpc("teruskan_temuan_gardu", {
+        p_temuan: keTemuan(baris), p_peran: peran, p_regu: regu || null, p_catatan: catatan || null, p_oleh: oleh,
+      });
+      if (error) {
+        throw new Error(/teruskan_temuan_gardu/.test(error.message) ? "Jalankan scripts/hargardu-temuan-ke-regu.sql di Supabase dulu." : error.message);
+      }
+      const h = data as HasilTeruskan;
+      return { ...h, ditolak: h.ditolak ?? [] };
+    } finally {
+      setMemproses(false);
+    }
+  }, []);
+
+  return { kirim, teruskan, memproses };
 }

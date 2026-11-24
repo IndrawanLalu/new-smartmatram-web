@@ -39,6 +39,7 @@ export const NAMA_JALUR: Record<string, string> = {
   wo_har: "WO Pemeliharaan",
   wo_tugas: "WO Tindak Lanjut",
   normal: "Ditandai normal",
+  tugas: "Ditugaskan ke regu",
 };
 
 const tgl = (iso: string | null) =>
@@ -354,8 +355,8 @@ export default function PerluPerbaikan({ user }: { user: CurrentUser }) {
         <JadikanWoModal
           baris={tugasSatu ? [tugasSatu] : barisTerpilih}
           onTutup={() => { setModal(false); setTugasSatu(null); }}
-          onSelesai={(kunci, pada) => {
-            tandaiSudahWo(kunci, pada);
+          onSelesai={(kunci, pada, patch) => {
+            tandaiSudahWo(kunci, pada, patch);
             if (!tugasSatu) setTerpilih(new Set());
           }}
           onGagal={() => {
@@ -448,8 +449,12 @@ function Baris({ b, pilihAktif, bisaPilih, terpilih, onPilih, onRincian, tampilU
           </span>
         ) : b.sudah_di_wo ? (
           <span className="inline-flex flex-col text-xs">
-            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 w-fit">Sudah di-WO {tgl(b.ditugaskan_pada)}</span>
-            <span className="text-[11px] text-ink-muted mt-0.5">{NAMA_JALUR[b.jalur ?? ""] ?? "WO Tindak Lanjut"}</span>
+            <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 w-fit">
+              {b.jalur === "tugas" ? "Ditugaskan" : "Sudah di-WO"} {tgl(b.ditugaskan_pada)}
+            </span>
+            <span className="text-[11px] text-ink-muted mt-0.5">
+              {b.jalur === "tugas" ? `Regu ${b.tugas_regu ?? "—"}` : NAMA_JALUR[b.jalur ?? ""] ?? "WO Tindak Lanjut"}
+            </span>
           </span>
         ) : (
           <span className="text-xs text-ink-muted">Belum ditugaskan</span>

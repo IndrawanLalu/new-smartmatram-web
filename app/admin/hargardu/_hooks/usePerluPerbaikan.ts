@@ -38,6 +38,8 @@ export interface BarisPerbaikan {
   prioritas: string | null;
   petugas_nama: string | null;
   hasil_catatan: string | null;
+  /** Jalur tugas: regu penerima, mis. "PERABASAN · RABAS 1" (hargardu-temuan-ke-regu.sql). */
+  tugas_regu?: string | null;
   /** Hanya baris "Sudah dikerjakan" (gardu_temuan_dikerjakan). */
   dikerjakan?: { pada: string | null; oleh: string | null; fotoSesudah: string | null; jalur: string | null; id: string };
 }
@@ -98,7 +100,7 @@ export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
     setLoading(true);
     setError(null);
     try {
-      const [rows, selesai] = await Promise.all([
+      const [rows, selesai, tugas] = await Promise.all([
         fetchAllRows<BarisPerbaikan>(() => {
           // Urutannya ikut kunci baris SELURUHNYA — termasuk `ulp`. Paginasi
           // PostgREST memotong per 1000 baris, dan urutan yang tidak unik membuat
@@ -118,8 +120,22 @@ export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
           const q = supabaseBrowser.from("gardu_temuan_dikerjakan").select("*").order("id");
           return unit ? q.eq("ulp", unit) : q;
         }).catch(() => [] as BarisDikerjakan[]),
+        // Regu penerima temuan yang diteruskan (jalur tugas, hargardu-temuan-ke-regu.sql).
+        // Gagal (SQL belum dijalankan) = tanpa nama regu, daftar tetap tampil.
+        fetchAllRows<{ gardu_kode: string; ulp: string; item_kode: string; bagian: string; tugas_regu: string | null }>(() => {
+          const q = supabaseBrowser
+            .from("tindak_lanjut_gardu")
+            .select("gardu_kode,ulp,item_kode,bagian,tugas_regu")
+            .eq("jalur", "tugas").eq("status", "Di-WO")
+            .order("id");
+          return unit ? q.ilike("ulp", unit) : q;
+        }).catch(() => []),
       ]);
-      setSemua([...rows, ...selesai.map(dariDikerjakan)]);
+      const regu = new Map(tugas.map((t) => [`${t.gardu_kode}|${t.ulp}|${t.item_kode}|${t.bagian}`.toUpperCase(), t.tugas_regu]));
+      const isi = regu.size === 0 ? rows : rows.map((b) => (b.jalur === "tugas"
+        ? { ...b, tugas_regu: regu.get(`${b.gardu_kode}|${b.ulp}|${b.item_kode}|${b.bagian}`.toUpperCase()) ?? null }
+        : b));
+      setSemua([...isi, ...selesai.map(dariDikerjakan)]);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Gagal memuat pekerjaan tertunda");
       setSemua([]);
@@ -194,11 +210,11 @@ export function usePerluPerbaikan(user: CurrentUser, saring: SaringPerbaikan) {
    * Tandai baris-baris ini sudah di-WO tanpa memuat ulang seluruh daftar —
    * satu penugasan tidak mengubah baris yang lain.
    */
-  const tandaiSudahWo = useCallback((kunci: string[], pada: string) => {
+  const tandaiSudahWo = useCallback((kunci: string[], pada: string, patch?: Partial<BarisPerbaikan>) => {
     const set = new Set(kunci);
     setSemua((prev) =>
       prev.map((b) =>
-        set.has(kunciBaris(b)) ? { ...b, sudah_di_wo: true, ditugaskan_pada: pada } : b,
+        set.has(kunciBaris(b)) ? { ...b, sudah_di_wo: true, ditugaskan_pada: pada, tl_status: "Di-WO", ...patch } : b,
       ),
     );
   }, []);

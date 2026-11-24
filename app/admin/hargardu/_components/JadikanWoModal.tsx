@@ -6,15 +6,19 @@ import ModalShell from "@/app/admin/_components/ModalShell";
 import { useToast } from "@/app/admin/_components/Toast";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { useRoles } from "@/app/admin/_hooks/useRoles";
+import PilihRegu, { PERAN_PER_REGU } from "@/app/admin/_components/PilihRegu";
 import { BTN_GHOST, BTN_PRIMARY, EYEBROW, FIELD } from "@/app/admin/_ui";
 import { useJadikanWo } from "../_hooks/useJadikanWo";
 import { kunciBaris, type BarisPerbaikan } from "../_hooks/usePerluPerbaikan";
+
+/** Regu yang lewat WO Perbaikan / WO Pemeliharaan Gardu; regu lain menerima TUGAS. */
+const REGU_WO = "HARGAR";
 
 interface Props {
   baris: BarisPerbaikan[];
   onTutup: () => void;
   /** Menandai baris terpilih tanpa memuat ulang seluruh daftar. */
-  onSelesai: (kunci: string[], pada: string) => void;
+  onSelesai: (kunci: string[], pada: string, patch?: Partial<BarisPerbaikan>) => void;
   /**
    * Dipanggil kalau penugasan gagal di tengah jalan. Sebagian baris WO bisa
    * terlanjur dibuat, jadi layar harus dibaca ulang dari basis data — menebak
@@ -29,11 +33,16 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
   const user = useCurrentUser();
   const toast = useToast();
   const { roles } = useRoles();
-  const { kirim, memproses } = useJadikanWo();
+  const { kirim, teruskan, memproses } = useJadikanWo();
 
   const [regu, setRegu] = useState("");
   const [periode, setPeriode] = useState(bulanIni());
   const [catatan, setCatatan] = useState("");
+  /** Nama regu (RABAS 1 …) untuk peran yang menerima tugas per regu. */
+  const [tim, setTim] = useState("");
+
+  const jalurWo = regu.toUpperCase() === REGU_WO;
+  const perRegu = PERAN_PER_REGU.includes(regu.toUpperCase());
 
   const eksekutor = useMemo(() => roles.filter((r) => r.is_eksekutor), [roles]);
 
@@ -44,8 +53,33 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
     return [...m].sort((a, b) => a[0].localeCompare(b[0]));
   }, [baris]);
 
+  const ulpTunggal = perUlp.length === 1 ? perUlp[0][0] : null;
+  const siap = !!regu && (!perRegu || (!!tim && !!ulpTunggal));
+
+  const simpanTugas = async () => {
+    try {
+      const h = await teruskan(baris, regu, tim, catatan.trim(), user.name ?? user.email ?? "");
+      if (h.tugas > 0) {
+        toast.success(`${h.temuan} temuan di ${h.tugas} gardu ditugaskan ke ${h.regu} — muncul di daftar tugas HP regu itu.`);
+      }
+      if (h.ditolak.length > 0) toast.error(`${h.ditolak.length} gardu dilewati — ${h.ditolak.map((d) => `${d.objek}: ${d.sebab}`).join(" · ")}`);
+      const lewat = new Set(h.ditolak.map((d) => d.objek.toUpperCase()));
+      onSelesai(
+        baris.filter((b) => !lewat.has(b.gardu_kode.toUpperCase())).map(kunciBaris),
+        new Date().toISOString(),
+        { jalur: "tugas", tugas_regu: h.regu },
+      );
+      onTutup();
+    } catch (e) {
+      toast.error(`Gagal menugaskan: ${e instanceof Error ? e.message : e}. Daftar dimuat ulang.`);
+      onGagal();
+      onTutup();
+    }
+  };
+
   const simpan = async () => {
-    if (!regu) return;
+    if (!siap) return;
+    if (!jalurWo) return simpanTugas();
     const [tahun, bulan] = periode.split("-").map(Number);
     try {
       const h = await kirim(baris, {
@@ -87,31 +121,39 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
           <button
             onClick={() => void simpan()}
             className={BTN_PRIMARY}
-            disabled={!regu || memproses}
+            disabled={!siap || memproses}
           >
             {memproses ? (
               <Loader2 size={15} className="animate-spin" />
             ) : (
               <ClipboardList size={15} />
             )}
-            Jadikan WO
+            {jalurWo || !regu ? "Jadikan WO" : "Tugaskan"}
           </button>
         </>
       }
     >
+      {regu && !jalurWo ? (
+        <p className="text-xs text-ink-soft">
+          Regu <b>{regu}</b> menerima temuan ini sebagai <b>tugas</b>{regu.toUpperCase() === "PERABASAN" ? " pohon" : ""} di HP
+          — satu tugas per gardu. Tidak masuk WO Pemeliharaan Gardu dan tidak dihitung realisasinya. Begitu regu
+          menyelesaikan tugasnya, temuan di sini ikut menjadi <b>Sudah dikerjakan</b>.
+        </p>
+      ) : (
       <p className="text-xs text-ink-soft">
         Jalurnya dipilih <b>otomatis per gardu</b> menurut masa garansi Pemeliharaan Gardu (Atur SLA):
         gardu yang <b>masih dalam garansi</b> jadi <b>WO Perbaikan</b> — regu hanya memperbaiki temuan ini,
         tidak dihitung realisasi. Yang <b>di luar garansi</b> masuk <b>WO Pemeliharaan Gardu</b> bulan itu
         (formulir lengkap, dihitung realisasi). Keduanya muncul di HP regu, tab <b>WO temuan</b>.
       </p>
+      )}
 
       <div className="grid sm:grid-cols-2 gap-3">
         <div>
           <label className={EYEBROW}>Regu pelaksana</label>
           <select
             value={regu}
-            onChange={(e) => setRegu(e.target.value)}
+            onChange={(e) => { setRegu(e.target.value); setTim(""); }}
             className={`${FIELD} mt-1 block w-full`}
           >
             <option value="">Pilih regu…</option>
@@ -123,6 +165,9 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
           </select>
         </div>
 
+        {perRegu ? (
+          <PilihRegu peran={regu} ulp={ulpTunggal} nilai={tim} onPilih={setTim} />
+        ) : jalurWo || !regu ? (
         <div>
           <label className={EYEBROW}>Masuk WO bulan</label>
           <input
@@ -132,6 +177,7 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
             className={`${FIELD} mt-1 block w-full`}
           />
         </div>
+        ) : null}
       </div>
 
       <div>
@@ -146,8 +192,8 @@ export default function JadikanWoModal({ baris, onTutup, onSelesai, onGagal }: P
 
       <div className="rounded-xl border border-line overflow-hidden">
         <div className="bg-surface px-4 py-2 text-xs text-ink-soft">
-          {perUlp.map(([u, n]) => `${u} (${n})`).join(" · ")} — WO bulan itu dipakai lagi bila sudah ada,
-          tidak dibuat baru tiap kali.
+          {perUlp.map(([u, n]) => `${u} (${n})`).join(" · ")}
+          {jalurWo || !regu ? " — WO bulan itu dipakai lagi bila sudah ada, tidak dibuat baru tiap kali." : ""}
         </div>
         <ul className="max-h-52 overflow-y-auto divide-y divide-line">
           {baris.map((b) => (
