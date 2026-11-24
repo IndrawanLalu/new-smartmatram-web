@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { ClipboardList, ClipboardPlus, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
+import { CalendarCheck, ClipboardList, ClipboardPlus, Download, LayoutDashboard, ListChecks, Loader2, Settings2, TriangleAlert } from "lucide-react";
+import { hariIniWita } from "@/app/admin/_components/KepalaUrut";
 import { useCurrentUser } from "@/app/admin/_context/UserContext";
 import { CHIP, CHIP_OFF, CHIP_ON } from "@/app/admin/_ui";
 import { usePemeliharaanJaringan, NAMA_JENIS, STATUS_TABEL, type JenisJaringan } from "./_hooks/usePemeliharaanJaringan";
@@ -35,6 +36,7 @@ import { nadaStatus } from "@/lib/statusUi";
 const TABS = [
   { key: "daftar", label: "Daftar Pemeliharaan", icon: ListChecks },
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { key: "hari", label: "Hari ini", icon: CalendarCheck },
   { key: "tugas", label: "Tugas", icon: ClipboardList },
   { key: "pengaturan", label: "Pengaturan Kategori", icon: Settings2 },
 ] as const;
@@ -69,14 +71,27 @@ export default function PemeliharaanJaringanPage() {
 
   const dashboard = tab === "dashboard";
   const tugas = tab === "tugas";
+  const hari = tab === "hari";
+  // Hari ini = bulan berjalan: catatan hari ini ada di daftar bulan itu, jadi
+  // detail & verifikasi memakai daftar hidup yang sama (tanpa kueri kedua).
+  const pilihTab = (k: TabKey) => {
+    if (k === "hari") {
+      const n = new Date();
+      if (o.tahun !== n.getFullYear()) o.setTahun(n.getFullYear());
+      if (o.bulan !== n.getMonth() + 1) o.setBulan(n.getMonth() + 1);
+    }
+    setTab(k);
+  };
+  const hariIni = hariIniWita();
+  const pekerjaanHariIni = o.semua.filter((b) => b.tgl === hariIni && b.status !== "Dibatalkan");
   // Penyaring khusus catatan pekerjaan (cari, jenis, status) tidak berlaku di
   // Dashboard maupun Tugas — Tugas punya chip & cari sendiri.
-  const saringCatatan = !dashboard && !tugas;
+  const saringCatatan = !dashboard && !tugas && !hari;
 
   return (
     <div className="text-ink flex flex-col gap-4">
       <IsiKepala>
-        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={setTab} />
+        <TabPil tab={TABS.map((t) => ({ kunci: t.key, label: t.label, ikon: t.icon }))} aktif={tab} onPilih={pilihTab} />
       </IsiKepala>
 
       {tab === "pengaturan" ? (
@@ -87,7 +102,7 @@ export default function PemeliharaanJaringanPage() {
             <PilihUlp nilai={o.ulp} onUbah={o.setUlp} daftar={o.daftarUlp} />
             {/* Dashboard selalu setahun penuh — penyaring bulan disembunyikan
                 di sana supaya tidak dikira ikut berlaku. */}
-            {dashboard ? (
+            {hari ? null : dashboard ? (
               <PilihTahun tahun={o.tahun} daftarTahun={o.daftarTahun} onTahun={o.setTahun} />
             ) : (
               <PilihPeriode tahun={o.tahun} bulan={o.bulan} daftarTahun={o.daftarTahun} onTahun={o.setTahun} onBulan={o.setBulan} />
@@ -120,7 +135,7 @@ export default function PemeliharaanJaringanPage() {
               <button
                 onClick={() => setCatat(true)}
                 className="ml-auto inline-flex items-center gap-2 h-9 px-4 rounded-xl border border-line bg-white text-[13px] font-semibold text-ink hover:border-brand-400 hover:text-brand-700 transition-colors"
-                title="Pekerjaan tim yang tidak memakai aplikasi (PDKB, Yantek, kontraktor)"
+                title="Pekerjaan tim yang tidak memakai aplikasi (Yantek, kontraktor) — PDKB di halaman PDKB"
               >
                 <ClipboardPlus size={13} /> Catat pekerjaan tim lain
               </button>
@@ -136,7 +151,14 @@ export default function PemeliharaanJaringanPage() {
             </div>
           )}
 
-          {tugas ? (
+          {hari ? (
+            <>
+              <p className="text-sm font-semibold text-ink">Tugas / WO hari ini</p>
+              <TugasHarjar key={`hari-${o.ulp}`} ulp={o.ulp} tahun={o.tahun} bulan={o.bulan} oleh={oleh} hariIni />
+              <p className="text-sm font-semibold text-ink mt-2">Pekerjaan dikerjakan hari ini</p>
+              <TabelPemeliharaan baris={pekerjaanHariIni} loading={o.loading} onDetail={(b) => setIdDetail(b.id)} />
+            </>
+          ) : tugas ? (
             <TugasHarjar key={`${o.ulp}`} ulp={o.ulp} tahun={o.tahun} bulan={o.bulan} oleh={oleh} />
           ) : dashboard ? (
             // key: ganti ULP/tahun = pasang ulang, jadi keadaan "memuat" tidak

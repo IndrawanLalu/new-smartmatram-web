@@ -99,7 +99,11 @@ export function useDashboardPemeliharaan(ulp: string, tahun: number, kategori: K
     // Enam teratas + "Lainnya" — daftar panjang kategori kecil hanya menenggelamkan yang penting.
     const perKategori: ItemBatang[] = urut.slice(0, 6).map(([k, n]) => ({ label: label.get(k) ?? k, jumlah: n }));
     const sisa = urut.slice(6).reduce((a, [, n]) => a + n, 0);
-    if (sisa > 0) perKategori.push({ label: "Lainnya", jumlah: sisa });
+    // Kategori master bernama "Lainnya" ikut di enam teratas → sisanya digabung
+    // ke baris itu, bukan baris "Lainnya" kedua.
+    const lain = perKategori.find((i) => i.label.trim().toLowerCase() === "lainnya");
+    if (sisa > 0 && lain) lain.jumlah += sisa;
+    else if (sisa > 0) perKategori.push({ label: "Lainnya", jumlah: sisa });
 
     return {
       loading,

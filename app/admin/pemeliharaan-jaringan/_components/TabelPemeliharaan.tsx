@@ -6,6 +6,7 @@ import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import { CARD } from "@/app/admin/_ui";
 import { NAMA_JENIS, type BarisPemeliharaan, type StatusTabel } from "../_hooks/usePemeliharaanJaringan";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
+import KepalaUrut, { urutTanggal, type ArahUrut } from "@/app/admin/_components/KepalaUrut";
 
 /**
  * Daftar pemeliharaan jaringan — pola sama dengan Optimasi Trafo
@@ -48,9 +49,10 @@ interface Props {
 
 export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
   const [halaman, setHalaman] = useState(1);
+  const [arah, setArah] = useState<ArahUrut>("baru");
   const total = Math.max(1, Math.ceil(baris.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
-  const tampil = baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
+  const tampil = urutTanggal(baris, (b) => b.tgl, arah).slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
 
   if (loading) {
     return (
@@ -78,7 +80,7 @@ export default function TabelPemeliharaan({ baris, loading, onDetail }: Props) {
         <table className="w-full border-collapse text-sm">
           <thead className="kepala-kit bg-surface">
             <tr>
-              <th className={TH}><IkonKolom teks="Tanggal" />Tanggal</th>
+              <KepalaUrut label="Tanggal" arah={arah} onUbah={(a) => { setArah(a); setHalaman(1); }} className={TH} />
               <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
               <th className={TH}><IkonKolom teks="Jenis" />Jenis</th>
               <th className={TH}><IkonKolom teks="Kategori" />Kategori</th>

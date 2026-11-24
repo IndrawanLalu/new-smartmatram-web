@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import type { JenisJaringan } from "./usePemeliharaanJaringan";
+import { hariIniWita } from "@/app/admin/_components/KepalaUrut";
 
 /**
  * Tab "Tugas" — semua tugas regu HARJAR: yang lahir dari temuan inspeksi dan
@@ -45,6 +46,8 @@ export interface TugasHarjar {
   prioritas: string | null;
   status: string;
   ditugaskan: string | null;
+  /** Tanggal tabel & urutan: ditugaskan → dibuat → tanggal temuan (tugas lama). */
+  tanggal: string | null;
   pembuat: string | null;
   tim: string | null;
   foto: string | null;
@@ -54,6 +57,8 @@ export interface TugasHarjar {
   catatanId: string | null;
   catatanPetugas: string | null;
   catatanTgl: string | null;
+  /** Tanggal tugas dikerjakan (inspeksi.tgl_eksekusi). */
+  dikerjakanTgl: string | null;
 }
 
 export interface IsianTugas {
@@ -84,6 +89,7 @@ const petaTugas = (r: Record<string, unknown>): TugasHarjar => {
     prioritas: teks(r.prioritas),
     status: (r.status as string) ?? "",
     ditugaskan: teks(r.assigned_at),
+    tanggal: teks(r.assigned_at) ?? teks(r.dibuat_at) ?? teks(r.tgl_temuan),
     pembuat: teks(r.nama_inspektor),
     tim: teks(r.team_name),
     foto: teks(r.foto_sebelum_url),
@@ -93,6 +99,7 @@ const petaTugas = (r: Record<string, unknown>): TugasHarjar => {
     catatanId: teks(r.catatan_id),
     catatanPetugas: teks(r.catatan_petugas),
     catatanTgl: teks(r.catatan_tgl),
+    dikerjakanTgl: teks(r.tgl_eksekusi),
   };
 };
 
@@ -118,7 +125,9 @@ export function useTugasHarjar(ulp: string, tahun: number, bulan: number) {
       let x = supabaseBrowser
         .from("harjar_tugas")
         .select("*")
-        .or(`status.in.("Ditugaskan","Dalam Proses"),and(assigned_at.gte.${awal},assigned_at.lt.${akhir})`)
+        // Belum selesai SELALU ikut (status lama Temuan / Perlu Tindakan juga);
+        // tanpa assigned_at → bulan dibuatnya (harjar-tugas-tanggal.sql).
+        .or(`status.is.null,status.not.in.("Selesai","Dibatalkan","Batal"),and(assigned_at.gte.${awal},assigned_at.lt.${akhir}),and(assigned_at.is.null,dibuat_at.gte.${awal},dibuat_at.lt.${akhir}),tgl_eksekusi.eq.${hariIniWita()}`)
         .order("assigned_at", { ascending: false })
         .order("id");
       if (ulp !== "SEMUA") x = x.eq("ulp", ulp);

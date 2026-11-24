@@ -8,6 +8,7 @@ import { tanggal } from "./TabelPemeliharaan";
 import BuatTugasModal from "./BuatTugasModal";
 import DetailTugasModal from "./DetailTugasModal";
 import IkonKolom from "@/app/admin/_kit/IkonKolom";
+import KepalaUrut, { hariIniWita, tglAman, tglWita, urutTanggal, type ArahUrut } from "@/app/admin/_components/KepalaUrut";
 
 /**
  * Tab "Tugas": semua tugas regu HARJAR (dari temuan & manual) + "Buat Tugas".
@@ -30,19 +31,29 @@ interface Props {
   tahun: number;
   bulan: number;
   oleh: string;
+  /** Tab "Hari ini": hanya tugas yang ditugaskan atau dikerjakan hari ini. */
+  hariIni?: boolean;
 }
 
-export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
+/** Tugas "hari ini": ditugaskan (atau dibuat) hari ini, atau dikerjakan hari ini. */
+export const tugasHariIni = (t: { tanggal: string | null; catatanTgl: string | null; dikerjakanTgl: string | null }) => {
+  const h = hariIniWita();
+  return tglWita(t.tanggal) === h || tglWita(t.catatanTgl) === h || tglWita(t.dikerjakanTgl) === h;
+};
+
+export default function TugasHarjar({ ulp, tahun, bulan, oleh, hariIni }: Props) {
   const o = useTugasHarjar(ulp, tahun, bulan);
   const [buat, setBuat] = useState(false);
   const [idDetail, setIdDetail] = useState<string | null>(null);
   const [halaman, setHalaman] = useState(1);
+  const [arah, setArah] = useState<ArahUrut>("baru");
 
   // Modal membaca dari daftar LENGKAP yang hidup (butir 7).
   const detail = idDetail ? (o.semua.find((t) => t.id === idDetail) ?? null) : null;
-  const total = Math.max(1, Math.ceil(o.baris.length / PAGE_SIZE));
+  const daftar = hariIni ? o.baris.filter(tugasHariIni) : o.baris;
+  const total = Math.max(1, Math.ceil(daftar.length / PAGE_SIZE));
   const hal = Math.min(halaman, total);
-  const tampil = o.baris.slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
+  const tampil = urutTanggal(daftar, (t) => t.tanggal, arah).slice((hal - 1) * PAGE_SIZE, hal * PAGE_SIZE);
 
   return (
     <>
@@ -70,7 +81,9 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
       </div>
 
       <p className="text-[11px] text-ink-muted -mt-2">
-        Tugas yang belum dikerjakan selalu tampil, apa pun bulannya. Yang selesai atau dibatalkan mengikuti bulan tugas dibuat.
+        {hariIni
+          ? "Tugas yang ditugaskan atau dikerjakan hari ini."
+          : "Tugas yang belum dikerjakan selalu tampil, apa pun bulannya. Yang selesai atau dibatalkan mengikuti bulan tugas dibuat."}
       </p>
 
       {o.loading ? (
@@ -86,9 +99,9 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
             <button onClick={o.muat} className="mt-2 font-semibold text-navy-600 hover:text-navy-500">Muat ulang</button>
           </div>
         </div>
-      ) : o.baris.length === 0 ? (
+      ) : daftar.length === 0 ? (
         <div className={`${CARD} p-10 text-center`}>
-          <p className="text-sm font-semibold text-ink">Tidak ada tugas</p>
+          <p className="text-sm font-semibold text-ink">{hariIni ? "Tidak ada tugas hari ini" : "Tidak ada tugas"}</p>
           <p className="text-xs text-ink-soft mt-1.5 max-w-md mx-auto">
             Tugas lahir dari temuan inspeksi yang ditugaskan ke HARJAR, atau dibuat lewat tombol &ldquo;Buat Tugas&rdquo;.
           </p>
@@ -99,7 +112,7 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
             <table className="w-full border-collapse text-sm">
               <thead className="kepala-kit bg-surface">
                 <tr>
-                  <th className={TH}><IkonKolom teks="Dibuat" />Dibuat</th>
+                  <KepalaUrut label="Tanggal" arah={arah} onUbah={(a) => { setArah(a); setHalaman(1); }} className={TH} />
                   <th className={TH}><IkonKolom teks="Penyulang" />Penyulang</th>
                   <th className={TH}><IkonKolom teks="Jenis" />Jenis</th>
                   <th className={TH}>Pekerjaan</th>
@@ -113,7 +126,10 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
               <tbody>
                 {tampil.map((t: Tugas) => (
                   <tr key={t.id} onClick={() => setIdDetail(t.id)} className="cursor-pointer hover:bg-navy-50/60 transition-colors">
-                    <td className={`${TD} text-xs text-ink font-medium whitespace-nowrap`}>{tanggal(t.ditugaskan)}</td>
+                    <td className={`${TD} text-xs text-ink font-medium whitespace-nowrap`}>
+                      {tglAman(t.tanggal)}
+                      {!t.ditugaskan && t.tanggal && <span className="block text-[10px] text-ink-muted">tanggal dibuat</span>}
+                    </td>
                     <td className={TD}>
                       <p className="font-semibold text-ink">{t.penyulang}</p>
                       <p className="text-[11px] text-ink-muted">{t.ulp}</p>
@@ -141,7 +157,7 @@ export default function TugasHarjar({ ulp, tahun, bulan, oleh }: Props) {
             </table>
           </div>
           <div className="flex items-center justify-between gap-2 px-4 py-2.5 text-xs text-ink-soft">
-            <span>{(hal - 1) * PAGE_SIZE + 1}–{Math.min(hal * PAGE_SIZE, o.baris.length)} dari {o.baris.length}</span>
+            <span>{(hal - 1) * PAGE_SIZE + 1}–{Math.min(hal * PAGE_SIZE, daftar.length)} dari {daftar.length}</span>
             <div className="flex items-center gap-1">
               <button onClick={() => setHalaman(hal - 1)} disabled={hal <= 1} className="p-1.5 rounded-lg hover:bg-surface disabled:opacity-30" aria-label="Halaman sebelumnya">
                 <ChevronLeft size={15} />

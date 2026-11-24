@@ -185,6 +185,10 @@ export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
   };
 };
 
+/** Penanda pemindahan dari scripts/pdkb-pindah-data-lama.sql. */
+export const dipindahKePdkb = (r: Record<string, unknown>) =>
+  r.status === "Dibatalkan" && String(r.catatan ?? "").includes("dipindah ke halaman PDKB");
+
 export function usePemeliharaanJaringan(user: CurrentUser) {
   const bolehSemua = canSeeAllUnits(user.role);
   const sekarang = new Date();
@@ -249,7 +253,9 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
     tarik().then(({ dat, ref }) => {
       if (!hidup) return;
       setGalat(dat.error);
-      setSemua(dat.data.map(petaBaris));
+      // Catatan PDKB yang dipindah ke halaman PDKB (pdkb-pindah-data-lama.sql)
+      // bukan pekerjaan HARJAR — tidak ditampilkan, juga di chip Dibatalkan.
+      setSemua(dat.data.filter((r) => !dipindahKePdkb(r)).map(petaBaris));
       setKategori(
         (ref.data ?? []).map((r) => ({
           kode: r.kode as string,

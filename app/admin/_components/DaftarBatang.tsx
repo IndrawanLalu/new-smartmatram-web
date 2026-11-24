@@ -45,8 +45,10 @@ export default function DaftarBatang({
         {item.length === 0 ? (
           <p className="text-xs text-ink-muted">{kosong}</p>
         ) : (
-          item.map((i) => (
-            <div key={i.label}>
+          // Label bisa kembar (mis. kategori master bernama "Lainnya") — key
+          // memakai urutan juga; daftar ini tidak pernah diurutkan ulang di tempat.
+          item.map((i, n) => (
+            <div key={`${n}|${i.label}`}>
               <div className="flex items-baseline justify-between gap-2 text-xs">
                 <span className="font-semibold text-ink truncate">{i.label}</span>
                 <span className="text-ink-soft tabular-nums shrink-0">

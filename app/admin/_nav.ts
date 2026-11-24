@@ -2,7 +2,7 @@ import {
   LayoutDashboard, Map, Users, ClipboardList, Gauge, FileText, Target, UserCog,
   MessageSquare, CalendarDays, BrainCircuit, ShieldCheck, SearchCheck, 
   TrendingUp, TriangleAlert, Table2, Wrench, Radio, ZapOff, Network, Database, Waypoints,
-  Globe, Zap, MessageCircleQuestion, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch,
+  Globe, Zap, MessageCircleQuestion, Spline, Trees, Activity, HardHat, ArrowUpDown, Images, PencilRuler, ScanSearch, Cable,
   type LucideIcon,
 } from "lucide-react";
 
@@ -83,6 +83,15 @@ export const NAV_GROUPS: NavGroup[] = [
       { href: "/admin/jtm",              label: "Inspeksi JTM",              icon: Waypoints, keterangan: "Inspeksi jaringan tegangan menengah per segmen beserta temuannya." },
       { href: "/admin/jtr",              label: "Inspeksi JTR",              icon: Network, keterangan: "Inspeksi jaringan tegangan rendah per gardu beserta temuannya." },
       { href: "/admin/inspeksi-gardu",   label: "Inspeksi Gardu",            icon: ScanSearch, keterangan: "Inspeksi gardu Tier 1 & 2 — temuan langsung ke Perlu Perbaikan Pemeliharaan Gardu." },
+    ],
+  },
+  {
+    // PDKB bukan regu Yantek (24 Nov 2026): grup sendiri di bawah Kinerja
+    // Yantek, pekerjaannya tidak ikut Rekap Kinerja.
+    key: "pdkb",
+    label: "Kinerja PDKB",
+    items: [
+      { href: "/admin/pdkb", label: "PDKB", icon: Cable, keterangan: "Temuan yang ditugaskan ke PDKB dan pekerjaan PDKB yang dicatat admin — terpisah dari realisasi Pemeliharaan Jaringan." },
     ],
   },
   {

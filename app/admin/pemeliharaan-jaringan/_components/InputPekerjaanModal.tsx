@@ -12,7 +12,7 @@ import type { InputAdmin, JenisJaringan, KategoriRef } from "../_hooks/usePemeli
 
 /**
  * "Catat pekerjaan tim lain" (26 Okt 2026) — pekerjaan pemeliharaan jaringan
- * oleh tim yang TIDAK memakai aplikasi (PDKB, Yantek, kontraktor). Foto
+ * oleh tim yang TIDAK memakai aplikasi (Yantek, kontraktor; PDKB punya halaman sendiri). Foto
  * sebelum + sesudah tetap wajib (dari laporan tim); foto proses opsional.
  * Tersimpan langsung Diverifikasi dan ikut realisasi, nama timnya tampil.
  *
@@ -23,7 +23,8 @@ import type { InputAdmin, JenisJaringan, KategoriRef } from "../_hooks/usePemeli
 
 const ID_FORM = "form-input-pekerjaan";
 const JENIS: JenisJaringan[] = ["JTM", "JTR"];
-const PELAKSANA = ["PDKB", "Yantek", "Kontraktor", "Lainnya"] as const;
+// PDKB dicatat di halaman PDKB sendiri (24 Nov 2026) — tidak ikut realisasi di sini.
+const PELAKSANA = ["Yantek", "Kontraktor", "Lainnya"] as const;
 /** Pelaksana yang wajib menyebut nama timnya. */
 const WAJIB_NAMA = new Set<string>(["Kontraktor", "Lainnya"]);
 const hariIni = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(0, 10);
@@ -36,7 +37,7 @@ interface Props {
   onSimpan: (v: InputAdmin) => Promise<void>;
 }
 
-function Isian({ label, wajib, children }: { label: string; wajib?: boolean; children: React.ReactNode }) {
+export function Isian({ label, wajib, children }: { label: string; wajib?: boolean; children: React.ReactNode }) {
   return (
     <label className="flex flex-col gap-1">
       <span className={EYEBROW}>
@@ -47,7 +48,7 @@ function Isian({ label, wajib, children }: { label: string; wajib?: boolean; chi
   );
 }
 
-function PilihFoto({ label, wajib, onFile }: { label: string; wajib?: boolean; onFile: (f: File | null) => void }) {
+export function PilihFoto({ label, wajib, onFile }: { label: string; wajib?: boolean; onFile: (f: File | null) => void }) {
   const [pratinjau, setPratinjau] = useState<string | null>(null);
   const pilih = (f: File | null) => {
     setPratinjau((lama) => {
