@@ -20,7 +20,7 @@ const TH = "px-2.5 py-2 font-semibold text-center whitespace-nowrap border-l bor
 const TD = "px-2.5 py-2 text-right tabular-nums whitespace-nowrap border-l border-line";
 const PISAH = "!border-l-2 !border-l-navy-200";
 
-type Sel = Pick<BarisRekap, "kms" | "tiang" | "gardu" | "gardu_kva" | "ukuran" | "jenis" | "jenis_tiang" | "peralatan">;
+type Sel = Pick<BarisRekap, "kms" | "tiang" | "gardu" | "gardu_kva" | "gardu_beban_kva" | "ukuran" | "jenis" | "jenis_tiang" | "peralatan">;
 
 function SelAngka({ b, kelompok }: { b: Sel; kelompok: Kelompok[] }) {
   return (
@@ -36,6 +36,7 @@ function SelAngka({ b, kelompok }: { b: Sel; kelompok: Kelompok[] }) {
       )}
       <td className={`${TD} ${PISAH}`}>{fmtJml(b.gardu)}</td>
       <td className={TD}>{fmtJml(b.gardu_kva)}</td>
+      <td className={TD}>{fmtJml(Math.round(b.gardu_beban_kva))}</td>
     </>
   );
 }
@@ -120,7 +121,7 @@ export default function RekapData({ user }: { user: CurrentUser }) {
                   {kelompok.map((k) => (
                     <th key={k.kunci} colSpan={k.kolom.length} className={`${TH} ${PISAH} border-b border-white/20`}>{k.judul}</th>
                   ))}
-                  <th colSpan={2} className={`${TH} ${PISAH} border-b border-white/20`}>Gardu</th>
+                  <th colSpan={3} className={`${TH} ${PISAH} border-b border-white/20`}>Gardu</th>
                 </tr>
                 <tr className="bg-navy-50 text-navy-700 border-b border-navy-100">
                   {kelompok.map((k) =>
@@ -130,6 +131,12 @@ export default function RekapData({ user }: { user: CurrentUser }) {
                   )}
                   <th className={`${TH} ${PISAH}`}>Jumlah</th>
                   <th className={`${TH} !border-l-navy-100`}>kVA</th>
+                  <th
+                    className={`${TH} !border-l-navy-100`}
+                    title="Jumlah beban pengukuran gardu terakhir (kVA) — gardu yang belum pernah diukur tidak ikut"
+                  >
+                    Beban kVA
+                  </th>
                 </tr>
               </thead>
               <tbody>

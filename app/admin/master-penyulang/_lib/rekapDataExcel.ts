@@ -8,7 +8,7 @@ import type { Kelompok, PenyulangRekap, TotalRekap } from "../_hooks/useRekapDat
  * di bawahnya, dan baris jumlah di akhir.
  */
 
-type Sel = Pick<PenyulangRekap, "kms" | "tiang" | "gardu" | "gardu_kva" | "ukuran" | "jenis" | "jenis_tiang" | "peralatan">;
+type Sel = Pick<PenyulangRekap, "kms" | "tiang" | "gardu" | "gardu_kva" | "gardu_beban_kva" | "ukuran" | "jenis" | "jenis_tiang" | "peralatan">;
 
 const FMT_KMS = "#,##0.000";
 
@@ -17,7 +17,7 @@ export async function unduhRekapData(penyulang: PenyulangRekap[], kelompok: Kelo
   const ws = wb.addWorksheet("Rekap Data", { views: [{ state: "frozen", xSplit: 2, ySplit: 4 }] });
 
   const kolomIsi = kelompok.flatMap((k) => k.kolom.map((c) => ({ k, c })));
-  const jumlahKolom = 4 + kolomIsi.length + 2;
+  const jumlahKolom = 4 + kolomIsi.length + 3;
 
   mergeSet(ws, 1, 1, 1, jumlahKolom, `REKAP DATA JTM HASIL INSPEKSI — ${ulp.toUpperCase()}`, { bold: true, size: 12, align: "left" });
   ws.getRow(1).height = 22;
@@ -34,9 +34,10 @@ export async function unduhRekapData(penyulang: PenyulangRekap[], kelompok: Kelo
     k.kolom.forEach((o, i) => mergeSet(ws, 4, c + i, 4, c + i, o.label, { bold: true, bgColor: CLR_TEAL }));
     c += k.kolom.length;
   }
-  mergeSet(ws, 3, c, 3, c + 1, "Gardu", { bold: true, bgColor: CLR_TEAL });
+  mergeSet(ws, 3, c, 3, c + 2, "Gardu", { bold: true, bgColor: CLR_TEAL });
   mergeSet(ws, 4, c, 4, c, "Jumlah", { bold: true, bgColor: CLR_TEAL });
   mergeSet(ws, 4, c + 1, 4, c + 1, "kVA", { bold: true, bgColor: CLR_TEAL });
+  mergeSet(ws, 4, c + 2, 4, c + 2, "Beban kVA", { bold: true, bgColor: CLR_TEAL });
 
   ws.getColumn(1).width = 46;
   ws.getColumn(2).width = 13;
@@ -52,6 +53,7 @@ export async function unduhRekapData(penyulang: PenyulangRekap[], kelompok: Kelo
       ...kolomIsi.map(({ k, c: o }) => b[k.kunci][o.kode] || null),
       b.gardu || null,
       b.gardu_kva || null,
+      Math.round(b.gardu_beban_kva) || null,
     ];
     nilai.forEach((v, i) => {
       const sel = ws.getCell(r, i + 1);

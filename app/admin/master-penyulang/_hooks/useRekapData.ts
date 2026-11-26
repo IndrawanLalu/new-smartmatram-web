@@ -25,6 +25,8 @@ export interface BarisRekap {
   peralatan: Isi;
   gardu: number;
   gardu_kva: number;
+  /** Jumlah beban (kVA) pengukuran TERAKHIR tiap gardu di baris ini (26 Nov 2026). */
+  gardu_beban_kva: number;
 }
 
 export interface PenyulangRekap extends BarisRekap {
@@ -58,6 +60,20 @@ const KOSONG = "-";
 /** Jenis tiang: tiang penyulang lain yang cuma ditumpangi kabel penyulang ini. */
 const MENUMPANG = "menumpang";
 
+/**
+ * Semua baris dalam SATU panggilan (`rekap_data_jtm_semua`, master-penyulang-cepat.sql).
+ * Dulu per 1000 baris — tiap halaman menjalankan ulang fungsi yang berat itu
+ * dari awal, dan Semua ULP sering timeout. Server lama → cara lama.
+ */
+async function ambilRekap(ulp: string): Promise<BarisRekap[]> {
+  const { data, error } = await supabaseBrowser.rpc("rekap_data_jtm_semua", { p_ulp: ulp || null });
+  if (!error) return (data ?? []) as BarisRekap[];
+  if (error.code !== "PGRST202" && !/could not find the function/i.test(error.message)) throw new Error(error.message);
+  return fetchAllRows<BarisRekap>(() =>
+    supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ulp || null }).order("ulp").order("penyulang").order("segmen"),
+  );
+}
+
 export function useRekapData(ulp: string) {
   const [baris, setBaris] = useState<BarisRekap[]>([]);
   const [label, setLabel] = useState<Record<string, { kode: string; label: string }[]>>({});
@@ -70,9 +86,7 @@ export function useRekapData(ulp: string) {
       setLoading(true);
       try {
         const [rows, opsi, penanda] = await Promise.all([
-          fetchAllRows<BarisRekap>(() =>
-            supabaseBrowser.rpc("rekap_data_jtm", { p_ulp: ulp || null }).order("ulp").order("penyulang").order("segmen"),
-          ),
+          ambilRekap(ulp),
           supabaseBrowser
             .from("jtm_opsi_ref")
             .select("item_kode,kode,label")
@@ -89,7 +103,12 @@ export function useRekapData(ulp: string) {
           .filter((p) => p.kode.toLowerCase() !== "gardu")
           .map((p) => ({ kode: p.kode.toLowerCase(), label: p.label ?? p.kode }));
         setLabel(l);
-        setBaris(rows.map((r) => ({ ...r, kms: Number(r.kms), gardu_kva: Number(r.gardu_kva) })));
+        setBaris(rows.map((r) => ({
+          ...r,
+          kms: Number(r.kms),
+          gardu_kva: Number(r.gardu_kva),
+          gardu_beban_kva: Number(r.gardu_beban_kva ?? 0),
+        })));
         setGalat(null);
       } catch (e) {
         if (hidup) setGalat(e instanceof Error ? e.message : String(e));
@@ -145,6 +164,7 @@ export function useRekapData(ulp: string) {
       tiang: fisik?.tiang ?? 0,
       gardu: fisik?.gardu ?? 0,
       gardu_kva: fisik?.gardu_kva ?? 0,
+      gardu_beban_kva: fisik?.gardu_beban_kva ?? 0,
       jenis_tiang: fisik?.jenis_tiang ?? {},
       peralatan: fisik?.peralatan ?? {},
     };
