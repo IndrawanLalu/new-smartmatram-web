@@ -29,7 +29,9 @@ interface Props {
   onVerifikasi: (id: string, oleh: string) => Promise<void>;
   onBatalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
   onKembalikan: (id: string, alasan: string, oleh: string) => Promise<void>;
-  onKoreksi: (id: string, v: KoreksiPemeliharaan) => Promise<void>;
+  onKoreksi: (id: string, v: KoreksiPemeliharaan, oleh: string, sekelompok: boolean) => Promise<void>;
+  /** Baris kategori lain dari pekerjaan yang sama (kelompok_id), yang belum dibatalkan. */
+  saudara: BarisPemeliharaan[];
 }
 
 function Foto({ url, lain, label }: { url: string; lain: string[]; label: string }) {
@@ -63,7 +65,7 @@ function Nilai({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function DetailPemeliharaanModal({
-  b, kategori, oleh, onTutup, onVerifikasi, onBatalkan, onKembalikan, onKoreksi,
+  b, kategori, oleh, onTutup, onVerifikasi, onBatalkan, onKembalikan, onKoreksi, saudara,
 }: Props) {
   const toast = useToast();
   const [mode, setMode] = useState<"lihat" | "koreksi">("lihat");
@@ -152,9 +154,10 @@ export default function DetailPemeliharaanModal({
           <FormKoreksiPemeliharaan
             b={b}
             kategori={kategori}
+            saudara={saudara}
             onSimpan={(v) =>
               void jalankan(async () => {
-                await onKoreksi(b.id, v);
+                await onKoreksi(b.id, v, oleh, saudara.length > 0);
                 setMode("lihat");
                 return "Koreksi tersimpan.";
               })
@@ -166,6 +169,14 @@ export default function DetailPemeliharaanModal({
               <p className="text-xs rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
                 <b>Dikembalikan ke petugas{b.dikembalikanOleh ? ` oleh ${b.dikembalikanOleh}` : ""}:</b>{" "}
                 {b.dikembalikanAlasan ?? "—"} — menunggu dikirim ulang dari HP, belum dihitung.
+              </p>
+            )}
+
+            {saudara.length > 0 && (
+              <p className="text-xs rounded-lg border border-line bg-surface px-3 py-2 text-ink-soft">
+                <b className="text-ink">Satu pekerjaan dengan kategori lain:</b>{" "}
+                {saudara.map((x) => x.kategoriLabel ?? x.kategori).join(" · ")}. Tiap kategori dihitung sendiri dan
+                diverifikasi sendiri; koreksi penyulang / titik terdekat / alamat ikut ke semuanya, kategori &amp; uraian per baris.
               </p>
             )}
 

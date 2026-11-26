@@ -19,7 +19,7 @@ import LmMingguan from "./_components/LmMingguan";
  * Tab LM Mingguan (23 Nov 2026): M1–M4 dengan tiga pilihan hitungan minggu.
  */
 
-type Tab = Laporan | "mingguan" | "atur";
+type Tab = Laporan | "atur";
 
 const TABS: ItemTab<Tab>[] = [
   { kunci: "4dx", label: "LM 4DX", ikon: Target },
@@ -43,7 +43,7 @@ export default function RealisasiHarianLmPage() {
       {tab === "atur" && pengatur ? (
         <PengaturanTindakan oleh={pengatur} />
       ) : tab === "mingguan" ? (
-        <LmMingguan ulpAwal={daftarUlp[0]} daftarUlp={daftarUlp} />
+        <LmMingguan ulpAwal={daftarUlp[0]} daftarUlp={daftarUlp} pengatur={pengatur} />
       ) : tab !== "atur" ? (
         // key: ganti laporan = muat ulang bersih (baris berbeda).
         <RealisasiLm key={tab} laporan={tab} ulpAwal={daftarUlp[0]} daftarUlp={daftarUlp} pengatur={pengatur} />

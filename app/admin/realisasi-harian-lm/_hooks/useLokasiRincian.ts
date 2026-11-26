@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import type { ItemLm } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
+import { KUNCI_PDKB, type ItemLm } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
 
 /**
  * Alamat, titik, dan foto untuk daftar rincian Realisasi Harian LM — dibaca
@@ -10,6 +10,7 @@ import type { ItemLm } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
  *   • pekerjaan bergardu (objek = kode gardu) → master `gardu`
  *   • Pemeliharaan Jaringan → `pemeliharaan_jaringan_daftar` (alamat, titik,
  *     foto sesudah, jumlah item)
+ *   • PDKB → `pdkb_pekerjaan` (alamat, titik, foto sesudah)
  * Inspeksi JTM / Perabasan berobjek segmen: tanpa titik tunggal.
  */
 
@@ -36,6 +37,7 @@ export function useLokasiRincian(item: ItemLm[]) {
     let hidup = true;
     const kode = [...new Set(item.filter((x) => KUNCI_BERGARDU.has(x.kunci) && x.objek).map((x) => x.objek!.toUpperCase()))];
     const idHarjtm = [...new Set(item.filter((x) => x.kunci === "harjtm" && x.sumberId).map((x) => x.sumberId!))];
+    const idPdkb = [...new Set(item.filter((x) => x.kunci === KUNCI_PDKB && x.sumberId).map((x) => x.sumberId!))];
     (async () => {
       try {
         const g = new Map<string, Lokasi>();
@@ -63,6 +65,18 @@ export function useLokasiRincian(item: ItemLm[]) {
             });
           }
         }
+        for (let i = 0; i < idPdkb.length; i += POTONG) {
+          const { data, error } = await supabaseBrowser
+            .from("pdkb_pekerjaan")
+            .select("id,alamat,lat,lng,foto_sesudah_url")
+            .in("id", idPdkb.slice(i, i + POTONG));
+          if (error) throw new Error(error.message);
+          for (const r of data ?? []) {
+            h.set(`${KUNCI_PDKB}|${r.id}`, {
+              alamat: r.alamat ?? null, lat: angka(r.lat), lng: angka(r.lng), foto: r.foto_sesudah_url || null, jumlahItem: null,
+            });
+          }
+        }
         if (!hidup) return;
         setGardu(g);
         setHarjtm(h);
@@ -74,7 +88,9 @@ export function useLokasiRincian(item: ItemLm[]) {
   }, [item]);
 
   const lokasi = (x: ItemLm): Lokasi | null =>
-    x.kunci === "harjtm"
+    x.kunci === KUNCI_PDKB
+      ? harjtm.get(`${KUNCI_PDKB}|${x.sumberId}`) ?? null
+      : x.kunci === "harjtm"
       ? harjtm.get(x.sumberId ?? "") ?? null
       : KUNCI_BERGARDU.has(x.kunci) && x.objek ? gardu.get(kunciGardu(x.ulp, x.objek)) ?? null : null;
 

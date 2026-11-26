@@ -25,7 +25,9 @@ interface Props {
   onTutup: () => void;
   onBatalkan: (id: string, alasan: string, oleh: string) => Promise<void>;
   kategori: KategoriRef[];
-  onKoreksi: (id: string, v: KoreksiPdkb, oleh: string) => Promise<void>;
+  onKoreksi: (id: string, v: KoreksiPdkb, oleh: string, sekelompok: boolean) => Promise<void>;
+  /** Baris kategori lain dari pekerjaan yang sama (kelompok_id), yang masih Tercatat. */
+  saudara: PekerjaanPdkb[];
 }
 
 function Nilai({ label, children }: { label: string; children: React.ReactNode }) {
@@ -53,7 +55,7 @@ function Foto({ url, label }: { url: string | null; label: string }) {
   );
 }
 
-export default function DetailPdkbModal({ b, oleh, onTutup, onBatalkan, kategori, onKoreksi }: Props) {
+export default function DetailPdkbModal({ b, oleh, onTutup, onBatalkan, kategori, onKoreksi, saudara }: Props) {
   const toast = useToast();
   const [batal, setBatal] = useState(false);
   const [sunting, setSunting] = useState(false);
@@ -62,7 +64,7 @@ export default function DetailPdkbModal({ b, oleh, onTutup, onBatalkan, kategori
   const simpanKoreksi = async (v: KoreksiPdkb) => {
     setSibuk(true);
     try {
-      await onKoreksi(b.id, v, oleh);
+      await onKoreksi(b.id, v, oleh, saudara.length > 0);
       toast.success("Koreksi tersimpan.");
       setSunting(false);
     } catch (e) {
@@ -115,10 +117,17 @@ export default function DetailPdkbModal({ b, oleh, onTutup, onBatalkan, kategori
         )}
 
         {sunting ? (
-          <FormKoreksiPdkb b={b} kategori={kategori} onSimpan={(v) => void simpanKoreksi(v)} />
+          <FormKoreksiPdkb b={b} kategori={kategori} saudara={saudara} onSimpan={(v) => void simpanKoreksi(v)} />
         ) : (
         <>
         <p className="text-base font-semibold text-ink">{b.pekerjaan}</p>
+        {saudara.length > 0 && (
+          <p className="text-xs rounded-lg border border-line bg-surface px-3 py-2 text-ink-soft">
+            <b className="text-ink">Satu pekerjaan dengan kategori lain:</b>{" "}
+            {saudara.map((x) => x.kategoriLabel ?? x.pekerjaan).join(" · ")}. Tiap kategori dihitung sendiri; koreksi
+            penyulang / tanggal / tim / alamat ikut ke semuanya, kategori &amp; uraian per baris.
+          </p>
+        )}
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Nilai label="Kategori">{b.kategoriLabel ?? "—"}</Nilai>

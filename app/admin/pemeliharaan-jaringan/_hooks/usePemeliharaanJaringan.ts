@@ -79,6 +79,8 @@ export interface BarisPemeliharaan {
   terdekatGarduKode: string | null;
   terdekatLabel: string | null;
   terdekatJarakM: number | null;
+  /** Satu pekerjaan berbanyak kategori (input admin 26 Okt, HP & koreksi 25 Nov) — null = sendiri. */
+  kelompokId: string | null;
 }
 
 export interface KategoriRef {
@@ -100,6 +102,8 @@ export interface KoreksiPemeliharaan {
   /** Tiang JTM ATAU gardu terdekat (≤ 100 m); keduanya null = tidak dipilih. */
   terdekatTiangId: string | null;
   terdekatGarduKode: string | null;
+  /** Kategori lain di titik yang sama → baris baru sekelompok (kategori-banyak.sql). */
+  kategoriTambahan: string[];
 }
 
 export type SaringStatus = "SEMUA" | StatusTabel;
@@ -182,6 +186,7 @@ export const petaBaris = (r: Record<string, unknown>): BarisPemeliharaan => {
     terdekatGarduKode: teks(r.terdekat_gardu_kode),
     terdekatLabel: teks(r.terdekat_label),
     terdekatJarakM: angka(r.terdekat_jarak_m),
+    kelompokId: teks(r.kelompok_id),
   };
 };
 
@@ -332,7 +337,8 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
   };
 
   /** Koreksi admin — menunggu verifikasi, atau sudah disetujui oleh UP3 / admin ULP itu (dijaga server). */
-  const koreksi = async (id: string, v: KoreksiPemeliharaan) => {
+  /** `sekelompok`: baris punya saudara kategori — isian bersama ikut berubah di sana (pemicu DB). */
+  const koreksi = async (id: string, v: KoreksiPemeliharaan, oleh: string, sekelompok: boolean) => {
     const { error } = await supabaseBrowser.rpc("koreksi_pemeliharaan_jaringan", {
       p_id: id,
       p_jenis: v.jenis,
@@ -345,7 +351,19 @@ export function usePemeliharaanJaringan(user: CurrentUser) {
       p_gardu_kode: v.terdekatGarduKode,
     });
     if (error) throw new Error(error.message);
-    await segarkanSatu(id);
+    if (v.kategoriTambahan.length) {
+      const t = await supabaseBrowser.rpc("tambah_kategori_pemeliharaan_jaringan", {
+        p_id: id, p_kategori: v.kategoriTambahan, p_oleh: oleh,
+      });
+      if (t.error) {
+        throw new Error(/tambah_kategori_pemeliharaan_jaringan/.test(t.error.message)
+          ? "Koreksi tersimpan, tapi kategori tambahan belum: jalankan scripts/kategori-banyak.sql di Supabase dulu."
+          : `Koreksi tersimpan, tapi kategori tambahan gagal: ${t.error.message}`);
+      }
+    }
+    // Baris baru / saudara ikut berubah → baca ulang daftar; selain itu tambal satu baris.
+    if (sekelompok || v.kategoriTambahan.length) muat();
+    else await segarkanSatu(id);
   };
 
   /** Catat pekerjaan tim di luar aplikasi. Foto diunggah dulu (folder sama

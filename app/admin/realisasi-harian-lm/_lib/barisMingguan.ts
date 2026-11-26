@@ -1,98 +1,78 @@
 /**
- * Baris tab LM Mingguan (23 Nov 2026): baris total + baris rinciannya. Hanya
- * semua status, termasuk yang belum diverifikasi (beda dengan tab harian). Satuan dan cara
- * hitung mengikuti Rekap Kinerja: KMS dijumlah km-nya, lainnya dicacah per
- * pekerjaan.
+ * Hitungan tab LM Mingguan. Barisnya diatur dari layar sejak 25 Nov 2026
+ * (`lm4dx_baris` laporan 'mingguan', per ULP — scripts/lm-pdkb-mingguan.sql);
+ * sumber dan cara hitungnya SAMA dengan tab harian (`sumbangan` di lm4dx.ts),
+ * bedanya SEMUA status ikut, termasuk yang belum diverifikasi.
  *
- * Target (keputusan user 23 Nov): hanya baris total, dari SLA bulanan per ULP
- * yang sudah ada (Rekap Kinerja · Atur SLA), dibagi ke minggu menurut jumlah
- * hari: target minggu = Σ hari minggu itu × SLA bulannya ÷ hari sebulan.
- * Penebangan & perisai belum punya SLA → tanpa target.
+ * Baris total (induk null yang punya rincian) = sumbernya sendiri + semua
+ * rinciannya.
+ *
+ * Target (keputusan user 23 Nov): SLA bulanan per ULP yang sudah ada (Rekap
+ * Kinerja · Atur SLA), dibagi ke minggu menurut jumlah hari:
+ * target minggu = Σ hari minggu itu × SLA bulannya ÷ hari sebulan. Kunci SLA-nya
+ * dipilih per baris (`sla`).
  */
 
-/** Satu pekerjaan dari realisasi_rentang yang sudah diperkaya. */
-export interface ItemMingguan {
-  tgl: string;
-  kunci: string;
-  km: number;
-  /** Inspeksi JTM Tier 1 + drone. */
-  drone: boolean;
-  /** Pemeliharaan Jaringan: nama kategori & jenis (JTM / GARDU / JTR). */
-  kategori: string | null;
-  jenis: string | null;
-}
+import { META } from "@/app/admin/kinerja-yantek/_lib/kinerjaMeta";
+import {
+  SUMBER_DRONE, SUMBER_JTM_BIASA, SUMBER_JTM_DRONE_KM, SUMBER_JTM2_TITIK, sumbangan,
+  type BarisLm, type ItemLm,
+} from "@/app/admin/kinerja-yantek/_lib/lm4dx";
 
-export interface BarisMingguan {
-  kode: string;
-  uraian: string;
-  satuan: string;
-  desimal: boolean;
-  /** null = baris total (penjumlahan rinciannya). */
-  induk: string | null;
-  /** Nilai satu pekerjaan untuk baris ini (0 = tidak ikut). Tidak ada = belum ada sumber. */
-  nilai?: (x: ItemMingguan) => number;
-  sumber: string;
-  /** Kunci SLA (sla_kinerja) yang dijumlah menjadi target bulanan baris ini. */
-  sla?: string[];
-}
+const KUNCI_META = new Set(META.map((m) => m.kunci));
+const KUNCI_TINDAKAN = ["hargardu", "penyeimbangan"];
 
 /**
- * Perisai binatang = kategori Pemeliharaan Jaringan bernama perisai/binatang.
- * Gardu bila jenis catatannya GARDU atau nama kategorinya menyebut gardu; sisanya
- * (JTM, juga JTR — input admin web hanya menyediakan JTM/JTR) = Perisai JTM.
+ * Kunci realisasi_rentang yang dibutuhkan baris-baris ini (rentang minggu bisa
+ * melewati bulan — pengukuran gardu ribuan baris, jadi tidak dibaca bila tidak
+ * dipakai). PDKB dibaca terpisah.
  */
-const PERISAI = /perisai|prisai|binatang|animal/i;
-const perisaiGardu = (x: ItemMingguan) => x.jenis === "GARDU" || /gardu/i.test(x.kategori ?? "");
-const perisai = (x: ItemMingguan, gardu: boolean) =>
-  x.kunci === "harjtm" && PERISAI.test(x.kategori ?? "") && perisaiGardu(x) === gardu ? 1 : 0;
+export function kunciRentang(baris: BarisLm[]) {
+  const k = new Set<string>();
+  for (const s of baris.flatMap((b) => b.sumber)) {
+    if (s.startsWith("harjtm:")) k.add("harjtm");
+    else if (s.startsWith("tindakan:")) KUNCI_TINDAKAN.forEach((x) => k.add(x));
+    else if (s === SUMBER_DRONE || s === SUMBER_JTM_BIASA || s === SUMBER_JTM_DRONE_KM) k.add("jtm");
+    else if (s === SUMBER_JTM2_TITIK) k.add("jtm2");
+    else if (KUNCI_META.has(s)) k.add(s);
+  }
+  return [...k];
+}
 
-export const BARIS_MINGGUAN: BarisMingguan[] = [
-  { kode: "jtm", uraian: "Inspeksi JTM", satuan: "KMS", desimal: true, induk: null, sumber: "Tier 1 + Tier 1 drone + Tier 2", sla: ["jtm", "jtm2"] },
-  { kode: "jtm1", uraian: "Tier 1", satuan: "KMS", desimal: true, induk: "jtm", sumber: "Inspeksi JTM Tier 1 tanpa drone",
-    nilai: (x) => (x.kunci === "jtm" && !x.drone ? x.km : 0) },
-  { kode: "jtm1d", uraian: "Tier 1 drone", satuan: "KMS", desimal: true, induk: "jtm", sumber: "Inspeksi JTM Tier 1 + drone",
-    nilai: (x) => (x.kunci === "jtm" && x.drone ? x.km : 0) },
-  { kode: "jtm2", uraian: "Tier 2", satuan: "KMS", desimal: true, induk: "jtm", sumber: "Inspeksi JTM Tier 2",
-    nilai: (x) => (x.kunci === "jtm2" ? x.km : 0) },
+export const punyaRincian = (b: BarisLm, baris: BarisLm[]) => baris.some((x) => x.induk === b.id);
 
-  { kode: "gardu", uraian: "Inspeksi Gardu", satuan: "gardu", desimal: false, induk: null, sumber: "Tier 1 + Tier 2", sla: ["igardu1", "igardu2"] },
-  { kode: "gardu1", uraian: "Tier 1", satuan: "gardu", desimal: false, induk: "gardu", sumber: "Inspeksi Gardu Tier 1",
-    nilai: (x) => (x.kunci === "igardu1" ? 1 : 0) },
-  { kode: "gardu2", uraian: "Tier 2", satuan: "gardu", desimal: false, induk: "gardu", sumber: "Inspeksi Gardu Tier 2",
-    nilai: (x) => (x.kunci === "igardu2" ? 1 : 0) },
-
-  { kode: "rabas", uraian: "Perabasan pohon", satuan: "KMS", desimal: true, induk: null, sumber: "Perabasan", sla: ["perabasan"],
-    nilai: (x) => (x.kunci === "perabasan" ? x.km : 0) },
-
-  { kode: "tebang", uraian: "Penebangan pohon", satuan: "pohon", desimal: false, induk: null, sumber: "belum ada sumber di SMART" },
-
-  { kode: "perisai", uraian: "Pemasangan perisai binatang", satuan: "pekerjaan", desimal: false, induk: null, sumber: "Perisai JTM + Perisai Gardu" },
-  { kode: "perisai_jtm", uraian: "Perisai JTM", satuan: "pekerjaan", desimal: false, induk: "perisai",
-    sumber: "Pemeliharaan Jaringan · kategori perisai, jenis JTM / JTR", nilai: (x) => perisai(x, false) },
-  { kode: "perisai_gardu", uraian: "Perisai Gardu", satuan: "pekerjaan", desimal: false, induk: "perisai",
-    sumber: "Pemeliharaan Jaringan · kategori perisai, jenis Gardu", nilai: (x) => perisai(x, true) },
-];
-
-/** Nilai per minggu tiap baris; baris total = jumlah rinciannya. */
-export function susunMingguan(item: ItemMingguan[], mingguDari: (tgl: string) => number, jumlahMinggu: number) {
+/** Nilai per minggu tiap baris (per id); baris total = dirinya + rinciannya. */
+export function susunMingguan(
+  baris: BarisLm[], item: ItemLm[], mingguDari: (tgl: string) => number, jumlahMinggu: number,
+) {
   const hasil = new Map<string, number[]>();
-  for (const b of BARIS_MINGGUAN) {
+  for (const b of baris) {
     const isi = Array<number>(jumlahMinggu).fill(0);
-    if (b.nilai) {
-      for (const x of item) {
-        const w = mingguDari(x.tgl);
-        if (w >= 0) isi[w] += b.nilai(x);
+    const sumber = new Set(b.sumber);
+    // Drone: penyulang berbeda PER HARI (sama dengan tab harian), dijumlah per minggu.
+    const drone = new Map<string, Set<string>>();
+    for (const x of item) {
+      const w = mingguDari(x.tgl);
+      if (w < 0) continue;
+      isi[w] += sumbangan(sumber, x);
+      if (sumber.has(SUMBER_DRONE) && x.kunci === "jtm" && x.drone && x.penyulang) {
+        const hari = drone.get(x.tgl) ?? new Set<string>();
+        hari.add(x.penyulang);
+        drone.set(x.tgl, hari);
       }
     }
-    hasil.set(b.kode, isi);
+    for (const [tgl, p] of drone) isi[mingguDari(tgl)] += p.size;
+    hasil.set(b.id, isi);
   }
-  for (const b of BARIS_MINGGUAN) {
-    if (!b.induk) continue;
-    const total = hasil.get(b.induk)!;
-    hasil.get(b.kode)!.forEach((n, i) => { total[i] += n; });
+  for (const b of baris) {
+    const total = b.induk ? hasil.get(b.induk) : undefined;
+    if (total) hasil.get(b.id)!.forEach((n, i) => { total[i] += n; });
   }
   return hasil;
 }
+
+/** Baris yang tidak punya sumber dan tidak punya rincian = belum ada di SMART. */
+export const barisKosong = (b: BarisLm, baris: BarisLm[]) => b.sumber.length === 0 && !punyaRincian(b, baris);
 
 export const angkaMingguan = (n: number, desimal: boolean) =>
   n === 0 ? "—" : n.toLocaleString("id-ID", { maximumFractionDigits: desimal ? 3 : 0 });
@@ -114,8 +94,8 @@ export function bulanDalam(dari: string, sampai: string) {
 }
 
 /** Target satu baris untuk rentang tanggal (inklusif); null = tanpa SLA. */
-export function targetRentang(b: BarisMingguan, sla: PetaSla, dari: string, sampai: string): number | null {
-  if (!b.sla) return null;
+export function targetRentang(b: BarisLm, sla: PetaSla, dari: string, sampai: string): number | null {
+  if (!b.sla?.length) return null;
   let n = 0;
   let ada = false;
   for (const bln of bulanDalam(dari, sampai)) {

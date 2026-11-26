@@ -21,6 +21,11 @@
  * 'tindakan:<kode>' (5 Nov 2026, scripts/pekerjaan-tindakan.sql): "Pekerjaan
  * yang dikerjakan" Pemeliharaan Gardu / Pemerataan — dijumlah JUMLAH-nya.
  *
+ * 'pdkb:<kode>' (25 Nov 2026, scripts/lm-pdkb-mingguan.sql): pekerjaan PDKB
+ * (`pdkb_pekerjaan`, tabel sendiri sejak 24 Nov) kategori <kode> — dicacah.
+ * `SUMBER_JTM_BIASA` / `SUMBER_JTM_DRONE_KM`: KMS Tier 1 tanpa / dengan drone.
+ * Laporan 'mingguan': tab LM Mingguan (induk, satuan, sla per baris).
+ *
  * `kelompok` (5 Nov 2026): judul JTM / Gardu / JTR / SR di tabel. Hanya tampilan —
  * urutan baris dan salinan tidak berubah, judul tidak ikut tersalin.
  */
@@ -30,17 +35,23 @@ import { META } from "./kinerjaMeta";
 export const HARI = 31;
 const AWALAN_KATEGORI = "harjtm:";
 const AWALAN_TINDAKAN = "tindakan:";
+const AWALAN_PDKB = "pdkb:";
 /** Sumber khusus: penyulang berbeda per hari dari inspeksi JTM Tier 1 + drone. */
 export const SUMBER_DRONE = "jtm_drone_penyulang";
 /** Sumber khusus: jumlah tiang yang dinilai di inspeksi JTM Tier 2. */
 export const SUMBER_JTM2_TITIK = "jtm2_titik";
+/** Sumber khusus: KMS inspeksi JTM Tier 1 tanpa drone / dengan drone. */
+export const SUMBER_JTM_BIASA = "jtm_tanpa_drone";
+export const SUMBER_JTM_DRONE_KM = "jtm_drone_km";
+/** Kunci ItemLm untuk pekerjaan PDKB (bukan kunci Rekap Kinerja). */
+export const KUNCI_PDKB = "pdkb";
 
-export type Laporan = "4dx" | "susut";
+export type Laporan = "4dx" | "susut" | "mingguan";
 
 export const KELOMPOK = ["JTM", "GARDU", "JTR", "SR"] as const;
 export type Kelompok = (typeof KELOMPOK)[number];
 export const NAMA_KELOMPOK: Record<Kelompok, string> = { JTM: "JTM", GARDU: "Gardu", JTR: "JTR", SR: "SR" };
-export const NAMA_LAPORAN: Record<Laporan, string> = { "4dx": "LM 4DX", susut: "Penurunan Susut" };
+export const NAMA_LAPORAN: Record<Laporan, string> = { "4dx": "LM 4DX", susut: "Penurunan Susut", mingguan: "LM Mingguan" };
 
 export interface BarisLm {
   id: string;
@@ -48,6 +59,12 @@ export interface BarisLm {
   uraian: string;
   sumber: string[];
   kelompok: Kelompok | null;
+  /** LM Mingguan: baris total yang dijumlahinya (null = baris utama). */
+  induk?: string | null;
+  /** LM Mingguan: satuan tampilan; kosong = KMS / pekerjaan menurut sumbernya. */
+  satuan?: string | null;
+  /** LM Mingguan: kunci SLA (sla_kinerja) yang menjadi target baris ini. */
+  sla?: string[] | null;
 }
 
 /** Satu pekerjaan dari `realisasi_rentang` yang dihitung. */
@@ -92,6 +109,7 @@ const DESIMAL = new Map(META.map((m) => [m.kunci, m.desimal]));
 
 export const kunciKategori = (kode: string) => `${AWALAN_KATEGORI}${kode}`;
 export const kunciTindakan = (kode: string) => `${AWALAN_TINDAKAN}${kode}`;
+export const kunciPdkb = (kode: string) => `${AWALAN_PDKB}${kode}`;
 export const NAMA_MODUL_TINDAKAN: Record<Tindakan["modul"], string> = {
   hargardu: "Pemeliharaan Gardu",
   penyeimbangan: "Pemerataan Beban",
@@ -105,6 +123,12 @@ export function namaSumber(s: string, kategori: Map<string, string>, tindakan?: 
   }
   if (s === SUMBER_DRONE) return "Inspeksi JTM Tier 1 + drone (jumlah penyulang)";
   if (s === SUMBER_JTM2_TITIK) return "Inspeksi JTM Tier 2 (jumlah tiang)";
+  if (s === SUMBER_JTM_BIASA) return "Inspeksi JTM Tier 1 tanpa drone (KMS)";
+  if (s === SUMBER_JTM_DRONE_KM) return "Inspeksi JTM Tier 1 + drone (KMS)";
+  if (s.startsWith(AWALAN_PDKB)) {
+    const kode = s.slice(AWALAN_PDKB.length);
+    return `PDKB · ${kategori.get(kode) ?? kode}`;
+  }
   if (s.startsWith(AWALAN_KATEGORI)) {
     const kode = s.slice(AWALAN_KATEGORI.length);
     return `Pemeliharaan Jaringan · ${kategori.get(kode) ?? kode}`;
@@ -113,16 +137,19 @@ export function namaSumber(s: string, kategori: Map<string, string>, tindakan?: 
 }
 
 /** Baris KMS bila salah satu sumbernya KMS. */
-export const barisDesimal = (b: BarisLm) => b.sumber.some((s) => DESIMAL.get(s) === true);
+export const barisDesimal = (b: BarisLm) =>
+  b.sumber.some((s) => DESIMAL.get(s) === true || s === SUMBER_JTM_BIASA || s === SUMBER_JTM_DRONE_KM);
 
 /**
  * Sumbangan satu pekerjaan ke satu baris (drone dihitung terpisah: penyulang
  * berbeda per hari, bukan per pekerjaan). 0 = tidak ikut.
  */
 export function sumbangan(sumber: Set<string>, x: ItemLm): number {
+  if (x.kunci === KUNCI_PDKB) return x.kategori !== null && sumber.has(kunciPdkb(x.kategori)) ? 1 : 0;
   let n = 0;
   if (sumber.has(SUMBER_JTM2_TITIK) && x.kunci === "jtm2") n += x.titik;
-  if (sumber.has(x.kunci) || (x.kategori !== null && sumber.has(kunciKategori(x.kategori)))) {
+  if (x.kunci === "jtm" && sumber.has(x.drone ? SUMBER_JTM_DRONE_KM : SUMBER_JTM_BIASA)) n += x.km ?? 0;
+  if (sumber.has(x.kunci) || (x.kunci === "harjtm" && x.kategori !== null && sumber.has(kunciKategori(x.kategori)))) {
     n += DESIMAL.get(x.kunci) ? x.km ?? 0 : 1;
   }
   for (const [kode, t] of Object.entries(x.tindakan)) if (sumber.has(kunciTindakan(kode))) n += t.jumlah;

@@ -11,6 +11,7 @@ import { bacaKoordinat } from "@/lib/koordinat";
 import { Isian, PilihFoto } from "@/app/admin/pemeliharaan-jaringan/_components/InputPekerjaanModal";
 import type { KategoriRef } from "@/app/admin/pemeliharaan-jaringan/_hooks/usePemeliharaanJaringan";
 import { JENIS_PDKB, UNIT, type IsianPdkb, type JenisPdkb } from "../_hooks/usePdkb";
+import PilihKategoriLain from "@/app/admin/_components/PilihKategoriLain";
 import type { TugasPdkb } from "../_hooks/useTugasPdkb";
 
 /**
@@ -51,6 +52,7 @@ export default function CatatPdkbModal({ ulp, kategori, tugas, onTutup, onSimpan
   });
   const [foto, setFoto] = useState<{ sebelum: File | null; sesudah: File | null; proses: File | null }>({ sebelum: null, sesudah: null, proses: null });
   const [sibuk, setSibuk] = useState(false);
+  const [kategoriLain, setKategoriLain] = useState<string[]>([]);
   const ubah = (p: Partial<typeof v>) => setV((x) => ({ ...x, ...p }));
 
   const ulpPenyulang = ulpTetap || "SEMUA";
@@ -63,7 +65,8 @@ export default function CatatPdkbModal({ ulp, kategori, tugas, onTutup, onSimpan
     return () => { hidup = false; };
   }, [ulpPenyulang]);
 
-  const kategoriJenis = jenis === "" || jenis === "GARDU"
+  // Sama dengan aturan server (_periksa_isian_pdkb): aktif, jenis SEMUA atau jenis catatan.
+  const kategoriJenis = jenis === ""
     ? []
     : kategori.filter((k) => k.aktif && (k.jenis === "SEMUA" || k.jenis === jenis));
   const titik = v.titik.trim() ? bacaKoordinat(v.titik) : null;
@@ -93,6 +96,7 @@ export default function CatatPdkbModal({ ulp, kategori, tugas, onTutup, onSimpan
         catatan: v.catatan.trim(),
         inspeksiId: tugas?.id ?? null,
         tugasTabel: tugas?.tabel ?? null,
+        kategoriTambahan: v.kategori ? kategoriLain.filter((k) => kategoriJenis.some((x) => x.kode === k)) : [],
         fotoSebelum: foto.sebelum,
         fotoSesudah: foto.sesudah,
         fotoProses: foto.proses,
@@ -128,7 +132,7 @@ export default function CatatPdkbModal({ ulp, kategori, tugas, onTutup, onSimpan
             <div className="flex gap-2">
               {JENIS_PDKB.map((j) => (
                 <button key={j} type="button" disabled={!!tugas?.jenis}
-                  onClick={() => { setJenis(j); ubah({ kategori: "" }); }}
+                  onClick={() => { setJenis(j); ubah({ kategori: "" }); setKategoriLain([]); }}
                   className={`${CHIP} ${jenis === j ? CHIP_ON : CHIP_OFF} disabled:opacity-60`}>
                   {j === "GARDU" ? "Gardu" : j}
                 </button>
@@ -164,11 +168,24 @@ export default function CatatPdkbModal({ ulp, kategori, tugas, onTutup, onSimpan
 
         {kategoriJenis.length > 0 && (
           <Isian label="Kategori (tidak wajib)">
-            <select value={v.kategori} onChange={(e) => ubah({ kategori: e.target.value })} className={FIELD}>
+            <select
+              value={v.kategori}
+              onChange={(e) => { ubah({ kategori: e.target.value }); setKategoriLain((x) => x.filter((k) => k !== e.target.value)); }}
+              className={FIELD}
+            >
               <option value="">— Tanpa kategori —</option>
               {kategoriJenis.map((k) => <option key={k.kode} value={k.kode}>{k.label}</option>)}
             </select>
           </Isian>
+        )}
+        {kategoriJenis.length > 1 && (
+          <PilihKategoriLain
+            pilihan={kategoriJenis}
+            sudah={v.kategori ? [v.kategori] : []}
+            nilai={kategoriLain}
+            onUbah={setKategoriLain}
+            kunci={v.kategori ? null : "Pilih kategori utama dulu."}
+          />
         )}
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

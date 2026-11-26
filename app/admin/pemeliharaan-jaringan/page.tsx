@@ -202,6 +202,9 @@ export default function PemeliharaanJaringanPage() {
           onBatalkan={o.batalkan}
           onKembalikan={o.kembalikan}
           onKoreksi={o.koreksi}
+          saudara={detail.kelompokId
+            ? o.semua.filter((x) => x.kelompokId === detail.kelompokId && x.id !== detail.id && x.statusDb !== "Dibatalkan")
+            : []}
         />
       )}
     </div>

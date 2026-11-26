@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, MapPin } from "lucide-react";
 import ModalShell from "@/app/admin/_components/ModalShell";
 import { fotoKecil } from "@/lib/fotoKecil";
 import { META } from "@/app/admin/kinerja-yantek/_lib/kinerjaMeta";
-import { angkaLm, barisDesimal, kunciTindakan, rincianBaris, type BarisLm, type ItemLm } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
+import { angkaLm, barisDesimal, KUNCI_PDKB, kunciTindakan, rincianBaris, type BarisLm, type ItemLm } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
 import { useLokasiRincian } from "../_hooks/useLokasiRincian";
 
 /**
@@ -24,7 +24,7 @@ interface Props {
 }
 
 const PER_HALAMAN = 20;
-const JENIS = new Map(META.map((m) => [m.kunci, m.jenis]));
+const JENIS = new Map([...META.map((m) => [m.kunci, m.jenis] as const), [KUNCI_PDKB, "PDKB"] as const]);
 const TH = "px-2 py-2 text-left text-[11px] font-semibold text-ink-soft border-b border-line whitespace-nowrap";
 const TD = "px-2 py-1.5 border-b border-line align-top";
 

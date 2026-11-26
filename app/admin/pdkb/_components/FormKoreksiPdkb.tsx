@@ -6,6 +6,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { Isian } from "@/app/admin/pemeliharaan-jaringan/_components/InputPekerjaanModal";
 import type { KategoriRef } from "@/app/admin/pemeliharaan-jaringan/_hooks/usePemeliharaanJaringan";
 import { JENIS_PDKB, type KoreksiPdkb, type PekerjaanPdkb } from "../_hooks/usePdkb";
+import PilihKategoriLain from "@/app/admin/_components/PilihKategoriLain";
 
 /**
  * Koreksi catatan PDKB (pola Pemeliharaan Jaringan). Foto, titik, dan ULP
@@ -19,10 +20,12 @@ const hariIni = () => new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice
 interface Props {
   b: PekerjaanPdkb;
   kategori: KategoriRef[];
+  /** Baris kategori lain sekelompok — kategorinya tidak bisa dipilih lagi. */
+  saudara: PekerjaanPdkb[];
   onSimpan: (v: KoreksiPdkb) => void;
 }
 
-export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
+export default function FormKoreksiPdkb({ b, kategori, saudara, onSimpan }: Props) {
   const [v, setV] = useState<KoreksiPdkb>({
     jenis: b.jenis,
     penyulang: b.penyulang ?? "",
@@ -33,6 +36,7 @@ export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
     tgl: b.tgl,
     pelaksana: b.pelaksana,
     catatan: b.catatan ?? "",
+    kategoriTambahan: [],
   });
   const [penyulang, setPenyulang] = useState<string[]>(b.penyulang ? [b.penyulang] : []);
   const ubah = (p: Partial<KoreksiPdkb>) => setV((x) => ({ ...x, ...p }));
@@ -49,12 +53,25 @@ export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
     return () => { hidup = false; };
   }, [b.ulp, b.penyulang]);
 
-  const kat = v.jenis === "GARDU" ? [] : kategori.filter((k) => (k.aktif || k.kode === b.kategori) && (k.jenis === "SEMUA" || k.jenis === v.jenis));
+  // Sama dengan aturan server (_periksa_isian_pdkb): jenis SEMUA atau jenis catatan.
+  const kat = kategori.filter((k) => (k.aktif || k.kode === b.kategori) && (k.jenis === "SEMUA" || k.jenis === v.jenis));
+  const kategoriSaudara = saudara.map((x) => x.kategori).filter((k): k is string => !!k);
+  // Kategori utama tidak boleh sama dengan kategori baris lain sekelompok.
+  const katUtama = kat.filter((k) => k.kode === v.kategori || !kategoriSaudara.includes(k.kode));
 
   return (
     <form
       id={ID_FORM_KOREKSI_PDKB}
-      onSubmit={(e) => { e.preventDefault(); onSimpan({ ...v, pekerjaan: v.pekerjaan.trim(), pelaksana: v.pelaksana.trim() }); }}
+      onSubmit={(e) => {
+        e.preventDefault();
+        const boleh = new Set(kat.filter((k) => k.aktif).map((k) => k.kode));
+        onSimpan({
+          ...v,
+          pekerjaan: v.pekerjaan.trim(),
+          pelaksana: v.pelaksana.trim(),
+          kategoriTambahan: v.kategori ? v.kategoriTambahan.filter((k) => boleh.has(k) && k !== v.kategori) : [],
+        });
+      }}
       className="flex flex-col gap-4"
     >
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -62,7 +79,7 @@ export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
           <span className={EYEBROW}>Jenis</span>
           <div className="flex gap-2">
             {JENIS_PDKB.map((j) => (
-              <button key={j} type="button" onClick={() => ubah({ jenis: j, kategori: "" })}
+              <button key={j} type="button" onClick={() => ubah({ jenis: j, kategori: "", kategoriTambahan: [] })}
                 className={`${CHIP} ${v.jenis === j ? CHIP_ON : CHIP_OFF}`}>
                 {j === "GARDU" ? "Gardu" : j}
               </button>
@@ -89,9 +106,13 @@ export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {kat.length > 0 && (
           <Isian label="Kategori (tidak wajib)">
-            <select value={v.kategori} onChange={(e) => ubah({ kategori: e.target.value })} className={FIELD}>
+            <select
+              value={v.kategori}
+              onChange={(e) => ubah({ kategori: e.target.value, kategoriTambahan: v.kategoriTambahan.filter((k) => k !== e.target.value) })}
+              className={FIELD}
+            >
               <option value="">— Tanpa kategori —</option>
-              {kat.map((k) => <option key={k.kode} value={k.kode}>{k.label}</option>)}
+              {katUtama.map((k) => <option key={k.kode} value={k.kode}>{k.label}</option>)}
             </select>
           </Isian>
         )}
@@ -101,6 +122,16 @@ export default function FormKoreksiPdkb({ b, kategori, onSimpan }: Props) {
           </Isian>
         </div>
       </div>
+
+      {kat.length > 1 && (
+        <PilihKategoriLain
+          pilihan={kat.filter((k) => k.aktif)}
+          sudah={[...(v.kategori ? [v.kategori] : []), ...kategoriSaudara]}
+          nilai={v.kategoriTambahan}
+          onUbah={(k) => ubah({ kategoriTambahan: k })}
+          kunci={v.kategori ? null : "Pilih kategori utama dulu."}
+        />
+      )}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Isian label="Tim pelaksana" wajib>

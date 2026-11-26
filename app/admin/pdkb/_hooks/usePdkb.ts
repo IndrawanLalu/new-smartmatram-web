@@ -48,6 +48,8 @@ export interface PekerjaanPdkb {
   diinputOleh: string | null;
   dikoreksiAt: string | null;
   dikoreksiOleh: string | null;
+  /** Satu pekerjaan berbanyak kategori (kategori-banyak.sql) — null = sendiri. */
+  kelompokId: string | null;
 }
 
 /** Isian yang boleh dikoreksi. Foto, titik, ULP tidak — bukti / hak akses. */
@@ -61,6 +63,8 @@ export interface KoreksiPdkb {
   tgl: string;
   pelaksana: string;
   catatan: string;
+  /** Kategori lain di titik yang sama → baris baru sekelompok. */
+  kategoriTambahan: string[];
 }
 
 /** Isian "Catat pekerjaan PDKB" — foto berupa berkas, diunggah saat simpan. */
@@ -79,6 +83,8 @@ export interface IsianPdkb {
   catatan: string;
   inspeksiId: string | null;
   tugasTabel: string | null;
+  /** Kategori lain di titik yang sama — tiap kategori satu baris (realisasi LM sendiri). */
+  kategoriTambahan: string[];
   /** Boleh kosong bila ber-tugas dan tugasnya punya foto temuan. */
   fotoSebelum: File | null;
   fotoSesudah: File;
@@ -117,6 +123,7 @@ const peta = (r: Record<string, unknown>): PekerjaanPdkb => ({
   diinputOleh: teks(r.diinput_oleh),
   dikoreksiAt: teks(r.dikoreksi_at),
   dikoreksiOleh: teks(r.dikoreksi_oleh),
+  kelompokId: teks(r.kelompok_id),
 });
 
 const dua = (n: number) => String(n).padStart(2, "0");
@@ -237,14 +244,18 @@ export function usePdkb(user: CurrentUser) {
         pelaksana: v.pelaksana || "PDKB", catatan: v.catatan || null,
         inspeksi_id: v.inspeksiId,
         tugas_tabel: v.tugasTabel,
+        kategori_tambahan: v.kategori ? v.kategoriTambahan : [],
         foto_sebelum_url: sebelum, foto_sesudah_url: sesudah, foto_proses_url: proses,
         oleh,
       },
     });
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(/kategori_tambahan|_pdkb_tambah_kategori/.test(error.message) ? "Jalankan scripts/kategori-banyak.sql di Supabase dulu." : error.message);
     // Hanya masuk daftar bila tanggalnya di periode yang tampil.
     const { awal, akhir } = rentang(tahun, bulan);
-    if (v.tgl >= awal && v.tgl < akhir && (ulp === "SEMUA" || ulp === v.ulp)) await segarkanSatu(id);
+    if (!(v.tgl >= awal && v.tgl < akhir && (ulp === "SEMUA" || ulp === v.ulp))) return;
+    // Berbanyak kategori = beberapa baris baru → baca ulang daftar.
+    if (v.kategori && v.kategoriTambahan.length) muat();
+    else await segarkanSatu(id);
   };
 
   const batalkan = async (id: string, alasan: string, oleh: string) => {
@@ -253,7 +264,8 @@ export function usePdkb(user: CurrentUser) {
     await segarkanSatu(id);
   };
 
-  const koreksi = async (id: string, v: KoreksiPdkb, oleh: string) => {
+  /** `sekelompok`: baris punya saudara kategori — isian bersama ikut berubah di sana (pemicu DB). */
+  const koreksi = async (id: string, v: KoreksiPdkb, oleh: string, sekelompok: boolean) => {
     const { error } = await supabaseBrowser.rpc("koreksi_pekerjaan_pdkb", {
       p_id: id,
       p_isi: {
@@ -270,7 +282,16 @@ export function usePdkb(user: CurrentUser) {
       p_oleh: oleh,
     });
     if (error) throw new Error(/koreksi_pekerjaan_pdkb/.test(error.message) ? "Jalankan scripts/pdkb-2.sql di Supabase dulu." : error.message);
-    await segarkanSatu(id);
+    if (v.kategori && v.kategoriTambahan.length) {
+      const t = await supabaseBrowser.rpc("tambah_kategori_pdkb", { p_id: id, p_kategori: v.kategoriTambahan, p_oleh: oleh });
+      if (t.error) {
+        throw new Error(/tambah_kategori_pdkb/.test(t.error.message)
+          ? "Koreksi tersimpan, tapi kategori tambahan belum: jalankan scripts/kategori-banyak.sql di Supabase dulu."
+          : `Koreksi tersimpan, tapi kategori tambahan gagal: ${t.error.message}`);
+      }
+    }
+    if (sekelompok || v.kategoriTambahan.length) muat();
+    else await segarkanSatu(id);
   };
 
   return {

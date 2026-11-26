@@ -5,6 +5,7 @@ import { EYEBROW, FIELD } from "@/app/admin/_ui";
 import { supabaseBrowser } from "@/lib/supabase-browser";
 import type { BarisPemeliharaan, JenisJaringan, KategoriRef, KoreksiPemeliharaan } from "../_hooks/usePemeliharaanJaringan";
 import PilihTerdekat from "./PilihTerdekat";
+import PilihKategoriLain from "@/app/admin/_components/PilihKategoriLain";
 
 /**
  * Koreksi admin atas salah input — selama menunggu verifikasi, atau sesudah
@@ -17,6 +18,8 @@ export const ID_FORM_KOREKSI = "form-koreksi-pemeliharaan";
 interface Props {
   b: BarisPemeliharaan;
   kategori: KategoriRef[];
+  /** Baris kategori lain sekelompok — kategorinya tidak bisa dipilih lagi. */
+  saudara: BarisPemeliharaan[];
   onSimpan: (v: KoreksiPemeliharaan) => void;
 }
 
@@ -29,7 +32,7 @@ function Kolom({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props) {
+export default function FormKoreksiPemeliharaan({ b, kategori, saudara, onSimpan }: Props) {
   const [v, setV] = useState<KoreksiPemeliharaan>({
     jenis: b.jenis,
     penyulang: b.penyulang,
@@ -39,6 +42,7 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
     catatan: b.catatan,
     terdekatTiangId: b.terdekatTiangId,
     terdekatGarduKode: b.terdekatGarduKode,
+    kategoriTambahan: [],
   });
   const [penyulang, setPenyulang] = useState<string[]>([b.penyulang]);
   const ubah = (p: Partial<KoreksiPemeliharaan>) => setV((x) => ({ ...x, ...p }));
@@ -63,6 +67,10 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
   const pilihanKategori = kategori.filter(
     (k) => (k.aktif && (k.jenis === "SEMUA" || k.jenis === v.jenis)) || k.kode === b.kategori,
   );
+  const kategoriSaudara = saudara.map((x) => x.kategori).filter(Boolean);
+  // Kategori utama tidak boleh sama dengan kategori baris lain sekelompok.
+  const pilihanUtama = pilihanKategori.filter((k) => k.kode === v.kategori || !kategoriSaudara.includes(k.kode));
+  const pilihanLain = pilihanKategori.filter((k) => k.aktif);
 
   return (
     <form
@@ -74,6 +82,7 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
           pekerjaan: v.pekerjaan.trim(),
           alamat: v.alamat?.trim() || null,
           catatan: v.catatan?.trim() || null,
+          kategoriTambahan: v.kategoriTambahan.filter((k) => k !== v.kategori && pilihanLain.some((x) => x.kode === k)),
         });
       }}
       className="flex flex-col gap-4"
@@ -87,7 +96,7 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
         <Kolom label="Jenis jaringan">
           <select
             value={v.jenis}
-            onChange={(e) => ubah({ jenis: e.target.value as JenisJaringan })}
+            onChange={(e) => ubah({ jenis: e.target.value as JenisJaringan, kategoriTambahan: [] })}
             className={FIELD}
           >
             <option value="JTM">JTM</option>
@@ -106,12 +115,23 @@ export default function FormKoreksiPemeliharaan({ b, kategori, onSimpan }: Props
           </select>
         </Kolom>
         <Kolom label="Kategori">
-          <select value={v.kategori} onChange={(e) => ubah({ kategori: e.target.value })} className={FIELD} required>
+          <select
+            value={v.kategori}
+            onChange={(e) => ubah({ kategori: e.target.value, kategoriTambahan: v.kategoriTambahan.filter((k) => k !== e.target.value) })}
+            className={FIELD}
+            required
+          >
             <option value="" disabled>Pilih kategori</option>
-            {pilihanKategori.map((k) => <option key={k.kode} value={k.kode}>{k.label}</option>)}
+            {pilihanUtama.map((k) => <option key={k.kode} value={k.kode}>{k.label}</option>)}
           </select>
         </Kolom>
       </section>
+      <PilihKategoriLain
+        pilihan={pilihanLain}
+        sudah={[v.kategori, ...kategoriSaudara]}
+        nilai={v.kategoriTambahan}
+        onUbah={(k) => ubah({ kategoriTambahan: k })}
+      />
       <PilihTerdekat
         b={b}
         tiangId={v.terdekatTiangId}

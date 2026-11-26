@@ -2,41 +2,23 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabaseBrowser } from "@/lib/supabase-browser";
-import { fetchAllRows } from "@/lib/supabasePaginate";
-import { ambilDrone } from "@/app/admin/kinerja-yantek/_hooks/useLm4dx";
+import { ambilBarisLm, ambilItemLm, ambilRefLm } from "@/app/admin/kinerja-yantek/_hooks/useLm4dx";
 import { hariIniWita } from "@/app/admin/kinerja-yantek/_lib/realisasiHarian";
+import type { BarisLm, ItemLm, Kategori, Tindakan } from "@/app/admin/kinerja-yantek/_lib/lm4dx";
 import { bagiMinggu, mingguKe, type SistemMinggu } from "../_lib/mingguLm";
-import { BARIS_MINGGUAN, bulanDalam, susunMingguan, type ItemMingguan, type PetaSla } from "../_lib/barisMingguan";
+import { bulanDalam, kunciRentang, susunMingguan, type PetaSla } from "../_lib/barisMingguan";
 
 /**
- * Data tab LM Mingguan: `realisasi_rentang` selebar minggu-minggu bulan itu
- * (sistem ISO bisa melewati batas bulan), SEMUA status — termasuk yang belum
- * disetujui/diverifikasi (keputusan user 23 Nov; beda dengan tab harian).
- * Tanda drone dari inspeksi_jtm; kategori & jenis Pemeliharaan Jaringan dari
- * pemeliharaan_jaringan_daftar. Target = SLA bulanan (`sla_rekap`, sama
- * dengan Rekap Kinerja) tiap bulan yang disentuh minggu-minggunya.
+ * Data tab LM Mingguan: daftar baris (`lm4dx_baris` laporan 'mingguan', per
+ * ULP — 25 Nov 2026), pekerjaan selebar minggu-minggu bulan itu (sistem ISO
+ * bisa melewati batas bulan) dari realisasi_rentang + PDKB, SEMUA status —
+ * termasuk yang belum disetujui/diverifikasi (keputusan user 23 Nov; beda
+ * dengan tab harian). Target = SLA bulanan (`sla_rekap`, sama dengan Rekap
+ * Kinerja) tiap bulan yang disentuh minggu-minggunya.
  */
 
-const POTONG = 200;
-const KUNCI = new Set(["jtm", "jtm2", "igardu1", "igardu2", "perabasan", "harjtm"]);
-
-async function ambilHarjar(id: string[]) {
-  const peta = new Map<string, { kategori: string | null; jenis: string | null }>();
-  for (let i = 0; i < id.length; i += POTONG) {
-    const { data, error } = await supabaseBrowser
-      .from("pemeliharaan_jaringan_daftar")
-      .select("id,kategori_label,jenis")
-      .in("id", id.slice(i, i + POTONG));
-    if (error) throw new Error(error.message);
-    for (const r of data ?? []) peta.set(String(r.id), { kategori: r.kategori_label ?? null, jenis: r.jenis ?? null });
-  }
-  return peta;
-}
-
-const KUNCI_SLA = [...new Set(BARIS_MINGGUAN.flatMap((b) => b.sla ?? []))];
-
-async function ambilSla(ulp: string, dari: string, sampai: string): Promise<PetaSla> {
-  const minta = bulanDalam(dari, sampai).flatMap((bln) => KUNCI_SLA.map((k) => ({ bln, k })));
+async function ambilSla(ulp: string, dari: string, sampai: string, kunci: string[]): Promise<PetaSla> {
+  const minta = bulanDalam(dari, sampai).flatMap((bln) => kunci.map((k) => ({ bln, k })));
   const hasil = await Promise.all(minta.map(({ bln, k }) =>
     supabaseBrowser.rpc("sla_rekap", {
       p_ulp: ulp === "SEMUA" ? null : ulp, p_kunci: k, p_tahun: Number(bln.slice(0, 4)), p_bulan: Number(bln.slice(5, 7)),
@@ -54,7 +36,10 @@ export function useLmMingguan(ulpAwal: string) {
   const [ulp, gantiUlp] = useState(ulpAwal);
   const [sistem, gantiSistem] = useState<SistemMinggu>("tetap");
   const [bulan, gantiBulan] = useState(() => hariIniWita().slice(0, 7));
-  const [item, setItem] = useState<ItemMingguan[]>([]);
+  const [baris, setBaris] = useState<BarisLm[]>([]);
+  const [kategori, setKategori] = useState<Kategori[]>([]);
+  const [tindakan, setTindakan] = useState<Tindakan[]>([]);
+  const [item, setItem] = useState<ItemLm[]>([]);
   const [sla, setSla] = useState<PetaSla>(new Map());
   const [loading, setLoading] = useState(true);
   const [galat, setGalat] = useState<string | null>(null);
@@ -68,35 +53,17 @@ export function useLmMingguan(ulpAwal: string) {
     let hidup = true;
     (async () => {
       try {
-        const [rows, slaBaru] = await Promise.all([
-          fetchAllRows<Record<string, unknown>>(() =>
-            supabaseBrowser
-              .rpc("realisasi_rentang", { p_ulp: ulp, p_dari: dari, p_sampai: sampai })
-              // Hanya kunci tab ini (pengukuran gardu = ribuan baris sebulan; tanpa
-              // saringan, halaman akhir bulan bisa tidak terbaca).
-              .in("kunci", [...KUNCI])
-              .order("tgl")
-              .order("sumber")
-              .order("sumber_id"),
-          ),
-          ambilSla(ulp, dari, sampai),
+        const [barisLm, ref] = await Promise.all([ambilBarisLm(ulp, "mingguan"), ambilRefLm()]);
+        const kunciSla = [...new Set(barisLm.flatMap((b) => b.sla ?? []))];
+        const [isi, slaBaru] = await Promise.all([
+          ambilItemLm(ulp, dari, sampai, barisLm, false, kunciRentang(barisLm)),
+          ambilSla(ulp, dari, sampai, kunciSla),
         ]);
-        const pakai = rows.filter((r) => r.bagian !== "ujung");
-        const idDari = (k: string) => pakai.filter((r) => r.kunci === k && r.sumber_id).map((r) => String(r.sumber_id));
-        const [drone, harjar] = await Promise.all([ambilDrone(idDari("jtm")), ambilHarjar(idDari("harjtm"))]);
         if (!hidup) return;
-        setItem(pakai.map((r) => {
-          const id = String(r.sumber_id ?? "");
-          const h = r.kunci === "harjtm" ? harjar.get(id) : undefined;
-          return {
-            tgl: String(r.tgl),
-            kunci: String(r.kunci),
-            km: Number(r.km ?? 0),
-            drone: r.kunci === "jtm" && drone.has(id),
-            kategori: h?.kategori ?? null,
-            jenis: h?.jenis ?? null,
-          };
-        }));
+        setBaris(barisLm);
+        setKategori(ref.kategori);
+        setTindakan(ref.tindakan);
+        setItem(isi);
         setSla(slaBaru);
         setGalat(null);
       } catch (e) {
@@ -121,9 +88,9 @@ export function useLmMingguan(ulpAwal: string) {
   };
 
   const nilai = useMemo(
-    () => susunMingguan(item, (t) => mingguKe(minggu, t), minggu.length),
-    [item, minggu],
+    () => susunMingguan(baris, item, (t) => mingguKe(minggu, t), minggu.length),
+    [baris, item, minggu],
   );
 
-  return { ulp, setUlp, bulan, setBulan, sistem, setSistem, minggu, nilai, sla, loading, galat, muat };
+  return { ulp, setUlp, bulan, setBulan, sistem, setSistem, minggu, baris, kategori, tindakan, nilai, sla, loading, galat, muat };
 }

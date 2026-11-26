@@ -5,7 +5,7 @@ import { supabaseBrowser } from "@/lib/supabase-browser";
 import { fetchAllRows } from "@/lib/supabasePaginate";
 import { hariIniWita } from "../_lib/realisasiHarian";
 import {
-  NAMA_MODUL_TINDAKAN, SUMBER_JTM2_TITIK, susunMatriks,
+  KUNCI_PDKB, NAMA_MODUL_TINDAKAN, SUMBER_JTM2_TITIK, susunMatriks,
   type BarisLm, type ItemLm, type Kategori, type Laporan, type Tindakan,
 } from "../_lib/lm4dx";
 
@@ -94,6 +94,117 @@ async function ambilTindakan(kunci: { modul: string; id: string }[]): Promise<Pe
   return peta;
 }
 
+/**
+ * Pekerjaan PDKB (`pdkb_pekerjaan_daftar`, status Tercatat) dalam rentang —
+ * tabel sendiri sejak 24 Nov 2026, tidak ada di realisasi_rentang. Dicatat
+ * admin dengan foto, jadi dianggap sudah disetujui.
+ */
+async function ambilPdkb(ulp: string, dari: string, sampai: string): Promise<ItemLm[]> {
+  const rows = await fetchAllRows<Record<string, unknown>>(() => {
+    let q = supabaseBrowser
+      .from("pdkb_pekerjaan_daftar")
+      .select("id,ulp,tgl,jenis,penyulang,gardu_kode,kategori,pekerjaan,pelaksana")
+      .eq("status", "Tercatat")
+      .gte("tgl", dari)
+      .lte("tgl", sampai);
+    if (ulp !== "SEMUA") q = q.eq("ulp", ulp);
+    return q.order("tgl").order("id");
+  });
+  return rows.map((r) => ({
+    tgl: String(r.tgl).slice(0, 10),
+    kunci: KUNCI_PDKB,
+    km: null,
+    kategori: (r.kategori as string | null) ?? null,
+    drone: false,
+    penyulang: null,
+    titik: 0,
+    tindakan: {},
+    ulp: String(r.ulp ?? ""),
+    objek: ((r.gardu_kode || r.penyulang) as string | null) ?? null,
+    rincian: [r.jenis, r.pekerjaan].filter(Boolean).join(" · ") || null,
+    petugas: (r.pelaksana as string | null) ?? null,
+    sumberTabel: "pdkb_pekerjaan",
+    sumberId: String(r.id),
+    disetujui: true,
+  }));
+}
+
+/**
+ * Semua pekerjaan yang dihitung baris-baris LM dalam rentang tanggal:
+ * realisasi_rentang (+ kategori, drone, tiang Tier 2, tindakan) dan PDKB.
+ * `hanyaDisetujui`: tab harian (true) / LM Mingguan (false, semua status).
+ * `kunci`: saring realisasi_rentang ke kunci itu saja (rentang lebar).
+ */
+export async function ambilItemLm(
+  ulp: string, dari: string, sampai: string, barisLm: BarisLm[], hanyaDisetujui: boolean, kunci?: string[],
+): Promise<ItemLm[]> {
+  const pakaiPdkb = barisLm.some((b) => b.sumber.some((s) => s.startsWith(`${KUNCI_PDKB}:`)));
+  const [rows, pdkb] = await Promise.all([
+    kunci && kunci.length === 0
+      ? Promise.resolve([] as Record<string, unknown>[])
+      : fetchAllRows<Record<string, unknown>>(() => {
+          let q = supabaseBrowser.rpc("realisasi_rentang", { p_ulp: ulp, p_dari: dari, p_sampai: sampai });
+          if (kunci) q = q.in("kunci", kunci);
+          return q.order("tgl").order("sumber").order("sumber_id");
+        }),
+    pakaiPdkb ? ambilPdkb(ulp, dari, sampai) : Promise.resolve([]),
+  ]);
+  // Tegangan ujung bukan realisasi pengukuran (sama dengan Rekap Kinerja).
+  const pakai = rows.filter((r) => r.bagian !== "ujung" && (!hanyaDisetujui || r.disetujui === true));
+  const idHarjtm = pakai.filter((r) => r.kunci === "harjtm" && r.sumber_id).map((r) => String(r.sumber_id));
+  const idJtm = pakai.filter((r) => r.kunci === "jtm" && r.sumber_id).map((r) => String(r.sumber_id));
+  // Jumlah tiang Tier 2 hanya dibaca bila ada baris yang memakainya.
+  const idTier2 = barisLm.some((b) => b.sumber.includes(SUMBER_JTM2_TITIK))
+    ? pakai.filter((r) => r.kunci === "jtm2" && r.sumber === "inspeksi_jtm" && r.sumber_id).map((r) => String(r.sumber_id))
+    : [];
+  // Tindakan hanya dibaca bila ada baris yang memakainya.
+  const kunciTdk = barisLm.some((b) => b.sumber.some((x) => x.startsWith("tindakan:")))
+    ? pakai.filter((r) => MODUL_SUMBER[String(r.sumber)] && r.sumber_id)
+        .map((r) => ({ modul: MODUL_SUMBER[String(r.sumber)], id: String(r.sumber_id) }))
+    : [];
+  const [kodeKat, drone, titik, tdkPer] = await Promise.all([
+    ambilKodeKategori(idHarjtm), ambilDrone(idJtm), ambilJumlahTitik(idTier2), ambilTindakan(kunciTdk),
+  ]);
+  const dariRentang: ItemLm[] = pakai.map((r) => ({
+    tgl: r.tgl as string,
+    kunci: r.kunci as string,
+    km: r.km === null || r.km === undefined ? null : Number(r.km),
+    kategori: r.kunci === "harjtm" && r.sumber_id ? kodeKat.get(String(r.sumber_id)) ?? null : null,
+    drone: r.kunci === "jtm" && drone.has(String(r.sumber_id)),
+    // Baris JTM realisasi_rentang: rincian = penyulang.
+    penyulang: r.kunci === "jtm" ? ((r.rincian as string | null) ?? null) : null,
+    titik: titik.get(String(r.sumber_id)) ?? 0,
+    tindakan: tdkPer.get(`${MODUL_SUMBER[String(r.sumber)]}|${r.sumber_id}`) ?? {},
+    ulp: String(r.ulp ?? ""),
+    objek: (r.objek as string | null) ?? null,
+    rincian: (r.rincian as string | null) ?? null,
+    petugas: (r.petugas as string | null) ?? null,
+    sumberTabel: String(r.sumber ?? ""),
+    sumberId: r.sumber_id ? String(r.sumber_id) : null,
+    disetujui: r.disetujui === true,
+  }));
+  return [...dariRentang, ...pdkb];
+}
+
+/** Kategori Pemeliharaan Jaringan (juga kategori PDKB) + daftar tindakan. */
+export async function ambilRefLm(): Promise<{ kategori: Kategori[]; tindakan: Tindakan[] }> {
+  const [kat, tdk] = await Promise.all([
+    supabaseBrowser.from("pemeliharaan_jaringan_ref").select("kode,label").order("urutan"),
+    supabaseBrowser.from("tindakan_ref").select("kode,modul,nama,satuan,urutan,aktif").order("modul").order("urutan").order("kode"),
+  ]);
+  if (kat.error) throw new Error(kat.error.message);
+  if (tdk.error) throw new Error(`Daftar pekerjaan yang dikerjakan gagal dibaca: ${tdk.error.message}`);
+  return { kategori: kat.data as Kategori[], tindakan: tdk.data as Tindakan[] };
+}
+
+/** Daftar baris LM per ULP (lm-baris-per-ulp.sql); "Semua ULP" = ulp NULL. */
+export async function ambilBarisLm(ulp: string, laporan: Laporan): Promise<BarisLm[]> {
+  const q = supabaseBrowser.from("lm4dx_baris").select("id,urutan,uraian,sumber,kelompok,induk,satuan,sla").eq("laporan", laporan);
+  const { data, error } = await (ulp === "SEMUA" ? q.is("ulp", null) : q.eq("ulp", ulp)).order("urutan");
+  if (error) throw new Error(`Daftar baris ${laporan === "mingguan" ? "LM Mingguan" : "LM"} gagal dibaca: ${error.message}`);
+  return data as BarisLm[];
+}
+
 const akhirBulan = (bulan: string) => {
   const [y, m] = bulan.split("-").map(Number);
   return `${bulan}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
@@ -114,64 +225,13 @@ export function useLm4dx(ulpAwal: string, laporan: Laporan) {
     let hidup = true;
     (async () => {
       try {
-        const [rows, daftar, kat, tdk] = await Promise.all([
-          fetchAllRows<Record<string, unknown>>(() =>
-            supabaseBrowser
-              .rpc("realisasi_rentang", { p_ulp: ulp, p_dari: `${bulan}-01`, p_sampai: akhirBulan(bulan) })
-              .order("tgl")
-              .order("sumber")
-              .order("sumber_id"),
-          ),
-          // Daftar baris per ULP (lm-baris-per-ulp.sql); "Semua ULP" = ulp NULL.
-          (ulp === "SEMUA"
-            ? supabaseBrowser.from("lm4dx_baris").select("id,urutan,uraian,sumber,kelompok").eq("laporan", laporan).is("ulp", null)
-            : supabaseBrowser.from("lm4dx_baris").select("id,urutan,uraian,sumber,kelompok").eq("laporan", laporan).eq("ulp", ulp)
-          ).order("urutan"),
-          supabaseBrowser.from("pemeliharaan_jaringan_ref").select("kode,label").order("urutan"),
-          supabaseBrowser.from("tindakan_ref").select("kode,modul,nama,satuan,urutan,aktif").order("modul").order("urutan").order("kode"),
-        ]);
-        if (daftar.error) throw new Error(`Daftar baris LM 4DX gagal dibaca: ${daftar.error.message}`);
-        if (kat.error) throw new Error(kat.error.message);
-        if (tdk.error) throw new Error(`Daftar pekerjaan yang dikerjakan gagal dibaca: ${tdk.error.message}`);
-        // Tegangan ujung bukan realisasi pengukuran (sama dengan Rekap Kinerja).
-        const pakai = rows.filter((r) => r.bagian !== "ujung" && r.disetujui === true);
-        const barisLm = daftar.data as BarisLm[];
-        const idHarjtm = pakai.filter((r) => r.kunci === "harjtm" && r.sumber_id).map((r) => String(r.sumber_id));
-        const idJtm = pakai.filter((r) => r.kunci === "jtm" && r.sumber_id).map((r) => String(r.sumber_id));
-        // Jumlah tiang Tier 2 hanya dibaca bila ada baris yang memakainya.
-        const idTier2 = barisLm.some((b) => b.sumber.includes(SUMBER_JTM2_TITIK))
-          ? pakai.filter((r) => r.kunci === "jtm2" && r.sumber === "inspeksi_jtm" && r.sumber_id).map((r) => String(r.sumber_id))
-          : [];
-        // Tindakan hanya dibaca bila ada baris yang memakainya.
-        const kunciTdk = barisLm.some((b) => b.sumber.some((x) => x.startsWith("tindakan:")))
-          ? pakai.filter((r) => MODUL_SUMBER[String(r.sumber)] && r.sumber_id)
-              .map((r) => ({ modul: MODUL_SUMBER[String(r.sumber)], id: String(r.sumber_id) }))
-          : [];
-        const [kodeKat, drone, titik, tdkPer] = await Promise.all([
-          ambilKodeKategori(idHarjtm), ambilDrone(idJtm), ambilJumlahTitik(idTier2), ambilTindakan(kunciTdk),
-        ]);
+        const [barisLm, ref] = await Promise.all([ambilBarisLm(ulp, laporan), ambilRefLm()]);
+        const isi = await ambilItemLm(ulp, `${bulan}-01`, akhirBulan(bulan), barisLm, true);
         if (!hidup) return;
-        setItem(pakai.map((r) => ({
-          tgl: r.tgl as string,
-          kunci: r.kunci as string,
-          km: r.km === null || r.km === undefined ? null : Number(r.km),
-          kategori: r.sumber_id ? kodeKat.get(String(r.sumber_id)) ?? null : null,
-          drone: drone.has(String(r.sumber_id)),
-          // Baris JTM realisasi_rentang: rincian = penyulang.
-          penyulang: r.kunci === "jtm" ? ((r.rincian as string | null) ?? null) : null,
-          titik: titik.get(String(r.sumber_id)) ?? 0,
-          tindakan: tdkPer.get(`${MODUL_SUMBER[String(r.sumber)]}|${r.sumber_id}`) ?? {},
-          ulp: String(r.ulp ?? ""),
-          objek: (r.objek as string | null) ?? null,
-          rincian: (r.rincian as string | null) ?? null,
-          petugas: (r.petugas as string | null) ?? null,
-          sumberTabel: String(r.sumber ?? ""),
-          sumberId: r.sumber_id ? String(r.sumber_id) : null,
-          disetujui: r.disetujui === true,
-        })));
+        setItem(isi);
         setBaris(barisLm);
-        setKategori(kat.data as Kategori[]);
-        setTindakan(tdk.data as Tindakan[]);
+        setKategori(ref.kategori);
+        setTindakan(ref.tindakan);
         setGalat(null);
       } catch (e) {
         if (!hidup) return;

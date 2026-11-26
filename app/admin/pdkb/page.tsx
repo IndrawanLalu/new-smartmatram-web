@@ -140,6 +140,9 @@ export default function PdkbPage() {
       {detail && (
         <DetailPdkbModal
           b={detail}
+          saudara={detail.kelompokId
+            ? o.semua.filter((x) => x.kelompokId === detail.kelompokId && x.id !== detail.id && x.status === "Tercatat")
+            : []}
           oleh={oleh}
           onTutup={() => setIdDetail(null)}
           kategori={o.kategori}
